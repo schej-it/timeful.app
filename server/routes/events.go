@@ -1260,35 +1260,56 @@ func deleteEvent(c *gin.Context) {
 	userInterface, _ := c.Get("authUser")
 	user := userInterface.(*models.User)
 
-	result := db.EventsCollection.FindOneAndUpdate(context.Background(), bson.M{
-		"_id":     objectId,
-		"ownerId": user.Id,
-	}, bson.M{
-		"$set": bson.M{
-			"isDeleted": true,
-		},
-	})
-	var event models.Event
-	err = result.Decode(&event)
-	if err != nil {
-		logger.StdErr.Panicln(err)
+	// Check if the current user responded
+	eventResponses := db.GetEventResponses(eventId)
+	hasCurrentUserResponded := false
+	for _, resp := range eventResponses {
+		if resp.UserId == user.Id.Hex() {
+			hasCurrentUserResponded = true
+			break
+		}
+	}
+	hasResponses := len(eventResponses) > 0
+	if hasCurrentUserResponded {
+		// Only set hasResponses to true if there are responses other than the current user's
+		hasResponses = len(eventResponses) > 1
 	}
 
-	// Delete event responses
-	// _, err = db.EventResponsesCollection.DeleteMany(context.Background(), bson.M{
-	// 	"eventId": objectId,
-	// })
-	// if err != nil {
-	// 	logger.StdErr.Panicln(err)
-	// }
+	var event models.Event
 
-	// // Delete attendees
-	// _, err = db.AttendeesCollection.DeleteMany(context.Background(), bson.M{
-	// 	"eventId": objectId,
-	// })
-	// if err != nil {
-	// 	logger.StdErr.Panicln(err)
-	// }
+	if hasResponses {
+		// If event has responses, just set isDeleted flag
+		result := db.EventsCollection.FindOneAndUpdate(context.Background(), bson.M{
+			"_id":     objectId,
+			"ownerId": user.Id,
+		}, bson.M{
+			"$set": bson.M{
+				"isDeleted": true,
+			},
+		})
+		err = result.Decode(&event)
+		if err != nil {
+			logger.StdErr.Panicln(err)
+		}
+	} else {
+		// If event has no responses, actually delete the event object
+		result := db.EventsCollection.FindOneAndDelete(context.Background(), bson.M{
+			"_id":     objectId,
+			"ownerId": user.Id,
+		})
+		err = result.Decode(&event)
+		if err != nil {
+			logger.StdErr.Panicln(err)
+		}
+
+		// Delete folder associations
+		_, err = db.FolderEventsCollection.DeleteMany(context.Background(), bson.M{
+			"eventId": objectId,
+		})
+		if err != nil {
+			logger.StdErr.Panicln(err)
+		}
+	}
 
 	// Delete gcloud tasks
 	if event.Remindees != nil {

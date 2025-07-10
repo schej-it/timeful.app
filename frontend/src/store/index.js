@@ -265,6 +265,10 @@ export default new Vuex.Store({
         console.error(err)
       }
     },
+    async refreshAuthUser({ commit }) {
+      const authUser = await get("/user/profile")
+      commit("setAuthUser", authUser)
+    },
     showUpgradeDialog({ commit }, { type, data = null }) {
       commit("setUpgradeDialogVisible", true)
       commit("setUpgradeDialogType", type)

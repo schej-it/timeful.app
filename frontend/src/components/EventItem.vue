@@ -279,6 +279,7 @@ export default {
       "getEvents",
       "setEventFolder",
       "archiveEvent",
+      "refreshAuthUser",
     ]),
     _archiveEvent() {
       this.archiveEvent({
@@ -307,6 +308,7 @@ export default {
     removeEvent() {
       _delete(`/events/${this.event._id}`)
         .then(() => {
+          this.refreshAuthUser()
           this.getEvents()
           this.$refs.menu.save() // NOTE: Not sure why but without this line, the menu persists to the next event.
 
