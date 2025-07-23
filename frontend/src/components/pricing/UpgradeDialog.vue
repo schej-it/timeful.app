@@ -54,7 +54,7 @@
           </li>
         </ul> -->
       </div>
-      <div
+      <!-- <div
         v-if="isStudent"
         class="tw-mb-8 tw-rounded-lg tw-border tw-border-light-gray-stroke tw-p-4"
       >
@@ -76,9 +76,8 @@
           and we'll get back to you within 24 hours (but probably sooner). The
           subject of your email should be "I AM A STUDENT".
         </div>
-      </div>
+      </div> -->
       <div
-        v-else
         class="tw-mb-8 tw-flex tw-flex-col tw-gap-1 sm:tw-flex-row sm:tw-gap-4"
       >
         <div
@@ -258,20 +257,17 @@
         </v-checkbox>
         <label
           for="student-checkbox"
-          class="tw-cursor-pointer tw-select-none tw-text-sm tw-text-very-dark-gray"
-          >I'm a student</label
+          class="tw-flex tw-cursor-pointer tw-select-none tw-flex-col tw-text-sm tw-text-very-dark-gray"
         >
+          <span class="tw-text-sm">I'm a student</span>
+          <span v-if="isStudent" class="tw-text-xs tw-text-dark-gray">
+            Pinky promise that you're actually a student?
+          </span>
+        </label>
       </div>
       <div
         class="tw-flex tw-w-full tw-items-center tw-justify-center tw-gap-4 tw-text-center"
       >
-        <a
-          class="tw-cursor-pointer tw-py-2 tw-text-xs tw-font-medium tw-text-dark-gray tw-underline"
-          target="_blank"
-          href="https://forms.gle/aaBzFvoKkHLPDjio7"
-        >
-          I don't want to pay
-        </a>
         <div
           class="tw-cursor-pointer tw-py-2 tw-text-xs tw-font-medium tw-text-dark-gray tw-underline"
           @click="showDonatedDialog = true"
