@@ -341,16 +341,47 @@ export default {
     },
     pricesShown() {
       let pricesShown = []
+      // Monthly
       if (this.showMonthly) {
-        pricesShown.push(
-          `MONTHLY: ${this.formattedPrice(this.monthlyPrice)}/mo`
-        )
+        if (this.isStudent && this.monthlyStudentPrice) {
+          pricesShown.push(
+            `MONTHLY (Student): ${this.formattedPrice(
+              this.monthlyStudentPrice
+            )}/mo`
+          )
+        } else {
+          pricesShown.push(
+            `MONTHLY: ${this.formattedPrice(this.monthlyPrice)}/mo`
+          )
+        }
       }
+      // Yearly
       if (this.showYearly) {
-        pricesShown.push(`YEARLY: ${this.formattedPrice(this.yearlyPrice)}/mo`)
+        if (this.isStudent && this.yearlyStudentPrice) {
+          pricesShown.push(
+            `YEARLY (Student): ${this.formattedPrice(
+              this.yearlyStudentPrice
+            )}/mo`
+          )
+        } else {
+          pricesShown.push(
+            `YEARLY: ${this.formattedPrice(this.yearlyPrice)}/mo`
+          )
+        }
       }
+      // Lifetime
       if (this.showLifetime) {
-        pricesShown.push(`LIFETIME: ${this.formattedPrice(this.lifetimePrice)}`)
+        if (this.isStudent && this.lifetimeStudentPrice) {
+          pricesShown.push(
+            `LIFETIME (Student): ${this.formattedPrice(
+              this.lifetimeStudentPrice
+            )}`
+          )
+        } else {
+          pricesShown.push(
+            `LIFETIME: ${this.formattedPrice(this.lifetimePrice)}`
+          )
+        }
       }
       return pricesShown.join(", ")
     },
@@ -429,7 +460,7 @@ export default {
       handler(val) {
         if (val) {
           this.$posthog.capture("student_pricing_viewed", {
-            prices: `FREE`,
+            prices: this.pricesShown,
           })
         }
       },
