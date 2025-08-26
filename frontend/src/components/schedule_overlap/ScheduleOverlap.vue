@@ -4241,7 +4241,8 @@ export default {
 
     /** Emits sign up for block to parent element */
     handleSignUpBlockClick(block) {
-      if (!this.alreadyRespondedToSignUpForm && !this.isOwner)
+      const blockFull = (block.responses?.length || 0) >= block.capacity
+      if (!this.alreadyRespondedToSignUpForm && !blockFull && !this.isOwner)
         this.$emit("signUpForBlock", block)
     },
 
