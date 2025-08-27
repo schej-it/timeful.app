@@ -25,6 +25,7 @@ export const _delete = (route, body = {}) => {
 
 export const fetchMethod = (method, route, body = {}) => {
   /* Calls the given route with the give method and body */
+  const url = serverURL + route
   const params = {
     method,
     credentials: "include",
@@ -38,7 +39,7 @@ export const fetchMethod = (method, route, body = {}) => {
     params.body = JSON.stringify(body)
   }
 
-  return fetch(serverURL + route, params)
+  return fetch(url, params)
     .then(async (res) => {
       const text = await res.text()
 
@@ -54,9 +55,17 @@ export const fetchMethod = (method, route, body = {}) => {
         }
       }
 
-      // Check if response was ok
+      // Check if response was ok and throw a readable error if not
       if (!res.ok) {
-        throw returnValue
+        const snippet =
+        typeof returnValue === "string" ? returnValue.slice(0, 500) : JSON.stringify(returnValue).slice(0, 500);
+        const err = new Error(`HTTP ${res.status} ${res.statusText} - ${snippet}`);
+        err.status = res.status;
+        err.url = url;
+        err.responseBody = text.slice(0, 2000);
+        err.parsed = returnValue;
+        err.headers = res.headers ? Object.fromEntries(res.headers.entries()) : undefined;
+        throw err;
       }
 
       return returnValue
