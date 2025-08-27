@@ -4276,7 +4276,9 @@ export default {
       this.event.duration = maxHours - minHours + 1
 
       // Fix other fields
-      this.event.remindees = this.event.remindees.map((r) => r.email)
+      if (this.event.remindees) {
+        this.event.remindees = this.event.remindees.map((r) => r.email)
+      }
 
       // Update event
       put(`/events/${this.event._id}`, this.event)
