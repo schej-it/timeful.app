@@ -43,7 +43,7 @@
         <NewEvent
           v-if="tab === 'event'"
           ref="event"
-          key="event"
+          :key="`event-${value}`"
           :event="event"
           :edit="edit"
           @input="handleDialogInput"
@@ -56,7 +56,7 @@
         <NewGroup
           v-else-if="tab === 'group'"
           ref="group"
-          key="group"
+          :key="`group-${value}`"
           :event="event"
           :edit="edit"
           @input="handleDialogInput"
@@ -67,7 +67,7 @@
         <NewSignUp
           v-if="tab === 'signup'"
           ref="signup"
-          key="signup"
+          :key="`signup-${value}`"
           :event="event"
           :edit="edit"
           @input="handleDialogInput"
