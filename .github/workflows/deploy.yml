@@ -1,0 +1,65 @@
+name: Deploy Schej
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "What to deploy?"
+        required: true
+        type: choice
+        options: [server, frontend, both]
+      branch:
+        description: "Branch to deploy from"
+        required: true
+        default: "main"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > aws-key
+          chmod 600 aws-key
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Ensure deploy scripts are executable
+        run: chmod +x ./deploy_scripts/*.sh
+
+      - name: Deploy
+        shell: bash
+        env:
+          TARGET: ${{ github.event.inputs.target }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          set -euo pipefail
+          DEPLOY_SCRIPT_DIRECTORY="./deploy_scripts/"
+          HOST="${SSH_USER}@${SSH_HOST}"
+
+          if [ "$TARGET" = "server" ]; then
+            DEPLOY_SCRIPT="deploy_server.sh"
+          elif [ "$TARGET" = "frontend" ]; then
+            DEPLOY_SCRIPT="deploy_frontend.sh"
+          elif [ "$TARGET" = "both" ]; then
+            for DEPLOY_SCRIPT in deploy_frontend.sh deploy_server.sh; do
+              echo "${DEPLOY_SCRIPT_DIRECTORY}${DEPLOY_SCRIPT}"
+              /bin/bash "${DEPLOY_SCRIPT_DIRECTORY}${DEPLOY_SCRIPT}" "$HOST" "./aws-key"
+            done
+            exit 0
+          else
+            echo "Invalid script name!"
+            exit 1
+          fi
+
+          echo "${DEPLOY_SCRIPT_DIRECTORY}${DEPLOY_SCRIPT}"
+          /bin/bash "${DEPLOY_SCRIPT_DIRECTORY}${DEPLOY_SCRIPT}" "$HOST" "./aws-key"
