@@ -185,7 +185,8 @@
                 </div>
               </div>
               <div
-                class="tw-absolute tw-right-0 tw-opacity-0 tw-transition-none group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
+                class="tw-absolute tw-right-0 tw-transition-none group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
+                :class="isPhone ? 'tw-opacity-100' : 'tw-opacity-0'"
               >
                 <v-btn
                   v-if="isGuest(user)"
