@@ -150,7 +150,7 @@
       :ownerId="event.ownerId"
     ></Advertisement> -->
 
-    <!-- <div>
+    <div v-if="!isPremiumUser">
       <ins
         class="adsbygoogle"
         style="display: block"
@@ -160,7 +160,7 @@
         data-full-width-responsive="true"
         data-adtest="on"
       ></ins>
-    </div> -->
+    </div>
   </div>
 </template>
 
@@ -172,7 +172,7 @@ import Advertisement from "../event/Advertisement.vue"
 import ExpandableSection from "../ExpandableSection.vue"
 import EventOptions from "./EventOptions.vue"
 import { timeTypes, guestUserId } from "@/constants"
-import { mapState } from "vuex"
+import { mapState, mapGetters } from "vuex"
 
 export default {
   name: "ToolRow",
@@ -215,22 +215,27 @@ export default {
   }),
 
   mounted() {
-    // // Load Google Ads script
-    // const adScript = document.createElement("script")
-    // adScript.async = true
-    // adScript.src =
-    //   "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4082178684015354"
-    // adScript.crossOrigin = "anonymous"
-    // document.head.appendChild(adScript)
-    // // Initialize Google Ads
-    // adScript.onload = () => {
-    //   (window.adsbygoogle = window.adsbygoogle || []).push({})
-    //   console.log(window.adsbygoogle)
-    // }
+    // Initialize Google Ads only for non-premium users
+    if (!this.isPremiumUser) {
+      this.$nextTick(() => {
+        this.initializeAd()
+      })
+    }
+  },
+
+  methods: {
+    initializeAd() {
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({})
+      } catch (e) {
+        console.error('AdSense error:', e)
+      }
+    }
   },
 
   computed: {
     ...mapState(["authUser"]),
+    ...mapGetters(["isPremiumUser"]),
     isPhone() {
       return isPhone(this.$vuetify)
     },
