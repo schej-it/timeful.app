@@ -158,7 +158,6 @@
         data-ad-slot="7343574524"
         data-ad-format="auto"
         data-full-width-responsive="true"
-        data-adtest="on"
       ></ins>
     </div>
   </div>
