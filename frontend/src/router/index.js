@@ -57,6 +57,11 @@ const routes = [
     component: () => import("@/views/PrivacyPolicy.vue"),
   },
   {
+    path: "/cookie-settings",
+    name: "cookie-settings",
+    component: () => import("@/components/CookieSettings.vue"),
+  },
+  {
     path: "/stripe-redirect",
     name: "stripe-redirect",
     component: () => import("@/views/StripeRedirect.vue"),

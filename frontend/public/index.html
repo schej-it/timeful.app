@@ -1,8 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- Google Tag Manager -->
+    <!-- Cookie Consent Check and Conditional Loading -->
     <script>
+      // Check cookie consent before loading tracking scripts
+      function loadTrackingScripts() {
+        try {
+          const consent = localStorage.getItem("cookieConsent")
+          const consentData = consent ? JSON.parse(consent) : null
+
+          if (consentData?.preferences?.analytics) {
       ;(function (w, d, s, l, i) {
         w[l] = w[l] || []
         w[l].push({ "gtm.start": new Date().getTime(), event: "gtm.js" })
@@ -13,13 +20,22 @@
         j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl
         f.parentNode.insertBefore(j, f)
       })(window, document, "script", "dataLayer", "GTM-M677X6V")
-    </script>
-    <!-- End Google Tag Manager -->
+          }
 
-    <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4082178684015354"
-     crossorigin="anonymous"></script>
-    <!-- End Google AdSense -->
+          if (consentData?.preferences?.advertising) {
+            var script = document.createElement("script")
+            script.src =
+              "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4082178684015354"
+            script.crossOrigin = "anonymous"
+            document.head.appendChild(script)
+          }
+        } catch (error) {
+          console.error("Error loading tracking scripts:", error)
+        }
+      }
+
+      loadTrackingScripts()
+    </script>
 
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -64,14 +80,19 @@
   </head>
   <body>
     <!-- Google Tag Manager (noscript) -->
-    <noscript
-      ><iframe
-        src="https://www.googletagmanager.com/ns.html?id=GTM-M677X6V"
-        height="0"
-        width="0"
-        style="display: none; visibility: hidden"
-      ></iframe
-    ></noscript>
+    <script>
+      try {
+        const consent = localStorage.getItem("cookieConsent")
+        const consentData = consent ? JSON.parse(consent) : null
+        if (consentData?.preferences?.analytics) {
+          document.write(
+            '<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-M677X6V" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>'
+          )
+        }
+      } catch (error) {
+        // Silent fail for noscript GTM
+      }
+    </script>
     <!-- End Google Tag Manager (noscript) -->
     <noscript>
       <strong
