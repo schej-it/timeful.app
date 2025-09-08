@@ -150,7 +150,7 @@
       :ownerId="event.ownerId"
     ></Advertisement> -->
 
-    <div v-if="!isPremiumUser">
+    <!-- <div v-if="!isPremiumUser">
       <ins
         class="adsbygoogle"
         style="display: block"
@@ -159,7 +159,7 @@
         data-ad-format="auto"
         data-full-width-responsive="true"
       ></ins>
-    </div>
+    </div> -->
   </div>
 </template>
 
@@ -215,11 +215,11 @@ export default {
 
   mounted() {
     // Initialize Google Ads only for non-premium users
-    if (!this.isPremiumUser) {
-      this.$nextTick(() => {
-        this.initializeAd()
-      })
-    }
+    // if (!this.isPremiumUser) {
+    //   this.$nextTick(() => {
+    //     this.initializeAd()
+    //  })
+    // }
   },
 
   methods: {
