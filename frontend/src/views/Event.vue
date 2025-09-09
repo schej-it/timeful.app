@@ -389,6 +389,7 @@ import {
   getDateRangeStringForEvent,
   isIOS,
   isDstObserved,
+  doesDstExist,
 } from "@/utils"
 import { mapActions, mapState, mapMutations } from "vuex"
 
@@ -825,7 +826,7 @@ export default {
               const event = this.calendarAvailabilities[userId][index]
               const startDate = new Date(event.startDate)
               const endDate = new Date(event.endDate)
-              if (!isDstObserved(startDate)) {
+              if (doesDstExist(startDate) && !isDstObserved(startDate)) {
                 startDate.setHours(startDate.getHours() - 1)
                 endDate.setHours(endDate.getHours() - 1)
               }
@@ -873,7 +874,10 @@ export default {
           this.calendarEventsMap = eventsMap
 
           // Fix DST bug
-          if (this.event.type === eventTypes.GROUP) {
+          if (
+            this.event.type === eventTypes.GROUP ||
+            this.event.type === eventTypes.DOW
+          ) {
             for (const calendarId in this.calendarEventsMap) {
               for (const index in this.calendarEventsMap[calendarId]
                 .calendarEvents) {
@@ -881,7 +885,7 @@ export default {
                   this.calendarEventsMap[calendarId].calendarEvents[index]
                 const startDate = new Date(event.startDate)
                 const endDate = new Date(event.endDate)
-                if (!isDstObserved(startDate)) {
+                if (doesDstExist(startDate) && !isDstObserved(startDate)) {
                   startDate.setHours(startDate.getHours() - 1)
                   endDate.setHours(endDate.getHours() - 1)
                 }

@@ -692,6 +692,10 @@ export const stdTimezoneOffset = (date) => {
   return Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset())
 }
 
+export const doesDstExist = (date) => {
+  return date.getTimezoneOffset() !== stdTimezoneOffset(date)
+}
+
 export const isDstObserved = (date) => {
   return date.getTimezoneOffset() < stdTimezoneOffset(date)
 }
