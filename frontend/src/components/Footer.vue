@@ -46,7 +46,7 @@
               ></a
             >
             <a
-              href="https://www.reddit.com/r/schej/"
+              href="https://www.reddit.com/r/timefulapp/"
               target="_blank"
               aria-label="Reddit"
               ><v-icon class="tw-text-white/80 hover:tw-text-white"
