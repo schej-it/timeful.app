@@ -3310,7 +3310,7 @@ export default {
 
         if (row === 0) classStyle.class += "tw-border-t tw-border-t-gray "
         classStyle.class += "tw-border-b tw-border-b-gray "
-        if (row !== Math.floor(this.monthDays.length / 7) - 1) {
+        if (row !== Math.floor(this.monthDays.length / 7)) {
           classStyle.style.borderBottomStyle = "dashed"
         }
       }
@@ -3586,7 +3586,7 @@ export default {
     },
     clampRow(row) {
       if (this.event.daysOnly) {
-        row = clamp(row, 0, Math.floor(this.monthDays.length / 7) - 1)
+        row = clamp(row, 0, Math.floor(this.monthDays.length / 7))
       } else {
         row = clamp(row, 0, this.times.length - 1)
       }
