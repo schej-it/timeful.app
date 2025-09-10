@@ -75,6 +75,12 @@ export const getDateRangeStringForEvent = (event) => {
     }
     s = s.substring(0, s.length - 2)
     return s
+  } else if (event.daysOnly) {
+    return (
+      getDateString(event.dates[0], true) +
+      " - " +
+      getDateString(event.dates[event.dates.length - 1], true)
+    )
   } else if (event.type === eventTypes.SPECIFIC_DATES) {
     const startDate = getDateWithTimezone(new Date(event.dates[0]))
     const endDate = getDateWithTimezone(
