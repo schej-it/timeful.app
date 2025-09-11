@@ -401,11 +401,11 @@ export default {
       )
     },
     async init() {
-      if (this.featureFlagsLoaded) {
-        if (!this.lifetimePrice || !this.monthlyPrice) {
-          await this.fetchPrice()
-        }
+      // if (this.featureFlagsLoaded) {
+      if (!this.lifetimePrice || !this.monthlyPrice) {
+        await this.fetchPrice()
       }
+      // }
     },
     async fetchPrice() {
       const res = await get("/stripe/price?exp=" + this.pricingPageConversion)
