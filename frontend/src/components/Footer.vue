@@ -70,7 +70,14 @@
               </svg>
             </a>
           </div>
-          <a href="/privacy-policy" class="tw-text-sm">Privacy Policy</a>
+          <div class="tw-flex tw-flex-col tw-gap-2">
+            <router-link :to="{ name: 'privacy-policy' }" class="tw-text-sm">
+              Privacy Policy
+            </router-link>
+            <router-link :to="{ name: 'cookie-settings' }" class="tw-text-sm">
+              Cookie Preferences
+            </router-link>
+          </div>
         </div>
         <!-- Links -->
         <div class="tw-flex tw-flex-col tw-gap-2">
