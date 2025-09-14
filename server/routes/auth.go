@@ -3,7 +3,6 @@ package routes
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
@@ -19,7 +18,6 @@ import (
 	"schej.it/server/services/calendar"
 	"schej.it/server/services/listmonk"
 	"schej.it/server/services/microsoftgraph"
-	"schej.it/server/slackbot"
 	"schej.it/server/utils"
 )
 
@@ -185,7 +183,7 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 
 		userId = res.InsertedID.(primitive.ObjectID)
 
-		slackbot.SendTextMessage(fmt.Sprintf(":wave: %s %s (%s) has joined schej.it!", firstName, lastName, email))
+		// slackbot.SendTextMessage(fmt.Sprintf(":wave: %s %s (%s) has joined schej.it!", firstName, lastName, email))
 	} else {
 		var user models.User
 		if err := findResult.Decode(&user); err != nil {
