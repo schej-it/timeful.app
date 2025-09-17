@@ -150,9 +150,7 @@ export default {
       localStorage.setItem("cookieConsent", JSON.stringify(consentData))
       this.showBanner = false
 
-      if (!this.preferences.analytics) {
-        window.location.reload()
-      }
+      window.location.reload()
     },
     goToSettings() {
       this.$router.push({
