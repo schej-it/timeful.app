@@ -6,7 +6,7 @@
     <div
       class="tw-flex tw-items-center tw-justify-between tw-px-4 tw-pt-4 tw-font-medium"
     >
-      <h3>We use cookies</h3>
+      <h3>We value your privacy</h3>
       <button
         @click="showBanner = false"
         class="tw-text-gray-400 hover:tw-bg-gray-100 hover:tw-text-gray-700 tw-flex tw-h-6 tw-w-6 tw-cursor-pointer tw-items-center tw-justify-center tw-rounded tw-border-0 tw-bg-transparent tw-p-0 tw-text-xl tw-transition-all tw-duration-200"
@@ -22,50 +22,65 @@
       preferences below.
     </p>
 
-    <div class="tw-flex tw-flex-col tw-gap-2 tw-px-4 tw-py-2">
-      <v-checkbox v-model="preferences.necessary" disabled hide-details>
-        <template v-slot:label>
-          <span class="tw-text-gray-700 tw-flex-1 tw-text-sm tw-font-medium"
-            >Essential</span
-          >
-        </template>
-      </v-checkbox>
+    <v-expand-transition>
+      <div
+        class="tw-flex tw-flex-col tw-gap-2 tw-px-4 tw-py-2"
+        v-if="showCustomizeSection"
+      >
+        <v-checkbox v-model="preferences.necessary" disabled hide-details>
+          <template v-slot:label>
+            <span class="tw-text-gray-700 tw-flex-1 tw-text-sm tw-font-medium"
+              >Essential</span
+            >
+          </template>
+        </v-checkbox>
 
-      <v-checkbox v-model="preferences.analytics" hide-details>
-        <template v-slot:label>
-          <span class="tw-text-gray-700 tw-flex-1 tw-text-sm tw-font-medium"
-            >Analytics</span
-          >
-        </template>
-      </v-checkbox>
+        <v-checkbox v-model="preferences.analytics" hide-details>
+          <template v-slot:label>
+            <span class="tw-text-gray-700 tw-flex-1 tw-text-sm tw-font-medium"
+              >Analytics</span
+            >
+          </template>
+        </v-checkbox>
 
-      <!-- <v-checkbox v-model="preferences.advertising" hide-details>
+        <!-- <v-checkbox v-model="preferences.advertising" hide-details>
         <template v-slot:label>
           <span class="tw-flex-1 tw-text-gray-700 tw-font-medium tw-text-sm">Advertising</span>
         </template>
       </v-checkbox> -->
-    </div>
+      </div>
+    </v-expand-transition>
 
-    <div
-      class="tw-flex tw-flex-col tw-gap-2 tw-px-4 tw-py-3 sm:tw-w-auto sm:tw-flex-row"
-    >
+    <div class="tw-px-4 tw-py-3">
+      <div
+        v-if="!showCustomizeSection"
+        class="tw-flex tw-flex-col tw-gap-2 sm:tw-w-auto sm:tw-flex-row"
+      >
+        <button
+          @click="showCustomizeSection = !showCustomizeSection"
+          class="tw-w-full tw-flex-1 tw-cursor-pointer tw-rounded-md tw-border tw-border-solid tw-border-gray tw-bg-white tw-px-3 tw-py-2 tw-text-xs tw-font-medium tw-text-very-dark-gray sm:tw-w-auto"
+        >
+          Customize
+        </button>
+        <button
+          @click="rejectAll"
+          class="tw-w-full tw-flex-1 tw-cursor-pointer tw-rounded-md tw-border tw-border-solid tw-border-gray tw-bg-white tw-px-3 tw-py-2 tw-text-xs tw-font-medium tw-text-very-dark-gray sm:tw-w-auto"
+        >
+          Reject all
+        </button>
+        <button
+          @click="acceptAll"
+          class="tw-w-full tw-flex-1 tw-cursor-pointer tw-rounded-md tw-bg-green tw-px-3 tw-py-2 tw-text-xs tw-font-medium tw-text-white sm:tw-w-auto"
+        >
+          Accept all
+        </button>
+      </div>
       <button
+        v-else
         @click="acceptSelected"
         class="tw-w-full tw-flex-1 tw-cursor-pointer tw-rounded-md tw-bg-blue tw-px-3 tw-py-2 tw-text-xs tw-font-medium tw-text-white sm:tw-w-auto"
       >
         Save
-      </button>
-      <button
-        @click="acceptAll"
-        class="tw-w-full tw-flex-1 tw-cursor-pointer tw-rounded-md tw-bg-green tw-px-3 tw-py-2 tw-text-xs tw-font-medium tw-text-white sm:tw-w-auto"
-      >
-        Accept All
-      </button>
-      <button
-        @click="rejectAll"
-        class="tw-w-full tw-flex-1 tw-cursor-pointer tw-rounded-md tw-bg-gray tw-px-3 tw-py-2 tw-text-xs tw-font-medium tw-text-very-dark-gray sm:tw-w-auto"
-      >
-        Reject All
       </button>
     </div>
   </div>
@@ -76,6 +91,7 @@ export default {
   name: "CookieConsent",
   data() {
     return {
+      showCustomizeSection: false,
       showBanner: false,
       preferences: {
         necessary: true,
@@ -133,7 +149,10 @@ export default {
 
       localStorage.setItem("cookieConsent", JSON.stringify(consentData))
       this.showBanner = false
-      window.location.reload()
+
+      if (!this.preferences.analytics) {
+        window.location.reload()
+      }
     },
     goToSettings() {
       this.$router.push({
