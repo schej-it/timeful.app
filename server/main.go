@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -108,6 +107,17 @@ func main() {
 	store := cookie.NewStore([]byte("secret"))
 	router.Use(sessions.Sessions("session", store))
 
+	// Load HTML template first
+	router.LoadHTMLFiles("./frontend/dist/index.html")
+
+	// Serve static files from frontend/dist directory
+	router.Static("/js", "./frontend/dist/js")
+	router.Static("/css", "./frontend/dist/css")
+	router.Static("/img", "./frontend/dist/img")
+	router.Static("/media", "./frontend/dist/media")
+	router.StaticFile("/favicon.ico", "./frontend/dist/favicon.ico")
+	router.StaticFile("/robots.txt", "./frontend/dist/robots.txt")
+
 	// Init routes
 	apiRouter := router.Group("/api")
 	routes.InitAuth(apiRouter)
@@ -119,19 +129,7 @@ func main() {
 	routes.InitFolders(apiRouter)
 	slackbot.InitSlackbot(apiRouter)
 
-	err = filepath.WalkDir("../frontend/dist", func(path string, d fs.DirEntry, err error) error {
-		if !d.IsDir() && d.Name() != "index.html" {
-			split := splitPath(path)
-			newPath := filepath.Join(split[3:]...)
-			router.StaticFile(fmt.Sprintf("/%s", newPath), path)
-		}
-		return nil
-	})
-	if err != nil {
-		log.Fatalf("failed to walk directories: %s", err)
-	}
-
-	router.LoadHTMLFiles("../frontend/dist/index.html")
+	// NoRoute handler should be last
 	router.NoRoute(noRouteHandler())
 
 	// Init swagger documentation
@@ -149,7 +147,7 @@ func loadDotEnv() {
 	stripe.Key = os.Getenv("STRIPE_API_KEY")
 
 	if err != nil {
-		logger.StdErr.Panicln("Error loading .env file")
+		logger.StdErr.Println("Warning: Could not load .env file, using environment variables")
 	}
 }
 
