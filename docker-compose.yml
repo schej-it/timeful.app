@@ -18,17 +18,6 @@ services:
     networks:
       - timeful-network
 
-  # Redis for caching (if needed)
-  redis:
-    image: redis:7-alpine
-    container_name: timeful-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - timeful-network
 
   # Timeful application
   timeful-app:
@@ -42,9 +31,6 @@ services:
     environment:
       # Database configuration
       MONGODB_URI: mongodb://admin:password@mongodb:27017/timeful?authSource=admin
-      
-      # Redis configuration
-      REDIS_URL: redis://redis:6379
       
       # Server configuration
       GIN_MODE: release
@@ -70,7 +56,6 @@ services:
       # SMTP_PASS: your-app-password
     depends_on:
       - mongodb
-      - redis
     volumes:
       # Mount logs directory for persistence
       - ./logs:/app/logs
@@ -88,8 +73,6 @@ services:
 
 volumes:
   mongodb_data:
-    driver: local
-  redis_data:
     driver: local
 
 networks:
