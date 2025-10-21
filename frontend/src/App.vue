@@ -471,13 +471,14 @@ export default {
       immediate: true,
       handler() {
         if (this.$posthog) {
+          this.setFeatureFlags()
           // Check feature flags (only if posthog is enabled)
-          this.$posthog.setPersonPropertiesForFlags({
-            email: this.authUser?.email,
-          })
-          this.$posthog.onFeatureFlags(() => {
-            this.setFeatureFlags()
-          })
+          // this.$posthog.setPersonPropertiesForFlags({
+          //   email: this.authUser?.email,
+          // })
+          // this.$posthog.onFeatureFlags(() => {
+          //   this.setFeatureFlags()
+          // })
         }
       },
     },
