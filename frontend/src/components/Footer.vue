@@ -108,7 +108,7 @@
           </div>
           <div>
             <a
-              href="https://forms.gle/9AgRy4PQfWfVuBnw8"
+              href="https://forms.gle/A96i4TTWeKgH3P1W6"
               target="_blank"
               class="tw-text-sm"
               >Give Feedback</a

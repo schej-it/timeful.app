@@ -26,7 +26,7 @@
         <v-list-item
           v-if="showFeedbackBtn"
           id="feedback-btn"
-          href="https://forms.gle/9AgRy4PQfWfVuBnw8"
+          href="https://forms.gle/A96i4TTWeKgH3P1W6"
           target="_blank"
         >
           <v-list-item-title class="tw-flex tw-items-center tw-gap-1">

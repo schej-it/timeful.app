@@ -277,7 +277,7 @@
             block
             id="feedback-btn"
             text
-            href="https://forms.gle/9AgRy4PQfWfVuBnw8"
+            href="https://forms.gle/A96i4TTWeKgH3P1W6"
             target="_blank"
           >
             Give feedback to Timeful team
