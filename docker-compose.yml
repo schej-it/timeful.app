@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # MongoDB database
+  mongodb:
+    image: mongo:7.0
+    container_name: timeful-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: timeful
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./server/db/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - timeful-network
+
+
+  # Timeful application
+  timeful-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: timeful-app
+    restart: unless-stopped
+    ports:
+      - "80:3002"
+    environment:
+      # Database configuration
+      MONGODB_URI: mongodb://admin:password@mongodb:27017/timeful?authSource=admin
+      
+      # Server configuration
+      GIN_MODE: release
+      PORT: 3002
+      
+      # CORS origins
+      CORS_ORIGINS: http://localhost:8080,https://www.timeful.app,https://timeful.app
+      
+      # Session secret (change in production)
+      SESSION_SECRET: your-super-secret-session-key-change-in-production
+      
+      # Stripe configuration (add your own keys)
+      # STRIPE_API_KEY: sk_test_...
+      # STRIPE_WEBHOOK_SECRET: whsec_...
+      
+      # Google Cloud configuration (if you use it)
+      # GOOGLE_APPLICATION_CREDENTIALS: /app/credentials.json
+      
+      # Email configuration (if you use it)
+      # SMTP_HOST: smtp.gmail.com
+      # SMTP_PORT: 587
+      # SMTP_USER: your-email@gmail.com
+      # SMTP_PASS: your-app-password
+    depends_on:
+      - mongodb
+    volumes:
+      # Mount logs directory for persistence
+      - ./logs:/app/logs
+      # Mount static files if they exist
+      - ./server/static:/app/static:ro
+    networks:
+      - timeful-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  timeful-network:
+    driver: bridge
