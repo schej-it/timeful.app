@@ -26,6 +26,15 @@ func InitTasks() func() {
 
 	var err error
 	credsFile := os.Getenv("SERVICE_ACCOUNT_KEY_PATH")
+	if credsFile == "" {
+		logger.StdOut.Println("SERVICE_ACCOUNT_KEY_PATH not set; skipping Cloud Tasks init")
+		return func() {}
+	}
+
+	if _, statErr := os.Stat(credsFile); statErr != nil {
+		logger.StdOut.Printf("SERVICE_ACCOUNT_KEY_PATH not readable (%v); skipping Cloud Tasks init\n", statErr)
+		return func() {}
+	}
 
 	TasksClient, err = cloudtasks.NewClient(ctx, option.WithCredentialsFile(credsFile))
 	if err != nil {
@@ -39,6 +48,11 @@ func InitTasks() func() {
 }
 
 func CreateEmailTask(email string, ownerName string, eventName string, eventId string) []string {
+	if TasksClient == nil {
+		logger.StdOut.Println("Cloud Tasks client not initialized; skipping email task creation")
+		return []string{}
+	}
+
 	// Get listmonk url env vars
 	listmonkUrl := os.Getenv("LISTMONK_URL")
 	listmonkUsername := os.Getenv("LISTMONK_USERNAME")
@@ -127,6 +141,11 @@ func CreateEmailTask(email string, ownerName string, eventName string, eventId s
 }
 
 func DeleteEmailTask(taskId string) {
+	if TasksClient == nil {
+		logger.StdOut.Println("Cloud Tasks client not initialized; skipping email task deletion")
+		return
+	}
+
 	err := TasksClient.DeleteTask(context.Background(), &cloudtaskspb.DeleteTaskRequest{
 		Name: taskId,
 	})
