@@ -120,6 +120,7 @@ func getPrice(c *gin.Context) {
 	monthlyStudentPriceId := os.Getenv("STRIPE_MONTHLY_STUDENT_PRICE_ID")
 	lifetimeStudentPriceId := os.Getenv("STRIPE_LIFETIME_STUDENT_PRICE_ID")
 	yearlyPriceId := os.Getenv("STRIPE_YEARLY_PRICE_ID")
+	yearlyStudentPriceId := os.Getenv("STRIPE_YEARLY_STUDENT_PRICE_ID")
 
 	var lifetimePriceId string
 	switch exp {
@@ -166,12 +167,20 @@ func getPrice(c *gin.Context) {
 		return
 	}
 
+	yearlyStudentResult, err := price.Get(yearlyStudentPriceId, params)
+	if err != nil {
+		log.Printf("price.Get error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch price"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"lifetime":        lifetimeResult,
 		"monthly":         monthlyResult,
 		"yearly":          yearlyResult,
 		"lifetimeStudent": lifetimeStudentResult,
 		"monthlyStudent":  monthlyStudentResult,
+		"yearlyStudent":   yearlyStudentResult,
 	})
 }
 

@@ -156,13 +156,15 @@
             <div class="tw-font-medium">
               <span class="tw-mr-1 tw-text-dark-gray tw-line-through">$10</span>
               <span class="tw-mr-1 tw-text-4xl">{{
-                formattedPrice(yearlyPrice)
+                isStudent
+                  ? formattedPrice(yearlyStudentPrice)
+                  : formattedPrice(yearlyPrice)
               }}</span>
               <span class="tw-text-dark-gray">USD</span>
             </div>
             <v-fade-transition>
               <div
-                v-if="lifetimePrice === null"
+                v-if="yearlyPrice === null"
                 class="tw-absolute tw-left-0 tw-top-0 tw-h-full tw-w-full tw-bg-white"
               ></div>
             </v-fade-transition>
@@ -174,10 +176,26 @@
             class="tw-mb-0.5"
             color="primary"
             block
-            :dark="!loadingCheckoutUrl[yearlyPrice?.id]"
-            :disabled="loadingCheckoutUrl[yearlyPrice?.id]"
-            :loading="loadingCheckoutUrl[yearlyPrice?.id]"
-            @click="handleUpgrade(yearlyPrice)"
+            :dark="
+              isStudent
+                ? !loadingCheckoutUrl[yearlyStudentPrice?.id]
+                : !loadingCheckoutUrl[yearlyPrice?.id]
+            "
+            :disabled="
+              isStudent
+                ? loadingCheckoutUrl[yearlyStudentPrice?.id]
+                : loadingCheckoutUrl[yearlyPrice?.id]
+            "
+            :loading="
+              isStudent
+                ? loadingCheckoutUrl[yearlyStudentPrice?.id]
+                : loadingCheckoutUrl[yearlyPrice?.id]
+            "
+            @click="
+              isStudent
+                ? handleUpgrade(yearlyStudentPrice)
+                : handleUpgrade(yearlyPrice)
+            "
           >
             Upgrade
           </v-btn>
@@ -265,7 +283,7 @@
           </span>
         </label>
       </div>
-      <div
+      <!--<div
         class="tw-flex tw-w-full tw-items-center tw-justify-center tw-gap-4 tw-text-center"
       >
         <div
@@ -274,7 +292,7 @@
         >
           I already donated :)
         </div>
-      </div>
+      </div>-->
       <v-btn text block @click="$emit('input', false)"> Cancel </v-btn>
     </v-card>
 
@@ -305,16 +323,18 @@ export default {
       lifetimePrice: null,
       monthlyPrice: null,
       yearlyPrice: null,
-      monthlyStudentPrice: null,
       lifetimeStudentPrice: null,
+      monthlyStudentPrice: null,
+      yearlyStudentPrice: null,
+
       loadingCheckoutUrl: {},
       showDonatedDialog: false,
       isStudent: false,
       showStudentProofDialog: false,
 
       showMonthly: true,
-      showYearly: false,
-      showLifetime: true,
+      showYearly: true,
+      showLifetime: false,
     }
   },
 
@@ -330,6 +350,19 @@ export default {
       return upgradeDialogTypes
     },
     yearlyDiscount() {
+      if (this.isStudent) {
+        if (!this.yearlyStudentPrice || !this.monthlyStudentPrice) return 0
+        return (
+          100 -
+          Math.round(
+            (this.yearlyStudentPrice.unit_amount /
+              12 /
+              this.monthlyStudentPrice.unit_amount) *
+              100
+          )
+        )
+      }
+
       if (!this.yearlyPrice || !this.monthlyPrice) return 0
       return (
         100 -
@@ -358,6 +391,10 @@ export default {
       // Yearly
       if (this.showYearly) {
         if (this.isStudent && this.yearlyStudentPrice) {
+          console.log(
+            "yearlyStudentPrice",
+            this.formattedPrice(this.yearlyStudentPrice)
+          )
           pricesShown.push(
             `YEARLY (Student): ${this.formattedPrice(
               this.yearlyStudentPrice
@@ -409,12 +446,20 @@ export default {
     },
     async fetchPrice() {
       const res = await get("/stripe/price?exp=" + this.pricingPageConversion)
-      const { lifetime, monthly, yearly, lifetimeStudent, monthlyStudent } = res
+      const {
+        lifetime,
+        monthly,
+        yearly,
+        lifetimeStudent,
+        monthlyStudent,
+        yearlyStudent,
+      } = res
       this.lifetimePrice = lifetime
       this.monthlyPrice = monthly
       this.yearlyPrice = yearly
       this.lifetimeStudentPrice = lifetimeStudent
       this.monthlyStudentPrice = monthlyStudent
+      this.yearlyStudentPrice = yearlyStudent
     },
     async handleUpgrade(price) {
       // if (this.isStudent) {
