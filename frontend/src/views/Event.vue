@@ -152,7 +152,7 @@
                 <v-btn
                   v-if="event.startOnMonday ? weekOffset != 1 : weekOffset != 0"
                   :icon="isPhone"
-                  text
+
                   class="tw-mr-1 tw-text-very-dark-gray sm:tw-mr-2.5"
                   @click="resetWeekOffset"
                 >
@@ -390,6 +390,8 @@ import {
   isIOS,
   isDstObserved,
   doesDstExist,
+  getDateDayOffset,
+  dateToDowDate,
 } from "@/utils"
 import { mapActions, mapState, mapMutations } from "vuex"
 
@@ -472,6 +474,7 @@ export default {
     if (this.linkApple) {
       this.choiceDialog = true
     }
+
   },
 
   computed: {
@@ -977,6 +980,156 @@ export default {
       this.saveChangesAsGuest(guestPayload)
     },
 
+    async getSlots(event) {
+      if (
+        event.data?.type === "FILL_CALENDAR_EVENT" &&
+        event.data?.payload?.type === "get-slots"
+      ) {
+        const requestId = event.data?.requestId
+        const command = "get-slots"
+
+        // Helper function to send error response
+        const sendError = (errorMessage) => {
+          window.postMessage(
+            {
+              type: "FILL_CALENDAR_EVENT_RESPONSE",
+              command,
+              requestId,
+              ok: false,
+              error: {
+                message: errorMessage,
+              },
+            },
+            "*"
+          )
+        }
+
+        // Helper function to send success response
+        const sendSuccess = (slots) => {
+          window.postMessage(
+            {
+              type: "FILL_CALENDAR_EVENT_RESPONSE",
+              command,
+              requestId,
+              ok: true,
+              payload: {
+                slots,
+              },
+            },
+            "*"
+          )
+        }
+
+        // Check for selectedGuestRespondent
+        if (!this.selectedGuestRespondent) {
+          sendError("No guest respondent selected")
+          return
+        }
+
+        // Determine the status from the event data, defaulting to "available"
+        let status = event.data?.payload?.status
+        if (typeof status === "undefined" || status === null) {
+          status = "available"
+        }
+
+        // Check for valid statuses
+        if (status !== "available" && status !== "if-needed") {
+          sendError(
+            `Invalid status: ${status}. Valid values are "available", "if-needed", or unspecified (defaults to "available").`
+          )
+          return
+        }
+
+        // Need the event to calculate timeMin and timeMax
+        //TODO: this logic is duplicated in fetchResponses in ScheduleOverlap, maybe refactor so as to not duplicate code??
+        if (!this.event) {
+          sendError("Event not loaded yet")
+          return
+        }
+
+        let sanitizedId = this.eventId.replaceAll(".", "")
+
+        // Calculate timeMin and timeMax using the same logic as fetchResponses in ScheduleOverlap
+        let timeMin, timeMax
+        if (this.event.type === eventTypes.GROUP) {
+          if (this.event.dates.length > 0) {
+            // Fetch the date range for the current week
+            timeMin = new Date(this.event.dates[0])
+            timeMax = new Date(this.event.dates[this.event.dates.length - 1])
+            timeMax.setDate(timeMax.getDate() + 1)
+
+            // Convert dow dates to discrete dates
+            timeMin = dateToDowDate(
+              this.event.dates,
+              timeMin,
+              this.weekOffset,
+              true
+            )
+            timeMax = dateToDowDate(
+              this.event.dates,
+              timeMax,
+              this.weekOffset,
+              true
+            )
+          }
+        } else {
+          // For non-GROUP events, use the event dates directly
+          if (this.event.dates.length > 0) {
+            // Fetch the entire time range of availabilities
+            timeMin = new Date(this.event.dates[0])
+            timeMax = new Date(this.event.dates[this.event.dates.length - 1])
+            timeMax.setDate(timeMax.getDate() + 1)
+          }
+        }
+
+        if (!timeMin || !timeMax) {
+          sendError("Could not calculate timeMin and timeMax")
+          return
+        }
+
+        try {
+          // Fetch responses between timeMin and timeMax
+          const url = `/events/${sanitizedId}/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+          const responses = await get(url)
+
+          // Find the selected guest's response
+          let selectedGuestResponse = null
+          for (const key in responses) {
+            if (key === this.selectedGuestRespondent) {
+              selectedGuestResponse = responses[key]
+              break
+            }
+          }
+
+          if (!selectedGuestResponse) {
+            sendError("Selected guest respondent not found in responses")
+            return
+          }
+
+          // Extract slots based on status
+          let slots = []
+          if (status === "available") {
+            slots = selectedGuestResponse.availability || []
+          } else if (status === "if-needed") {
+            slots = selectedGuestResponse.ifNeeded || []
+          }
+
+          // Convert to ISO strings if they're Date objects
+          slots = slots.map((slot) => {
+            if (slot instanceof Date) {
+              return slot.toISOString()
+            }
+            // If it's already a string or timestamp, convert to ISO string
+            return new Date(slot).toISOString()
+          })
+
+          sendSuccess(slots)
+        } catch (err) {
+          sendError(`Failed to fetch responses: ${err.message || "Unknown error"}`)
+        }
+      }
+    },
+
     // -----------------------------------
     //#region Sign Up Form
     // -----------------------------------
@@ -1014,6 +1167,7 @@ export default {
 
   async created() {
     window.addEventListener("beforeunload", this.onBeforeUnload)
+    window.addEventListener("message", this.getSlots)
 
     // Get event details
     try {
@@ -1082,6 +1236,7 @@ export default {
 
   beforeDestroy() {
     window.removeEventListener("beforeunload", this.onBeforeUnload)
+    window.removeEventListener("message", this.getSlots)
   },
 
   watch: {
