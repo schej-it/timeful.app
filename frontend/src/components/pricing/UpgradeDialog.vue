@@ -91,7 +91,6 @@
           </div>
           <div class="tw-relative">
             <div class="tw-font-medium">
-              <span class="tw-mr-1 tw-text-dark-gray tw-line-through">$20</span>
               <span class="tw-mr-1 tw-text-4xl">{{
                 isStudent
                   ? formattedPrice(monthlyStudentPrice)
@@ -154,7 +153,6 @@
           </div>
           <div class="tw-relative">
             <div class="tw-font-medium">
-              <span class="tw-mr-1 tw-text-dark-gray tw-line-through">$10</span>
               <span class="tw-mr-1 tw-text-4xl">{{
                 isStudent
                   ? formattedPrice(yearlyStudentPrice)
@@ -430,7 +428,7 @@ export default {
       if (!price) return ""
       let unitAmount = price.unit_amount / 100
       if (price.recurring?.interval === "year") {
-        unitAmount = Math.round((price.unit_amount / 100 / 12) * 100) / 100
+        unitAmount = Math.floor((price.unit_amount / 100 / 12) * 100) / 100
       }
       return (
         "$" +
