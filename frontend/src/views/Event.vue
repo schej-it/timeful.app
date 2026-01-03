@@ -392,8 +392,20 @@ import {
   doesDstExist,
   getDateDayOffset,
   dateToDowDate,
+  getDateHoursOffset,
+  dateToTimeNum,
+  sendPluginError,
+  sendPluginSuccess,
+  isValidPluginMessage,
+  getCurrentTimezone,
 } from "@/utils"
+import { isBetween } from "@/utils/general_utils"
 import { mapActions, mapState, mapMutations } from "vuex"
+import dayjs from "dayjs"
+import utcPlugin from "dayjs/plugin/utc"
+import timezonePlugin from "dayjs/plugin/timezone"
+dayjs.extend(utcPlugin)
+dayjs.extend(timezonePlugin)
 
 import NewDialog from "@/components/NewDialog.vue"
 import ScheduleOverlap from "@/components/schedule_overlap/ScheduleOverlap.vue"
@@ -469,7 +481,7 @@ export default {
   mounted() {
     // If coming from enabling contacts, show the dialog. Checks if contactsPayload is not an Observer.
     this.editEventDialog = Object.keys(this.contactsPayload).length > 0
-
+    console.log(this.event)
     // If coming from signing in to link apple calendar, show the mark availability dialog
     if (this.linkApple) {
       this.choiceDialog = true
@@ -980,49 +992,318 @@ export default {
       this.saveChangesAsGuest(guestPayload)
     },
 
-    async getSlots(event) {
-      if (
-        event.data?.type === "FILL_CALENDAR_EVENT" &&
-        event.data?.payload?.type === "get-slots"
-      ) {
+    handleMessage(event) {
+      if (!isValidPluginMessage(event)) return
+
+      const payload = event.data.payload
+
+      if (payload?.type === "get-slots") {
+        this.getSlots(event)
+      }
+
+      if (payload?.type === "set-slots") {
+        this.setSlots(event)
+      }
+    },
+
+    async setSlots(event) { //DONE: main question right now is if we have to ENFORCE 15-min, 30-min or 60-min divisibility on the passed in timeslots (or the passed in time interval) --> in case the last slot to be added goes past the end time, we still add it.
+      //TODO: should we trigger a reload somehow once slots have been set --> yes this is being done  using refreshEvent()
+      //TODO: can we just assume that the plugin guys is just sending in timeslots in the timezone that is set in the event?  --> NO, they can send in a timezone of their own choice in the optional argument if they want. otherwise we use browser/localstorage to figure this out
+      //TODO: do we retain the previously set slots? or do we clear them all and write ours. or do we retain and overwrite the parts where there is overlap? --> clear out the old slots and write the new ones
+      //TODO: when we're validating whether a timeslot falls within the event's time range, this.event has UTC times, so do we convert the stuff that the user sent to UTC before comparing?
+      //TODO: what to do for a guest who hasn't inputted his name yet? because this will trigger a no guest respondent selected error. i think we may not have to handle this.
+      //TODO: move some stuff into helpers
+      /*
+        //TODO: so for the timezone conversion, this is how we're going to do it:
+        - check the local storage if there's a timezone:
+            IF there is : then use that
+            ELSE: use getCurrentTimezone() helper method
+
+        OPTIONALLY: we can forgo all the above stuff if the user wants to send in a timezone of their own choice in the message to the plugin
+        NOTE: we're accepting ISO 8601 format for the time intervals from the user, WITHOUT timzeone offset, they can specify the timezone in the optional argument if they want.
+      */
+      
+      
+      console.log(getCurrentTimezone(), " is the current timezone")
+      console.log(this.event, " this is the curr event")
+      // console.log(this.event)
+      const requestId = event.data?.requestId
+      const command = "set-slots"
+
+      // Validation: Check event exists
+      if (!this.event) {
+        sendPluginError(requestId, command, "Event not loaded yet")
+        return
+      }
+
+      // Validation: Check timeIncrement exists, default to 15 if not
+      const timeIncrement = this.event.timeIncrement ?? 15
+
+      // Validation: Check selectedGuestRespondent
+      if (!this.selectedGuestRespondent) {
+        sendPluginError(requestId, command, "No guest respondent selected")
+        return
+      }
+
+      // Get slots from payload - new format: [{ start, end, status }]
+      const slots = event.data?.payload?.slots
+
+      if (!Array.isArray(slots)) {
+        sendPluginError(requestId, command, "Slots must be an array")
+        return
+      }
+
+      if (slots.length === 0) {
+        sendPluginError(requestId, command, "Slots array cannot be empty")
+        return
+      }
+
+      // Determine timezone for conversion
+      // Priority: 1. User-provided timezone in payload, 2. localStorage, 3. Browser's local timezone
+      let timezoneValue = null
+      if (event.data?.payload?.timezone) {
+        // User provided timezone in the message (should be IANA timezone name)
+        timezoneValue = event.data.payload.timezone
+      } else if (localStorage["timezone"]) {
+        // Use timezone from localStorage (should have IANA timezone name in .value)
+        const timezoneObj = JSON.parse(localStorage["timezone"])
+        timezoneValue = timezoneObj.value
+        console.log(timezoneValue, " this is the timezone value from the local storage")
+      } else {
+        // Fallback to browser's local timezone (returns IANA timezone name)
+        timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
+        console.log(timezoneValue, " this is the timezone value from the browser's local timezone")
+      }
+
+      // Helper function to convert a timestamp from the determined timezone to UTC
+      const convertToUTC = (dateTimeString) => {
+        // Parse the date string (assumed to be in ISO format without timezone, e.g., "2026-01-03T09:00:00")
+        // Treat it as being in the determined timezone
+        try {
+          const dateInTimezone = dayjs.tz(dateTimeString, timezoneValue)
+          if (!dateInTimezone.isValid()) {
+            throw new Error(`Invalid date string: ${dateTimeString}`)
+          }
+          // Convert to UTC
+          return dateInTimezone.utc().toDate()
+        } catch (err) {
+          throw new Error(`Failed to convert timezone: ${err.message}. Timezone: ${timezoneValue}`)
+        }
+      }
+
+      // Validate each slot has required fields
+      for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i]
+        if (!slot.start || !slot.end) {
+          sendPluginError(
+            requestId,
+            command,
+            `Slot at index ${i} is missing required 'start' or 'end' field`
+          )
+          return
+        }
+        if (!slot.status) {
+          sendPluginError(
+            requestId,
+            command,
+            `Slot at index ${i} is missing required 'status' field`
+          )
+          return
+        }
+        if (
+          slot.status !== "available" &&
+          slot.status !== "if-needed"
+        ) {
+          sendPluginError(
+            requestId,
+            command,
+            `Invalid status '${slot.status}' at index ${i}. Must be 'available' or 'if-needed'`
+          )
+          return
+        }
+      }
+
+      // Validate that all start/end times fall within event's date range
+      const eventDates = this.event.dates.map((d) => new Date(d))
+      const eventStartTime = this.event.startTime // Hours (e.g., 9 for 9am)
+      const eventDuration = this.event.duration // Hours
+
+      // Helper function to check if a date/time is within event range
+      const isTimeWithinEventRange = (dateTime) => {
+        const slotDate = new Date(dateTime)
+        const slotDateOnly = new Date(
+          slotDate.getUTCFullYear(),
+          slotDate.getUTCMonth(),
+          slotDate.getUTCDate()
+        )
+
+        // Check if slot's date matches any event date
+        let matchingEventDate = null
+        for (const eventDate of eventDates) {
+          const eventDateOnly = new Date(
+            eventDate.getUTCFullYear(),
+            eventDate.getUTCMonth(),
+            eventDate.getUTCDate()
+          )
+          if (slotDateOnly.getTime() === eventDateOnly.getTime()) {
+            matchingEventDate = eventDate
+            break
+          }
+        }
+
+        if (!matchingEventDate) {
+          return false
+        }
+
+        // Check if slot's time falls within event's time range for this date
+        const eventStartDateTime = new Date(matchingEventDate)
+        eventStartDateTime.setUTCHours(Math.floor(eventStartTime))
+        eventStartDateTime.setUTCMinutes((eventStartTime % 1) * 60)
+
+        const eventEndDateTime = new Date(eventStartDateTime)
+        eventEndDateTime.setUTCHours(
+          eventEndDateTime.getUTCHours() + Math.floor(eventDuration)
+        )
+        eventEndDateTime.setUTCMinutes(
+          eventEndDateTime.getUTCMinutes() + (eventDuration % 1) * 60
+        )
+
+        return (
+          slotDate.getTime() >= eventStartDateTime.getTime() &&
+          slotDate.getTime() <= eventEndDateTime.getTime()
+        )
+      }
+
+      // Convert all slot times from user's timezone to UTC and validate
+      const convertedSlots = []
+      for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i]
+        
+        // Convert timestamps from user's timezone to UTC
+        let startTime, endTime
+        try {
+          startTime = convertToUTC(slot.start)
+          endTime = convertToUTC(slot.end)
+        } catch (err) {
+          sendPluginError(
+            requestId,
+            command,
+            `Failed to parse time at index ${i}: ${err.message}`
+          )
+          return
+        }
+
+        if (isNaN(startTime.getTime())) {
+          sendPluginError(
+            requestId,
+            command,
+            `Invalid start time at index ${i}: ${slot.start}`
+          )
+          return
+        }
+
+        if (isNaN(endTime.getTime())) {
+          sendPluginError(
+            requestId,
+            command,
+            `Invalid end time at index ${i}: ${slot.end}`
+          )
+          return
+        }
+
+        if (endTime <= startTime) {
+          sendPluginError(
+            requestId,
+            command,
+            `End time must be after start time at index ${i}`
+          )
+          return
+        }
+
+        if (!isTimeWithinEventRange(startTime)) {
+          sendPluginError(
+            requestId,
+            command,
+            `Start time at index ${i} falls outside the event's date/time range`
+          )
+          return
+        }
+
+        if (!isTimeWithinEventRange(endTime)) {
+          sendPluginError(
+            requestId,
+            command,
+            `End time at index ${i} falls outside the event's date/time range`
+          )
+          return
+        }
+
+        // Store converted slot
+        convertedSlots.push({
+          startTime,
+          endTime,
+          status: slot.status,
+        })
+      }
+
+      // Split slots into intervals based on timeIncrement
+      const allAvailabilityTimestamps = []
+      const allIfNeededTimestamps = []
+
+      for (const convertedSlot of convertedSlots) {
+        const { startTime, endTime, status } = convertedSlot
+        const incrementMs = timeIncrement * 60 * 1000 // Convert minutes to milliseconds
+
+        // Generate timestamps at each interval
+        let currentTime = new Date(startTime)
+        while (currentTime < endTime) {
+          const timestamp = new Date(currentTime)
+
+          if (status === "available") {
+            allAvailabilityTimestamps.push(timestamp)
+          } else if (status === "if-needed") {
+            allIfNeededTimestamps.push(timestamp)
+          }
+
+          // Move to next interval
+          currentTime = new Date(currentTime.getTime() + incrementMs)
+        }
+      }
+
+      // Send new slots (overwrites existing availability)
+      try {
+        const sanitizedId = this.eventId.replaceAll(".", "")
+        const payload = {
+          guest: true,
+          name: this.selectedGuestRespondent,
+          email: this.event.responses[this.selectedGuestRespondent]?.email || "",
+          availability: allAvailabilityTimestamps,
+          ifNeeded: allIfNeededTimestamps,
+        }
+
+        await post(`/events/${sanitizedId}/response`, payload)
+
+        // Trigger frontend refresh to update UI
+        await this.refreshEvent()
+
+        sendPluginSuccess(requestId, command)
+      } catch (err) {
+        sendPluginError(
+          requestId,
+          command,
+          `Failed to set slots: ${err.message || "Unknown error"}`
+        )
+      }
+    },
+
+    async getSlots(event) { //TODO: do we also need to mention the SIZE of the time intervals in the response we're returning? (like 15 minutes, 30 minutes, etc.)
+        //TODO: does choosing "hide responses from respondents" mess anything up in the current flow? especially with fetching all responses.
         const requestId = event.data?.requestId
         const command = "get-slots"
 
-        // Helper function to send error response
-        const sendError = (errorMessage) => {
-          window.postMessage(
-            {
-              type: "FILL_CALENDAR_EVENT_RESPONSE",
-              command,
-              requestId,
-              ok: false,
-              error: {
-                message: errorMessage,
-              },
-            },
-            "*"
-          )
-        }
-
-        // Helper function to send success response
-        const sendSuccess = (slots) => {
-          window.postMessage(
-            {
-              type: "FILL_CALENDAR_EVENT_RESPONSE",
-              command,
-              requestId,
-              ok: true,
-              payload: {
-                slots,
-              },
-            },
-            "*"
-          )
-        }
-
         // Check for selectedGuestRespondent
         if (!this.selectedGuestRespondent) {
-          sendError("No guest respondent selected")
+          sendPluginError(requestId, command, "No guest respondent selected")
           return
         }
 
@@ -1034,7 +1315,9 @@ export default {
 
         // Check for valid statuses
         if (status !== "available" && status !== "if-needed") {
-          sendError(
+          sendPluginError(
+            requestId,
+            command,
             `Invalid status: ${status}. Valid values are "available", "if-needed", or unspecified (defaults to "available").`
           )
           return
@@ -1043,7 +1326,7 @@ export default {
         // Need the event to calculate timeMin and timeMax
         //TODO: this logic is duplicated in fetchResponses in ScheduleOverlap, maybe refactor so as to not duplicate code??
         if (!this.event) {
-          sendError("Event not loaded yet")
+          sendPluginError(requestId, command, "Event not loaded yet")
           return
         }
 
@@ -1083,7 +1366,7 @@ export default {
         }
 
         if (!timeMin || !timeMax) {
-          sendError("Could not calculate timeMin and timeMax")
+          sendPluginError(requestId, command, "Could not calculate timeMin and timeMax")
           return
         }
 
@@ -1102,7 +1385,7 @@ export default {
           }
 
           if (!selectedGuestResponse) {
-            sendError("Selected guest respondent not found in responses")
+            sendPluginError(requestId, command, "Selected guest respondent not found in responses")
             return
           }
 
@@ -1123,11 +1406,10 @@ export default {
             return new Date(slot).toISOString()
           })
 
-          sendSuccess(slots)
+          sendPluginSuccess(requestId, command, { slots })
         } catch (err) {
-          sendError(`Failed to fetch responses: ${err.message || "Unknown error"}`)
+          sendPluginError(requestId, command, `Failed to fetch responses: ${err.message || "Unknown error"}`)
         }
-      }
     },
 
     // -----------------------------------
@@ -1167,7 +1449,7 @@ export default {
 
   async created() {
     window.addEventListener("beforeunload", this.onBeforeUnload)
-    window.addEventListener("message", this.getSlots)
+    window.addEventListener("message", this.handleMessage)
 
     // Get event details
     try {
@@ -1236,7 +1518,7 @@ export default {
 
   beforeDestroy() {
     window.removeEventListener("beforeunload", this.onBeforeUnload)
-    window.removeEventListener("message", this.getSlots)
+    window.removeEventListener("message", this.handleMessage)
   },
 
   watch: {
