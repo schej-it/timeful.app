@@ -40,6 +40,18 @@ Built with [Vue 2](https://github.com/vuejs/vue), [MongoDB](https://github.com/m
 - Export availability as CSV
 - Only show responses to event creator
 
+## Local development
+- Prereqs: Node 18+, Go 1.20+, MongoDB on `localhost:27017`, GCP service account key JSON.
+- Backend: create `server/.env` (includes `SERVICE_ACCOUNT_KEY_PATH` and any Stripe/OAuth/email keys), start Mongo, then `cd server && air` (or `go run main.go`) to run `http://localhost:3002/api`. Cloud Tasks is skipped if `SERVICE_ACCOUNT_KEY_PATH` is unset or the file is missing.
+- Frontend: `cd frontend && npm install && npm run serve` to run `http://localhost:8080` against the local API; `npm run build` to serve from Go.
+- Detailed steps and env samples: `docs/local-dev.md`.
+- Docker options:
+  - Hybrid (Mongo only): `docker compose up -d mongo`, then run Go/Vue locally after installing deps.
+  - Full stack: `docker compose up --build` spins up Mongo, the Go API, and the Vue dev server (see `docs/local-dev.md` for env/secrets prep).
+- Tool versions: `.tool-versions` pins `golang 1.20.14` and `nodejs 18.20.2` (works with asdf or as a reference) to avoid mismatched runtimes with the Go module and Vue CLI 5 stack.
+- asdf + zsh: `asdf plugin add golang nodejs` (if not present), `asdf install`, ensure `source "$HOME/.asdf/asdf.sh"` is in `~/.zshrc`, and add `export PATH="$PATH:$(go env GOPATH)/bin"` so Go-installed tools (e.g., `air`) are found.
+- Seed demo data (optional): `cd server/scripts/seed_demo && MONGODB_URI=mongodb://localhost:27017 go run main.go` creates a demo user/event for local testing. Avoid running other scripts in `server/scripts/*` unless you know the migration you need.
+
 ## Self-hosting
 
 Coming soon...

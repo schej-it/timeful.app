@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:6
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  server:
+    image: golang:1.20
+    working_dir: /app/server
+    command: sh -c "go mod download && go run main.go"
+    env_file:
+      - server/.env
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017
+      - SERVICE_ACCOUNT_KEY_PATH=/secrets/service_account_key.json
+    volumes:
+      - ./:/app
+      # Mount your GCP service account key JSON here
+      - ./secrets/service_account_key.json:/secrets/service_account_key.json:ro
+    ports:
+      - "3002:3002"
+    depends_on:
+      - mongo
+
+  frontend:
+    image: node:18
+    working_dir: /app/frontend
+    command: sh -c "npm install && npm run serve -- --host 0.0.0.0 --port 8080"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./:/app
+    ports:
+      - "8080:8080"
+    depends_on:
+      - server
+
+volumes:
+  mongo_data:
