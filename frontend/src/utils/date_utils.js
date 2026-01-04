@@ -1,6 +1,11 @@
 import { eventTypes, timeTypes } from "@/constants"
 import { get } from "./fetch_utils"
 import { isBetween } from "./general_utils"
+import dayjs from "dayjs"
+import utcPlugin from "dayjs/plugin/utc"
+import timezonePlugin from "dayjs/plugin/timezone"
+dayjs.extend(utcPlugin)
+dayjs.extend(timezonePlugin)
 /* 
   Date utils 
 */
@@ -353,6 +358,120 @@ export const utcTimeToLocalTime = (
   if (localTimeNum < 0) localTimeNum += 24
 
   return localTimeNum
+}
+
+/** Converts a timestamp from a specified timezone to UTC
+ * @param {string} dateTimeString - ISO format date string without timezone (e.g., "2026-01-03T09:00:00")
+ * @param {string} timezoneValue - IANA timezone name (e.g., "America/Los_Angeles", "Asia/Kolkata")
+ * @returns {Date} - Date object in UTC
+ */
+export const convertToUTC = (dateTimeString, timezoneValue) => {
+  // Parse the date string (assumed to be in ISO format without timezone, e.g., "2026-01-03T09:00:00")
+  // Treat it as being in the determined timezone
+  try {
+    const dateInTimezone = dayjs.tz(dateTimeString, timezoneValue)
+    if (!dateInTimezone.isValid()) {
+      throw new Error(`Invalid date string: ${dateTimeString}`)
+    }
+    // Convert to UTC
+    return dateInTimezone.utc().toDate()
+  } catch (err) {
+    throw new Error(`Failed to convert timezone: ${err.message}. Timezone: ${timezoneValue}`)
+  }
+}
+
+/** Checks if a date/time falls within an event's date and time range
+ * @param {Date|string} dateTime - The date/time to check (in UTC)
+ * @param {Date[]} eventDates - Array of event dates (in UTC)
+ * @param {number} eventStartTime - Event start time in hours (e.g., 9 for 9am UTC)
+ * @param {number} eventDuration - Event duration in hours
+ * @returns {boolean} - Whether the date/time is within the event's range
+ */
+export const isTimeWithinEventRange = (dateTime, eventDates, eventStartTime, eventDuration) => {
+  const slotDate = new Date(dateTime)
+  const slotDateOnly = new Date(
+    slotDate.getUTCFullYear(),
+    slotDate.getUTCMonth(),
+    slotDate.getUTCDate()
+  )
+
+  // Check if slot's date matches any event date
+  let matchingEventDate = null
+  for (const eventDate of eventDates) {
+    const eventDateObj = new Date(eventDate)
+    const eventDateOnly = new Date(
+      eventDateObj.getUTCFullYear(),
+      eventDateObj.getUTCMonth(),
+      eventDateObj.getUTCDate()
+    )
+    if (slotDateOnly.getTime() === eventDateOnly.getTime()) {
+      matchingEventDate = eventDateObj
+      break
+    }
+  }
+
+  if (!matchingEventDate) {
+    return false
+  }
+
+  // Check if slot's time falls within event's time range for this date
+  const eventStartDateTime = new Date(matchingEventDate)
+  eventStartDateTime.setUTCHours(Math.floor(eventStartTime))
+  eventStartDateTime.setUTCMinutes((eventStartTime % 1) * 60)
+
+  const eventEndDateTime = new Date(eventStartDateTime)
+  eventEndDateTime.setUTCHours(
+    eventEndDateTime.getUTCHours() + Math.floor(eventDuration)
+  )
+  eventEndDateTime.setUTCMinutes(
+    eventEndDateTime.getUTCMinutes() + (eventDuration % 1) * 60
+  )
+
+  return (
+    slotDate.getTime() >= eventStartDateTime.getTime() &&
+    slotDate.getTime() <= eventEndDateTime.getTime()
+  )
+}
+
+/** Converts an array of UTC date slots to ISO string format in the user's local timezone
+ * @param {Array<Date|string|number>} slots - Array of UTC date slots (can be Date objects, ISO strings, or timestamps)
+ * @returns {string[]} - Array of ISO string representations (without timezone, in user's local timezone)
+ */
+export const convertUTCSlotsToLocalISO = (slots) => {
+  if (!slots || !Array.isArray(slots)) return []
+  
+  // Determine timezone: localStorage if available, otherwise browser's local timezone
+  let timezoneValue = null
+  if (typeof localStorage !== "undefined" && localStorage["timezone"]) {
+    try {
+      const timezoneObj = JSON.parse(localStorage["timezone"])
+      timezoneValue = timezoneObj.value // IANA timezone name (e.g., "America/Los_Angeles")
+    } catch (err) {
+      // If parsing fails, fall back to browser timezone
+      timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
+    }
+  } else {
+    // Fallback to browser's local timezone (returns IANA timezone name)
+    timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
+  }
+  
+  return slots.map((slot) => {
+    try {
+      // Parse the UTC timestamp and convert to the user's timezone
+      const dateInTimezone = dayjs(slot).tz(timezoneValue)
+      if (!dateInTimezone.isValid()) {
+        throw new Error(`Invalid UTC timestamp: ${slot}`)
+      }
+      // Return ISO string without timezone (format: "2026-01-03T09:00:00")
+      return dateInTimezone.format("YYYY-MM-DDTHH:mm:ss")
+    } catch (err) {
+      // Fallback to UTC ISO string if conversion fails
+      if (slot instanceof Date) {
+        return slot.toISOString()
+      }
+      return new Date(slot).toISOString()
+    }
+  })
 }
 
 /** Returns a string representing the current timezone */

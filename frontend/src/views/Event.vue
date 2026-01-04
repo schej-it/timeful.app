@@ -398,6 +398,9 @@ import {
   sendPluginSuccess,
   isValidPluginMessage,
   getCurrentTimezone,
+  convertToUTC,
+  isTimeWithinEventRange,
+  convertUTCSlotsToLocalISO,
 } from "@/utils"
 import { isBetween } from "@/utils/general_utils"
 import { mapActions, mapState, mapMutations } from "vuex"
@@ -1006,29 +1009,19 @@ export default {
       }
     },
 
-    async setSlots(event) { //DONE: main question right now is if we have to ENFORCE 15-min, 30-min or 60-min divisibility on the passed in timeslots (or the passed in time interval) --> in case the last slot to be added goes past the end time, we still add it.
-      //TODO: should we trigger a reload somehow once slots have been set --> yes this is being done  using refreshEvent()
-      //TODO: can we just assume that the plugin guys is just sending in timeslots in the timezone that is set in the event?  --> NO, they can send in a timezone of their own choice in the optional argument if they want. otherwise we use browser/localstorage to figure this out
-      //TODO: do we retain the previously set slots? or do we clear them all and write ours. or do we retain and overwrite the parts where there is overlap? --> clear out the old slots and write the new ones
-      //TODO: when we're validating whether a timeslot falls within the event's time range, this.event has UTC times, so do we convert the stuff that the user sent to UTC before comparing?
-      //TODO: what to do for a guest who hasn't inputted his name yet? because this will trigger a no guest respondent selected error. i think we may not have to handle this.
-      //TODO: move some stuff into helpers
-      /*
-        //TODO: so for the timezone conversion, this is how we're going to do it:
-        - check the local storage if there's a timezone:
-            IF there is : then use that
-            ELSE: use getCurrentTimezone() helper method
-
-        OPTIONALLY: we can forgo all the above stuff if the user wants to send in a timezone of their own choice in the message to the plugin
-        NOTE: we're accepting ISO 8601 format for the time intervals from the user, WITHOUT timzeone offset, they can specify the timezone in the optional argument if they want.
-      */
-      
-      
-      console.log(getCurrentTimezone(), " is the current timezone")
-      console.log(this.event, " this is the curr event")
+    async setSlots(event) { 
+      // console.log(this.authUser, " this is the current auth user")
+      // console.log(getCurrentTimezone(), " is the current timezone")
+      // console.log(this.event, " this is the curr event")
+      // console.log(this.selectedGuestRespondent, " this is the selected guest respondent")
+      // console.log(this.addingAvailabilityAsGuest, " this is the adding availability as guest")
       // console.log(this.event)
       const requestId = event.data?.requestId
       const command = "set-slots"
+      if (this.isGroup) {
+        sendPluginError(requestId, command, "Group events are not supported yet")
+        return
+      }
 
       // Validation: Check event exists
       if (!this.event) {
@@ -1039,10 +1032,21 @@ export default {
       // Validation: Check timeIncrement exists, default to 15 if not
       const timeIncrement = this.event.timeIncrement ?? 15
 
-      // Validation: Check selectedGuestRespondent
-      if (!this.selectedGuestRespondent) {
-        sendPluginError(requestId, command, "No guest respondent selected")
-        return
+      // Determine if current user is guest or logged-in
+      const isGuest = !this.authUser
+      console.log(isGuest, " this is the is guest")
+      // For guests, check if guest name exists in localStorage
+      if (isGuest) {
+        const guestNameKey = `${this.event._id}.guestName`
+        const guestName = localStorage[guestNameKey]
+        if (!guestName || guestName.length === 0) {
+          sendPluginError(
+            requestId,
+            command,
+            "Guest name not found. Please add your availability through the UI first to set your guest name."
+          )
+          return
+        }
       }
 
       // Get slots from payload - new format: [{ start, end, status }]
@@ -1064,30 +1068,14 @@ export default {
       if (event.data?.payload?.timezone) {
         // User provided timezone in the message (should be IANA timezone name)
         timezoneValue = event.data.payload.timezone
-      } else if (localStorage["timezone"]) {
+      } else{
         // Use timezone from localStorage (should have IANA timezone name in .value)
-        const timezoneObj = JSON.parse(localStorage["timezone"])
-        timezoneValue = timezoneObj.value
-        console.log(timezoneValue, " this is the timezone value from the local storage")
-      } else {
-        // Fallback to browser's local timezone (returns IANA timezone name)
-        timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
-        console.log(timezoneValue, " this is the timezone value from the browser's local timezone")
-      }
-
-      // Helper function to convert a timestamp from the determined timezone to UTC
-      const convertToUTC = (dateTimeString) => {
-        // Parse the date string (assumed to be in ISO format without timezone, e.g., "2026-01-03T09:00:00")
-        // Treat it as being in the determined timezone
         try {
-          const dateInTimezone = dayjs.tz(dateTimeString, timezoneValue)
-          if (!dateInTimezone.isValid()) {
-            throw new Error(`Invalid date string: ${dateTimeString}`)
-          }
-          // Convert to UTC
-          return dateInTimezone.utc().toDate()
+          const timezoneObj = JSON.parse(localStorage["timezone"])
+          timezoneValue = timezoneObj.value
         } catch (err) {
-          throw new Error(`Failed to convert timezone: ${err.message}. Timezone: ${timezoneValue}`)
+          // If parsing fails, fall back to browser's local timezone
+          timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
         }
       }
 
@@ -1128,52 +1116,6 @@ export default {
       const eventStartTime = this.event.startTime // Hours (e.g., 9 for 9am)
       const eventDuration = this.event.duration // Hours
 
-      // Helper function to check if a date/time is within event range
-      const isTimeWithinEventRange = (dateTime) => {
-        const slotDate = new Date(dateTime)
-        const slotDateOnly = new Date(
-          slotDate.getUTCFullYear(),
-          slotDate.getUTCMonth(),
-          slotDate.getUTCDate()
-        )
-
-        // Check if slot's date matches any event date
-        let matchingEventDate = null
-        for (const eventDate of eventDates) {
-          const eventDateOnly = new Date(
-            eventDate.getUTCFullYear(),
-            eventDate.getUTCMonth(),
-            eventDate.getUTCDate()
-          )
-          if (slotDateOnly.getTime() === eventDateOnly.getTime()) {
-            matchingEventDate = eventDate
-            break
-          }
-        }
-
-        if (!matchingEventDate) {
-          return false
-        }
-
-        // Check if slot's time falls within event's time range for this date
-        const eventStartDateTime = new Date(matchingEventDate)
-        eventStartDateTime.setUTCHours(Math.floor(eventStartTime))
-        eventStartDateTime.setUTCMinutes((eventStartTime % 1) * 60)
-
-        const eventEndDateTime = new Date(eventStartDateTime)
-        eventEndDateTime.setUTCHours(
-          eventEndDateTime.getUTCHours() + Math.floor(eventDuration)
-        )
-        eventEndDateTime.setUTCMinutes(
-          eventEndDateTime.getUTCMinutes() + (eventDuration % 1) * 60
-        )
-
-        return (
-          slotDate.getTime() >= eventStartDateTime.getTime() &&
-          slotDate.getTime() <= eventEndDateTime.getTime()
-        )
-      }
-
       // Convert all slot times from user's timezone to UTC and validate
       const convertedSlots = []
       for (let i = 0; i < slots.length; i++) {
@@ -1182,8 +1124,8 @@ export default {
         // Convert timestamps from user's timezone to UTC
         let startTime, endTime
         try {
-          startTime = convertToUTC(slot.start)
-          endTime = convertToUTC(slot.end)
+          startTime = convertToUTC(slot.start, timezoneValue)
+          endTime = convertToUTC(slot.end, timezoneValue)
         } catch (err) {
           sendPluginError(
             requestId,
@@ -1220,7 +1162,7 @@ export default {
           return
         }
 
-        if (!isTimeWithinEventRange(startTime)) {
+        if (!isTimeWithinEventRange(startTime, eventDates, eventStartTime, eventDuration)) {
           sendPluginError(
             requestId,
             command,
@@ -1229,7 +1171,7 @@ export default {
           return
         }
 
-        if (!isTimeWithinEventRange(endTime)) {
+        if (!isTimeWithinEventRange(endTime, eventDates, eventStartTime, eventDuration)) {
           sendPluginError(
             requestId,
             command,
@@ -1274,11 +1216,21 @@ export default {
       try {
         const sanitizedId = this.eventId.replaceAll(".", "")
         const payload = {
-          guest: true,
-          name: this.selectedGuestRespondent,
-          email: this.event.responses[this.selectedGuestRespondent]?.email || "",
           availability: allAvailabilityTimestamps,
           ifNeeded: allIfNeededTimestamps,
+        }
+
+        // Set guest flag and user identification
+        if (isGuest) {
+          // For guests: include name and email
+          const guestNameKey = `${this.event._id}.guestName`
+          const guestName = localStorage[guestNameKey]
+          payload.guest = true
+          payload.name = guestName
+          payload.email = this.event.responses[guestName]?.email || ""
+        } else {
+          // For logged-in users: backend will use session to identify user
+          payload.guest = false
         }
 
         await post(`/events/${sanitizedId}/response`, payload)
@@ -1296,35 +1248,11 @@ export default {
       }
     },
 
-    async getSlots(event) { //TODO: do we also need to mention the SIZE of the time intervals in the response we're returning? (like 15 minutes, 30 minutes, etc.)
-        //TODO: does choosing "hide responses from respondents" mess anything up in the current flow? especially with fetching all responses.
+    async getSlots(event) {
         const requestId = event.data?.requestId
         const command = "get-slots"
 
-        // Check for selectedGuestRespondent
-        if (!this.selectedGuestRespondent) {
-          sendPluginError(requestId, command, "No guest respondent selected")
-          return
-        }
-
-        // Determine the status from the event data, defaulting to "available"
-        let status = event.data?.payload?.status
-        if (typeof status === "undefined" || status === null) {
-          status = "available"
-        }
-
-        // Check for valid statuses
-        if (status !== "available" && status !== "if-needed") {
-          sendPluginError(
-            requestId,
-            command,
-            `Invalid status: ${status}. Valid values are "available", "if-needed", or unspecified (defaults to "available").`
-          )
-          return
-        }
-
         // Need the event to calculate timeMin and timeMax
-        //TODO: this logic is duplicated in fetchResponses in ScheduleOverlap, maybe refactor so as to not duplicate code??
         if (!this.event) {
           sendPluginError(requestId, command, "Event not loaded yet")
           return
@@ -1375,38 +1303,46 @@ export default {
           const url = `/events/${sanitizedId}/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
           const responses = await get(url)
 
-          // Find the selected guest's response
-          let selectedGuestResponse = null
-          for (const key in responses) {
-            if (key === this.selectedGuestRespondent) {
-              selectedGuestResponse = responses[key]
-              break
+          // Build response object with all users' slots
+          const allSlots = {}
+          
+          for (const userId in responses) {
+            const response = responses[userId]
+            
+            // Get name and email
+            let name = ""
+            let email = ""
+            
+            // For guests, name and email are in the response directly
+            if (response.name && response.name.length > 0) {
+              name = response.name
+              email = response.email || ""
+            } else {
+              // For logged-in users, get from this.event.responses (populated by getEvent endpoint)
+              const eventResponse = this.event.responses?.[userId]
+              if (eventResponse?.user) {
+                const user = eventResponse.user
+                name = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+                email = user.email || ""
+              } else {
+                // Fallback: use userId if user info not available
+                name = userId
+                email = ""
+              }
+            }
+
+            allSlots[userId] = {
+              name,
+              email,
+              availability: convertUTCSlotsToLocalISO(response.availability),
+              ifNeeded: convertUTCSlotsToLocalISO(response.ifNeeded),
             }
           }
 
-          if (!selectedGuestResponse) {
-            sendPluginError(requestId, command, "Selected guest respondent not found in responses")
-            return
-          }
+          // Get time increment (default to 15 if not set)
+          const timeIncrement = this.event.timeIncrement ?? 15
 
-          // Extract slots based on status
-          let slots = []
-          if (status === "available") {
-            slots = selectedGuestResponse.availability || []
-          } else if (status === "if-needed") {
-            slots = selectedGuestResponse.ifNeeded || []
-          }
-
-          // Convert to ISO strings if they're Date objects
-          slots = slots.map((slot) => {
-            if (slot instanceof Date) {
-              return slot.toISOString()
-            }
-            // If it's already a string or timestamp, convert to ISO string
-            return new Date(slot).toISOString()
-          })
-
-          sendPluginSuccess(requestId, command, { slots })
+          sendPluginSuccess(requestId, command, { slots: allSlots, timeIncrement })
         } catch (err) {
           sendPluginError(requestId, command, `Failed to fetch responses: ${err.message || "Unknown error"}`)
         }
