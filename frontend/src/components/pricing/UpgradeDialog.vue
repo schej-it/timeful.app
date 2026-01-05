@@ -273,7 +273,9 @@
           </v-btn>
         </div>
       </div>
-      <div class="tw-flex tw-w-full tw-items-center tw-justify-start tw-pb-4">
+      <div
+        class="tw-flex tw-h-8 tw-w-full tw-items-center tw-justify-start tw-pb-4"
+      >
         <v-checkbox
           id="student-checkbox"
           v-model="isStudent"
