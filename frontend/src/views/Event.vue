@@ -1253,6 +1253,8 @@ export default {
       // Split slots into intervals based on timeIncrement
       const allAvailabilityTimestamps = []
       const allIfNeededTimestamps = []
+      // Track timestamps and their statuses to detect conflicts
+      const timestampStatusMap = new Map() // Map<timestamp.getTime(), "available" | "if-needed">
 
       for (const convertedSlot of convertedSlots) {
         const { startTime, endTime, status } = convertedSlot
@@ -1266,6 +1268,26 @@ export default {
           // Only include timestamps that fall within valid event dates and time range
           // This prevents including dates between non-consecutive event dates (e.g., Jan 6th between Jan 5th and Jan 7th)
           if (isTimeWithinEventRange(timestamp, eventDates, eventStartTime, eventDuration)) {
+            const timestampKey = timestamp.getTime()
+            
+            // Check if this timestamp already exists with a different status
+            if (timestampStatusMap.has(timestampKey)) {
+              const existingStatus = timestampStatusMap.get(timestampKey)
+              if (existingStatus !== status) {
+                sendPluginError(
+                  requestId,
+                  command,
+                  `Conflicting status for timestamp ${timestamp.toISOString()}: already marked as "${existingStatus}" but also marked as "${status}". Overlapping intervals must have the same status.`
+                )
+                return
+              }
+              // Same status - allow duplicate, add to array
+            } else {
+              // First time seeing this timestamp - track its status
+              timestampStatusMap.set(timestampKey, status)
+            }
+            
+            // Add to appropriate array (duplicates with same status are allowed)
             if (status === "available") {
               allAvailabilityTimestamps.push(timestamp)
             } else if (status === "if-needed") {
