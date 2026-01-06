@@ -113,7 +113,6 @@ func main() {
 	routes.InitAuth(apiRouter)
 	routes.InitUser(apiRouter)
 	routes.InitEvents(apiRouter)
-	routes.InitUsers(apiRouter)
 	routes.InitAnalytics(apiRouter)
 	routes.InitStripe(apiRouter)
 	routes.InitFolders(apiRouter)
