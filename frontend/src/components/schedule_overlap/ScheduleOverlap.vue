@@ -1987,7 +1987,10 @@ export default {
         return new Date().getTimezoneOffset()
       }
 
-      if (this.event.type === eventTypes.DOW) {
+      if (
+        this.event.type === eventTypes.DOW ||
+        this.event.type === eventTypes.GROUP
+      ) {
         return this.curTimezone.offset * -1
       }
 

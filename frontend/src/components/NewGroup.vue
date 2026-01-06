@@ -184,6 +184,7 @@ import EmailInput from "./event/EmailInput.vue"
 import dayjs from "dayjs"
 import utcPlugin from "dayjs/plugin/utc"
 import timezonePlugin from "dayjs/plugin/timezone"
+import moment from "moment"
 dayjs.extend(utcPlugin)
 dayjs.extend(timezonePlugin)
 
@@ -314,7 +315,15 @@ export default {
       })
       for (const dayIndex of this.selectedDaysOfWeek) {
         const day = dayIndexToDayString[dayIndex]
-        const date = dayjs.tz(`${day} ${startTimeString}`, this.timezone.value)
+        let date = dayjs.tz(`${day} ${startTimeString}`, this.timezone.value)
+
+        // Check if cur date is NOT in daylight savings time
+        // because the dow days ARE in daylight savings time
+        if (!moment().isDST()) {
+          // Add one hour if not in DST
+          date = date.add(1, "hour")
+        }
+
         dates.push(date.toDate())
       }
 
@@ -426,7 +435,13 @@ export default {
     updateFieldsFromEvent() {
       if (this.event) {
         this.name = this.event.name
-        this.startTime = Math.floor(dateToTimeNum(this.event.dates[0]))
+
+        // Set start time, accounting for the timezone
+        this.startTime = Math.floor(
+          dateToTimeNum(getDateWithTimezone(this.event.dates[0]), true)
+        )
+        this.startTime %= 24
+
         this.endTime = (this.startTime + this.event.duration) % 24
         this.startOnMonday = this.event.startOnMonday
 
