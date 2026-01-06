@@ -152,7 +152,7 @@
                 <v-btn
                   v-if="event.startOnMonday ? weekOffset != 1 : weekOffset != 0"
                   :icon="isPhone"
-
+                  text
                   class="tw-mr-1 tw-text-very-dark-gray sm:tw-mr-2.5"
                   @click="resetWeekOffset"
                 >
@@ -403,6 +403,7 @@ import {
   convertUTCSlotsToLocalISO,
 } from "@/utils"
 import { isBetween } from "@/utils/general_utils"
+import { validateEmail } from "@/utils"
 import { mapActions, mapState, mapMutations } from "vuex"
 import dayjs from "dayjs"
 import utcPlugin from "dayjs/plugin/utc"
@@ -414,7 +415,7 @@ import NewDialog from "@/components/NewDialog.vue"
 import ScheduleOverlap from "@/components/schedule_overlap/ScheduleOverlap.vue"
 import GuestDialog from "@/components/GuestDialog.vue"
 import SignUpForSlotDialog from "@/components/sign_up_form/SignUpForSlotDialog.vue"
-import { errors, authTypes, eventTypes, calendarTypes } from "@/constants"
+import { errors, authTypes, eventTypes, calendarTypes, dayIndexToDayString } from "@/constants"
 import isWebview from "is-ua-webview"
 import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
 import MarkAvailabilityDialog from "@/components/calendar_permission_dialogs/MarkAvailabilityDialog.vue"
@@ -484,7 +485,6 @@ export default {
   mounted() {
     // If coming from enabling contacts, show the dialog. Checks if contactsPayload is not an Observer.
     this.editEventDialog = Object.keys(this.contactsPayload).length > 0
-    console.log(this.event)
     // If coming from signing in to link apple calendar, show the mark availability dialog
     if (this.linkApple) {
       this.choiceDialog = true
@@ -1010,12 +1010,6 @@ export default {
     },
 
     async setSlots(event) { 
-      // console.log(this.authUser, " this is the current auth user")
-      // console.log(getCurrentTimezone(), " is the current timezone")
-      // console.log(this.event, " this is the curr event")
-      // console.log(this.selectedGuestRespondent, " this is the selected guest respondent")
-      // console.log(this.addingAvailabilityAsGuest, " this is the adding availability as guest")
-      // console.log(this.event)
       const requestId = event.data?.requestId
       const command = "set-slots"
       if (this.isGroup) {
@@ -1034,18 +1028,59 @@ export default {
 
       // Determine if current user is guest or logged-in
       const isGuest = !this.authUser
-      console.log(isGuest, " this is the is guest")
-      // For guests, check if guest name exists in localStorage
+      
+      // For guests, handle guest name and email
+      let guestName = ""
+      let guestEmail = ""
       if (isGuest) {
         const guestNameKey = `${this.event._id}.guestName`
-        const guestName = localStorage[guestNameKey]
-        if (!guestName || guestName.length === 0) {
-          sendPluginError(
-            requestId,
-            command,
-            "Guest name not found. Please add your availability through the UI first to set your guest name."
-          )
-          return
+        const storedGuestName = localStorage[guestNameKey]
+        
+        // If no guest name in localStorage, require it from payload
+        if (!storedGuestName || storedGuestName.length === 0) {
+          // Require guestName in payload
+          guestName = event.data?.payload?.guestName
+          if (!guestName || guestName.length === 0) {
+            sendPluginError(
+              requestId,
+              command,
+              "Guest name is required. Please provide 'guestName' in the payload or add your availability through the UI first."
+            )
+            return
+          }
+          
+          // If event collects emails, require guestEmail in payload
+          if (this.event.collectEmails) {
+            guestEmail = event.data?.payload?.guestEmail || ""
+            if (!guestEmail || guestEmail.length === 0) {
+              sendPluginError(
+                requestId,
+                command,
+                "Guest email is required because this event collects emails. Please provide 'guestEmail' in the payload."
+              )
+              return
+            }
+            
+            // Validate email format
+            if (!validateEmail(guestEmail)) {
+              sendPluginError(
+                requestId,
+                command,
+                `Invalid email format: ${guestEmail}`
+              )
+              return
+            }
+          }
+          
+          // Validation passed - store in localStorage for future calls
+          localStorage[guestNameKey] = guestName
+        } else {
+          // Use stored guest name
+          guestName = storedGuestName
+          // Get email from existing response or payload (if provided)
+          guestEmail = event.data?.payload?.guestEmail || 
+                      this.event.responses[guestName]?.email || 
+                      ""
         }
       }
 
@@ -1162,6 +1197,33 @@ export default {
           return
         }
 
+        // For DOW events, validate that dates match the hardcoded day dates
+        if (this.event.type === eventTypes.DOW) {
+          // Extract date part (YYYY-MM-DD) from startTime and endTime (in UTC)
+          const startDateStr = startTime.toISOString().split("T")[0]
+          const endDateStr = endTime.toISOString().split("T")[0]
+
+          // Check if start date matches one of the hardcoded DOW dates
+          if (!dayIndexToDayString.includes(startDateStr)) {
+            sendPluginError(
+              requestId,
+              command,
+              `Start date at index ${i} (${startDateStr}) is not a valid day-of-week date. Valid dates are: ${dayIndexToDayString.join(", ")}. Check docs for more info.`
+            )
+            return
+          }
+
+          // Check if end date matches one of the hardcoded DOW dates
+          if (!dayIndexToDayString.includes(endDateStr)) {
+            sendPluginError(
+              requestId,
+              command,
+              `End date at index ${i} (${endDateStr}) is not a valid day-of-week date. Valid dates are: ${dayIndexToDayString.join(", ")}. Check docs for more info.`
+            )
+            return
+          }
+        }
+
         if (!isTimeWithinEventRange(startTime, eventDates, eventStartTime, eventDuration)) {
           sendPluginError(
             requestId,
@@ -1201,10 +1263,14 @@ export default {
         while (currentTime < endTime) {
           const timestamp = new Date(currentTime)
 
-          if (status === "available") {
-            allAvailabilityTimestamps.push(timestamp)
-          } else if (status === "if-needed") {
-            allIfNeededTimestamps.push(timestamp)
+          // Only include timestamps that fall within valid event dates and time range
+          // This prevents including dates between non-consecutive event dates (e.g., Jan 6th between Jan 5th and Jan 7th)
+          if (isTimeWithinEventRange(timestamp, eventDates, eventStartTime, eventDuration)) {
+            if (status === "available") {
+              allAvailabilityTimestamps.push(timestamp)
+            } else if (status === "if-needed") {
+              allIfNeededTimestamps.push(timestamp)
+            }
           }
 
           // Move to next interval
@@ -1222,12 +1288,10 @@ export default {
 
         // Set guest flag and user identification
         if (isGuest) {
-          // For guests: include name and email
-          const guestNameKey = `${this.event._id}.guestName`
-          const guestName = localStorage[guestNameKey]
+          // For guests: include name and email (already validated and stored above)
           payload.guest = true
           payload.name = guestName
-          payload.email = this.event.responses[guestName]?.email || ""
+          payload.email = guestEmail
         } else {
           // For logged-in users: backend will use session to identify user
           payload.guest = false
