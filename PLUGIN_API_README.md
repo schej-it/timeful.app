@@ -152,8 +152,12 @@ Sets availability slots for the current user (logged-in user or guest). Converts
   - `status`: Either `"available"` or `"if-needed"`
 
 **Conditionally required payload fields:**
-- `guestName`: Required for guests who aren't logged in and also haven't set their name through the UI.
-- `guestEmail`: Required if the owner of the event requires the respondents' emails to be collected AND the guest user has not set their name through the UI yet. Must be a valid email format.
+- `guestName`: 
+  - If provided, **forces guest mode** regardless of whether the user is logged in or not. This allows logged-in users to set availability for guests.
+  - Required for guests who aren't logged in and haven't set their name through the UI.
+  - When provided, it will be stored in `localStorage[eventId + ".guestName"]` for future calls.
+  - Can be used to edit an existing guest's availability (if that guest name already exists) or add a new guest (if it doesn't exist).
+- `guestEmail`: Required if `event.collectEmails` is `true` and `guestName` is provided in the payload. Must be a valid email format.
 
 **Optional payload fields:**
 - `timezone`: IANA timezone name (e.g., `"America/Los_Angeles"`, `"Asia/Kolkata"`). If not provided, uses `localStorage["timezone"].value` or browser's local timezone.
@@ -185,6 +189,7 @@ Sets availability slots for the current user (logged-in user or guest). Converts
 
 ### Example Request
 
+**Basic request (logged-in user or guest with name in localStorage):**
 ```javascript
 window.postMessage({
   type: "FILL_CALENDAR_EVENT",
@@ -202,6 +207,27 @@ window.postMessage({
         start: "2026-01-07T12:00:00",
         end: "2026-01-07T16:00:00",
         status: "if-needed"
+      }
+    ]
+  }
+}, "*")
+```
+
+**Request with guestName (forces guest mode, works even if logged in):**
+```javascript
+window.postMessage({
+  type: "FILL_CALENDAR_EVENT",
+  requestId: "test-set-slots-" + Date.now(),
+  payload: {
+    type: "set-slots",
+    timezone: "Asia/Kolkata",
+    guestName: "John Doe",  // Forces guest mode, can edit existing guest or add new one
+    guestEmail: "john@example.com",  // Required if event.collectEmails is true
+    slots: [
+      {
+        start: "2026-01-07T09:00:00",
+        end: "2026-01-07T12:00:00",
+        status: "available"
       }
     ]
   }
@@ -278,16 +304,19 @@ The date part (`2018-06-18`) represents Monday, regardless of what the actual cu
 - Validates that all slots fall within the event's date/time range
 - Validates that `start` < `end` for each slot
 - Validates that `status` is either `"available"` or `"if-needed"`
+- **Overlapping intervals with different statuses**: If overlapping intervals have conflicting statuses (one "available", one "if-needed"), an error will be thrown: `"Conflicting status for timestamp [timestamp]: already marked as '[status1]' but also marked as '[status2]'. Overlapping intervals must have the same status."`
 - For **DOW (days of week) events**: Validates that the date part of `start` and `end` timestamps match one of the hardcoded day dates listed above
-- For **guests**: Validates that `guestName` is provided if not in localStorage
-- For **guests with email collection**: Validates that `guestEmail` is provided and is a valid email format
+- For **guests**: 
+  - If `guestName` is provided in payload, it forces guest mode and stores the name in localStorage
+  - If `guestName` is not provided, validates that guest name exists in localStorage or requires it from payload
+- For **guests with email collection**: Validates that `guestEmail` is provided (when `guestName` is in payload) and is a valid email format
 - Returns appropriate error messages if validation fails
 
 ### Limitations
 
 - **Group events are not supported** - returns an error if the event type is GROUP
-- **Only works for the current user** - If you're logged in, `set-slots` **ONLY** works for setting that user's own slots. Currently there's no capability to add guests' slots for a logged-in user (like you can through the UI). You can only add guests' slots if you're **not logged in** (i.e., as a guest yourself)
-- **Guest name required** - For guests who haven't logged in, the guest name must either:
+- **Guest mode via payload** - If you provide `guestName` in the payload, the request will be processed as a guest regardless of whether you're logged in. This allows logged-in users to set availability for any guest (existing or new).
+- **Guest name required** - For guests who haven't logged in and haven't provided `guestName` in the payload, the guest name must either:
   - Already exist in `localStorage[eventId + ".guestName"]` (set through the UI), OR
   - Be provided in the `guestName` field of the payload
 - **Complete overwrite** - The slots you send in **completely clear out** any old slots and write these new ones in. This is not a merge operation.
@@ -338,7 +367,7 @@ window.postMessage({
   payload: {
     type: "set-slots",
     timezone: "Asia/Kolkata",
-    guestName: "Test User",  // Required if guest and not in localStorage
+    guestName: "Test User",  // Optional: forces guest mode if provided (works even if logged in)
     slots: [
       { start: "2026-01-07T09:00:00", end: "2026-01-07T12:00:00", status: "available" }
     ]

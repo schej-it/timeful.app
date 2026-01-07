@@ -1026,28 +1026,24 @@ export default {
       // Validation: Check timeIncrement exists, default to 15 if not
       const timeIncrement = this.event.timeIncrement ?? 15
 
+      // Check if guestName is provided in payload - if so, force guest mode
+      const payloadGuestName = event.data?.payload?.guestName
+      const forceGuestMode = payloadGuestName && payloadGuestName.length > 0
+      
       // Determine if current user is guest or logged-in
-      const isGuest = !this.authUser
+      // If guestName is provided in payload, always treat as guest (ignore login status)
+      const isGuest = forceGuestMode || !this.authUser
       
       // For guests, handle guest name and email
       let guestName = ""
       let guestEmail = ""
       if (isGuest) {
         const guestNameKey = `${this.event._id}.guestName`
-        const storedGuestName = localStorage[guestNameKey]
         
-        // If no guest name in localStorage, require it from payload
-        if (!storedGuestName || storedGuestName.length === 0) {
-          // Require guestName in payload
-          guestName = event.data?.payload?.guestName
-          if (!guestName || guestName.length === 0) {
-            sendPluginError(
-              requestId,
-              command,
-              "Guest name is required. Please provide 'guestName' in the payload or add your availability through the UI first."
-            )
-            return
-          }
+        if (forceGuestMode) {
+          // guestName provided in payload - use it and store in localStorage
+          guestName = payloadGuestName
+          localStorage[guestNameKey] = guestName
           
           // If event collects emails, require guestEmail in payload
           if (this.event.collectEmails) {
@@ -1070,11 +1066,26 @@ export default {
               )
               return
             }
+          } else {
+            // Email not required, but get from payload if provided, or from existing response
+            guestEmail = event.data?.payload?.guestEmail || 
+                        this.event.responses[guestName]?.email || 
+                        ""
+          }
+        } else {
+          // No guestName in payload - use existing flow (check localStorage)
+          const storedGuestName = localStorage[guestNameKey]
+          
+          // If no guest name in localStorage, require it from payload
+          if (!storedGuestName || storedGuestName.length === 0) {
+            sendPluginError(
+              requestId,
+              command,
+              "Guest name is required. Please provide 'guestName' in the payload or add your availability through the UI first."
+            )
+            return
           }
           
-          // Validation passed - store in localStorage for future calls
-          localStorage[guestNameKey] = guestName
-        } else {
           // Use stored guest name
           guestName = storedGuestName
           // Get email from existing response or payload (if provided)
