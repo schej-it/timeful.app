@@ -3,6 +3,7 @@ package routes
 
 import (
 	"context"
+	"encoding/json" //TODO: remove this before committing
 	"fmt"
 	"net/http"
 	"time"
@@ -522,8 +523,81 @@ func getEvent(c *gin.Context) {
 		event.Attendees = &attendees
 	}
 
-	// Create a copy of the event with responses in map format
-	c.JSON(http.StatusOK, event)
+	// Update event.ResponsesMap to match the final responsesMap
+	event.ResponsesMap = responsesMap
+
+	// Apply privacy logic based on blindAvailabilityEnabled
+	if !utils.Coalesce(event.BlindAvailabilityEnabled) {
+		// Blind availability is NOT enabled - return response as-is
+		// Log response body
+		responseJSON, err := json.MarshalIndent(event, "", "  ")
+		if err != nil {
+			logger.StdErr.Printf("Failed to marshal event for logging: %v\n", err)
+		}
+		c.JSON(http.StatusOK, event)
+		return
+	}
+
+	// Blind availability IS enabled - apply privacy filtering
+	ownerSesh := event.OwnerId.Hex()
+	session := sessions.Default(c)
+	userIdInterface := session.Get("userId")
+	var userSesh string
+	if userIdInterface != nil {
+		userSesh = userIdInterface.(string)
+	}
+	guestName := c.Query("guestName")
+
+	var privatizedResponse map[string]interface{}
+	var err error
+
+	if userSesh != "" {
+		// User session exists (user is logged in)
+		if ownerSesh == userSesh {
+			// User is the owner - return response as-is
+			privatizedResponse, err = utils.PrivatizeEventResponse(event, []string{}, []utils.PartialOmission{})
+		} else {
+			// User is NOT the owner - privatize response
+			privateFields := []string{"ownerId", "numResponses"}
+			partialOmissions := []utils.PartialOmission{
+				{
+					FieldName: "responses",
+					KeepKey:   userSesh,
+				},
+			}
+			privatizedResponse, err = utils.PrivatizeEventResponse(event, privateFields, partialOmissions)
+		}
+	} else if guestName != "" {
+		// Guest name query parameter exists
+		privateFields := []string{"ownerId", "numResponses"}
+		partialOmissions := []utils.PartialOmission{
+			{
+				FieldName: "responses",
+				KeepKey:   guestName,
+			},
+		}
+		privatizedResponse, err = utils.PrivatizeEventResponse(event, privateFields, partialOmissions)
+	} else {
+		// No session, no guest name - remove all private fields
+		privateFields := []string{"ownerId", "numResponses", "responses", "remindees"}
+		privatizedResponse, err = utils.PrivatizeEventResponse(event, privateFields, []utils.PartialOmission{})
+	}
+
+	if err != nil {
+		logger.StdErr.Printf("Failed to privatize event response: %v\n", err)
+		// Fall back to returning the original event if privatization fails
+		c.JSON(http.StatusOK, event)
+		return
+	}
+
+	// Log response body
+	responseJSON, err := json.MarshalIndent(privatizedResponse, "", "  ")
+	if err != nil {
+		logger.StdErr.Printf("Failed to marshal privatized response for logging: %v\n", err)
+	}
+
+	// Return the privatized response
+	c.JSON(http.StatusOK, privatizedResponse)
 }
 
 // @Summary Gets responses for an event, filtering availability to be within the date ranges
