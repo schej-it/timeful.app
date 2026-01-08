@@ -534,6 +534,7 @@ func getEvent(c *gin.Context) {
 		if err != nil {
 			logger.StdErr.Printf("Failed to marshal event for logging: %v\n", err)
 		}
+		_ = responseJSON
 		c.JSON(http.StatusOK, event)
 		return
 	}
@@ -595,7 +596,7 @@ func getEvent(c *gin.Context) {
 	if err != nil {
 		logger.StdErr.Printf("Failed to marshal privatized response for logging: %v\n", err)
 	}
-
+	_ = responseJSON
 	// Return the privatized response
 	c.JSON(http.StatusOK, privatizedResponse)
 }
@@ -658,7 +659,52 @@ func getResponses(c *gin.Context) {
 		responsesMap[userId] = response
 	}
 
-	c.JSON(http.StatusOK, responsesMap)
+	
+
+	// Apply privacy logic based on blindAvailabilityEnabled
+	if !utils.Coalesce(event.BlindAvailabilityEnabled) {
+		// Blind availability is NOT enabled - return response as-is
+		c.JSON(http.StatusOK, responsesMap)
+		return
+	}
+
+	// Blind availability IS enabled - apply privacy filtering
+	ownerSesh := event.OwnerId.Hex()
+	session := sessions.Default(c)
+	userIdInterface := session.Get("userId")
+	var userSesh string
+	if userIdInterface != nil {
+		userSesh = userIdInterface.(string)
+	}
+	guestName := c.Query("guestName")
+	if userSesh != "" {
+		// User session exists (user is logged in)
+		if ownerSesh == userSesh {
+			// User is the owner - return response as-is
+			c.JSON(http.StatusOK, responsesMap)
+			return
+		} else {
+			// User is NOT the owner - return only their own response
+			filteredMap := make(map[string]*models.Response)
+			if userResponse, exists := responsesMap[userSesh]; exists {
+				filteredMap[userSesh] = userResponse
+			}
+			c.JSON(http.StatusOK, filteredMap)
+			return
+		}
+	} else if guestName != "" {
+		// Guest name query parameter exists - return only that guest's response
+		filteredMap := make(map[string]*models.Response)
+		if guestResponse, exists := responsesMap[guestName]; exists {
+			filteredMap[guestName] = guestResponse
+		}
+		c.JSON(http.StatusOK, filteredMap)
+		return
+	} else {
+		// No session, no guest name - return empty map
+		c.JSON(http.StatusOK, make(map[string]*models.Response))
+		return
+	}
 }
 
 // @Summary Updates the current user's availability
@@ -698,6 +744,26 @@ func updateEventResponse(c *gin.Context) {
 		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
 		return
 	}
+
+	// Security check: If blindAvailabilityEnabled is true, non-owners cannot set guest availability
+	//NOTE: this ONLY stops a user from setting guest availability from their account (via setSlots), somebody could still
+	// go on incognito and set guest availability.
+	if utils.Coalesce(event.BlindAvailabilityEnabled) {
+		ownerSesh := event.OwnerId.Hex()
+		userIdInterface := session.Get("userId")
+		var userSesh string
+		if userIdInterface != nil {
+			userSesh = userIdInterface.(string)
+		}
+
+		// If user is logged in and NOT the owner, and they're trying to set guest availability, block it
+		if userSesh != "" && ownerSesh != userSesh && *payload.Guest {
+			c.JSON(http.StatusForbidden, responses.Error{Error: errs.UserNotEventOwner})
+			c.Abort()
+			return
+		}
+	}
+
 	eventResponses := db.GetEventResponses(event.Id.Hex())
 
 	var userIdString string

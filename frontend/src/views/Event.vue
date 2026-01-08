@@ -647,7 +647,6 @@ export default {
     },
     /** Refresh event details */
     async refreshEvent() {
-      console.log("refreshEvent has been triggered ^^^^^^")
       let sanitizedId = this.eventId.replaceAll(".", "")
       
       // Try to get guest name from localStorage using eventId first (available immediately)
@@ -1047,6 +1046,8 @@ export default {
     },
 
     async setSlots(event) { 
+      console.log("setSlots is being called ***")
+      console.log(this.event.ownerId, "is the owner id")
       const requestId = event.data?.requestId
       const command = "set-slots"
       if (this.isGroup) {
@@ -1063,9 +1064,28 @@ export default {
       // Validation: Check timeIncrement exists, default to 15 if not
       const timeIncrement = this.event.timeIncrement ?? 15
 
-      // Check if guestName is provided in payload - if so, force guest mode
+      // Security check: If blindAvailabilityEnabled is true and user is NOT the owner,
+      // reject any request with guestName parameter
       const payloadGuestName = event.data?.payload?.guestName
-      const forceGuestMode = payloadGuestName && payloadGuestName.length > 0
+      const hasGuestName = payloadGuestName && payloadGuestName.length > 0
+      
+      if (this.event.blindAvailabilityEnabled) {
+        // Check if user is owner: ownerId is only returned by backend if user is the owner
+        // So if ownerId exists and matches current user's ID, they are the owner
+        const isOwner = this.event.ownerId && this.authUser?._id === this.event.ownerId
+        console.log("isOwner", isOwner)
+        if (!isOwner && hasGuestName) {
+          sendPluginError(
+            requestId,
+            command,
+            "Non-owners cannot set guest availability when 'Hide responses from respondents' is enabled."
+          )
+          return
+        }
+      }
+
+      // Check if guestName is provided in payload - if so, force guest mode
+      const forceGuestMode = hasGuestName
       
       // Determine if current user is guest or logged-in
       // If guestName is provided in payload, always treat as guest (ignore login status)
@@ -1438,7 +1458,29 @@ export default {
 
         try {
           // Fetch responses between timeMin and timeMax
-          const url = `/events/${sanitizedId}/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+          //TODO: update this with the new getResponses model
+          console.log("update get slots please")
+          
+          // Try to get guest name from localStorage
+          let guestName = null
+          if (typeof localStorage !== "undefined") {
+            // Try with eventId first (matches the key format used when storing in ScheduleOverlap)
+            const guestNameKeyFromEventId = `${sanitizedId}.guestName`
+            guestName = localStorage[guestNameKeyFromEventId]
+            
+            // If not found and event is already loaded, try with event._id (for backward compatibility)
+            if (!guestName && this.event?._id) {
+              const guestNameKeyFromEventId2 = `${this.event._id}.guestName`
+              guestName = localStorage[guestNameKeyFromEventId2]
+            }
+          }
+          
+          // Build URL with guestName if available
+          let url = `/events/${sanitizedId}/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+          if (guestName && guestName.length > 0) {
+            url += `&guestName=${encodeURIComponent(guestName)}`
+          }
+          
           const responses = await get(url)
 
           // Build response object with all users' slots

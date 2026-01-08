@@ -2451,10 +2451,19 @@ export default {
 
       if (!timeMin || !timeMax) return
 
+      console.log("this fetching is happening here ***")
       // Fetch responses between timeMin and timeMax
-      const url = `/events/${
+      let url = `/events/${
         this.event._id
       }/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+      
+      // Add guestName query parameter if user is a guest
+      if (this.guestName && this.guestName.length > 0) {
+        url += `&guestName=${encodeURIComponent(this.guestName)}`
+      }
+      
+      console.log("url is ", url)
+
       get(url)
         .then((responses) => {
           this.fetchedResponses = responses
