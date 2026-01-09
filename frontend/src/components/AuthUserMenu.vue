@@ -15,14 +15,14 @@
             <strong>{{ `${authUser.firstName} ${authUser.lastName}` }}</strong>
           </v-list-item-title>
         </v-list-item>
-        <!-- <v-list-item id="add-team-member-btn" @click="addTeamMember">
+        <v-list-item id="add-team-member-btn" @click="addTeamMember">
           <v-list-item-title class="tw-flex tw-items-center tw-gap-1">
             <v-icon class="tw-mr-1" small color="black"
               >mdi-account-plus</v-icon
             >
             Add team member
           </v-list-item-title>
-        </v-list-item> -->
+        </v-list-item>
         <v-list-item
           v-if="showFeedbackBtn"
           id="feedback-btn"
