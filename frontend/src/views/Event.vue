@@ -390,14 +390,32 @@ import {
   isIOS,
   isDstObserved,
   doesDstExist,
+  getDateDayOffset,
+  dateToDowDate,
+  getDateHoursOffset,
+  dateToTimeNum,
+  sendPluginError,
+  sendPluginSuccess,
+  isValidPluginMessage,
+  getCurrentTimezone,
+  convertToUTC,
+  isTimeWithinEventRange,
+  convertUTCSlotsToLocalISO,
 } from "@/utils"
+import { isBetween } from "@/utils/general_utils"
+import { validateEmail } from "@/utils"
 import { mapActions, mapState, mapMutations } from "vuex"
+import dayjs from "dayjs"
+import utcPlugin from "dayjs/plugin/utc"
+import timezonePlugin from "dayjs/plugin/timezone"
+dayjs.extend(utcPlugin)
+dayjs.extend(timezonePlugin)
 
 import NewDialog from "@/components/NewDialog.vue"
 import ScheduleOverlap from "@/components/schedule_overlap/ScheduleOverlap.vue"
 import GuestDialog from "@/components/GuestDialog.vue"
 import SignUpForSlotDialog from "@/components/sign_up_form/SignUpForSlotDialog.vue"
-import { errors, authTypes, eventTypes, calendarTypes } from "@/constants"
+import { errors, authTypes, eventTypes, calendarTypes, dayIndexToDayString } from "@/constants"
 import isWebview from "is-ua-webview"
 import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
 import MarkAvailabilityDialog from "@/components/calendar_permission_dialogs/MarkAvailabilityDialog.vue"
@@ -467,11 +485,11 @@ export default {
   mounted() {
     // If coming from enabling contacts, show the dialog. Checks if contactsPayload is not an Observer.
     this.editEventDialog = Object.keys(this.contactsPayload).length > 0
-
     // If coming from signing in to link apple calendar, show the mark availability dialog
     if (this.linkApple) {
       this.choiceDialog = true
     }
+
   },
 
   computed: {
@@ -977,6 +995,456 @@ export default {
       this.saveChangesAsGuest(guestPayload)
     },
 
+    handleMessage(event) {
+      if (!isValidPluginMessage(event)) return
+
+      const payload = event.data.payload
+
+      if (payload?.type === "get-slots") {
+        this.getSlots(event)
+      }
+
+      if (payload?.type === "set-slots") {
+        this.setSlots(event)
+      }
+    },
+
+    async setSlots(event) { 
+      const requestId = event.data?.requestId
+      const command = "set-slots"
+      if (this.isGroup) {
+        sendPluginError(requestId, command, "Group events are not supported yet")
+        return
+      }
+
+      // Validation: Check event exists
+      if (!this.event) {
+        sendPluginError(requestId, command, "Event not loaded yet")
+        return
+      }
+
+      // Validation: Check timeIncrement exists, default to 15 if not
+      const timeIncrement = this.event.timeIncrement ?? 15
+
+      // Check if guestName is provided in payload - if so, force guest mode
+      const payloadGuestName = event.data?.payload?.guestName
+      const forceGuestMode = payloadGuestName && payloadGuestName.length > 0
+      
+      // Determine if current user is guest or logged-in
+      // If guestName is provided in payload, always treat as guest (ignore login status)
+      const isGuest = forceGuestMode || !this.authUser
+      
+      // For guests, handle guest name and email
+      let guestName = ""
+      let guestEmail = ""
+      if (isGuest) {
+        const guestNameKey = `${this.event._id}.guestName`
+        
+        if (forceGuestMode) {
+          // guestName provided in payload - use it and store in localStorage
+          guestName = payloadGuestName
+          localStorage[guestNameKey] = guestName
+          
+          // If event collects emails, require guestEmail in payload
+          if (this.event.collectEmails) {
+            guestEmail = event.data?.payload?.guestEmail || ""
+            if (!guestEmail || guestEmail.length === 0) {
+              sendPluginError(
+                requestId,
+                command,
+                "Guest email is required because this event collects emails. Please provide 'guestEmail' in the payload."
+              )
+              return
+            }
+            
+            // Validate email format
+            if (!validateEmail(guestEmail)) {
+              sendPluginError(
+                requestId,
+                command,
+                `Invalid email format: ${guestEmail}`
+              )
+              return
+            }
+          } else {
+            // Email not required, but get from payload if provided, or from existing response
+            guestEmail = event.data?.payload?.guestEmail || 
+                        this.event.responses[guestName]?.email || 
+                        ""
+          }
+        } else {
+          // No guestName in payload - use existing flow (check localStorage)
+          const storedGuestName = localStorage[guestNameKey]
+          
+          // If no guest name in localStorage, require it from payload
+          if (!storedGuestName || storedGuestName.length === 0) {
+            sendPluginError(
+              requestId,
+              command,
+              "Guest name is required. Please provide 'guestName' in the payload or add your availability through the UI first."
+            )
+            return
+          }
+          
+          // Use stored guest name
+          guestName = storedGuestName
+          // Get email from existing response or payload (if provided)
+          guestEmail = event.data?.payload?.guestEmail || 
+                      this.event.responses[guestName]?.email || 
+                      ""
+        }
+      }
+
+      // Get slots from payload - new format: [{ start, end, status }]
+      const slots = event.data?.payload?.slots
+
+      if (!Array.isArray(slots)) {
+        sendPluginError(requestId, command, "Slots must be an array")
+        return
+      }
+
+      if (slots.length === 0) {
+        sendPluginError(requestId, command, "Slots array cannot be empty")
+        return
+      }
+
+      // Determine timezone for conversion
+      // Priority: 1. User-provided timezone in payload, 2. localStorage, 3. Browser's local timezone
+      let timezoneValue = null
+      if (event.data?.payload?.timezone) {
+        // User provided timezone in the message (should be IANA timezone name)
+        timezoneValue = event.data.payload.timezone
+      } else{
+        // Use timezone from localStorage (should have IANA timezone name in .value)
+        try {
+          const timezoneObj = JSON.parse(localStorage["timezone"])
+          timezoneValue = timezoneObj.value
+        } catch (err) {
+          // If parsing fails, fall back to browser's local timezone
+          timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
+      }
+
+      // Validate each slot has required fields
+      for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i]
+        if (!slot.start || !slot.end) {
+          sendPluginError(
+            requestId,
+            command,
+            `Slot at index ${i} is missing required 'start' or 'end' field`
+          )
+          return
+        }
+        if (!slot.status) {
+          sendPluginError(
+            requestId,
+            command,
+            `Slot at index ${i} is missing required 'status' field`
+          )
+          return
+        }
+        if (
+          slot.status !== "available" &&
+          slot.status !== "if-needed"
+        ) {
+          sendPluginError(
+            requestId,
+            command,
+            `Invalid status '${slot.status}' at index ${i}. Must be 'available' or 'if-needed'`
+          )
+          return
+        }
+      }
+
+      // Validate that all start/end times fall within event's date range
+      const eventDates = this.event.dates.map((d) => new Date(d))
+      const eventStartTime = this.event.startTime // Hours (e.g., 9 for 9am)
+      const eventDuration = this.event.duration // Hours
+
+      // Convert all slot times from user's timezone to UTC and validate
+      const convertedSlots = []
+      for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i]
+        
+        // Convert timestamps from user's timezone to UTC
+        let startTime, endTime
+        try {
+          startTime = convertToUTC(slot.start, timezoneValue)
+          endTime = convertToUTC(slot.end, timezoneValue)
+        } catch (err) {
+          sendPluginError(
+            requestId,
+            command,
+            `Failed to parse time at index ${i}: ${err.message}`
+          )
+          return
+        }
+
+        if (isNaN(startTime.getTime())) {
+          sendPluginError(
+            requestId,
+            command,
+            `Invalid start time at index ${i}: ${slot.start}`
+          )
+          return
+        }
+
+        if (isNaN(endTime.getTime())) {
+          sendPluginError(
+            requestId,
+            command,
+            `Invalid end time at index ${i}: ${slot.end}`
+          )
+          return
+        }
+
+        if (endTime <= startTime) {
+          sendPluginError(
+            requestId,
+            command,
+            `End time must be after start time at index ${i}`
+          )
+          return
+        }
+
+        // For DOW events, validate that dates match the hardcoded day dates
+        if (this.event.type === eventTypes.DOW) {
+          // Extract date part (YYYY-MM-DD) from startTime and endTime (in UTC)
+          const startDateStr = startTime.toISOString().split("T")[0]
+          const endDateStr = endTime.toISOString().split("T")[0]
+
+          // Check if start date matches one of the hardcoded DOW dates
+          if (!dayIndexToDayString.includes(startDateStr)) {
+            sendPluginError(
+              requestId,
+              command,
+              `Start date at index ${i} (${startDateStr}) is not a valid day-of-week date. Valid dates are: ${dayIndexToDayString.join(", ")}. Check docs for more info.`
+            )
+            return
+          }
+
+          // Check if end date matches one of the hardcoded DOW dates
+          if (!dayIndexToDayString.includes(endDateStr)) {
+            sendPluginError(
+              requestId,
+              command,
+              `End date at index ${i} (${endDateStr}) is not a valid day-of-week date. Valid dates are: ${dayIndexToDayString.join(", ")}. Check docs for more info.`
+            )
+            return
+          }
+        }
+
+        if (!isTimeWithinEventRange(startTime, eventDates, eventStartTime, eventDuration)) {
+          sendPluginError(
+            requestId,
+            command,
+            `Start time at index ${i} falls outside the event's date/time range`
+          )
+          return
+        }
+
+        if (!isTimeWithinEventRange(endTime, eventDates, eventStartTime, eventDuration)) {
+          sendPluginError(
+            requestId,
+            command,
+            `End time at index ${i} falls outside the event's date/time range`
+          )
+          return
+        }
+
+        // Store converted slot
+        convertedSlots.push({
+          startTime,
+          endTime,
+          status: slot.status,
+        })
+      }
+
+      // Split slots into intervals based on timeIncrement
+      const allAvailabilityTimestamps = []
+      const allIfNeededTimestamps = []
+      // Track timestamps and their statuses to detect conflicts
+      const timestampStatusMap = new Map() // Map<timestamp.getTime(), "available" | "if-needed">
+
+      for (const convertedSlot of convertedSlots) {
+        const { startTime, endTime, status } = convertedSlot
+        const incrementMs = timeIncrement * 60 * 1000 // Convert minutes to milliseconds
+
+        // Generate timestamps at each interval
+        let currentTime = new Date(startTime)
+        while (currentTime < endTime) {
+          const timestamp = new Date(currentTime)
+
+          // Only include timestamps that fall within valid event dates and time range
+          // This prevents including dates between non-consecutive event dates (e.g., Jan 6th between Jan 5th and Jan 7th)
+          if (isTimeWithinEventRange(timestamp, eventDates, eventStartTime, eventDuration)) {
+            const timestampKey = timestamp.getTime()
+            
+            // Check if this timestamp already exists with a different status
+            if (timestampStatusMap.has(timestampKey)) {
+              const existingStatus = timestampStatusMap.get(timestampKey)
+              if (existingStatus !== status) {
+                sendPluginError(
+                  requestId,
+                  command,
+                  `Conflicting status for timestamp ${timestamp.toISOString()}: already marked as "${existingStatus}" but also marked as "${status}". Overlapping intervals must have the same status.`
+                )
+                return
+              }
+              // Same status - allow duplicate, add to array
+            } else {
+              // First time seeing this timestamp - track its status
+              timestampStatusMap.set(timestampKey, status)
+            }
+            
+            // Add to appropriate array (duplicates with same status are allowed)
+            if (status === "available") {
+              allAvailabilityTimestamps.push(timestamp)
+            } else if (status === "if-needed") {
+              allIfNeededTimestamps.push(timestamp)
+            }
+          }
+
+          // Move to next interval
+          currentTime = new Date(currentTime.getTime() + incrementMs)
+        }
+      }
+
+      // Send new slots (overwrites existing availability)
+      try {
+        const sanitizedId = this.eventId.replaceAll(".", "")
+        const payload = {
+          availability: allAvailabilityTimestamps,
+          ifNeeded: allIfNeededTimestamps,
+        }
+
+        // Set guest flag and user identification
+        if (isGuest) {
+          // For guests: include name and email (already validated and stored above)
+          payload.guest = true
+          payload.name = guestName
+          payload.email = guestEmail
+        } else {
+          // For logged-in users: backend will use session to identify user
+          payload.guest = false
+        }
+
+        await post(`/events/${sanitizedId}/response`, payload)
+
+        // Trigger frontend refresh to update UI
+        await this.refreshEvent()
+
+        sendPluginSuccess(requestId, command)
+      } catch (err) {
+        sendPluginError(
+          requestId,
+          command,
+          `Failed to set slots: ${err.message || "Unknown error"}`
+        )
+      }
+    },
+
+    async getSlots(event) {
+        const requestId = event.data?.requestId
+        const command = "get-slots"
+
+        // Need the event to calculate timeMin and timeMax
+        if (!this.event) {
+          sendPluginError(requestId, command, "Event not loaded yet")
+          return
+        }
+
+        let sanitizedId = this.eventId.replaceAll(".", "")
+
+        // Calculate timeMin and timeMax using the same logic as fetchResponses in ScheduleOverlap
+        let timeMin, timeMax
+        if (this.event.type === eventTypes.GROUP) {
+          if (this.event.dates.length > 0) {
+            // Fetch the date range for the current week
+            timeMin = new Date(this.event.dates[0])
+            timeMax = new Date(this.event.dates[this.event.dates.length - 1])
+            timeMax.setDate(timeMax.getDate() + 1)
+
+            // Convert dow dates to discrete dates
+            timeMin = dateToDowDate(
+              this.event.dates,
+              timeMin,
+              this.weekOffset,
+              true
+            )
+            timeMax = dateToDowDate(
+              this.event.dates,
+              timeMax,
+              this.weekOffset,
+              true
+            )
+          }
+        } else {
+          // For non-GROUP events, use the event dates directly
+          if (this.event.dates.length > 0) {
+            // Fetch the entire time range of availabilities
+            timeMin = new Date(this.event.dates[0])
+            timeMax = new Date(this.event.dates[this.event.dates.length - 1])
+            timeMax.setDate(timeMax.getDate() + 1)
+          }
+        }
+
+        if (!timeMin || !timeMax) {
+          sendPluginError(requestId, command, "Could not calculate timeMin and timeMax")
+          return
+        }
+
+        try {
+          // Fetch responses between timeMin and timeMax
+          const url = `/events/${sanitizedId}/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+          const responses = await get(url)
+
+          // Build response object with all users' slots
+          const allSlots = {}
+          
+          for (const userId in responses) {
+            const response = responses[userId]
+            
+            // Get name and email
+            let name = ""
+            let email = ""
+            
+            // For guests, name and email are in the response directly
+            if (response.name && response.name.length > 0) {
+              name = response.name
+              email = response.email || ""
+            } else {
+              // For logged-in users, get from this.event.responses (populated by getEvent endpoint)
+              const eventResponse = this.event.responses?.[userId]
+              if (eventResponse?.user) {
+                const user = eventResponse.user
+                name = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+                email = user.email || ""
+              } else {
+                // Fallback: use userId if user info not available
+                name = userId
+                email = ""
+              }
+            }
+
+            allSlots[userId] = {
+              name,
+              email,
+              availability: convertUTCSlotsToLocalISO(response.availability),
+              ifNeeded: convertUTCSlotsToLocalISO(response.ifNeeded),
+            }
+          }
+
+          // Get time increment (default to 15 if not set)
+          const timeIncrement = this.event.timeIncrement ?? 15
+
+          sendPluginSuccess(requestId, command, { slots: allSlots, timeIncrement })
+        } catch (err) {
+          sendPluginError(requestId, command, `Failed to fetch responses: ${err.message || "Unknown error"}`)
+        }
+    },
+
     // -----------------------------------
     //#region Sign Up Form
     // -----------------------------------
@@ -1014,6 +1482,7 @@ export default {
 
   async created() {
     window.addEventListener("beforeunload", this.onBeforeUnload)
+    window.addEventListener("message", this.handleMessage)
 
     // Get event details
     try {
@@ -1082,6 +1551,7 @@ export default {
 
   beforeDestroy() {
     window.removeEventListener("beforeunload", this.onBeforeUnload)
+    window.removeEventListener("message", this.handleMessage)
   },
 
   watch: {
