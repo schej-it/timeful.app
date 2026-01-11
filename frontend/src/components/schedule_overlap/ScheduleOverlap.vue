@@ -3468,7 +3468,8 @@ export default {
         this.$emit("setCurGuestId", newName)
         this.refreshEvent()
       } catch (err) {
-        this.showError(err.message || "Failed to update guest name")
+        const errorMessage = err.parsed?.error || err.message || "Failed to update guest name"
+        this.showError(errorMessage)
       }
     },
     refreshEvent() {
