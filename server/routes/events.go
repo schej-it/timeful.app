@@ -966,6 +966,7 @@ func deleteEventResponse(c *gin.Context) {
 // @Param eventId path string true "Event ID"
 // @Param payload body object{oldName=string,newName=string} true "Object containing info about the guest response to rename"
 // @Success 200
+// @Failure 400 {object} responses.Error "Guest name already exists"
 // @Router /events/{eventId}/rename-user [post]
 func renameUser(c *gin.Context) {
 	payload := struct {
@@ -980,6 +981,14 @@ func renameUser(c *gin.Context) {
 	if event == nil {
 		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
 		return
+	}
+
+	// Check if the new name already exists (only if it's different from the old name)
+	if payload.NewName != payload.OldName {
+		if db.GuestNameExists(event.Id.Hex(), payload.NewName) {
+			c.JSON(http.StatusBadRequest, responses.Error{Error: "A guest with this name already exists for this event"})
+			return
+		}
 	}
 
 	// Check if old name is a guest response
