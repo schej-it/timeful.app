@@ -9,8 +9,7 @@ export const signInGoogle = ({
   requestContactsPermission = false,
   loginHint = "",
 }) => {
-  const clientId =
-    "523323684219-jfakov2bgsleeb6den4ktpohq4lcnae2.apps.googleusercontent.com"
+  const clientId = process.env.VUE_APP_GOOGLE_CLIENT_ID
   const redirectUri = `${window.location.origin}/auth`
 
   let scope = "openid email profile "
@@ -50,7 +49,7 @@ export const signInOutlook = ({
   state = {},
   requestCalendarPermission = false,
 }) => {
-  const clientId = "d27c1c46-4be7-45c4-ad98-626b2fa3a527"
+  const clientId = process.env.VUE_APP_MICROSOFT_CLIENT_ID
   const tenant = "common"
   const redirectUri = encodeURIComponent(`${window.location.origin}/auth`)
 

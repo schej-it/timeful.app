@@ -1,0 +1,2 @@
+2026/02/25 20:48:20 /Users/razboy20/Documents/GitHub/timeful.app/server/logger/logger.go:16: [INFO] ######### Server Restarted #########
+2026/02/25 20:48:20 /Users/razboy20/Documents/GitHub/timeful.app/server/services/listmonk/listmonk.go:148: [ERROR] Post "/api/tx": unsupported protocol scheme ""

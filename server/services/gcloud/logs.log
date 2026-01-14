@@ -1,0 +1,5 @@
+2026/02/25 20:48:20 /Users/razboy20/Documents/GitHub/timeful.app/server/logger/logger.go:16: [INFO] ######### Server Restarted #########
+2026/02/25 20:48:20 /Users/razboy20/Documents/GitHub/timeful.app/server/services/gcloud/tasks.go:27: [INFO] SERVICE_ACCOUNT_KEY_PATH not set, Cloud Tasks disabled
+2026/02/25 20:48:20 /Users/razboy20/Documents/GitHub/timeful.app/server/services/listmonk/listmonk.go:87: [ERROR] Get "/api/subscribers?query=subscribers.email='schej.team@gmail.com'": unsupported protocol scheme ""
+2026/02/25 20:48:20 /Users/razboy20/Documents/GitHub/timeful.app/server/services/listmonk/listmonk.go:29: [ERROR] strconv.Atoi: parsing "": invalid syntax
+2026/02/25 20:48:20 /Users/razboy20/Documents/GitHub/timeful.app/server/services/gcloud/tasks.go:63: [ERROR] strconv.Atoi: parsing "": invalid syntax
