@@ -1125,6 +1125,19 @@ export default {
         }
       }
 
+      // Generate all valid displayed time ranges using ScheduleOverlap's existing logic
+      const validTimeRanges = []
+      if (this.scheduleOverlapComponent && typeof this.scheduleOverlapComponent.getAllValidTimeRanges === 'function') {
+        const ranges = this.scheduleOverlapComponent.getAllValidTimeRanges()
+        validTimeRanges.push(...ranges)
+      }
+      
+      console.log("=== Valid time ranges (ground truth) ===")
+      console.log("Total valid ranges:", validTimeRanges.length)
+      console.log("First 5 ranges:", validTimeRanges.slice(0, 5))
+      console.log("Last 5 ranges:", validTimeRanges.slice(-5))
+      console.log("=== End valid time ranges ===")
+
       // Validate each slot has required fields
       for (let i = 0; i < slots.length; i++) {
         const slot = slots[i]
@@ -1235,22 +1248,78 @@ export default {
           }
         }
 
-        if (!isTimeWithinEventRange(startTime, eventDates, eventStartTime, eventDuration)) {
-          sendPluginError(
-            requestId,
-            command,
-            `Start time at index ${i} falls outside the event's date/time range`
+        // Validate against validTimeRanges from calendar display
+        if (validTimeRanges.length > 0) {
+          // Check that startTime matches a valid range's startTime
+          const startTimeMatches = validTimeRanges.some(range => 
+            range.startTime.getTime() === startTime.getTime()
           )
-          return
-        }
+          
+          if (!startTimeMatches) {
+            sendPluginError(
+              requestId,
+              command,
+              `Start time at index ${i} (${startTime.toISOString()}) does not match any displayed time slot in the calendar`
+            )
+            return
+          }
+          
+          // Check that endTime matches a valid range's endTime
+          const endTimeMatches = validTimeRanges.some(range => 
+            range.endTime.getTime() === endTime.getTime()
+          )
+          
+          if (!endTimeMatches) {
+            sendPluginError(
+              requestId,
+              command,
+              `End time at index ${i} (${endTime.toISOString()}) does not match any displayed time slot in the calendar`
+            )
+            return
+          }
+          
+          // Also validate that all intermediate timestamps (at timeIncrement intervals) fall within valid ranges
+          const incrementMs = timeIncrement * 60 * 1000
+          let currentTime = new Date(startTime)
+          while (currentTime < endTime) {
+            const timestamp = new Date(currentTime)
+            
+            // Check if this timestamp falls within any valid range
+            const timestampInValidRange = validTimeRanges.some(range => 
+              timestamp.getTime() >= range.startTime.getTime() && 
+              timestamp.getTime() < range.endTime.getTime()
+            )
+            
+            if (!timestampInValidRange) {
+              sendPluginError(
+                requestId,
+                command,
+                `Time slot at index ${i} includes timestamp ${timestamp.toISOString()} that does not exist in the calendar display`
+              )
+              return
+            }
+            
+            currentTime = new Date(currentTime.getTime() + incrementMs)
+          }
+        } else {
+          // Fallback to existing validation if validTimeRanges is empty
+          if (!isTimeWithinEventRange(startTime, eventDates, eventStartTime, eventDuration)) {
+            sendPluginError(
+              requestId,
+              command,
+              `Start time at index ${i} falls outside the event's date/time range`
+            )
+            return
+          }
 
-        if (!isTimeWithinEventRange(endTime, eventDates, eventStartTime, eventDuration)) {
-          sendPluginError(
-            requestId,
-            command,
-            `End time at index ${i} falls outside the event's date/time range`
-          )
-          return
+          if (!isTimeWithinEventRange(endTime, eventDates, eventStartTime, eventDuration)) {
+            sendPluginError(
+              requestId,
+              command,
+              `End time at index ${i} falls outside the event's date/time range`
+            )
+            return
+          }
         }
 
         // Store converted slot

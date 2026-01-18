@@ -3356,11 +3356,21 @@ export default {
               if (!this.event.daysOnly) {
                 const date = this.getDateFromRowCol(row, col)
                 if (date) {
+                  // Debug logging for hover slot
+                  console.log("=== Hover slot info ===")
+                  console.log("Row:", row, "Col:", col)
+                  console.log("Date object (before timezone offset):", date.toISOString(), date.toString())
+                  
                   date.setTime(date.getTime() - this.timezoneOffset * 60 * 1000)
                   const startDate = dayjs(date).utc()
                   const endDate = dayjs(date)
                     .utc()
                     .add(this.timeslotDuration, "minutes")
+                  
+                  console.log("Timezone offset (minutes):", this.timezoneOffset)
+                  console.log("StartDate (UTC):", startDate.toISOString())
+                  console.log("EndDate (UTC):", endDate.toISOString())
+                  
                   const timeFormat =
                     this.timeType === timeTypes.HOUR12 ? "h:mm A" : "HH:mm"
                   let dateFormat
@@ -3369,11 +3379,17 @@ export default {
                   } else {
                     dateFormat = "ddd"
                   }
-                  this.tooltipContent = `${startDate.format(
+                  
+                  const formattedTimeRange = `${startDate.format(
                     dateFormat
                   )} ${startDate.format(timeFormat)} to ${endDate.format(
                     timeFormat
                   )}`
+                  
+                  console.log("Formatted time range:", formattedTimeRange)
+                  console.log("=== End hover slot info ===")
+                  
+                  this.tooltipContent = formattedTimeRange
                 }
               }
             }
@@ -3397,6 +3413,37 @@ export default {
 
       // End drag if mouse left time grid
       this.endDrag()
+    },
+    /** Returns all valid displayed time ranges using existing logic (for validation for set slots)
+     * Returns an array of objects with startTime (Date) and endTime (Date) for comparison
+     */
+    getAllValidTimeRanges() {
+      const validTimeRanges = []
+      
+      // Skip if event is daysOnly (no time slots)
+      if (this.event.daysOnly) {
+        return validTimeRanges
+      }
+      
+      // Iterate through all displayed days (columns)
+      for (let col = 0; col < this.days.length; col++) {
+        // Iterate through all displayed times (rows)
+        for (let row = 0; row < this.times.length; row++) {
+          // Use existing getDateFromRowCol method - returns Date object as-is
+          const startTime = this.getDateFromRowCol(row, col)
+          if (!startTime) continue // Skip invalid dates (e.g., excludeTimes days)
+          
+          // Calculate end time (startTime + timeslotDuration)
+          const endTime = new Date(startTime.getTime() + this.timeslotDuration * 60 * 1000)
+          
+          validTimeRanges.push({
+            startTime, // Date object as-is from getDateFromRowCol
+            endTime,   // Date object (startTime + timeslotDuration)
+          })
+        }
+      }
+      
+      return validTimeRanges
     },
     //#endregion
 
