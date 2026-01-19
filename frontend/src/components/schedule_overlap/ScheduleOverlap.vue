@@ -3366,10 +3366,7 @@ export default {
                   const endDate = dayjs(date)
                     .utc()
                     .add(this.timeslotDuration, "minutes")
-                  
-                  console.log("Timezone offset (minutes):", this.timezoneOffset)
-                  console.log("StartDate (UTC):", startDate.toISOString())
-                  console.log("EndDate (UTC):", endDate.toISOString())
+                    
                   
                   const timeFormat =
                     this.timeType === timeTypes.HOUR12 ? "h:mm A" : "HH:mm"
@@ -3415,35 +3412,51 @@ export default {
       this.endDrag()
     },
     /** Returns all valid displayed time ranges using existing logic (for validation for set slots)
-     * Returns an array of objects with startTime (Date) and endTime (Date) for comparison
+     * Returns an object that maps time slot Date objects to their row/col coordinates:
+     * - Map keys: time slot startTime Date objects (using getTime() as the key)
+     * - Map values: { row, col, startTime, endTime } objects
      */
     getAllValidTimeRanges() {
-      const validTimeRanges = []
+      const timeSlotToRowCol = new Map()
       
       // Skip if event is daysOnly (no time slots)
       if (this.event.daysOnly) {
-        return validTimeRanges
+        return timeSlotToRowCol
       }
       
       // Iterate through all displayed days (columns)
       for (let col = 0; col < this.days.length; col++) {
         // Iterate through all displayed times (rows)
         for (let row = 0; row < this.times.length; row++) {
-          // Use existing getDateFromRowCol method - returns Date object as-is
-          const startTime = this.getDateFromRowCol(row, col)
-          if (!startTime) continue // Skip invalid dates (e.g., excludeTimes days)
+          // Use existing getDateFromRowCol method - same as hover tooltip uses
+          const date = this.getDateFromRowCol(row, col)
+          if (!date) continue
+          date.setTime(date.getTime() - this.timezoneOffset * 60 * 1000)
+          const startDate = dayjs(date).utc()
+          const endDate = dayjs(date)
+            .utc()
+            .add(this.timeslotDuration, "minutes")
           
-          // Calculate end time (startTime + timeslotDuration)
-          const endTime = new Date(startTime.getTime() + this.timeslotDuration * 60 * 1000)
-          
-          validTimeRanges.push({
-            startTime, // Date object as-is from getDateFromRowCol
+          // // Convert dayjs objects to Date objects for return value
+          // console.log(startDate.toISOString(), "is the start date baklava")
+          // console.log(endDate.toISOString(), "is the end date")
+          // console.log("let's try this:", new Date(startDate.valueOf()))
+// Convert dayjs UTC objects to Date objects using UTC milliseconds directly
+          const startTime = new Date(startDate.valueOf())
+          const endTime = new Date(endDate.valueOf())
+          // console.log(startTime, "is the start time")
+          // console.log(endTime, "is the end time")
+          // Map the startTime (using getTime() as key) to its row/col coordinates
+          timeSlotToRowCol.set(startTime.getTime(), {
+            row,
+            col,
+            startTime, // Date object matching exactly what hover tooltip displays
             endTime,   // Date object (startTime + timeslotDuration)
           })
         }
       }
       
-      return validTimeRanges
+      return timeSlotToRowCol
     },
     //#endregion
 
