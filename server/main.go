@@ -105,7 +105,7 @@ func main() {
 	defer closeTasks()
 
 	// Session
-	store := cookie.NewStore([]byte("secret"))
+	store := cookie.NewStore([]byte(os.Getenv("SESSION_SECRET")))
 	router.Use(sessions.Sessions("session", store))
 
 	// Init routes
@@ -148,12 +148,28 @@ func main() {
 // Load .env variables
 func loadDotEnv() {
 	err := godotenv.Load(".env")
+	if err != nil {
+		logger.StdErr.Panicln("Error loading .env file")
+	}
 
 	// Load stripe key
 	stripe.Key = os.Getenv("STRIPE_API_KEY")
 
-	if err != nil {
-		logger.StdErr.Panicln("Error loading .env file")
+	// Validate session secret
+	validateSessionSecret()
+}
+
+// validateSessionSecret ensures SESSION_SECRET is set and meets security requirements
+func validateSessionSecret() {
+	secret := os.Getenv("SESSION_SECRET")
+
+	if secret == "" {
+		logger.StdErr.Panicln("SESSION_SECRET environment variable is required but not set")
+	}
+
+	// Minimum 32 characters for adequate security (256 bits)
+	if len(secret) < 32 {
+		logger.StdErr.Panicln("SESSION_SECRET must be at least 32 characters long")
 	}
 }
 
