@@ -1,7 +1,6 @@
 .DS_Store
 node_modules
 /dist
-/staging_dist
 
 # local env files
 .env

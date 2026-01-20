@@ -120,9 +120,6 @@ func main() {
 
 	// Get frontend path
 	frontendPath := "../frontend/dist"
-	if os.Getenv("NODE_ENV") == "staging" {
-		frontendPath = "../frontend/staging_dist"
-	}
 	err = filepath.WalkDir(frontendPath, func(path string, d fs.DirEntry, err error) error {
 		if !d.IsDir() && d.Name() != "index.html" {
 			split := splitPath(path)
