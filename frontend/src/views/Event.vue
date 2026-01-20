@@ -1220,14 +1220,21 @@ export default {
       const allAvailabilityTimestamps = []
       const allIfNeededTimestamps = []
       // Track timestamps and their statuses to detect conflicts
-      const timestampStatusMap = new Map() // Map<timestamp.getTime(), "available" | "if-needed">
+      const timestampStatusMap = new Map()
 
+      let isBrokenBounds = false;
       slots.forEach((slot, i) => {
-        // Parse user time strings in the event's configured timezone
         const userStartDate = dayjs.tz(slot.start, timezoneValue)
         const userEndDate = dayjs.tz(slot.end, timezoneValue)
         const userStartMs = userStartDate.valueOf()
         const userEndMs = userEndDate.valueOf()
+        
+        // Calculate the width of the user's interval
+        const intWidth = userEndMs - userStartMs
+        
+        // Calculate total covered width by summing all overlapping slot intersections
+        // Also generate timestamps in the same loop
+        let coveredWidth = 0
         
         timeSlotToRowCol.forEach((value, key) => {
           const slotStartMs = value.startTime.valueOf()
@@ -1238,6 +1245,9 @@ export default {
             // Calculate intersection of user interval and slot
             const intersectionStartMs = Math.max(userStartMs, slotStartMs)
             const intersectionEndMs = Math.min(userEndMs, slotEndMs)
+            
+            // Add this intersection's width to the total for bounds checking
+            coveredWidth += intersectionEndMs - intersectionStartMs
             
             // Generate timestamps at timeIncrement intervals
             const incrementMs = timeIncrement * 60 * 1000
@@ -1280,8 +1290,18 @@ export default {
             }
           }
         })
+        
+        if (coveredWidth < intWidth) { //less than because currently endpoint interval inclusive :0
+          sendPluginError(
+            requestId,
+            command,
+            `Time slot at index ${i} (${slot.start} to ${slot.end}) falls outside the event's date/time range.`
+          )
+          isBrokenBounds = true;
+        }
       })
 
+      if (isBrokenBounds) return;
 
       // Send new slots (overwrites existing availability)
       try {

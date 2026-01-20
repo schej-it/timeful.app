@@ -3357,9 +3357,6 @@ export default {
                 const date = this.getDateFromRowCol(row, col)
                 if (date) {
                   // Debug logging for hover slot
-                  console.log("=== Hover slot info ===")
-                  console.log("Row:", row, "Col:", col)
-                  console.log("Date object (before timezone offset):", date.toISOString(), date.toString())
                   
                   date.setTime(date.getTime() - this.timezoneOffset * 60 * 1000)
                   const startDate = dayjs(date).utc()
@@ -3383,8 +3380,6 @@ export default {
                     timeFormat
                   )}`
                   
-                  console.log("Formatted time range:", formattedTimeRange)
-                  console.log("=== End hover slot info ===")
                   
                   this.tooltipContent = formattedTimeRange
                 }
@@ -3443,8 +3438,7 @@ export default {
 // Convert dayjs UTC objects to Date objects using UTC milliseconds directly
           const startTime = new Date(startDate.valueOf())
           const endTime = new Date(endDate.valueOf())
-          // console.log(startTime, "is the start time")
-          // console.log(endTime, "is the end time")
+
           // Map the startTime (using getTime() as key) to its row/col coordinates
           timeSlotToRowCol.set(startTime.getTime(), {
             row,
