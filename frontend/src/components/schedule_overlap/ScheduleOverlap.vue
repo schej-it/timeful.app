@@ -3428,19 +3428,18 @@ export default {
       for (let col = 0; col < this.days.length; col++) {
         // Iterate through all displayed times (rows)
         for (let row = 0; row < this.times.length; row++) {
-          // Use existing getDateFromRowCol method - same as hover tooltip uses
+          // Use existing getDateFromRowCol method - returns UTC Date representing the local time
+          // For example, if event is 9 AM PST, this returns 2026-12-21T17:00:00.000Z (9 AM PST = 17:00 UTC)
           const date = this.getDateFromRowCol(row, col)
           if (!date) continue
-          date.setTime(date.getTime() - this.timezoneOffset * 60 * 1000)
+          
+          // getDateFromRowCol already returns the correct UTC Date representing the local time
+          // No need to adjust - use it directly and add timeslot duration
           const startDate = dayjs(date).utc()
           const endDate = dayjs(date)
             .utc()
             .add(this.timeslotDuration, "minutes")
           
-          // // Convert dayjs objects to Date objects for return value
-          // console.log(startDate.toISOString(), "is the start date baklava")
-          // console.log(endDate.toISOString(), "is the end date")
-          // console.log("let's try this:", new Date(startDate.valueOf()))
 // Convert dayjs UTC objects to Date objects using UTC milliseconds directly
           const startTime = new Date(startDate.valueOf())
           const endTime = new Date(endDate.valueOf())

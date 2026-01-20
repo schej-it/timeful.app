@@ -1223,8 +1223,11 @@ export default {
       const timestampStatusMap = new Map() // Map<timestamp.getTime(), "available" | "if-needed">
 
       slots.forEach((slot, i) => {
-        const userStartMs = new Date(slot.start).valueOf()
-        const userEndMs = new Date(slot.end).valueOf()
+        // Parse user time strings in the event's configured timezone
+        const userStartDate = dayjs.tz(slot.start, timezoneValue)
+        const userEndDate = dayjs.tz(slot.end, timezoneValue)
+        const userStartMs = userStartDate.valueOf()
+        const userEndMs = userEndDate.valueOf()
         
         timeSlotToRowCol.forEach((value, key) => {
           const slotStartMs = value.startTime.valueOf()
@@ -1240,7 +1243,9 @@ export default {
             const incrementMs = timeIncrement * 60 * 1000
             let currentTimeMs = intersectionStartMs
             
-            while (currentTimeMs < intersectionEndMs) {
+            // Generate timestamps for the intersection
+            // Use <= to include boundary timestamps when intersection is exactly at slot boundaries
+            while (currentTimeMs <= intersectionEndMs) {
               const timestamp = new Date(currentTimeMs)
               const timestampKey = timestamp.getTime()
               
@@ -1267,15 +1272,15 @@ export default {
               }
               
               currentTimeMs += incrementMs
+              
+              // Stop if we've exceeded the intersection end
+              if (currentTimeMs > intersectionEndMs) {
+                break
+              }
             }
           }
         })
       })
-
-
-
-      console.log(allAvailabilityTimestamps, "is the all availability timestamps")
-      console.log(allIfNeededTimestamps, "is the all if needed timestamps")
 
 
       // Send new slots (overwrites existing availability)
