@@ -1125,6 +1125,12 @@ export default {
         }
       }
 
+      // Generate all valid displayed time ranges using ScheduleOverlap's existing logic
+      // Returns a Map that maps time slot startTime.getTime() to { row, col, startTime, endTime }
+      const timeSlotToRowCol = (this.scheduleOverlapComponent && typeof this.scheduleOverlapComponent.getAllValidTimeRanges === 'function')
+        ? this.scheduleOverlapComponent.getAllValidTimeRanges()
+        : new Map()
+      
       // Validate each slot has required fields
       for (let i = 0; i < slots.length; i++) {
         const slot = slots[i]
@@ -1208,108 +1214,94 @@ export default {
           return
         }
 
-        // For DOW events, validate that dates match the hardcoded day dates
-        if (this.event.type === eventTypes.DOW) {
-          // Extract date part (YYYY-MM-DD) from startTime and endTime (in UTC)
-          const startDateStr = startTime.toISOString().split("T")[0]
-          const endDateStr = endTime.toISOString().split("T")[0]
-
-          // Check if start date matches one of the hardcoded DOW dates
-          if (!dayIndexToDayString.includes(startDateStr)) {
-            sendPluginError(
-              requestId,
-              command,
-              `Start date at index ${i} (${startDateStr}) is not a valid day-of-week date. Valid dates are: ${dayIndexToDayString.join(", ")}. Check docs for more info.`
-            )
-            return
-          }
-
-          // Check if end date matches one of the hardcoded DOW dates
-          if (!dayIndexToDayString.includes(endDateStr)) {
-            sendPluginError(
-              requestId,
-              command,
-              `End date at index ${i} (${endDateStr}) is not a valid day-of-week date. Valid dates are: ${dayIndexToDayString.join(", ")}. Check docs for more info.`
-            )
-            return
-          }
-        }
-
-        if (!isTimeWithinEventRange(startTime, eventDates, eventStartTime, eventDuration)) {
-          sendPluginError(
-            requestId,
-            command,
-            `Start time at index ${i} falls outside the event's date/time range`
-          )
-          return
-        }
-
-        if (!isTimeWithinEventRange(endTime, eventDates, eventStartTime, eventDuration)) {
-          sendPluginError(
-            requestId,
-            command,
-            `End time at index ${i} falls outside the event's date/time range`
-          )
-          return
-        }
-
-        // Store converted slot
-        convertedSlots.push({
-          startTime,
-          endTime,
-          status: slot.status,
-        })
       }
 
-      // Split slots into intervals based on timeIncrement
+            // Split slots into intervals based on timeIncrement
       const allAvailabilityTimestamps = []
       const allIfNeededTimestamps = []
       // Track timestamps and their statuses to detect conflicts
-      const timestampStatusMap = new Map() // Map<timestamp.getTime(), "available" | "if-needed">
+      const timestampStatusMap = new Map()
 
-      for (const convertedSlot of convertedSlots) {
-        const { startTime, endTime, status } = convertedSlot
-        const incrementMs = timeIncrement * 60 * 1000 // Convert minutes to milliseconds
-
-        // Generate timestamps at each interval
-        let currentTime = new Date(startTime)
-        while (currentTime < endTime) {
-          const timestamp = new Date(currentTime)
-
-          // Only include timestamps that fall within valid event dates and time range
-          // This prevents including dates between non-consecutive event dates (e.g., Jan 6th between Jan 5th and Jan 7th)
-          if (isTimeWithinEventRange(timestamp, eventDates, eventStartTime, eventDuration)) {
-            const timestampKey = timestamp.getTime()
+      let isBrokenBounds = false;
+      slots.forEach((slot, i) => {
+        const userStartDate = dayjs.tz(slot.start, timezoneValue)
+        const userEndDate = dayjs.tz(slot.end, timezoneValue)
+        const userStartMs = userStartDate.valueOf()
+        const userEndMs = userEndDate.valueOf()
+        
+        // Calculate the width of the user's interval
+        const intWidth = userEndMs - userStartMs
+        
+        // Calculate total covered width by summing all overlapping slot intersections
+        // Also generate timestamps in the same loop
+        let coveredWidth = 0
+        
+        timeSlotToRowCol.forEach((value, key) => {
+          const slotStartMs = value.startTime.valueOf()
+          const slotEndMs = value.endTime.valueOf()
+          
+          // Check for overlap: userStart <= slotEnd && userEnd >= slotStart
+          if (userStartMs <= slotEndMs && userEndMs >= slotStartMs) {
+            // Calculate intersection of user interval and slot
+            const intersectionStartMs = Math.max(userStartMs, slotStartMs)
+            const intersectionEndMs = Math.min(userEndMs, slotEndMs)
             
-            // Check if this timestamp already exists with a different status
-            if (timestampStatusMap.has(timestampKey)) {
-              const existingStatus = timestampStatusMap.get(timestampKey)
-              if (existingStatus !== status) {
-                sendPluginError(
-                  requestId,
-                  command,
-                  `Conflicting status for timestamp ${timestamp.toISOString()}: already marked as "${existingStatus}" but also marked as "${status}". Overlapping intervals must have the same status.`
-                )
-                return
+            // Add this intersection's width to the total for bounds checking
+            coveredWidth += intersectionEndMs - intersectionStartMs
+            
+            // Generate timestamps at timeIncrement intervals
+            const incrementMs = timeIncrement * 60 * 1000
+            let currentTimeMs = intersectionStartMs
+            
+            // Generate timestamps for the intersection
+            // Use <= to include boundary timestamps when intersection is exactly at slot boundaries
+            while (currentTimeMs < intersectionEndMs) {
+              const timestamp = new Date(currentTimeMs)
+              const timestampKey = timestamp.getTime()
+              
+              // Check for status conflicts
+              if (timestampStatusMap.has(timestampKey)) {
+                const existingStatus = timestampStatusMap.get(timestampKey)
+                if (existingStatus !== slot.status) {
+                  sendPluginError(
+                    requestId,
+                    command,
+                    `Time slot at index ${i} overlaps with another time slot with different status`
+                  )
+                  return
+                }
+              } else {
+                timestampStatusMap.set(timestampKey, slot.status)
               }
-              // Same status - allow duplicate, add to array
-            } else {
-              // First time seeing this timestamp - track its status
-              timestampStatusMap.set(timestampKey, status)
-            }
-            
-            // Add to appropriate array (duplicates with same status are allowed)
-            if (status === "available") {
-              allAvailabilityTimestamps.push(timestamp)
-            } else if (status === "if-needed") {
-              allIfNeededTimestamps.push(timestamp)
+              
+              // Add Date object (not milliseconds) to appropriate array
+              if (slot.status === "available") {
+                allAvailabilityTimestamps.push(timestamp)
+              } else {
+                allIfNeededTimestamps.push(timestamp)
+              }
+              
+              currentTimeMs += incrementMs
+              
+              // Stop if we've exceeded the intersection end
+              if (currentTimeMs > intersectionEndMs) {
+                break
+              }
             }
           }
-
-          // Move to next interval
-          currentTime = new Date(currentTime.getTime() + incrementMs)
+        })
+        
+        if (coveredWidth < intWidth) {
+          sendPluginError(
+            requestId,
+            command,
+            `Time slot at index ${i} (${slot.start} to ${slot.end}) falls outside the event's date/time range.`
+          )
+          isBrokenBounds = true;
         }
-      }
+      })
+
+      if (isBrokenBounds) return;
 
       // Send new slots (overwrites existing availability)
       try {
