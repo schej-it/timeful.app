@@ -1,73 +1,30 @@
 server {
     server_name schej.it; # managed by Certbot
-  
-        #frontend
-        location / {
-                if (-f /schej.it/maintenance_page/maintenance_true.html) {
-                        return 503;
-                }
 
-		#root  /schej.it/frontend/dist;
-		#try_files $uri $uri/ /index.html;
+    # --- Service Worker Killer ---
+    # Intercept requests for the old service worker file.
+    # The browser will fetch this when it checks for an update.
+    # It will get our new "killer" script, which unregisters itself and reloads.
+    location = /service-worker.js { # <-- USE THE FILENAME YOU FOUND HERE
+        # Ensure this new SW is not cached by intermediaries
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
 
-            proxy_pass http://localhost:3002;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection 'upgrade';
-            proxy_set_header Host $host;
-            proxy_cache_bypass $http_upgrade;
-        }
+        # Serve the "killer" JS file from its location on the server.
+        # Make sure the path /schej.it/kill-sw.js is correct.
+        alias /schej.it/kill-sw.js;
+    }
 
-location /blog/ {
-    proxy_pass https://schej-blog.vercel.app/blog/;
-
-    # Keep the correct Vercel domain in Host header
-    proxy_set_header Host schej-blog.vercel.app;
-
-    # Tell Next.js what the *original host* was
-    proxy_set_header X-Forwarded-Host schej.it;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-
-    proxy_redirect off;
-}
-
-	location /api {
-            proxy_pass http://localhost:3002/api;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection 'upgrade';
-            proxy_set_header Host $host;
-            proxy_cache_bypass $http_upgrade;
-	}
-
-  	location /sockets/ {
-	    proxy_pass http://localhost:3002;
-	    proxy_http_version 1.1;
-	    proxy_set_header Upgrade $http_upgrade;
-	    proxy_set_header Connection 'upgrade';
-	    proxy_set_header Host $host;
-	    proxy_cache_bypass $http_upgrade;
-  	}
-
-	error_page 503 /maintenance_true.html;
-	location = /maintenance_true.html {
-		root /schej.it/maintenance_page;
-		internal;
-	}
-
-	location /maintenance_images {
-		alias /schej.it/maintenance_page/maintenance_images;
-	}
-
+    location / {
+        return 301 https://timeful.app$request_uri;
+    }
 
     listen 443 ssl; # managed by Certbot
     ssl_certificate /etc/letsencrypt/live/schej.it/fullchain.pem; # managed by Certbot
     ssl_certificate_key /etc/letsencrypt/live/schej.it/privkey.pem; # managed by Certbot
     include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
-
-
 }
 server {
     if ($host = schej.it) {
