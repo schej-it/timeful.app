@@ -152,7 +152,7 @@
                 <v-btn
                   v-if="event.startOnMonday ? weekOffset != 1 : weekOffset != 0"
                   :icon="isPhone"
-
+                  text
                   class="tw-mr-1 tw-text-very-dark-gray sm:tw-mr-2.5"
                   @click="resetWeekOffset"
                 >
