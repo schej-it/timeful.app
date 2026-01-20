@@ -139,7 +139,11 @@ func main() {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	// Run server
-	router.Run(":3002")
+	if os.Getenv("NODE_ENV") == "staging" {
+		router.Run(":3003")
+	} else {
+		router.Run(":3002")
+	}
 }
 
 // Load .env variables
