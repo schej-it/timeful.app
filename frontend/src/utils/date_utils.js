@@ -1,4 +1,4 @@
-import { eventTypes, timeTypes } from "@/constants"
+import { eventTypes, timeTypes, dayIndexToDayString } from "@/constants"
 import { get } from "./fetch_utils"
 import { isBetween } from "./general_utils"
 import dayjs from "dayjs"
@@ -823,4 +823,188 @@ export const doesDstExist = (date) => {
 
 export const isDstObserved = (date) => {
   return date.getTimezoneOffset() < stdTimezoneOffset(date)
+}
+
+/** Validates a DOW (Days of Week) event payload
+ * @param {Array} slots - Array of slot objects with { start, end, status }
+ * @returns {Object|null} - Returns { valid: false, error: "error message" } if invalid, null if valid
+ */
+export const validateDOWPayload = (slots) => {
+  if (!Array.isArray(slots)) {
+    return { valid: false, error: "Slots must be an array" }
+  }
+
+  // Empty array is valid (clears all availability)
+  if (slots.length === 0) {
+    return null
+  }
+
+  // Create a Set of valid DOW dates for fast lookup
+  const validDOWDates = new Set(dayIndexToDayString)
+
+  // Time format regex: YYYY-MM-DDTHH:mm:ss
+  const timeFormatRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/
+
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i]
+
+    // Validate slot has required fields
+    if (!slot.start || !slot.end) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} is missing required 'start' or 'end' field`,
+      }
+    }
+
+    if (typeof slot.start !== "string" || typeof slot.end !== "string") {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid 'start' or 'end' type (must be strings)`,
+      }
+    }
+
+    // Validate time format
+    if (!timeFormatRegex.test(slot.start) || !timeFormatRegex.test(slot.end)) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid time format. Expected format: YYYY-MM-DDTHH:mm:ss (e.g., "2018-06-18T09:00:00")`,
+      }
+    }
+
+    // Parse the date/time strings
+    const startMatch = slot.start.match(timeFormatRegex)
+    const endMatch = slot.end.match(timeFormatRegex)
+
+    if (!startMatch || !endMatch) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid time format`,
+      }
+    }
+
+    // Extract date and time components
+    const startYear = parseInt(startMatch[1], 10)
+    const startMonth = parseInt(startMatch[2], 10)
+    const startDay = parseInt(startMatch[3], 10)
+    const startHour = parseInt(startMatch[4], 10)
+    const startMinute = parseInt(startMatch[5], 10)
+    const startSecond = parseInt(startMatch[6], 10)
+
+    const endYear = parseInt(endMatch[1], 10)
+    const endMonth = parseInt(endMatch[2], 10)
+    const endDay = parseInt(endMatch[3], 10)
+    const endHour = parseInt(endMatch[4], 10)
+    const endMinute = parseInt(endMatch[5], 10)
+    const endSecond = parseInt(endMatch[6], 10)
+
+    // Validate time components are within valid ranges
+    if (
+      startHour < 0 ||
+      startHour > 23 ||
+      startMinute < 0 ||
+      startMinute > 59 ||
+      startSecond < 0 ||
+      startSecond > 59
+    ) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid start time: hours must be 0-23, minutes and seconds must be 0-59`,
+      }
+    }
+
+    // Validate end time: hours 0-24, but if hour is 24, minutes and seconds must be 00:00
+    if (endHour < 0 || endHour > 24) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid end time: hours must be 0-24`,
+      }
+    }
+    
+    if (endHour === 24) {
+      if (endMinute !== 0 || endSecond !== 0) {
+        return {
+          valid: false,
+          error: `Slot at index ${i} has invalid end time: if hour is 24, minutes and seconds must be 00:00`,
+        }
+      }
+    } else {
+      if (
+        endMinute < 0 ||
+        endMinute > 59 ||
+        endSecond < 0 ||
+        endSecond > 59
+      ) {
+        return {
+          valid: false,
+          error: `Slot at index ${i} has invalid end time: minutes and seconds must be 0-59`,
+        }
+      }
+    }
+
+    // Format date part (YYYY-MM-DD) for validation
+    const startDateStr = `${startYear}-${String(startMonth).padStart(2, "0")}-${String(startDay).padStart(2, "0")}`
+    const endDateStr = `${endYear}-${String(endMonth).padStart(2, "0")}-${String(endDay).padStart(2, "0")}`
+
+    // Validate dates belong to hardcoded DOW dates
+    if (!validDOWDates.has(startDateStr)) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid start date: ${startDateStr}. Must be one of the hardcoded DOW dates: ${Array.from(validDOWDates).join(", ")}`,
+      }
+    }
+
+    if (!validDOWDates.has(endDateStr)) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid end date: ${endDateStr}. Must be one of the hardcoded DOW dates: ${Array.from(validDOWDates).join(", ")}`,
+      }
+    }
+
+    // Validate that start and end are on the same day
+    if (startDateStr !== endDateStr) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has start and end times on different days (${startDateStr} vs ${endDateStr}). Start and end must be on the same day of the week.`,
+      }
+    }
+
+    // Validate that start time is before end time
+    // Handle 24:00:00 as end of day (convert to next day 00:00:00 for comparison)
+    let endTimeString = slot.end
+    if (endHour === 24) {
+      // Convert 24:00:00 to next day 00:00:00 for proper comparison
+      const endDate = dayjs(slot.end.substring(0, 10)) // Get just the date part
+      endTimeString = endDate.add(1, 'day').format('YYYY-MM-DDTHH:mm:ss')
+    }
+    
+    const startDateTime = dayjs(slot.start)
+    const endDateTime = dayjs(endTimeString)
+
+    if (!startDateTime.isValid() || !endDateTime.isValid()) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid date/time values that cannot be parsed`,
+      }
+    }
+
+    if (endDateTime.isBefore(startDateTime) || endDateTime.isSame(startDateTime)) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has end time that is before or equal to start time`,
+      }
+    }
+
+    // Validate status field if present
+    if (slot.status !== undefined) {
+      if (slot.status !== "available" && slot.status !== "if-needed") {
+        return {
+          valid: false,
+          error: `Slot at index ${i} has invalid status '${slot.status}'. Must be 'available' or 'if-needed'`,
+        }
+      }
+    }
+  }
+
+  // All validations passed
+  return null
 }

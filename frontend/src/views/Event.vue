@@ -401,6 +401,7 @@ import {
   convertToUTC,
   isTimeWithinEventRange,
   convertUTCSlotsToLocalISO,
+  validateDOWPayload,
 } from "@/utils"
 import { isBetween } from "@/utils/general_utils"
 import { validateEmail } from "@/utils"
@@ -1096,16 +1097,32 @@ export default {
       }
 
       // Get slots from payload - new format: [{ start, end, status }]
-      const slots = event.data?.payload?.slots
+      let slots = event.data?.payload?.slots
 
       if (!Array.isArray(slots)) {
         sendPluginError(requestId, command, "Slots must be an array")
         return
       }
 
-      if (slots.length === 0) {
-        sendPluginError(requestId, command, "Slots array cannot be empty")
-        return
+      // Validate DOW payload if this is a DOW event (only if slots are provided)
+      if (this.event.type === eventTypes.DOW && slots.length > 0) {
+        const validationResult = validateDOWPayload(slots)
+        if (validationResult) {
+          sendPluginError(requestId, command, validationResult.error)
+          return
+        }
+      }
+
+      if (this.event.type === eventTypes.DOW && slots.length > 0) { //need to offset for DOW cuz dow dates are in DST
+        slots = slots.map((slot) => {
+          const startDate = dayjs(slot.start)
+          const endDate = dayjs(slot.end)
+          return {
+            ...slot,
+            start: startDate.add(1, 'hour').format('YYYY-MM-DDTHH:mm:ss'),
+            end: endDate.add(1, 'hour').format('YYYY-MM-DDTHH:mm:ss'),
+          }
+        })
       }
 
       // Determine timezone for conversion
