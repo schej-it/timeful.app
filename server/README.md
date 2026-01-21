@@ -1,15 +1,20 @@
 # Schej.it API
 
-API docs (available when the server is running): http://localhost:3002/swagger/index.html
+Swagger (when running): http://localhost:3002/swagger/index.html
 
-## Debug
+## Quick start
+- Prereqs: MongoDB, Go 1.20+
+- Env: copy `.env.example` to `.env` and fill required keys; optional integrations can stay blank for local dev
+- Live reload: `go install github.com/cosmtrek/air@v1.43.0`
+- Run: `air` (or `go run main.go`)
+- Mongo URI: `mongodb://localhost:27017/schej-it` (or `mongodb://mongo:27017/schej-it` in docker-compose)
 
-- Install mongodb
-- Install `air`, a package that facilitates live reload for Go apps
-  - `go install github.com/cosmtrek/air@latest`
-- To run the server, simply run `air` in the root directory of the server
+## Seeding (optional)
+- `cd scripts/seed_demo && MONGODB_URI=mongodb://localhost:27017 go run main.go` (creates demo user + event)
 
-## Make a backup of the mongodb database
+## Migrations
+- Scripts in `scripts/*` are one-off data migrations. Only run them if you need that specific migration on existing data.
 
-- Run `mongodump --host="localhost:27017" --db=schej-it` to make a backup
-- Run `mongorestore --uri mongodb://localhost:27017 ./dump --drop` to restore
+## Backups
+- Backup: `mongodump --host="localhost:27017" --db=schej-it`
+- Restore: `mongorestore --uri mongodb://localhost:27017 ./dump --drop`
