@@ -1437,11 +1437,32 @@ export default {
               }
             }
 
+            // For DOW events: subtract 1 hour if we're NOT in DST (to reverse the adjustment made when setting)
+            let availability = convertUTCSlotsToLocalISO(response.availability)
+            let ifNeeded = convertUTCSlotsToLocalISO(response.ifNeeded)
+            
+            if (this.event.type === eventTypes.DOW) {
+              const currentDate = new Date()
+              const currentlyInDST = doesDstExist(currentDate) && isDstObserved(currentDate)
+              
+              if (!currentlyInDST) {
+                // Subtract 1 hour from each slot to reverse the adjustment made when setting
+                availability = availability.map((slot) => {
+                  const date = dayjs(slot)
+                  return date.subtract(1, 'hour').format('YYYY-MM-DDTHH:mm:ss')
+                })
+                ifNeeded = ifNeeded.map((slot) => {
+                  const date = dayjs(slot)
+                  return date.subtract(1, 'hour').format('YYYY-MM-DDTHH:mm:ss')
+                })
+              }
+            }
+            
             allSlots[userId] = {
               name,
               email,
-              availability: convertUTCSlotsToLocalISO(response.availability),
-              ifNeeded: convertUTCSlotsToLocalISO(response.ifNeeded),
+              availability,
+              ifNeeded,
             }
           }
 
