@@ -827,9 +827,10 @@ export const isDstObserved = (date) => {
 
 /** Validates a DOW (Days of Week) event payload
  * @param {Array} slots - Array of slot objects with { start, end, status }
+ * @param {boolean} skipSameDayCheck - If true, skip the check that start and end must be on the same day (useful when timezone conversion may cause day boundary crossing)
  * @returns {Object|null} - Returns { valid: false, error: "error message" } if invalid, null if valid
  */
-export const validateDOWPayload = (slots) => {
+export const validateDOWPayload = (slots, skipSameDayCheck = false) => {
   if (!Array.isArray(slots)) {
     return { valid: false, error: "Slots must be an array" }
   }
@@ -961,7 +962,8 @@ export const validateDOWPayload = (slots) => {
     }
 
     // Validate that start and end are on the same day
-    if (startDateStr !== endDateStr) {
+    // Skip this check if skipSameDayCheck is true (e.g., when timezone conversion may cause day boundary crossing)
+    if (!skipSameDayCheck && startDateStr !== endDateStr) {
       return {
         valid: false,
         error: `Slot at index ${i} has start and end times on different days (${startDateStr} vs ${endDateStr}). Start and end must be on the same day of the week.`,

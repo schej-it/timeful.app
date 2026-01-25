@@ -416,7 +416,7 @@ import NewDialog from "@/components/NewDialog.vue"
 import ScheduleOverlap from "@/components/schedule_overlap/ScheduleOverlap.vue"
 import GuestDialog from "@/components/GuestDialog.vue"
 import SignUpForSlotDialog from "@/components/sign_up_form/SignUpForSlotDialog.vue"
-import { errors, authTypes, eventTypes, calendarTypes, dayIndexToDayString } from "@/constants"
+import { errors, authTypes, eventTypes, calendarTypes, dayIndexToDayString, allTimezones } from "@/constants"
 import isWebview from "is-ua-webview"
 import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
 import MarkAvailabilityDialog from "@/components/calendar_permission_dialogs/MarkAvailabilityDialog.vue"
@@ -1010,6 +1010,28 @@ export default {
       }
     },
 
+    // TEMPORARY: Intercept plugin responses for debugging
+    interceptPluginResponses(event) {
+      // Only intercept messages from our own window (plugin responses)
+      if (event.data?.type === "FILL_CALENDAR_EVENT_RESPONSE") {
+        const { command, requestId, ok, error, payload } = event.data
+        
+        if (ok) {
+          console.log(`[PLUGIN RESPONSE - SUCCESS] ${command}`, {
+            requestId,
+            payload,
+            timestamp: new Date().toISOString()
+          })
+        } else {
+          console.error(`[PLUGIN RESPONSE - ERROR] ${command}`, {
+            requestId,
+            error: error?.message || error,
+            timestamp: new Date().toISOString()
+          })
+        }
+      }
+    },
+
     async setSlots(event) { 
       const requestId = event.data?.requestId
       const command = "set-slots"
@@ -1105,8 +1127,10 @@ export default {
       }
 
       // Validate DOW payload if this is a DOW event (only if slots are provided)
+      // Check if timezone is provided - if so, skip same-day check since timezone conversion may cause day boundary crossing
+      const hasTimezone = !!(event.data?.payload?.timezone)
       if (this.event.type === eventTypes.DOW && slots.length > 0) {
-        const validationResult = validateDOWPayload(slots)
+        const validationResult = validateDOWPayload(slots, hasTimezone)
         if (validationResult) {
           sendPluginError(requestId, command, validationResult.error)
           return
@@ -1130,7 +1154,19 @@ export default {
       let timezoneValue = null
       if (event.data?.payload?.timezone) {
         // User provided timezone in the message (should be IANA timezone name)
-        timezoneValue = event.data.payload.timezone
+        const providedTimezone = event.data.payload.timezone
+        
+        // Validate that the provided timezone exists in allTimezones
+        if (!(providedTimezone in allTimezones)) {
+          sendPluginError(
+            requestId,
+            command,
+            `Invalid timezone: "${providedTimezone}". Please provide a valid IANA timezone name from the supported timezones list.`
+          )
+          return
+        }
+        
+        timezoneValue = providedTimezone
       } else{
         // Use timezone from localStorage (should have IANA timezone name in .value)
         try {
@@ -1513,6 +1549,8 @@ export default {
   async created() {
     window.addEventListener("beforeunload", this.onBeforeUnload)
     window.addEventListener("message", this.handleMessage)
+    // for dev:
+    // window.addEventListener("message", this.interceptPluginResponses)
 
     // Get event details
     try {
@@ -1582,6 +1620,8 @@ export default {
   beforeDestroy() {
     window.removeEventListener("beforeunload", this.onBeforeUnload)
     window.removeEventListener("message", this.handleMessage)
+    // for dev:
+    // window.removeEventListener("message", this.interceptPluginResponses)
   },
 
   watch: {
