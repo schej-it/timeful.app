@@ -400,8 +400,6 @@ import {
   getCurrentTimezone,
   convertToUTC,
   isTimeWithinEventRange,
-  convertUTCSlotsToLocalISO,
-  convertUTCSlotsToUTCISO,
   validateDOWPayload,
 } from "@/utils"
 import { isBetween } from "@/utils/general_utils"
@@ -1530,7 +1528,7 @@ export default {
     window.addEventListener("beforeunload", this.onBeforeUnload)
     window.addEventListener("message", this.handleMessage)
     // for dev:
-    window.addEventListener("message", this.interceptPluginResponses)
+    // window.addEventListener("message", this.interceptPluginResponses)
 
     // Get event details
     try {
@@ -1601,7 +1599,7 @@ export default {
     window.removeEventListener("beforeunload", this.onBeforeUnload)
     window.removeEventListener("message", this.handleMessage)
     // for dev:
-    window.removeEventListener("message", this.interceptPluginResponses)
+    // window.removeEventListener("message", this.interceptPluginResponses)
   },
 
   watch: {
