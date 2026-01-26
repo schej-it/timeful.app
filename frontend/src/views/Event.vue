@@ -401,6 +401,7 @@ import {
   convertToUTC,
   isTimeWithinEventRange,
   convertUTCSlotsToLocalISO,
+  convertUTCSlotsToUTCISO,
   validateDOWPayload,
 } from "@/utils"
 import { isBetween } from "@/utils/general_utils"
@@ -1473,32 +1474,11 @@ export default {
               }
             }
 
-            // For DOW events: subtract 1 hour if we're NOT in DST (to reverse the adjustment made when setting)
-            let availability = convertUTCSlotsToLocalISO(response.availability)
-            let ifNeeded = convertUTCSlotsToLocalISO(response.ifNeeded)
-            
-            if (this.event.type === eventTypes.DOW) {
-              const currentDate = new Date()
-              const currentlyInDST = doesDstExist(currentDate) && isDstObserved(currentDate)
-              
-              if (!currentlyInDST) {
-                // Subtract 1 hour from each slot to reverse the adjustment made when setting
-                availability = availability.map((slot) => {
-                  const date = dayjs(slot)
-                  return date.subtract(1, 'hour').format('YYYY-MM-DDTHH:mm:ss')
-                })
-                ifNeeded = ifNeeded.map((slot) => {
-                  const date = dayjs(slot)
-                  return date.subtract(1, 'hour').format('YYYY-MM-DDTHH:mm:ss')
-                })
-              }
-            }
-            
             allSlots[userId] = {
               name,
               email,
-              availability,
-              ifNeeded,
+              "availability": response.availability,
+              "ifNeeded": response.ifNeeded,
             }
           }
 
@@ -1550,7 +1530,7 @@ export default {
     window.addEventListener("beforeunload", this.onBeforeUnload)
     window.addEventListener("message", this.handleMessage)
     // for dev:
-    // window.addEventListener("message", this.interceptPluginResponses)
+    window.addEventListener("message", this.interceptPluginResponses)
 
     // Get event details
     try {
@@ -1621,7 +1601,7 @@ export default {
     window.removeEventListener("beforeunload", this.onBeforeUnload)
     window.removeEventListener("message", this.handleMessage)
     // for dev:
-    // window.removeEventListener("message", this.interceptPluginResponses)
+    window.removeEventListener("message", this.interceptPluginResponses)
   },
 
   watch: {
