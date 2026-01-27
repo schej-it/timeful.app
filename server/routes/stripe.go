@@ -20,6 +20,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"schej.it/server/db"
 	"schej.it/server/logger"
+	"schej.it/server/middleware"
+	"schej.it/server/models"
 	"schej.it/server/slackbot"
 	"schej.it/server/utils"
 )
@@ -27,11 +29,11 @@ import (
 func InitStripe(router *gin.RouterGroup) {
 	stripeRouter := router.Group("/stripe")
 
-	stripeRouter.POST("/create-checkout-session", createCheckoutSession)
+	stripeRouter.POST("/create-checkout-session", middleware.AuthRequired(), createCheckoutSession)
 	stripeRouter.GET("/price", getPrice)
-	stripeRouter.POST("/fulfill-checkout", fulfillCheckout)
+	stripeRouter.POST("/fulfill-checkout", middleware.AuthRequired(), fulfillCheckout)
 	stripeRouter.POST("/webhook", stripeWebhook)
-	stripeRouter.GET("/billing-portal", getBillingPortalUrl)
+	stripeRouter.GET("/billing-portal", middleware.AuthRequired(), getBillingPortalUrl)
 }
 
 type CheckoutSessionPayload struct {
@@ -42,6 +44,10 @@ type CheckoutSessionPayload struct {
 }
 
 func createCheckoutSession(c *gin.Context) {
+	// Get authenticated user
+	userInterface, _ := c.Get("authUser")
+	user := userInterface.(*models.User)
+
 	var payload CheckoutSessionPayload
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload", "details": err.Error()})
@@ -79,7 +85,7 @@ func createCheckoutSession(c *gin.Context) {
 	cancelURLStr := cancelURL.String()
 
 	params := &stripe.CheckoutSessionParams{
-		ClientReferenceID: stripe.String(payload.UserID),
+		ClientReferenceID: stripe.String(user.Id.Hex()),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			{
 				// Provide the exact Price ID (for example, price_1234) of the product you want to sell
@@ -189,13 +195,31 @@ type FulfillCheckoutPayload struct {
 }
 
 func fulfillCheckout(c *gin.Context) {
+	// Get authenticated user
+	userInterface, _ := c.Get("authUser")
+	user := userInterface.(*models.User)
+
 	var payload FulfillCheckoutPayload
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload", "details": err.Error()})
 		return
 	}
 
+	// Verify the session belongs to this user
+	params := &stripe.CheckoutSessionParams{}
+	cs, err := session.Get(payload.SessionID, params)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid session ID"})
+		return
+	}
+
+	if cs.ClientReferenceID != user.Id.Hex() {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Session does not belong to this user"})
+		return
+	}
+
 	_fulfillCheckout(payload.SessionID)
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
 func _fulfillCheckout(sessionId string) {
@@ -352,6 +376,10 @@ func stripeWebhook(c *gin.Context) {
 }
 
 func getBillingPortalUrl(c *gin.Context) {
+	// Get authenticated user
+	userInterface, _ := c.Get("authUser")
+	user := userInterface.(*models.User)
+
 	// The URL to which the user is redirected when they're done managing
 	// billing in the portal.
 	returnURL := c.Query("returnUrl")
@@ -359,16 +387,20 @@ func getBillingPortalUrl(c *gin.Context) {
 		returnURL = utils.GetBaseUrl() // Fallback to base URL if not provided
 	}
 
-	customerID := c.Query("customerId")
-	if customerID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Customer ID is required"})
+	// Use the authenticated user's Stripe customer ID, not client-supplied
+	if user.StripeCustomerId == nil || *user.StripeCustomerId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User has no Stripe customer ID"})
 		return
 	}
 
 	params := &stripe.BillingPortalSessionParams{
-		Customer:  stripe.String(customerID),
+		Customer:  stripe.String(*user.StripeCustomerId),
 		ReturnURL: stripe.String(returnURL),
 	}
-	ps, _ := portalsession.New(params)
+	ps, err := portalsession.New(params)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create billing portal session"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"url": ps.URL})
 }
