@@ -85,7 +85,7 @@ func createCheckoutSession(c *gin.Context) {
 	cancelURLStr := cancelURL.String()
 
 	params := &stripe.CheckoutSessionParams{
-		ClientReferenceID: stripe.String(user.Id.Hex()), // Use authenticated user, not client-supplied
+		ClientReferenceID: stripe.String(user.Id.Hex()),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			{
 				// Provide the exact Price ID (for example, price_1234) of the product you want to sell
