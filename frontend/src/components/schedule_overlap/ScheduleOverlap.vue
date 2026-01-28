@@ -3359,11 +3359,15 @@ export default {
               if (!this.event.daysOnly) {
                 const date = this.getDateFromRowCol(row, col)
                 if (date) {
+                  // Debug logging for hover slot
+                  
                   date.setTime(date.getTime() - this.timezoneOffset * 60 * 1000)
                   const startDate = dayjs(date).utc()
                   const endDate = dayjs(date)
                     .utc()
                     .add(this.timeslotDuration, "minutes")
+                    
+                  
                   const timeFormat =
                     this.timeType === timeTypes.HOUR12 ? "h:mm A" : "HH:mm"
                   let dateFormat
@@ -3372,11 +3376,15 @@ export default {
                   } else {
                     dateFormat = "ddd"
                   }
-                  this.tooltipContent = `${startDate.format(
+                  
+                  const formattedTimeRange = `${startDate.format(
                     dateFormat
                   )} ${startDate.format(timeFormat)} to ${endDate.format(
                     timeFormat
                   )}`
+                  
+                  
+                  this.tooltipContent = formattedTimeRange
                 }
               }
             }
@@ -3400,6 +3408,51 @@ export default {
 
       // End drag if mouse left time grid
       this.endDrag()
+    },
+    /** Returns all valid displayed time ranges using existing logic (for validation for set slots)
+     * Returns an object that maps time slot Date objects to their row/col coordinates:
+     * - Map keys: time slot startTime Date objects (using getTime() as the key)
+     * - Map values: { row, col, startTime, endTime } objects
+     */
+    getAllValidTimeRanges() {
+      const timeSlotToRowCol = new Map()
+      
+      // Skip if event is daysOnly (no time slots)
+      if (this.event.daysOnly) {
+        return timeSlotToRowCol
+      }
+      
+      // Iterate through all displayed days (columns)
+      for (let col = 0; col < this.days.length; col++) {
+        // Iterate through all displayed times (rows)
+        for (let row = 0; row < this.times.length; row++) {
+          // Use existing getDateFromRowCol method - returns UTC Date representing the local time
+          // For example, if event is 9 AM PST, this returns 2026-12-21T17:00:00.000Z (9 AM PST = 17:00 UTC)
+          const date = this.getDateFromRowCol(row, col)
+          if (!date) continue
+          
+          // getDateFromRowCol already returns the correct UTC Date representing the local time
+          // No need to adjust - use it directly and add timeslot duration
+          const startDate = dayjs(date).utc()
+          const endDate = dayjs(date)
+            .utc()
+            .add(this.timeslotDuration, "minutes")
+          
+// Convert dayjs UTC objects to Date objects using UTC milliseconds directly
+          const startTime = new Date(startDate.valueOf())
+          const endTime = new Date(endDate.valueOf())
+
+          // Map the startTime (using getTime() as key) to its row/col coordinates
+          timeSlotToRowCol.set(startTime.getTime(), {
+            row,
+            col,
+            startTime, // Date object matching exactly what hover tooltip displays
+            endTime,   // Date object (startTime + timeslotDuration)
+          })
+        }
+      }
+      
+      return timeSlotToRowCol
     },
     //#endregion
 

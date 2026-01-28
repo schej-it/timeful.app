@@ -40,6 +40,12 @@ Built with [Vue 2](https://github.com/vuejs/vue), [MongoDB](https://github.com/m
 - Export availability as CSV
 - Only show responses to event creator
 
+## Plugin API
+
+Read these docs to design your own browser plugins to get + set availability on Timeful events programmatically!
+
+[Plugin API Docs](./PLUGIN_API_README.md)
+
 ## Self-hosting
 
 Coming soon...
