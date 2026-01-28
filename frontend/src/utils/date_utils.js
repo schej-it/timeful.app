@@ -433,39 +433,27 @@ export const isTimeWithinEventRange = (dateTime, eventDates, eventStartTime, eve
   )
 }
 
-/** Converts an array of UTC date slots to ISO string format in the user's local timezone
+/** Converts an array of UTC date slots to ISO string format in a specified timezone
  * @param {Array<Date|string|number>} slots - Array of UTC date slots (can be Date objects, ISO strings, or timestamps)
- * @returns {string[]} - Array of ISO string representations (without timezone, in user's local timezone)
+ * @param {string|null} timezoneValue - IANA timezone name (e.g., "America/Los_Angeles"). If not provided, returns UTC (YYYY-MM-DDTHH:mm:ssZ)
+ * @returns {string[]} - Array of ISO string representations (without timezone suffix in specified timezone, or with Z when UTC)
  */
-export const convertUTCSlotsToLocalISO = (slots) => {
+export const convertUTCSlotsToLocalISO = (slots, timezoneValue = null) => {
   if (!slots || !Array.isArray(slots)) return []
-  
-  // Determine timezone: localStorage if available, otherwise browser's local timezone
-  let timezoneValue = null
-  if (typeof localStorage !== "undefined" && localStorage["timezone"]) {
-    try {
-      const timezoneObj = JSON.parse(localStorage["timezone"])
-      timezoneValue = timezoneObj.value // IANA timezone name (e.g., "America/Los_Angeles")
-    } catch (err) {
-      // If parsing fails, fall back to browser timezone
-      timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
-    }
-  } else {
-    // Fallback to browser's local timezone (returns IANA timezone name)
-    timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
-  }
   
   return slots.map((slot) => {
     try {
-      // Parse the UTC timestamp and convert to the user's timezone
-      const dateInTimezone = dayjs(slot).tz(timezoneValue)
-      if (!dateInTimezone.isValid()) {
+      const date = dayjs.utc(slot)
+      if (!date.isValid()) {
         throw new Error(`Invalid UTC timestamp: ${slot}`)
       }
-      // Return ISO string without timezone (format: "2026-01-03T09:00:00")
-      return dateInTimezone.format("YYYY-MM-DDTHH:mm:ss")
+      // If no timezone provided, return UTC (with Z)
+      if (!timezoneValue) {
+        return date.format("YYYY-MM-DDTHH:mm:ss[Z]")
+      }
+      // Convert to specified timezone and return without timezone suffix
+      return date.tz(timezoneValue).format("YYYY-MM-DDTHH:mm:ss")
     } catch (err) {
-      // Fallback to UTC ISO string if conversion fails
       if (slot instanceof Date) {
         return slot.toISOString()
       }
@@ -823,6 +811,17 @@ export const doesDstExist = (date) => {
 
 export const isDstObserved = (date) => {
   return date.getTimezoneOffset() < stdTimezoneOffset(date)
+}
+
+/** Returns true if the given IANA timezone observes daylight saving time
+ * @param {string} ianaTimezone - IANA timezone name (e.g., "America/Los_Angeles")
+ * @returns {boolean}
+ */
+export const timezoneObservesDST = (ianaTimezone) => {
+  if (!ianaTimezone) return false
+  const jan = dayjs.tz("2024-01-15 12:00", ianaTimezone)
+  const jul = dayjs.tz("2024-07-15 12:00", ianaTimezone)
+  return jan.utcOffset() !== jul.utcOffset()
 }
 
 /** Validates a DOW (Days of Week) event payload

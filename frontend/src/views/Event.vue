@@ -400,7 +400,9 @@ import {
   getCurrentTimezone,
   convertToUTC,
   isTimeWithinEventRange,
+  convertUTCSlotsToLocalISO,
   validateDOWPayload,
+  timezoneObservesDST,
 } from "@/utils"
 import { isBetween } from "@/utils/general_utils"
 import { validateEmail } from "@/utils"
@@ -1016,11 +1018,16 @@ export default {
         const { command, requestId, ok, error, payload } = event.data
         
         if (ok) {
-          console.log(`[PLUGIN RESPONSE - SUCCESS] ${command}`, {
-            requestId,
-            payload,
-            timestamp: new Date().toISOString()
-          })
+          // Flatten get-slots output so slots are easy to scan in the console
+          if (command === "get-slots" && payload?.slots) {
+            console.log(`[PLUGIN RESPONSE - SUCCESS] ${command} | timeIncrement: ${payload.timeIncrement} | timezone: ${payload.timezone ?? "—"}`)
+            Object.entries(payload.slots).forEach(([userId, u]) => {
+              const label = [u.name, u.email].filter(Boolean).join(" ") || userId
+              console.log(`  ${label}:`, { availability: u.availability, ifNeeded: u.ifNeeded })
+            })
+          } else {
+            console.log(`[PLUGIN RESPONSE - SUCCESS] ${command}`, { requestId, payload, timestamp: new Date().toISOString() })
+          }
         } else {
           console.error(`[PLUGIN RESPONSE - ERROR] ${command}`, {
             requestId,
@@ -1399,6 +1406,28 @@ export default {
           return
         }
 
+        // Resolve timezone: same logic as set-slots (payload → localStorage → browser)
+        let timezoneValue = null
+        if (event.data?.payload?.timezone) {
+          const providedTimezone = event.data.payload.timezone
+          if (!(providedTimezone in allTimezones)) {
+            sendPluginError(
+              requestId,
+              command,
+              `Invalid timezone: "${providedTimezone}". Please provide a valid IANA timezone name from the supported timezones list.`
+            )
+            return
+          }
+          timezoneValue = providedTimezone
+        } else {
+          try {
+            const timezoneObj = JSON.parse(localStorage["timezone"])
+            timezoneValue = timezoneObj.value
+          } catch (err) {
+            timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
+          }
+        }
+
         let sanitizedId = this.eventId.replaceAll(".", "")
 
         // Calculate timeMin and timeMax using the same logic as fetchResponses in ScheduleOverlap
@@ -1472,18 +1501,33 @@ export default {
               }
             }
 
+            // Convert UTC to requested timezone. For DOW events, if timezone observes DST, subtract 1 hour
+            // (hardcoded DOW dates are in DST, so conversion in DST timezones is 1 hour ahead)
+            let availability = convertUTCSlotsToLocalISO(response.availability, timezoneValue)
+            let ifNeeded = convertUTCSlotsToLocalISO(response.ifNeeded, timezoneValue)
+            if (this.event.type === eventTypes.DOW && timezoneObservesDST(timezoneValue)) {
+              const subtractOneHour = (s) =>
+                dayjs.tz(s, timezoneValue).subtract(1, "hour").format("YYYY-MM-DDTHH:mm:ss")
+              availability = availability.map(subtractOneHour)
+              ifNeeded = ifNeeded.map(subtractOneHour)
+            }
+
             allSlots[userId] = {
               name,
               email,
-              "availability": response.availability,
-              "ifNeeded": response.ifNeeded,
+              availability,
+              ifNeeded,
             }
           }
 
           // Get time increment (default to 15 if not set)
           const timeIncrement = this.event.timeIncrement ?? 15
 
-          sendPluginSuccess(requestId, command, { slots: allSlots, timeIncrement })
+          sendPluginSuccess(requestId, command, {
+            slots: allSlots,
+            timeIncrement,
+            timezone: timezoneValue,
+          })
         } catch (err) {
           sendPluginError(requestId, command, `Failed to fetch responses: ${err.message || "Unknown error"}`)
         }
