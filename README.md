@@ -42,7 +42,7 @@ Built with [Vue 2](https://github.com/vuejs/vue), [MongoDB](https://github.com/m
 
 ## Plugin API
 
-Read these docs to design your own browser plugins to fill out + retrieve availability from Timeful events programmatically!
+Read these docs to design your own browser plugins to get + set availability on Timeful events programmatically!
 
 [Plugin API Docs](./PLUGIN_API_README.md)
 
