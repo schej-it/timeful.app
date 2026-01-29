@@ -105,7 +105,7 @@ func main() {
 	defer closeTasks()
 
 	// Session
-	store := cookie.NewStore([]byte("secret"))
+	store := cookie.NewStore([]byte(os.Getenv("SESSION_SECRET")))
 	router.Use(sessions.Sessions("session", store))
 
 	// Init routes
@@ -113,13 +113,14 @@ func main() {
 	routes.InitAuth(apiRouter)
 	routes.InitUser(apiRouter)
 	routes.InitEvents(apiRouter)
-	routes.InitUsers(apiRouter)
 	routes.InitAnalytics(apiRouter)
 	routes.InitStripe(apiRouter)
 	routes.InitFolders(apiRouter)
 	slackbot.InitSlackbot(apiRouter)
 
-	err = filepath.WalkDir("../frontend/dist", func(path string, d fs.DirEntry, err error) error {
+	// Get frontend path
+	frontendPath := "../frontend/dist"
+	err = filepath.WalkDir(frontendPath, func(path string, d fs.DirEntry, err error) error {
 		if !d.IsDir() && d.Name() != "index.html" {
 			split := splitPath(path)
 			newPath := filepath.Join(split[3:]...)
@@ -131,25 +132,45 @@ func main() {
 		log.Fatalf("failed to walk directories: %s", err)
 	}
 
-	router.LoadHTMLFiles("../frontend/dist/index.html")
+	router.LoadHTMLFiles(filepath.Join(frontendPath, "index.html"))
 	router.NoRoute(noRouteHandler())
 
 	// Init swagger documentation
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	// Run server
-	router.Run(":3002")
+	if os.Getenv("NODE_ENV") == "staging" {
+		router.Run(":3003")
+	} else {
+		router.Run(":3002")
+	}
 }
 
 // Load .env variables
 func loadDotEnv() {
 	err := godotenv.Load(".env")
+	if err != nil {
+		logger.StdErr.Panicln("Error loading .env file")
+	}
 
 	// Load stripe key
 	stripe.Key = os.Getenv("STRIPE_API_KEY")
 
-	if err != nil {
-		logger.StdErr.Panicln("Error loading .env file")
+	// Validate session secret
+	validateSessionSecret()
+}
+
+// validateSessionSecret ensures SESSION_SECRET is set and meets security requirements
+func validateSessionSecret() {
+	secret := os.Getenv("SESSION_SECRET")
+
+	if secret == "" {
+		logger.StdErr.Panicln("SESSION_SECRET environment variable is required but not set")
+	}
+
+	// Minimum 32 characters for adequate security (256 bits)
+	if len(secret) < 32 {
+		logger.StdErr.Panicln("SESSION_SECRET must be at least 32 characters long")
 	}
 }
 

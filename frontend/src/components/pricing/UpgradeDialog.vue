@@ -5,7 +5,17 @@
     width="600"
     content-class="tw-m-0"
   >
-    <v-card class="tw-rounded-lg tw-p-4 tw-pb-2 sm:tw-p-8 sm:tw-pb-4">
+    <v-card
+      class="tw-relative tw-rounded-lg tw-p-4 tw-pb-2 sm:tw-p-8 sm:tw-pb-4"
+    >
+      <v-btn
+        absolute
+        @click="$emit('input', false)"
+        icon
+        class="tw-right-0 tw-top-0 tw-mr-2 tw-mt-2"
+      >
+        <v-icon>mdi-close</v-icon>
+      </v-btn>
       <div class="tw-mb-4 tw-flex tw-flex-col tw-items-start tw-gap-4">
         <h2 class="tw-text-xl tw-font-medium">
           Upgrade to
@@ -263,7 +273,9 @@
           </v-btn>
         </div>
       </div>
-      <div class="tw-flex tw-w-full tw-items-center tw-justify-center tw-pb-4">
+      <div
+        class="tw-flex tw-h-8 tw-w-full tw-items-center tw-justify-start tw-pb-4"
+      >
         <v-checkbox
           id="student-checkbox"
           v-model="isStudent"
@@ -291,7 +303,6 @@
           I already donated :)
         </div>
       </div>-->
-      <v-btn text block @click="$emit('input', false)"> Cancel </v-btn>
     </v-card>
 
     <AlreadyDonatedDialog v-model="showDonatedDialog" />

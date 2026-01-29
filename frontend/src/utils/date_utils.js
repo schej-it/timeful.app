@@ -1,4 +1,4 @@
-import { eventTypes, timeTypes } from "@/constants"
+import { eventTypes, timeTypes, dayIndexToDayString } from "@/constants"
 import { get } from "./fetch_utils"
 import { isBetween } from "./general_utils"
 import dayjs from "dayjs"
@@ -433,39 +433,27 @@ export const isTimeWithinEventRange = (dateTime, eventDates, eventStartTime, eve
   )
 }
 
-/** Converts an array of UTC date slots to ISO string format in the user's local timezone
+/** Converts an array of UTC date slots to ISO string format in a specified timezone
  * @param {Array<Date|string|number>} slots - Array of UTC date slots (can be Date objects, ISO strings, or timestamps)
- * @returns {string[]} - Array of ISO string representations (without timezone, in user's local timezone)
+ * @param {string|null} timezoneValue - IANA timezone name (e.g., "America/Los_Angeles"). If not provided, returns UTC (YYYY-MM-DDTHH:mm:ssZ)
+ * @returns {string[]} - Array of ISO string representations (without timezone suffix in specified timezone, or with Z when UTC)
  */
-export const convertUTCSlotsToLocalISO = (slots) => {
+export const convertUTCSlotsToLocalISO = (slots, timezoneValue = null) => {
   if (!slots || !Array.isArray(slots)) return []
-  
-  // Determine timezone: localStorage if available, otherwise browser's local timezone
-  let timezoneValue = null
-  if (typeof localStorage !== "undefined" && localStorage["timezone"]) {
-    try {
-      const timezoneObj = JSON.parse(localStorage["timezone"])
-      timezoneValue = timezoneObj.value // IANA timezone name (e.g., "America/Los_Angeles")
-    } catch (err) {
-      // If parsing fails, fall back to browser timezone
-      timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
-    }
-  } else {
-    // Fallback to browser's local timezone (returns IANA timezone name)
-    timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
-  }
   
   return slots.map((slot) => {
     try {
-      // Parse the UTC timestamp and convert to the user's timezone
-      const dateInTimezone = dayjs(slot).tz(timezoneValue)
-      if (!dateInTimezone.isValid()) {
+      const date = dayjs.utc(slot)
+      if (!date.isValid()) {
         throw new Error(`Invalid UTC timestamp: ${slot}`)
       }
-      // Return ISO string without timezone (format: "2026-01-03T09:00:00")
-      return dateInTimezone.format("YYYY-MM-DDTHH:mm:ss")
+      // If no timezone provided, return UTC (with Z)
+      if (!timezoneValue) {
+        return date.format("YYYY-MM-DDTHH:mm:ss[Z]")
+      }
+      // Convert to specified timezone and return without timezone suffix
+      return date.tz(timezoneValue).format("YYYY-MM-DDTHH:mm:ss")
     } catch (err) {
-      // Fallback to UTC ISO string if conversion fails
       if (slot instanceof Date) {
         return slot.toISOString()
       }
@@ -823,4 +811,201 @@ export const doesDstExist = (date) => {
 
 export const isDstObserved = (date) => {
   return date.getTimezoneOffset() < stdTimezoneOffset(date)
+}
+
+/** Returns true if the given IANA timezone observes daylight saving time
+ * @param {string} ianaTimezone - IANA timezone name (e.g., "America/Los_Angeles")
+ * @returns {boolean}
+ */
+export const timezoneObservesDST = (ianaTimezone) => {
+  if (!ianaTimezone) return false
+  const jan = dayjs.tz("2024-01-15 12:00", ianaTimezone)
+  const jul = dayjs.tz("2024-07-15 12:00", ianaTimezone)
+  return jan.utcOffset() !== jul.utcOffset()
+}
+
+/** Validates a DOW (Days of Week) event payload
+ * @param {Array} slots - Array of slot objects with { start, end, status }
+ * @param {boolean} skipSameDayCheck - If true, skip the check that start and end must be on the same day (useful when timezone conversion may cause day boundary crossing)
+ * @returns {Object|null} - Returns { valid: false, error: "error message" } if invalid, null if valid
+ */
+export const validateDOWPayload = (slots, skipSameDayCheck = false) => {
+  if (!Array.isArray(slots)) {
+    return { valid: false, error: "Slots must be an array" }
+  }
+
+  // Empty array is valid (clears all availability)
+  if (slots.length === 0) {
+    return null
+  }
+
+  // Create a Set of valid DOW dates for fast lookup
+  const validDOWDates = new Set(dayIndexToDayString)
+
+  // Time format regex: YYYY-MM-DDTHH:mm:ss
+  const timeFormatRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/
+
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i]
+
+    // Validate slot has required fields
+    if (!slot.start || !slot.end) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} is missing required 'start' or 'end' field`,
+      }
+    }
+
+    if (typeof slot.start !== "string" || typeof slot.end !== "string") {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid 'start' or 'end' type (must be strings)`,
+      }
+    }
+
+    // Validate time format
+    if (!timeFormatRegex.test(slot.start) || !timeFormatRegex.test(slot.end)) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid time format. Expected format: YYYY-MM-DDTHH:mm:ss (e.g., "2018-06-18T09:00:00")`,
+      }
+    }
+
+    // Parse the date/time strings
+    const startMatch = slot.start.match(timeFormatRegex)
+    const endMatch = slot.end.match(timeFormatRegex)
+
+    if (!startMatch || !endMatch) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid time format`,
+      }
+    }
+
+    // Extract date and time components
+    const startYear = parseInt(startMatch[1], 10)
+    const startMonth = parseInt(startMatch[2], 10)
+    const startDay = parseInt(startMatch[3], 10)
+    const startHour = parseInt(startMatch[4], 10)
+    const startMinute = parseInt(startMatch[5], 10)
+    const startSecond = parseInt(startMatch[6], 10)
+
+    const endYear = parseInt(endMatch[1], 10)
+    const endMonth = parseInt(endMatch[2], 10)
+    const endDay = parseInt(endMatch[3], 10)
+    const endHour = parseInt(endMatch[4], 10)
+    const endMinute = parseInt(endMatch[5], 10)
+    const endSecond = parseInt(endMatch[6], 10)
+
+    // Validate time components are within valid ranges
+    if (
+      startHour < 0 ||
+      startHour > 23 ||
+      startMinute < 0 ||
+      startMinute > 59 ||
+      startSecond < 0 ||
+      startSecond > 59
+    ) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid start time: hours must be 0-23, minutes and seconds must be 0-59`,
+      }
+    }
+
+    // Validate end time: hours 0-24, but if hour is 24, minutes and seconds must be 00:00
+    if (endHour < 0 || endHour > 24) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid end time: hours must be 0-24`,
+      }
+    }
+    
+    if (endHour === 24) {
+      if (endMinute !== 0 || endSecond !== 0) {
+        return {
+          valid: false,
+          error: `Slot at index ${i} has invalid end time: if hour is 24, minutes and seconds must be 00:00`,
+        }
+      }
+    } else {
+      if (
+        endMinute < 0 ||
+        endMinute > 59 ||
+        endSecond < 0 ||
+        endSecond > 59
+      ) {
+        return {
+          valid: false,
+          error: `Slot at index ${i} has invalid end time: minutes and seconds must be 0-59`,
+        }
+      }
+    }
+
+    // Format date part (YYYY-MM-DD) for validation
+    const startDateStr = `${startYear}-${String(startMonth).padStart(2, "0")}-${String(startDay).padStart(2, "0")}`
+    const endDateStr = `${endYear}-${String(endMonth).padStart(2, "0")}-${String(endDay).padStart(2, "0")}`
+
+    // Validate dates belong to hardcoded DOW dates
+    if (!validDOWDates.has(startDateStr)) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid start date: ${startDateStr}. Must be one of the hardcoded DOW dates: ${Array.from(validDOWDates).join(", ")}`,
+      }
+    }
+
+    if (!validDOWDates.has(endDateStr)) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid end date: ${endDateStr}. Must be one of the hardcoded DOW dates: ${Array.from(validDOWDates).join(", ")}`,
+      }
+    }
+
+    // Validate that start and end are on the same day
+    // Skip this check if skipSameDayCheck is true (e.g., when timezone conversion may cause day boundary crossing)
+    if (!skipSameDayCheck && startDateStr !== endDateStr) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has start and end times on different days (${startDateStr} vs ${endDateStr}). Start and end must be on the same day of the week.`,
+      }
+    }
+
+    // Validate that start time is before end time
+    // Handle 24:00:00 as end of day (convert to next day 00:00:00 for comparison)
+    let endTimeString = slot.end
+    if (endHour === 24) {
+      // Convert 24:00:00 to next day 00:00:00 for proper comparison
+      const endDate = dayjs(slot.end.substring(0, 10)) // Get just the date part
+      endTimeString = endDate.add(1, 'day').format('YYYY-MM-DDTHH:mm:ss')
+    }
+    
+    const startDateTime = dayjs(slot.start)
+    const endDateTime = dayjs(endTimeString)
+
+    if (!startDateTime.isValid() || !endDateTime.isValid()) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has invalid date/time values that cannot be parsed`,
+      }
+    }
+
+    if (endDateTime.isBefore(startDateTime) || endDateTime.isSame(startDateTime)) {
+      return {
+        valid: false,
+        error: `Slot at index ${i} has end time that is before or equal to start time`,
+      }
+    }
+
+    // Validate status field if present
+    if (slot.status !== undefined) {
+      if (slot.status !== "available" && slot.status !== "if-needed") {
+        return {
+          valid: false,
+          error: `Slot at index ${i} has invalid status '${slot.status}'. Must be 'available' or 'if-needed'`,
+        }
+      }
+    }
+  }
+
+  // All validations passed
+  return null
 }

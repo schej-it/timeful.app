@@ -401,6 +401,8 @@ import {
   convertToUTC,
   isTimeWithinEventRange,
   convertUTCSlotsToLocalISO,
+  validateDOWPayload,
+  timezoneObservesDST,
 } from "@/utils"
 import { isBetween } from "@/utils/general_utils"
 import { validateEmail } from "@/utils"
@@ -415,7 +417,7 @@ import NewDialog from "@/components/NewDialog.vue"
 import ScheduleOverlap from "@/components/schedule_overlap/ScheduleOverlap.vue"
 import GuestDialog from "@/components/GuestDialog.vue"
 import SignUpForSlotDialog from "@/components/sign_up_form/SignUpForSlotDialog.vue"
-import { errors, authTypes, eventTypes, calendarTypes, dayIndexToDayString } from "@/constants"
+import { errors, authTypes, eventTypes, calendarTypes, dayIndexToDayString, allTimezones } from "@/constants"
 import isWebview from "is-ua-webview"
 import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
 import MarkAvailabilityDialog from "@/components/calendar_permission_dialogs/MarkAvailabilityDialog.vue"
@@ -1045,6 +1047,33 @@ export default {
       }
     },
 
+    // TEMPORARY: Intercept plugin responses for debugging
+    interceptPluginResponses(event) {
+      // Only intercept messages from our own window (plugin responses)
+      if (event.data?.type === "FILL_CALENDAR_EVENT_RESPONSE") {
+        const { command, requestId, ok, error, payload } = event.data
+        
+        if (ok) {
+          // Flatten get-slots output so slots are easy to scan in the console
+          if (command === "get-slots" && payload?.slots) {
+            console.log(`[PLUGIN RESPONSE - SUCCESS] ${command} | timeIncrement: ${payload.timeIncrement} | timezone: ${payload.timezone ?? "—"}`)
+            Object.entries(payload.slots).forEach(([userId, u]) => {
+              const label = [u.name, u.email].filter(Boolean).join(" ") || userId
+              console.log(`  ${label}:`, { availability: u.availability, ifNeeded: u.ifNeeded })
+            })
+          } else {
+            console.log(`[PLUGIN RESPONSE - SUCCESS] ${command}`, { requestId, payload, timestamp: new Date().toISOString() })
+          }
+        } else {
+          console.error(`[PLUGIN RESPONSE - ERROR] ${command}`, {
+            requestId,
+            error: error?.message || error,
+            timestamp: new Date().toISOString()
+          })
+        }
+      }
+    },
+
     async setSlots(event) { 
       console.log("setSlots is being called ***")
       console.log(this.event.ownerId, "is the owner id")
@@ -1157,16 +1186,34 @@ export default {
       }
 
       // Get slots from payload - new format: [{ start, end, status }]
-      const slots = event.data?.payload?.slots
+      let slots = event.data?.payload?.slots
 
       if (!Array.isArray(slots)) {
         sendPluginError(requestId, command, "Slots must be an array")
         return
       }
 
-      if (slots.length === 0) {
-        sendPluginError(requestId, command, "Slots array cannot be empty")
-        return
+      // Validate DOW payload if this is a DOW event (only if slots are provided)
+      // Check if timezone is provided - if so, skip same-day check since timezone conversion may cause day boundary crossing
+      const hasTimezone = !!(event.data?.payload?.timezone)
+      if (this.event.type === eventTypes.DOW && slots.length > 0) {
+        const validationResult = validateDOWPayload(slots, hasTimezone)
+        if (validationResult) {
+          sendPluginError(requestId, command, validationResult.error)
+          return
+        }
+      }
+
+      if (this.event.type === eventTypes.DOW && slots.length > 0) { //need to offset for DOW cuz dow dates are in DST
+        slots = slots.map((slot) => {
+          const startDate = dayjs(slot.start)
+          const endDate = dayjs(slot.end)
+          return {
+            ...slot,
+            start: startDate.add(1, 'hour').format('YYYY-MM-DDTHH:mm:ss'),
+            end: endDate.add(1, 'hour').format('YYYY-MM-DDTHH:mm:ss'),
+          }
+        })
       }
 
       // Determine timezone for conversion
@@ -1174,7 +1221,19 @@ export default {
       let timezoneValue = null
       if (event.data?.payload?.timezone) {
         // User provided timezone in the message (should be IANA timezone name)
-        timezoneValue = event.data.payload.timezone
+        const providedTimezone = event.data.payload.timezone
+        
+        // Validate that the provided timezone exists in allTimezones
+        if (!(providedTimezone in allTimezones)) {
+          sendPluginError(
+            requestId,
+            command,
+            `Invalid timezone: "${providedTimezone}". Please provide a valid IANA timezone name from the supported timezones list.`
+          )
+          return
+        }
+        
+        timezoneValue = providedTimezone
       } else{
         // Use timezone from localStorage (should have IANA timezone name in .value)
         try {
@@ -1186,6 +1245,12 @@ export default {
         }
       }
 
+      // Generate all valid displayed time ranges using ScheduleOverlap's existing logic
+      // Returns a Map that maps time slot startTime.getTime() to { row, col, startTime, endTime }
+      const timeSlotToRowCol = (this.scheduleOverlapComponent && typeof this.scheduleOverlapComponent.getAllValidTimeRanges === 'function')
+        ? this.scheduleOverlapComponent.getAllValidTimeRanges()
+        : new Map()
+      
       // Validate each slot has required fields
       for (let i = 0; i < slots.length; i++) {
         const slot = slots[i]
@@ -1269,108 +1334,94 @@ export default {
           return
         }
 
-        // For DOW events, validate that dates match the hardcoded day dates
-        if (this.event.type === eventTypes.DOW) {
-          // Extract date part (YYYY-MM-DD) from startTime and endTime (in UTC)
-          const startDateStr = startTime.toISOString().split("T")[0]
-          const endDateStr = endTime.toISOString().split("T")[0]
-
-          // Check if start date matches one of the hardcoded DOW dates
-          if (!dayIndexToDayString.includes(startDateStr)) {
-            sendPluginError(
-              requestId,
-              command,
-              `Start date at index ${i} (${startDateStr}) is not a valid day-of-week date. Valid dates are: ${dayIndexToDayString.join(", ")}. Check docs for more info.`
-            )
-            return
-          }
-
-          // Check if end date matches one of the hardcoded DOW dates
-          if (!dayIndexToDayString.includes(endDateStr)) {
-            sendPluginError(
-              requestId,
-              command,
-              `End date at index ${i} (${endDateStr}) is not a valid day-of-week date. Valid dates are: ${dayIndexToDayString.join(", ")}. Check docs for more info.`
-            )
-            return
-          }
-        }
-
-        if (!isTimeWithinEventRange(startTime, eventDates, eventStartTime, eventDuration)) {
-          sendPluginError(
-            requestId,
-            command,
-            `Start time at index ${i} falls outside the event's date/time range`
-          )
-          return
-        }
-
-        if (!isTimeWithinEventRange(endTime, eventDates, eventStartTime, eventDuration)) {
-          sendPluginError(
-            requestId,
-            command,
-            `End time at index ${i} falls outside the event's date/time range`
-          )
-          return
-        }
-
-        // Store converted slot
-        convertedSlots.push({
-          startTime,
-          endTime,
-          status: slot.status,
-        })
       }
 
-      // Split slots into intervals based on timeIncrement
+            // Split slots into intervals based on timeIncrement
       const allAvailabilityTimestamps = []
       const allIfNeededTimestamps = []
       // Track timestamps and their statuses to detect conflicts
-      const timestampStatusMap = new Map() // Map<timestamp.getTime(), "available" | "if-needed">
+      const timestampStatusMap = new Map()
 
-      for (const convertedSlot of convertedSlots) {
-        const { startTime, endTime, status } = convertedSlot
-        const incrementMs = timeIncrement * 60 * 1000 // Convert minutes to milliseconds
-
-        // Generate timestamps at each interval
-        let currentTime = new Date(startTime)
-        while (currentTime < endTime) {
-          const timestamp = new Date(currentTime)
-
-          // Only include timestamps that fall within valid event dates and time range
-          // This prevents including dates between non-consecutive event dates (e.g., Jan 6th between Jan 5th and Jan 7th)
-          if (isTimeWithinEventRange(timestamp, eventDates, eventStartTime, eventDuration)) {
-            const timestampKey = timestamp.getTime()
+      let isBrokenBounds = false;
+      slots.forEach((slot, i) => {
+        const userStartDate = dayjs.tz(slot.start, timezoneValue)
+        const userEndDate = dayjs.tz(slot.end, timezoneValue)
+        const userStartMs = userStartDate.valueOf()
+        const userEndMs = userEndDate.valueOf()
+        
+        // Calculate the width of the user's interval
+        const intWidth = userEndMs - userStartMs
+        
+        // Calculate total covered width by summing all overlapping slot intersections
+        // Also generate timestamps in the same loop
+        let coveredWidth = 0
+        
+        timeSlotToRowCol.forEach((value, key) => {
+          const slotStartMs = value.startTime.valueOf()
+          const slotEndMs = value.endTime.valueOf()
+          
+          // Check for overlap: userStart <= slotEnd && userEnd >= slotStart
+          if (userStartMs <= slotEndMs && userEndMs >= slotStartMs) {
+            // Calculate intersection of user interval and slot
+            const intersectionStartMs = Math.max(userStartMs, slotStartMs)
+            const intersectionEndMs = Math.min(userEndMs, slotEndMs)
             
-            // Check if this timestamp already exists with a different status
-            if (timestampStatusMap.has(timestampKey)) {
-              const existingStatus = timestampStatusMap.get(timestampKey)
-              if (existingStatus !== status) {
-                sendPluginError(
-                  requestId,
-                  command,
-                  `Conflicting status for timestamp ${timestamp.toISOString()}: already marked as "${existingStatus}" but also marked as "${status}". Overlapping intervals must have the same status.`
-                )
-                return
+            // Add this intersection's width to the total for bounds checking
+            coveredWidth += intersectionEndMs - intersectionStartMs
+            
+            // Generate timestamps at timeIncrement intervals
+            const incrementMs = timeIncrement * 60 * 1000
+            let currentTimeMs = intersectionStartMs
+            
+            // Generate timestamps for the intersection
+            // Use <= to include boundary timestamps when intersection is exactly at slot boundaries
+            while (currentTimeMs < intersectionEndMs) {
+              const timestamp = new Date(currentTimeMs)
+              const timestampKey = timestamp.getTime()
+              
+              // Check for status conflicts
+              if (timestampStatusMap.has(timestampKey)) {
+                const existingStatus = timestampStatusMap.get(timestampKey)
+                if (existingStatus !== slot.status) {
+                  sendPluginError(
+                    requestId,
+                    command,
+                    `Time slot at index ${i} overlaps with another time slot with different status`
+                  )
+                  return
+                }
+              } else {
+                timestampStatusMap.set(timestampKey, slot.status)
               }
-              // Same status - allow duplicate, add to array
-            } else {
-              // First time seeing this timestamp - track its status
-              timestampStatusMap.set(timestampKey, status)
-            }
-            
-            // Add to appropriate array (duplicates with same status are allowed)
-            if (status === "available") {
-              allAvailabilityTimestamps.push(timestamp)
-            } else if (status === "if-needed") {
-              allIfNeededTimestamps.push(timestamp)
+              
+              // Add Date object (not milliseconds) to appropriate array
+              if (slot.status === "available") {
+                allAvailabilityTimestamps.push(timestamp)
+              } else {
+                allIfNeededTimestamps.push(timestamp)
+              }
+              
+              currentTimeMs += incrementMs
+              
+              // Stop if we've exceeded the intersection end
+              if (currentTimeMs > intersectionEndMs) {
+                break
+              }
             }
           }
-
-          // Move to next interval
-          currentTime = new Date(currentTime.getTime() + incrementMs)
+        })
+        
+        if (coveredWidth < intWidth) {
+          sendPluginError(
+            requestId,
+            command,
+            `Time slot at index ${i} (${slot.start} to ${slot.end}) falls outside the event's date/time range.`
+          )
+          isBrokenBounds = true;
         }
-      }
+      })
+
+      if (isBrokenBounds) return;
 
       // Send new slots (overwrites existing availability)
       try {
@@ -1414,6 +1465,28 @@ export default {
         if (!this.event) {
           sendPluginError(requestId, command, "Event not loaded yet")
           return
+        }
+
+        // Resolve timezone: same logic as set-slots (payload → localStorage → browser)
+        let timezoneValue = null
+        if (event.data?.payload?.timezone) {
+          const providedTimezone = event.data.payload.timezone
+          if (!(providedTimezone in allTimezones)) {
+            sendPluginError(
+              requestId,
+              command,
+              `Invalid timezone: "${providedTimezone}". Please provide a valid IANA timezone name from the supported timezones list.`
+            )
+            return
+          }
+          timezoneValue = providedTimezone
+        } else {
+          try {
+            const timezoneObj = JSON.parse(localStorage["timezone"])
+            timezoneValue = timezoneObj.value
+          } catch (err) {
+            timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
+          }
         }
 
         let sanitizedId = this.eventId.replaceAll(".", "")
@@ -1511,18 +1584,33 @@ export default {
               }
             }
 
+            // Convert UTC to requested timezone. For DOW events, if timezone observes DST, subtract 1 hour
+            // (hardcoded DOW dates are in DST, so conversion in DST timezones is 1 hour ahead)
+            let availability = convertUTCSlotsToLocalISO(response.availability, timezoneValue)
+            let ifNeeded = convertUTCSlotsToLocalISO(response.ifNeeded, timezoneValue)
+            if (this.event.type === eventTypes.DOW && timezoneObservesDST(timezoneValue)) {
+              const subtractOneHour = (s) =>
+                dayjs.tz(s, timezoneValue).subtract(1, "hour").format("YYYY-MM-DDTHH:mm:ss")
+              availability = availability.map(subtractOneHour)
+              ifNeeded = ifNeeded.map(subtractOneHour)
+            }
+
             allSlots[userId] = {
               name,
               email,
-              availability: convertUTCSlotsToLocalISO(response.availability),
-              ifNeeded: convertUTCSlotsToLocalISO(response.ifNeeded),
+              availability,
+              ifNeeded,
             }
           }
 
           // Get time increment (default to 15 if not set)
           const timeIncrement = this.event.timeIncrement ?? 15
 
-          sendPluginSuccess(requestId, command, { slots: allSlots, timeIncrement })
+          sendPluginSuccess(requestId, command, {
+            slots: allSlots,
+            timeIncrement,
+            timezone: timezoneValue,
+          })
         } catch (err) {
           sendPluginError(requestId, command, `Failed to fetch responses: ${err.message || "Unknown error"}`)
         }
@@ -1566,6 +1654,8 @@ export default {
   async created() {
     window.addEventListener("beforeunload", this.onBeforeUnload)
     window.addEventListener("message", this.handleMessage)
+    // for dev:
+    // window.addEventListener("message", this.interceptPluginResponses)
 
     // Get event details
     try {
@@ -1635,6 +1725,8 @@ export default {
   beforeDestroy() {
     window.removeEventListener("beforeunload", this.onBeforeUnload)
     window.removeEventListener("message", this.handleMessage)
+    // for dev:
+    // window.removeEventListener("message", this.interceptPluginResponses)
   },
 
   watch: {

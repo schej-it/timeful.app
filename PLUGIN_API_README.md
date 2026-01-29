@@ -32,7 +32,7 @@ window.postMessage({
 
 ### Description
 
-Retrieves availability slots for all respondents to an event. Returns slots in the user's local timezone (converted from UTC).
+Retrieves availability slots for all respondents to an event. Returns slots in the user's local timezone by default, with the ability to optionally specify timezone.
 
 ### Request Format
 
@@ -41,13 +41,14 @@ Retrieves availability slots for all respondents to an event. Returns slots in t
   type: "FILL_CALENDAR_EVENT",
   requestId: "get-slots-123",
   payload: {
-    type: "get-slots"
+    type: "get-slots",
+    timezone: "GMT" // Optional: IANA timezone name
   }
 }
 ```
 
 **Optional payload fields:**
-- None (currently)
+- `timezone`: IANA timezone name (e.g., `"America/Los_Angeles"`, `"Asia/Kolkata"`). If not provided, uses `localStorage["timezone"].value` or browser's local timezone.
 
 ### Response Format
 
