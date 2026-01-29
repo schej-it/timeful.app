@@ -650,8 +650,44 @@ export default {
     /** Refresh event details */
     async refreshEvent() {
       let sanitizedId = this.eventId.replaceAll(".", "")
-      this.event = await get(`/events/${sanitizedId}`)
+      
+      // Try to get guest name from localStorage using eventId first (available immediately)
+      // This works because ScheduleOverlap now stores guest name with both keys
+      let guestName = null
+      if (typeof localStorage !== "undefined") {
+        // Try with eventId first (matches the key format used when storing in ScheduleOverlap)
+        const guestNameKeyFromEventId = `${sanitizedId}.guestName`
+        guestName = localStorage[guestNameKeyFromEventId]
+        
+        // If not found and event is already loaded, try with event._id (for backward compatibility)
+        if (!guestName && this.event?._id) {
+          const guestNameKeyFromEventId2 = `${this.event._id}.guestName`
+          guestName = localStorage[guestNameKeyFromEventId2]
+        }
+      }
+      
+      // Build URL with guestName if available
+      let url = `/events/${sanitizedId}`
+      if (guestName && guestName.length > 0) {
+        url += `?guestName=${encodeURIComponent(guestName)}`
+      }
+      
+      // Make single request with guestName if available
+      this.event = await get(url)
       processEvent(this.event)
+      
+      // After loading event, if we didn't have guestName before but now we have event._id,
+      // check localStorage one more time with the correct _id format (unlikely this code below will execute but have it for safety)
+      if (!guestName && this.event?._id && typeof localStorage !== "undefined") {
+        const guestNameKey = `${this.event._id}.guestName`
+        const foundGuestName = localStorage[guestNameKey]
+        if (foundGuestName && foundGuestName.length > 0) {
+          // Make one more request with the correct guestName
+          url = `/events/${sanitizedId}?guestName=${encodeURIComponent(foundGuestName)}`
+          this.event = await get(url)
+          processEvent(this.event)
+        }
+      }
     },
 
     setAvailabilityAutomatically(calendarType = calendarTypes.GOOGLE) {
@@ -1055,9 +1091,27 @@ export default {
       // Validation: Check timeIncrement exists, default to 15 if not
       const timeIncrement = this.event.timeIncrement ?? 15
 
-      // Check if guestName is provided in payload - if so, force guest mode
+      // Security check: If blindAvailabilityEnabled is true and user is NOT the owner,
+      // reject any request with guestName parameter
       const payloadGuestName = event.data?.payload?.guestName
-      const forceGuestMode = payloadGuestName && payloadGuestName.length > 0
+      const hasGuestName = payloadGuestName && payloadGuestName.length > 0
+      
+      if (this.event.blindAvailabilityEnabled) {
+        // Check if user is owner: ownerId is only returned by backend if user is the owner
+        // So if ownerId exists and matches current user's ID, they are the owner
+        const isOwner = this.event.ownerId && this.authUser?._id === this.event.ownerId
+        if (!isOwner && hasGuestName) {
+          sendPluginError(
+            requestId,
+            command,
+            "Non-owners cannot set guest availability when 'Hide responses from respondents' is enabled."
+          )
+          return
+        }
+      }
+
+      // Check if guestName is provided in payload - if so, force guest mode
+      const forceGuestMode = hasGuestName
       
       // Determine if current user is guest or logged-in
       // If guestName is provided in payload, always treat as guest (ignore login status)
@@ -1072,7 +1126,11 @@ export default {
         if (forceGuestMode) {
           // guestName provided in payload - use it and store in localStorage
           guestName = payloadGuestName
+          // Store with event._id (current format)
           localStorage[guestNameKey] = guestName
+          // Also store with shortId or _id (to match eventId prop format)
+          const eventIdKey = `${this.event.shortId ?? this.event._id}.guestName`
+          localStorage[eventIdKey] = guestName
           
           // If event collects emails, require guestEmail in payload
           if (this.event.collectEmails) {
@@ -1470,7 +1528,28 @@ export default {
 
         try {
           // Fetch responses between timeMin and timeMax
-          const url = `/events/${sanitizedId}/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+          //TODO: update this with the new getResponses model
+          
+          // Try to get guest name from localStorage
+          let guestName = null
+          if (typeof localStorage !== "undefined") {
+            // Try with eventId first (matches the key format used when storing in ScheduleOverlap)
+            const guestNameKeyFromEventId = `${sanitizedId}.guestName`
+            guestName = localStorage[guestNameKeyFromEventId]
+            
+            // If not found and event is already loaded, try with event._id (for backward compatibility)
+            if (!guestName && this.event?._id) {
+              const guestNameKeyFromEventId2 = `${this.event._id}.guestName`
+              guestName = localStorage[guestNameKeyFromEventId2]
+            }
+          }
+          
+          // Build URL with guestName if available
+          let url = `/events/${sanitizedId}/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+          if (guestName && guestName.length > 0) {
+            url += `&guestName=${encodeURIComponent(guestName)}`
+          }
+          
           const responses = await get(url)
 
           // Build response object with all users' slots
