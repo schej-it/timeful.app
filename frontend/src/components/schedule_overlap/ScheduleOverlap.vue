@@ -2454,7 +2454,6 @@ export default {
 
       if (!timeMin || !timeMax) return
 
-      console.log("this fetching is happening here ***")
       // Fetch responses between timeMin and timeMax
       let url = `/events/${
         this.event._id
@@ -2465,8 +2464,6 @@ export default {
         url += `&guestName=${encodeURIComponent(this.guestName)}`
       }
       
-      console.log("url is ", url)
-
       get(url)
         .then((responses) => {
           this.fetchedResponses = responses

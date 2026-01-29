@@ -1075,8 +1075,6 @@ export default {
     },
 
     async setSlots(event) { 
-      console.log("setSlots is being called ***")
-      console.log(this.event.ownerId, "is the owner id")
       const requestId = event.data?.requestId
       const command = "set-slots"
       if (this.isGroup) {
@@ -1102,7 +1100,6 @@ export default {
         // Check if user is owner: ownerId is only returned by backend if user is the owner
         // So if ownerId exists and matches current user's ID, they are the owner
         const isOwner = this.event.ownerId && this.authUser?._id === this.event.ownerId
-        console.log("isOwner", isOwner)
         if (!isOwner && hasGuestName) {
           sendPluginError(
             requestId,
@@ -1532,7 +1529,6 @@ export default {
         try {
           // Fetch responses between timeMin and timeMax
           //TODO: update this with the new getResponses model
-          console.log("update get slots please")
           
           // Try to get guest name from localStorage
           let guestName = null
