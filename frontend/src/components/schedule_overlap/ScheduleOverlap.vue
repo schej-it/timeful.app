@@ -4005,7 +4005,7 @@ export default {
     onScroll(e) {
       this.checkElementsVisible()
     },
-    /** Checks whether certain elements are visible and sets variables accoringly */
+    /** Checks whether certain elements are visible and sets variables accordingly */
     checkElementsVisible() {
       const optionsSectionEl = this.$refs.optionsSection
       if (optionsSectionEl) {
