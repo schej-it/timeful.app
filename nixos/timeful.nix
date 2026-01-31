@@ -1,13 +1,34 @@
 # Timeful NixOS Module
 #
-# Usage: Add to your configuration.nix:
-#   imports = [ ./timeful.nix ];
+# Usage in a flake-based NixOS configuration:
+#
+# 1. Add timeful as a flake input:
+#
+#   inputs = {
+#     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+#     timeful.url = "github:Razboy20/timeful.app";
+#   };
+#
+# 2. Import the module in your nixosConfigurations:
+#
+#   outputs = inputs@{ nixpkgs, timeful, ... }: {
+#     nixosConfigurations.my-host = nixpkgs.lib.nixosSystem {
+#       modules = [
+#         ./configuration.nix
+#         timeful.nixosModules.default
+#       ];
+#     };
+#   };
+#
+# 3. Configure the service in your configuration.nix:
+#
 #   services.timeful = {
 #     enable = true;
 #     domain = "timeful.example.com";
 #     envFile = "/var/lib/timeful/.env";
 #   };
 #
+{ src }:
 {
   config,
   pkgs,
@@ -39,75 +60,33 @@ in
       default = "/var/lib/timeful";
       description = "Directory for Timeful data";
     };
-
-    repo = lib.mkOption {
-      type = lib.types.str;
-      default = "https://github.com/Razboy20/timeful.app";
-      description = "Git repository URL";
-    };
-
-    branch = lib.mkOption {
-      type = lib.types.str;
-      default = "main";
-      description = "Git branch to deploy";
-    };
   };
 
   config = lib.mkIf cfg.enable {
-    # Required packages
     environment.systemPackages = [
       pkgs.docker-compose
-      pkgs.git
     ];
 
-    # Enable Docker
     virtualisation.docker.enable = true;
 
-    # Create data directory and clone/update repo
-    systemd.services.timeful-setup = {
-      description = "Setup Timeful repository";
-      after = [ "network-online.target" ];
-      wants = [ "network-online.target" ];
-      wantedBy = [ "multi-user.target" ];
-      path = [ pkgs.git ];
-
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-      };
-
-      script = ''
-        mkdir -p ${cfg.dataDir}
-
-        if [ ! -d "${cfg.dataDir}/repo/.git" ]; then
-          git clone --branch ${cfg.branch} ${cfg.repo} ${cfg.dataDir}/repo
-        else
-          cd ${cfg.dataDir}/repo
-          git fetch origin
-          git reset --hard origin/${cfg.branch}
-        fi
-
-        # Always ensure env file is linked (git reset removes the symlink)
-        if [ -f "${cfg.envFile}" ]; then
-          ln -sf ${cfg.envFile} ${cfg.dataDir}/repo/server/.env
-        fi
-      '';
-    };
-
-    # Main Timeful service
     systemd.services.timeful = {
       description = "Timeful App";
       after = [
         "docker.service"
         "network-online.target"
-        "timeful-setup.service"
       ];
       wants = [
         "docker.service"
         "network-online.target"
       ];
-      requires = [ "timeful-setup.service" ];
       wantedBy = [ "multi-user.target" ];
+
+      preStart = ''
+        rm -rf ${cfg.dataDir}/repo
+        cp -r ${src} ${cfg.dataDir}/repo
+        chmod -R u+w ${cfg.dataDir}/repo
+        ln -sf ${cfg.envFile} ${cfg.dataDir}/repo/server/.env
+      '';
 
       serviceConfig = {
         Type = "oneshot";
@@ -119,7 +98,6 @@ in
       };
     };
 
-    # Caddy reverse proxy
     services.caddy = {
       enable = true;
       virtualHosts = {
@@ -138,8 +116,5 @@ in
         };
       };
     };
-
-    # # Firewall
-    # networking.firewall.allowedTCPPorts = [ 80 443 ];
   };
 }
