@@ -130,10 +130,12 @@ func main() {
 	routes.InitFolders(apiRouter)
 	slackbot.InitSlackbot(apiRouter)
 
-	// Frontend dist path - use relative path that works in both dev and Docker
-	frontendDist := "./frontend/dist"
-	if _, err := os.Stat(frontendDist); os.IsNotExist(err) {
-		frontendDist = "../frontend/dist" // Fallback for local dev
+	frontendDist := os.Getenv("FRONTEND_DIST")
+	if frontendDist == "" {
+		frontendDist = "./frontend/dist"
+		if _, err := os.Stat(frontendDist); os.IsNotExist(err) {
+			frontendDist = "../frontend/dist"
+		}
 	}
 
 	err = filepath.WalkDir(frontendDist, func(path string, d fs.DirEntry, err error) error {

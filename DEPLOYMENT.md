@@ -28,43 +28,59 @@ sudo cp Caddyfile.example /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 ```
 
-## NixOS Deployment
+## NixOS Deployment (Flake)
 
-A NixOS module is provided in `nixos/timeful.nix`.
+A NixOS module is provided as a flake output. The server and frontend are built as native Nix derivations. MongoDB runs as a Podman OCI container.
 
 ### Setup
 
 ```bash
-# 1. Copy the module to your NixOS configuration directory
-sudo cp nixos/timeful.nix /etc/nixos/
-
-# 2. Create the environment file
+# 1. Create the environment file
 sudo mkdir -p /var/lib/timeful
 sudo cp server/.env.template /var/lib/timeful/.env
 sudo chmod 600 /var/lib/timeful/.env
+sudo chown timeful:timeful /var/lib/timeful/.env
 # Edit /var/lib/timeful/.env with your values
+```
 
-# 3. Add to your configuration.nix
+Add Timeful as a flake input and import the module:
+
+```nix
+# flake.nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    timeful.url = "github:Razboy20/timeful.app";
+  };
+
+  outputs = { nixpkgs, timeful, ... }: {
+    nixosConfigurations.my-host = nixpkgs.lib.nixosSystem {
+      modules = [
+        ./configuration.nix
+        timeful.nixosModules.default
+      ];
+    };
+  };
+}
 ```
 
 ```nix
-# /etc/nixos/configuration.nix
-{ config, pkgs, ... }:
-
+# configuration.nix
 {
-  imports = [ ./timeful.nix ];
-
   services.timeful = {
     enable = true;
-    domain = "timeful.example.com";  # Your domain
+    domain = "timeful.example.com";
     envFile = "/var/lib/timeful/.env";
+    # Optional: bake OAuth client IDs into the frontend build
+    # googleClientId = "your-google-client-id";
+    # microsoftClientId = "your-microsoft-client-id";
   };
 }
 ```
 
 ```bash
-# 4. Apply the configuration
-sudo nixos-rebuild switch
+# Apply the configuration
+sudo nixos-rebuild switch --flake .#my-host
 ```
 
 ### Module Options
@@ -73,16 +89,28 @@ sudo nixos-rebuild switch
 |--------|---------|-------------|
 | `enable` | `false` | Enable Timeful service |
 | `domain` | - | Domain name (required) |
+| `enableCaddy` | `true` | Set up Caddy reverse proxy |
 | `envFile` | `/var/lib/timeful/.env` | Path to environment file |
 | `dataDir` | `/var/lib/timeful` | Data directory |
-| `repo` | `https://github.com/Razboy20/timeful.app` | Git repository |
-| `branch` | `main` | Git branch to deploy |
+| `port` | `3002` | Server listen port |
+| `googleClientId` | `""` | Google OAuth client ID (frontend build) |
+| `microsoftClientId` | `""` | Microsoft OAuth client ID (frontend build) |
+| `posthogApiKey` | `""` | PostHog analytics key (frontend build) |
+
+### Architecture
+
+The NixOS module sets up three components:
+
+- **Go server** — Nix-built binary running as a systemd service (`timeful.service`)
+- **MongoDB 7** — Podman OCI container managed by systemd (`podman-timeful-mongo.service`)
+- **Caddy** — Optional reverse proxy with automatic HTTPS (disable with `enableCaddy = false`)
 
 ### Updating
 
 ```bash
-# Pull latest changes and rebuild
-sudo systemctl reload timeful
+# Update the flake input and rebuild
+nix flake update timeful
+sudo nixos-rebuild switch --flake .#my-host
 ```
 
 ## Required Environment Variables
