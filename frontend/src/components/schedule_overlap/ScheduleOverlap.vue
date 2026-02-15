@@ -9,73 +9,23 @@
           >
             <template v-if="event.daysOnly">
               <div class="tw-grow">
-                <div class="tw-flex tw-items-center tw-justify-between">
-                  <v-btn
-                    :class="hasPrevPage ? 'tw-visible' : 'tw-invisible'"
-                    class="tw-border-gray"
-                    outlined
-                    icon
-                    @click="prevPage"
-                    ><v-icon>mdi-chevron-left</v-icon></v-btn
-                  >
-                  <div
-                    class="tw-text-lg tw-font-medium tw-capitalize sm:tw-text-xl"
-                  >
-                    {{ curMonthText }}
-                  </div>
-                  <v-btn
-                    :class="hasNextPage ? 'tw-visible' : 'tw-invisible'"
-                    class="tw-border-gray"
-                    outlined
-                    icon
-                    @click="nextPage"
-                    ><v-icon>mdi-chevron-right</v-icon></v-btn
-                  >
-                </div>
-                <!-- Header -->
-                <div class="tw-flex tw-w-full">
-                  <div
-                    v-for="day in daysOfWeek"
-                    class="tw-flex-1 tw-p-2 tw-text-center tw-text-base tw-capitalize tw-text-dark-gray"
-                  >
-                    {{ day }}
-                  </div>
-                </div>
-                <!-- Days grid -->
-                <div
-                  id="drag-section"
-                  class="tw-grid tw-grid-cols-7"
-                  @mouseleave="resetCurTimeslot"
-                >
-                  <div
-                    v-for="(day, i) in monthDays"
-                    :key="day.time"
-                    class="timeslot tw-aspect-square tw-p-2 tw-text-sm sm:tw-text-base"
-                    :class="dayTimeslotClassStyle[i].class"
-                    :style="dayTimeslotClassStyle[i].style"
-                    v-on="dayTimeslotVon[i]"
-                  >
-                    {{ day.date }}
-                  </div>
-                </div>
-
-                <v-expand-transition>
-                  <div
-                    :key="hintText"
-                    v-if="!isPhone && hintTextShown"
-                    class="tw-sticky tw-bottom-4 tw-z-10 tw-flex"
-                  >
-                    <div
-                      class="tw-mt-2 tw-flex tw-w-full tw-items-center tw-justify-between tw-gap-1 tw-rounded-md tw-bg-off-white tw-p-2 tw-px-[7px] tw-text-sm tw-text-very-dark-gray"
-                    >
-                      <div class="tw-flex tw-items-center tw-gap-1">
-                        <v-icon small>mdi-information-outline</v-icon>
-                        {{ hintText }}
-                      </div>
-                      <v-icon small @click="closeHint">mdi-close</v-icon>
-                    </div>
-                  </div>
-                </v-expand-transition>
+                <DaysOnlyCalendar
+                  :event="event"
+                  :page="page"
+                  :month-days="monthDays"
+                  :day-timeslot-class-style="dayTimeslotClassStyle"
+                  :day-timeslot-von="dayTimeslotVon"
+                  :has-prev-page="hasPrevPage"
+                  :has-next-page="hasNextPage"
+                  :days-of-week="daysOfWeek"
+                  :hint-text="hintText"
+                  :hint-text-shown="hintTextShown"
+                  :is-phone="isPhone"
+                  @prevPage="prevPage"
+                  @nextPage="nextPage"
+                  @resetCurTimeslot="resetCurTimeslot"
+                  @closeHint="closeHint"
+                />
 
                 <ToolRow
                   v-if="!isPhone && !calendarOnly"
@@ -565,232 +515,33 @@
               />
             </template>
             <template v-else>
-              <div
-                class="tw-flex tw-flex-col tw-gap-5"
+              <EditAvailabilitySidebar
                 v-if="state == states.EDIT_AVAILABILITY"
-              >
-                <div
-                  v-if="
-                    !(
-                      calendarPermissionGranted &&
-                      !event.daysOnly &&
-                      !addingAvailabilityAsGuest
-                    )
-                  "
-                  class="tw-flex tw-flex-wrap tw-items-baseline tw-gap-1 tw-text-sm tw-italic tw-text-dark-gray"
-                >
-                  {{
-                    (userHasResponded && !addingAvailabilityAsGuest) ||
-                    curGuestId
-                      ? "Editing"
-                      : "Adding"
-                  }}
-                  availability as
-                  <div
-                    v-if="curGuestId && canEditGuestName"
-                    class="tw-group tw-mt-0.5 tw-flex tw-w-fit tw-cursor-pointer tw-items-center tw-gap-1"
-                    @click="openEditGuestNameDialog"
-                  >
-                    <span class="tw-font-medium group-hover:tw-underline">{{
-                      curGuestId
-                    }}</span>
-                    <v-icon small>mdi-pencil</v-icon>
-                  </div>
-                  <span v-else>
-                    {{
-                      authUser && !addingAvailabilityAsGuest
-                        ? `${authUser.firstName} ${authUser.lastName}`
-                        : curGuestId?.length > 0
-                        ? curGuestId
-                        : "a guest"
-                    }}
-                  </span>
-                  <v-dialog
-                    v-model="editGuestNameDialog"
-                    width="400"
-                    content-class="tw-m-0"
-                  >
-                    <v-card>
-                      <v-card-title>Edit guest name</v-card-title>
-                      <v-card-text>
-                        <v-text-field
-                          v-model="newGuestName"
-                          label="Guest name"
-                          autofocus
-                          @keydown.enter="saveGuestName"
-                          hide-details
-                        ></v-text-field>
-                      </v-card-text>
-                      <v-card-actions>
-                        <v-spacer />
-                        <v-btn text @click="editGuestNameDialog = false"
-                          >Cancel</v-btn
-                        >
-                        <v-btn text color="primary" @click="saveGuestName"
-                          >Save</v-btn
-                        >
-                      </v-card-actions>
-                    </v-card>
-                  </v-dialog>
-                </div>
-                <div class="tw-flex tw-flex-col tw-gap-3">
-                  <AvailabilityTypeToggle
-                    v-if="!isGroup && !isPhone"
-                    class="tw-w-full"
-                    v-model="availabilityType"
-                  />
-                  <ColorLegend />
-                </div>
-                <!-- User's calendar accounts -->
-                <CalendarAccounts
-                  v-if="
-                    calendarPermissionGranted &&
-                    !event.daysOnly &&
-                    !addingAvailabilityAsGuest
-                  "
-                  :toggleState="true"
-                  :eventId="event._id"
-                  :calendar-events-map="calendarEventsMap"
-                  :syncWithBackend="!isGroup"
-                  :allowAddCalendarAccount="!isGroup"
-                  @toggleCalendarAccount="toggleCalendarAccount"
-                  @toggleSubCalendarAccount="toggleSubCalendarAccount"
-                  :initialCalendarAccountsData="
-                    isGroup ? sharedCalendarAccounts : authUser.calendarAccounts
-                  "
-                ></CalendarAccounts>
-
-                <div v-if="showOverlayAvailabilityToggle">
-                  <v-switch
-                    id="overlay-availabilities-toggle"
-                    inset
-                    :input-value="overlayAvailability"
-                    @change="updateOverlayAvailability"
-                    hide-details
-                  >
-                    <template v-slot:label>
-                      <div class="tw-text-sm tw-text-black">
-                        Overlay availabilities
-                      </div>
-                    </template>
-                  </v-switch>
-
-                  <div class="tw-mt-2 tw-text-xs tw-text-dark-gray">
-                    View everyone's availability while inputting your own
-                  </div>
-                </div>
-
-                <!-- Options section -->
-                <div
-                  v-if="!event.daysOnly && showCalendarOptions"
-                  ref="optionsSection"
-                >
-                  <ExpandableSection
-                    label="Options"
-                    :value="showEditOptions"
-                    @input="toggleShowEditOptions"
-                  >
-                    <div class="tw-flex tw-flex-col tw-gap-5 tw-pt-2.5">
-                      <v-dialog
-                        v-if="showCalendarOptions"
-                        v-model="calendarOptionsDialog"
-                        width="500"
-                      >
-                        <template v-slot:activator="{ on, attrs }">
-                          <v-btn
-                            outlined
-                            class="tw-border-gray tw-text-sm"
-                            v-on="on"
-                            v-bind="attrs"
-                          >
-                            Calendar options...
-                          </v-btn>
-                        </template>
-
-                        <v-card>
-                          <v-card-title class="tw-flex">
-                            <div>Calendar options</div>
-                            <v-spacer />
-                            <v-btn icon @click="calendarOptionsDialog = false">
-                              <v-icon>mdi-close</v-icon>
-                            </v-btn>
-                          </v-card-title>
-                          <v-card-text
-                            class="tw-flex tw-flex-col tw-gap-6 tw-pb-8 tw-pt-2"
-                          >
-                            <AlertText v-if="isGroup" class="-tw-mb-4">
-                              Calendar options will only updated for the current
-                              group
-                            </AlertText>
-
-                            <BufferTimeSwitch
-                              :bufferTime.sync="bufferTime"
-                              :syncWithBackend="!isGroup"
-                            />
-
-                            <WorkingHoursToggle
-                              :workingHours.sync="workingHours"
-                              :timezone="curTimezone"
-                              :syncWithBackend="!isGroup"
-                            />
-                          </v-card-text>
-                        </v-card>
-                      </v-dialog>
-                    </div>
-                  </ExpandableSection>
-                </div>
-
-                <!-- Delete availability button -->
-                <div
-                  v-if="
-                    (!addingAvailabilityAsGuest && userHasResponded) ||
-                    curGuestId
-                  "
-                >
-                  <v-dialog
-                    v-model="deleteAvailabilityDialog"
-                    width="500"
-                    persistent
-                  >
-                    <template v-slot:activator="{ on, attrs }">
-                      <span
-                        v-bind="attrs"
-                        v-on="on"
-                        class="tw-cursor-pointer tw-text-sm tw-text-red"
-                      >
-                        {{ !isGroup ? "Delete availability" : "Leave group" }}
-                      </span>
-                    </template>
-
-                    <v-card>
-                      <v-card-title>Are you sure?</v-card-title>
-                      <v-card-text class="tw-text-sm tw-text-dark-gray"
-                        >Are you sure you want to
-                        {{
-                          !isGroup
-                            ? "delete your availability from this event?"
-                            : "leave this group?"
-                        }}</v-card-text
-                      >
-                      <v-card-actions>
-                        <v-spacer />
-                        <v-btn text @click="deleteAvailabilityDialog = false"
-                          >Cancel</v-btn
-                        >
-                        <v-btn
-                          text
-                          color="error"
-                          @click="
-                            $emit('deleteAvailability')
-                            deleteAvailabilityDialog = false
-                          "
-                          >{{ !isGroup ? "Delete" : "Leave" }}</v-btn
-                        >
-                      </v-card-actions>
-                    </v-card>
-                  </v-dialog>
-                </div>
-              </div>
+                :event="event"
+                :auth-user="authUser"
+                :cur-guest-id="curGuestId"
+                :adding-availability-as-guest="addingAvailabilityAsGuest"
+                :user-has-responded="userHasResponded"
+                :calendar-permission-granted="calendarPermissionGranted"
+                :is-group="isGroup"
+                :is-phone="isPhone"
+                :calendar-events-map="calendarEventsMap"
+                :shared-calendar-accounts="sharedCalendarAccounts"
+                :availability-type.sync="availabilityType"
+                :overlay-availability.sync="overlayAvailability"
+                :show-overlay-availability-toggle="showOverlayAvailabilityToggle"
+                :show-calendar-options="showCalendarOptions"
+                :can-edit-guest-name="canEditGuestName"
+                :buffer-time.sync="bufferTime"
+                :working-hours.sync="workingHours"
+                :cur-timezone="curTimezone"
+                :guest-name-key="guestNameKey"
+                @deleteAvailability="$emit('deleteAvailability')"
+                @toggleCalendarAccount="toggleCalendarAccount"
+                @toggleSubCalendarAccount="toggleSubCalendarAccount"
+                @setCurGuestId="$emit('setCurGuestId', $event)"
+                @refreshEvent="refreshEvent"
+              />
               <template v-else>
                 <RespondentsList
                   ref="respondentsList"
@@ -988,32 +739,16 @@
 <script>
 import {
   timeNumToTimeText,
-  dateCompare,
   getDateHoursOffset,
-  post,
   put,
-  isBetween,
-  clamp,
   isPhone,
   utcTimeToLocalTime,
-  splitTimeBlocksByDay,
-  getTimeBlock,
   dateToDowDate,
-  _delete,
-  get,
-  getDateDayOffset,
-  isDateBetween,
-  generateEnabledCalendarsPayload,
-  isTouchEnabled,
   isElementInViewport,
   lightOrDark,
   removeTransparencyFromHex,
   userPrefers12h,
   getCalendarAccountKey,
-  getISODateString,
-  getDateWithTimezone,
-  timeNumToTimeString,
-  isPremiumUser,
   prefersStartOnMonday,
 } from "@/utils"
 import {
@@ -1023,11 +758,9 @@ import {
   guestUserId,
   timeTypes,
   timeslotDurations,
-  upgradeDialogTypes,
 } from "@/constants"
 import { mapMutations, mapActions, mapState } from "vuex"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
-import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
 import Advertisement from "@/components/event/Advertisement.vue"
 import SignUpBlock from "@/components/sign_up_form/SignUpBlock.vue"
 import SignUpCalendarBlock from "@/components/sign_up_form/SignUpCalendarBlock.vue"
@@ -1037,25 +770,25 @@ import ConfirmDetailsDialog from "./ConfirmDetailsDialog.vue"
 import ToolRow from "./ToolRow.vue"
 import RespondentsList from "./RespondentsList.vue"
 import GCalWeekSelector from "./GCalWeekSelector.vue"
-import ExpandableSection from "../ExpandableSection.vue"
-import WorkingHoursToggle from "./WorkingHoursToggle.vue"
-import AlertText from "../AlertText.vue"
 import Tooltip from "../Tooltip.vue"
-import ColorLegend from "./ColorLegend.vue"
 
 import dayjs from "dayjs"
-import ObjectID from "bson-objectid"
 import utcPlugin from "dayjs/plugin/utc"
 import timezonePlugin from "dayjs/plugin/timezone"
 import AvailabilityTypeToggle from "./AvailabilityTypeToggle.vue"
-import BufferTimeSwitch from "./BufferTimeSwitch.vue"
 import CalendarEventBlock from "./CalendarEventBlock.vue" // Added import
 import SpecificTimesInstructions from "./SpecificTimesInstructions.vue"
+import DaysOnlyCalendar from "./DaysOnlyCalendar.vue"
+import EditAvailabilitySidebar from "./EditAvailabilitySidebar.vue"
+import dragMixin from "./mixins/dragMixin.js"
+import availabilityMixin from "./mixins/availabilityMixin.js"
+import signUpMixin from "./mixins/signUpMixin.js"
 dayjs.extend(utcPlugin)
 dayjs.extend(timezonePlugin)
 
 export default {
   name: "ScheduleOverlap",
+  mixins: [dragMixin, availabilityMixin, signUpMixin],
   props: {
     event: { type: Object, required: true },
     fromEditEvent: { type: Boolean, default: false },
@@ -1100,9 +833,6 @@ export default {
       availability: new Set(), // The current user's availability
       ifNeeded: new Set(), // The current user's "if needed" availability
       tempTimes: new Set(), // The specific times that the user has selected for the event (pending save)
-      availabilityAnimTimeouts: [], // Timeouts for availability animation
-      availabilityAnimEnabled: false, // Whether to animate timeslots changing colors
-      maxAnimTime: 1200, // Max amount of time for availability animation
       unsavedChanges: false, // If there are unsaved availability changes
       curTimeslot: { row: -1, col: -1 }, // The currently highlighted timeslot
       timeslotSelected: false, // Whether a timeslot is selected (used to persist selection on desktop)
@@ -1110,20 +840,9 @@ export default {
       curRespondent: "", // Id of the active respondent (set on hover)
       curRespondents: [], // Id of currently selected respondents (set on click)
       sharedCalendarAccounts: {}, // The user's calendar accounts for changing calendar options for groups
-      fetchedResponses: {}, // Responses fetched from the server for the dates currently shown
-      loadingResponses: { loading: false, lastFetched: new Date().getTime() }, // Whether we're currently fetching the responses
-      responsesFormatted: new Map(), // Map where date/time is mapped to the people that are available then
       tooltipContent: "", // The content of the tooltip
 
-      /* Sign up form */
-      signUpBlocksByDay: [], // The current event's sign up blocks by day
-      signUpBlocksToAddByDay: [], // The sign up blocks to be added after hitting 'save'
-
       /* Edit options */
-      showEditOptions:
-        localStorage["showEditOptions"] == undefined
-          ? false
-          : localStorage["showEditOptions"] == "true",
       availabilityType: availabilityTypes.AVAILABLE, // The current availability type
       overlayAvailability: false, // Whether to overlay everyone's availability when editing
       bufferTime: calendarOptionsDefaults.bufferTime, // Set in mounted()
@@ -1140,23 +859,6 @@ export default {
           : localStorage["showBestTimes"] == "true",
       hideIfNeeded: false,
 
-      /* Variables for drag stuff */
-      DRAG_TYPES: {
-        ADD: "add",
-        REMOVE: "remove",
-      },
-      SPLIT_GAP_HEIGHT: 40,
-      SPLIT_GAP_WIDTH: 20,
-      HOUR_HEIGHT: 60,
-      timeslot: {
-        width: 0,
-        height: 0,
-      },
-      dragging: false,
-      dragType: "add",
-      dragStart: null,
-      dragCur: null,
-
       /* Variables for options */
       curTimezone: this.initialTimezone,
       curScheduledEvent: null, // The scheduled event represented in the form {hoursOffset, hoursLength, dayIndex}
@@ -1165,12 +867,6 @@ export default {
         (userPrefers12h() ? timeTypes.HOUR12 : timeTypes.HOUR24), // Whether 12-hour or 24-hour
       showCalendarEvents: false,
       startCalendarOnMonday: prefersStartOnMonday(),
-
-      /* Dialogs */
-      deleteAvailabilityDialog: false,
-      calendarOptionsDialog: false,
-      editGuestNameDialog: false,
-      newGuestName: "",
 
       /* Variables for scrolling */
       optionsVisible: false,
@@ -1186,8 +882,6 @@ export default {
         ? parseInt(localStorage["mobileNumDays"])
         : 3, // The number of days to show at a time on mobile
       pageHasChanged: false,
-
-      hasRefreshedAuthUser: false,
 
       /* Variables for hint */
       hintState: true,
@@ -1232,149 +926,9 @@ export default {
     allowScheduleEvent() {
       return !!this.curScheduledEvent
     },
-    /** Returns the availability as an array */
-    availabilityArray() {
-      return [...this.availability].map((item) => new Date(item))
-    },
-    /** Returns the if needed availability as an array */
-    ifNeededArray() {
-      return [...this.ifNeeded].map((item) => new Date(item))
-    },
-    allowDrag() {
-      return (
-        this.state === this.states.EDIT_AVAILABILITY ||
-        this.state === this.states.EDIT_SIGN_UP_BLOCKS ||
-        this.state === this.states.SCHEDULE_EVENT ||
-        this.state === this.states.SET_SPECIFIC_TIMES
-      )
-    },
-    /** Returns an array of calendar events for all of the authUser's enabled calendars, separated by the day they occur on */
-    calendarEventsByDay() {
-      // If this is an example calendar
-      if (this.sampleCalendarEventsByDay) return this.sampleCalendarEventsByDay
-
-      // If the user isn't logged in or is adding availability as a guest
-      if (!this.authUser || this.addingAvailabilityAsGuest) return []
-
-      let events = []
-      let event
-
-      const calendarAccounts = this.isGroup
-        ? this.sharedCalendarAccounts
-        : this.authUser.calendarAccounts
-
-      // Adds events from calendar accounts that are enabled
-      for (const id in calendarAccounts) {
-        if (!calendarAccounts[id].enabled) continue
-
-        if (this.calendarEventsMap.hasOwnProperty(id)) {
-          for (const index in this.calendarEventsMap[id].calendarEvents) {
-            event = this.calendarEventsMap[id].calendarEvents[index]
-
-            // Check if we need to update authUser (to get latest subcalendars)
-            const subCalendars = calendarAccounts[id].subCalendars
-            if (!subCalendars || !(event.calendarId in subCalendars)) {
-              // authUser doesn't contain the subCalendar, so push event to events without checking if subcalendar is enabled
-              // and queue the authUser to be refreshed
-              events.push(event)
-              if (!this.hasRefreshedAuthUser && !this.isGroup) {
-                this.refreshAuthUser()
-              }
-              continue
-            }
-
-            // Push event to events if subcalendar is enabled
-            if (subCalendars[event.calendarId].enabled) {
-              events.push(event)
-            }
-          }
-        }
-      }
-
-      const eventsCopy = JSON.parse(JSON.stringify(events))
-
-      const calendarEventsByDay = splitTimeBlocksByDay(
-        this.event,
-        eventsCopy,
-        this.weekOffset,
-        this.timezoneOffset
-      )
-
-      return calendarEventsByDay
-    },
-    /** [SPECIFIC TO GROUPS] Returns an object mapping user ids to their calendar events separated by the day they occur on */
-    groupCalendarEventsByDay() {
-      if (this.event.type !== eventTypes.GROUP) return {}
-
-      const userIdToEventsByDay = {}
-      for (const userId in this.event.responses) {
-        if (userId === this.authUser._id) {
-          userIdToEventsByDay[userId] = this.calendarEventsByDay
-        } else if (userId in this.calendarAvailabilities) {
-          userIdToEventsByDay[userId] = splitTimeBlocksByDay(
-            this.event,
-            this.calendarAvailabilities[userId],
-            this.weekOffset,
-            this.timezoneOffset
-          )
-        }
-      }
-
-      return userIdToEventsByDay
-    },
     curRespondentsSet() {
       return new Set(this.curRespondents)
     },
-
-    // -----------------------------------
-    //#region Sign up form
-    // -----------------------------------
-
-    /** Returns the name of the new sign up block being dragged */
-    newSignUpBlockName() {
-      return `Slot #${
-        this.signUpBlocksByDay.flat().length +
-        this.signUpBlocksToAddByDay.flat().length +
-        1
-      }`
-    },
-
-    /** Returns the max allowable drag */
-    maxSignUpBlockRowSize() {
-      if (!this.dragStart || !this.isSignUp) return null
-
-      const selectedDay = this.signUpBlocksByDay[this.dragStart.col]
-      const selectedDayToAdd = this.signUpBlocksToAddByDay[this.dragStart.col]
-
-      if (selectedDay.length === 0 && selectedDayToAdd.length === 0) return null
-
-      let maxSize = Infinity
-      for (const block of [...selectedDay, ...selectedDayToAdd]) {
-        if (block.hoursOffset * 4 > this.dragStart.row) {
-          maxSize = Math.min(
-            maxSize,
-            block.hoursOffset * 4 - this.dragStart.row
-          )
-        }
-      }
-
-      return maxSize
-    },
-
-    /** Whether the current user has already responded to the sign up form */
-    alreadyRespondedToSignUpForm() {
-      if (!this.authUser || !this.signUpBlocksByDay) return false
-
-      return this.signUpBlocksByDay.some((dayBlocks) =>
-        dayBlocks.some((block) =>
-          block.responses?.some(
-            (response) => response.userId === this.authUser._id
-          )
-        )
-      )
-    },
-
-    //#endregion
 
     /** Returns the max number of people in the curRespondents array available at any given time */
     curRespondentsMax() {
@@ -1624,17 +1178,6 @@ export default {
       }
       return includedMap
     },
-    /** Returns the text to show for the current month */
-    curMonthText() {
-      const date = new Date(this.event.dates[0])
-      const monthIndex = date.getUTCMonth() + this.page
-      const year = date.getUTCFullYear()
-      const lastDayOfCurMonth = new Date(Date.UTC(year, monthIndex + 1, 0))
-
-      const monthText = this.months[lastDayOfCurMonth.getUTCMonth()]
-      const yearText = lastDayOfCurMonth.getUTCFullYear()
-      return `${monthText} ${yearText}`
-    },
     defaultState() {
       // Either the heatmap or the best_times state, depending on the toggle
       return this.showBestTimes ? this.states.BEST_TIMES : this.states.HEATMAP
@@ -1673,11 +1216,6 @@ export default {
     },
     isSpecificTimes() {
       return this.event.hasSpecificTimes
-    },
-    respondents() {
-      return Object.values(this.parsedResponses)
-        .map((r) => r.user)
-        .filter(Boolean)
     },
     selectedGuestRespondent() {
       if (this.guestAddedAvailability) return this.guestName
@@ -1723,118 +1261,6 @@ export default {
       style.top = `calc(${top} * 1rem)`
       style.height = `calc(${height} * 1rem)`
       return style
-    },
-    /** Parses the responses to the Timeful, makes necessary changes based on the type of event, and returns it */
-    parsedResponses() {
-      const parsed = {}
-
-      // Return calendar availability if group
-      if (this.event.type === eventTypes.GROUP) {
-        for (const userId in this.event.responses) {
-          const calendarEventsByDay = this.groupCalendarEventsByDay[userId]
-          if (calendarEventsByDay) {
-            // Get manual availability and convert to DOW dates
-            const fetchedManualAvailability = this.getManualAvailabilityDow(
-              this.fetchedResponses[userId]?.manualAvailability
-            )
-            const curManualAvailability =
-              userId === this.authUser._id
-                ? this.getManualAvailabilityDow(this.manualAvailability)
-                : {}
-
-            // Get availability from calendar events and use manual availability on the
-            // "touched" days
-            const availability = this.getAvailabilityFromCalendarEvents({
-              calendarEventsByDay,
-              includeTouchedAvailability: true,
-              fetchedManualAvailability: fetchedManualAvailability ?? {},
-              curManualAvailability: curManualAvailability ?? {},
-              calendarOptions:
-                userId === this.authUser._id
-                  ? {
-                      bufferTime: this.bufferTime,
-                      workingHours: this.workingHours,
-                    }
-                  : this.fetchedResponses[userId]?.calendarOptions ?? undefined,
-            })
-
-            parsed[userId] = {
-              ...this.event.responses[userId],
-              availability: availability,
-            }
-          } else {
-            parsed[userId] = {
-              ...this.event.responses[userId],
-              availability: new Set(),
-            }
-          }
-        }
-        return parsed
-      }
-
-      // Return only current user availability if using blind availabilities and user is not owner
-      if (this.event.blindAvailabilityEnabled && !this.isOwner) {
-        const guestName = localStorage[this.guestNameKey]
-        const userId = this.authUser?._id ?? guestName
-        if (userId in this.event.responses) {
-          const user = {
-            ...this.event.responses[userId].user,
-            _id: userId,
-          }
-          parsed[userId] = {
-            ...this.event.responses[userId],
-            availability: new Set(
-              this.fetchedResponses[userId]?.availability?.map((a) =>
-                new Date(a).getTime()
-              )
-            ),
-            ifNeeded: new Set(
-              this.fetchedResponses[userId]?.ifNeeded?.map((a) =>
-                new Date(a).getTime()
-              )
-            ),
-            user: user,
-          }
-        }
-        return parsed
-      }
-
-      // Otherwise, parse responses so that if _id is null (i.e. guest user), then it is set to the guest user's name
-      for (const k of Object.keys(this.event.responses)) {
-        const newUser = {
-          ...this.event.responses[k].user,
-          _id: k,
-        }
-        parsed[k] = {
-          ...this.event.responses[k],
-          availability: new Set(
-            this.fetchedResponses[k]?.availability?.map((a) =>
-              new Date(a).getTime()
-            )
-          ),
-          ifNeeded: new Set(
-            this.fetchedResponses[k]?.ifNeeded?.map((a) =>
-              new Date(a).getTime()
-            )
-          ),
-          user: newUser,
-        }
-      }
-      return parsed
-    },
-    max() {
-      let max = 0
-      for (const [dateTime, availability] of this.responsesFormatted) {
-        if (availability.size > max) {
-          max = availability.size
-        }
-      }
-
-      return max
-    },
-    /** Returns a set containing the times for the event if it has specific times */
-    specificTimesSet() {
-      return new Set(this.event.times?.map((t) => new Date(t).getTime()) ?? [])
     },
     /**
      * Returns a two dimensional array of times
@@ -2168,86 +1594,6 @@ export default {
       )
     },
 
-    /** Returns an array of time blocks representing the current user's availability
-     * (used for displaying current user's availability on top of everybody else's availability)
-     */
-    overlaidAvailability() {
-      const overlaidAvailability = []
-      this.days.forEach((day, d) => {
-        overlaidAvailability.push([])
-        let curBlockIndex = 0
-        const addOverlaidAvailabilityBlocks = (time, t) => {
-          const date = this.getDateFromRowCol(t, d)
-          if (!date) return
-
-          const dragAdd =
-            this.dragging &&
-            this.inDragRange(t, d) &&
-            this.dragType === this.DRAG_TYPES.ADD
-          const dragRemove =
-            this.dragging &&
-            this.inDragRange(t, d) &&
-            this.dragType === this.DRAG_TYPES.REMOVE
-
-          // Check if timeslot is available or if needed or in the drag region
-          if (
-            dragAdd ||
-            (!dragRemove &&
-              (this.availability.has(date.getTime()) ||
-                this.ifNeeded.has(date.getTime())))
-          ) {
-            // Determine whether to render as available or if needed block
-            let type = availabilityTypes.AVAILABLE
-            if (dragAdd) {
-              type = this.availabilityType
-            } else {
-              type = this.availability.has(date.getTime())
-                ? availabilityTypes.AVAILABLE
-                : availabilityTypes.IF_NEEDED
-            }
-
-            if (curBlockIndex in overlaidAvailability[d]) {
-              if (overlaidAvailability[d][curBlockIndex].type === type) {
-                // Increase block length if matching type and curBlockIndex exists
-                overlaidAvailability[d][curBlockIndex].hoursLength += 0.25
-              } else {
-                // Add a new block because type is different
-                overlaidAvailability[d].push({
-                  hoursOffset: time.hoursOffset,
-                  hoursLength: 0.25,
-                  type,
-                })
-                curBlockIndex++
-              }
-            } else {
-              // Add a new block because block doesn't exist for current index
-              overlaidAvailability[d].push({
-                hoursOffset: time.hoursOffset,
-                hoursLength: 0.25,
-                type,
-              })
-            }
-          } else if (curBlockIndex in overlaidAvailability[d]) {
-            // Only increment cur block index if block already exists at the current index
-            curBlockIndex++
-          }
-        }
-        for (let t = 0; t < this.splitTimes[0].length; ++t) {
-          addOverlaidAvailabilityBlocks(this.splitTimes[0][t], t)
-        }
-        if (curBlockIndex in overlaidAvailability[d]) {
-          curBlockIndex++
-        }
-        for (let t = 0; t < this.splitTimes[1].length; ++t) {
-          addOverlaidAvailabilityBlocks(
-            this.splitTimes[1][t],
-            t + this.splitTimes[0].length
-          )
-        }
-      })
-      return overlaidAvailability
-    },
-
     // Options
     showOverlayAvailabilityToggle() {
       return this.respondents.length > 0 && this.overlayAvailabilitiesEnabled
@@ -2260,19 +1606,6 @@ export default {
       )
     },
 
-    /** Returns an array of the x-offsets of the columns, taking into account the split gaps from non-consecutive days */
-    columnOffsets() {
-      const offsets = []
-      let accumulatedOffset = 0
-      for (let i = 0; i < this.days.length; ++i) {
-        offsets.push(accumulatedOffset)
-        if (!this.days[i].isConsecutive) {
-          accumulatedOffset += this.SPLIT_GAP_WIDTH
-        }
-        accumulatedOffset += this.timeslot.width
-      }
-      return offsets
-    },
   },
   methods: {
     ...mapMutations(["setAuthUser"]),
@@ -2410,151 +1743,6 @@ export default {
     },
     //#endregion
 
-    // -----------------------------------
-    //#region Aggregate user availability
-    // -----------------------------------
-
-    /** Fetches responses from server */
-    fetchResponses() {
-      if (this.calendarOnly) {
-        this.fetchedResponses = this.event.responses
-        return
-      }
-
-      let timeMin, timeMax
-      if (this.event.type === eventTypes.GROUP) {
-        if (this.event.dates.length > 0) {
-          // Fetch the date range for the current week
-          timeMin = new Date(this.event.dates[0])
-          timeMax = new Date(this.event.dates[this.event.dates.length - 1])
-          timeMax.setDate(timeMax.getDate() + 1)
-
-          // Convert dow dates to discrete dates
-          timeMin = dateToDowDate(
-            this.event.dates,
-            timeMin,
-            this.weekOffset,
-            true
-          )
-          timeMax = dateToDowDate(
-            this.event.dates,
-            timeMax,
-            this.weekOffset,
-            true
-          )
-        }
-      } else {
-        if (this.allDays.length > 0) {
-          // Fetch the entire time range of availabilities
-          timeMin = new Date(this.allDays[0].dateObject)
-          timeMax = new Date(this.allDays[this.allDays.length - 1].dateObject)
-          timeMax.setDate(timeMax.getDate() + 1)
-        }
-      }
-
-      if (!timeMin || !timeMax) return
-
-      // Fetch responses between timeMin and timeMax
-      const url = `/events/${
-        this.event._id
-      }/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
-      get(url)
-        .then((responses) => {
-          this.fetchedResponses = responses
-          this.getResponsesFormatted()
-        })
-        .catch((err) => {
-          this.showError(
-            "There was an error fetching availability! Please refresh the page."
-          )
-        })
-    },
-    /** Formats the responses in a map where date/time is mapped to the people that are available then */
-    getResponsesFormatted() {
-      const lastFetched = new Date().getTime()
-      this.loadingResponses.loading = true
-      this.loadingResponses.lastFetched = lastFetched
-
-      this.$worker
-        .run(
-          (days, times, parsedResponses, daysOnly, hideIfNeeded) => {
-            // Define functions locally because we can't import functions
-            const splitTimeNum = (timeNum) => {
-              const hours = Math.floor(timeNum)
-              const minutes = Math.floor((timeNum - hours) * 60)
-              return { hours, minutes }
-            }
-            const getDateHoursOffset = (date, hoursOffset) => {
-              const { hours, minutes } = splitTimeNum(hoursOffset)
-              const newDate = new Date(date)
-              newDate.setHours(newDate.getHours() + hours)
-              newDate.setMinutes(newDate.getMinutes() + minutes)
-              return newDate
-            }
-
-            // Create array of all dates in the event
-            const dates = []
-            if (daysOnly) {
-              for (const day of days) {
-                dates.push(day.dateObject)
-              }
-            } else {
-              for (const day of days) {
-                for (const time of times) {
-                  // Iterate through all the times
-                  const date = getDateHoursOffset(
-                    day.dateObject,
-                    time.hoursOffset
-                  )
-                  dates.push(date)
-                }
-              }
-            }
-
-            // Create a map mapping time to the respondents available during that time
-            const formatted = new Map()
-            for (const date of dates) {
-              formatted.set(date.getTime(), new Set())
-
-              // Check every response and see if they are available for the given time
-              for (const response of Object.values(parsedResponses)) {
-                // Check availability array
-                if (
-                  response.availability?.has(date.getTime()) ||
-                  (response.ifNeeded?.has(date.getTime()) && !hideIfNeeded)
-                ) {
-                  formatted.get(date.getTime()).add(response.user._id)
-                  continue
-                }
-              }
-            }
-            return formatted
-          },
-          [
-            this.allDays,
-            this.times,
-            this.parsedResponses,
-            this.event.daysOnly,
-            this.hideIfNeeded,
-          ]
-        )
-        .then((formatted) => {
-          // Only set responses formatted for the latest request
-          if (lastFetched >= this.loadingResponses.lastFetched) {
-            this.responsesFormatted = formatted
-          }
-        })
-        .finally(() => {
-          if (this.loadingResponses.lastFetched === lastFetched) {
-            this.loadingResponses.loading = false
-          }
-        })
-    },
-    /** Returns a set of respondents for the given date/time */
-    getRespondentsForHoursOffset(date, hoursOffset) {
-      const d = getDateHoursOffset(date, hoursOffset)
-      return this.responsesFormatted.get(d.getTime()) ?? new Set()
-    },
     showAvailability(row, col) {
       if (this.state === this.states.EDIT_AVAILABILITY && this.isPhone) {
         // Don't show currently selected timeslot when on phone and editing
@@ -2584,35 +1772,6 @@ export default {
     },
     //#endregion
 
-    // -----------------------------------
-    //#region Current user availability
-    // -----------------------------------
-    async refreshAuthUser() {
-      this.hasRefreshedAuthUser = true
-      await get("/user/profile").then((authUser) => {
-        this.setAuthUser(authUser)
-      })
-    },
-    /** resets cur user availability to the response stored on the server */
-    resetCurUserAvailability() {
-      if (this.event.type === eventTypes.GROUP) {
-        this.initSharedCalendarAccounts()
-        this.manualAvailability = {}
-      }
-
-      this.availability = new Set()
-      this.ifNeeded = new Set()
-      if (this.userHasResponded) {
-        this.populateUserAvailability(this.authUser._id)
-      }
-    },
-    /** Populates the availability set for the auth user from the responses object stored on the server */
-    populateUserAvailability(id) {
-      this.availability =
-        new Set(this.parsedResponses[id]?.availability) ?? new Set()
-      this.ifNeeded = new Set(this.parsedResponses[id]?.ifNeeded) ?? new Set()
-      this.$nextTick(() => (this.unsavedChanges = false))
-    },
     /** Returns true if the calendar event is in the first split */
     getIsTimeBlockInFirstSplit(timeBlock) {
       return (
@@ -2639,342 +1798,6 @@ export default {
         style.height = `calc(${timeBlock.hoursLength} * ${this.HOUR_HEIGHT}px)`
       }
       return style
-    },
-    /** Returns a set containing the available times based on the given calendar events object */
-    getAvailabilityFromCalendarEvents({
-      calendarEventsByDay = [],
-      includeTouchedAvailability = false, // Whether to include manual availability for touched days
-      fetchedManualAvailability = {}, // Object mapping unix timestamp to array of manual availability (fetched from server)
-      curManualAvailability = {}, // Manual availability with edits (takes precedence over fetchedManualAvailability)
-      calendarOptions = calendarOptionsDefaults, // User id of the user we are getting availability for
-    }) {
-      const availability = new Set()
-
-      for (let i = 0; i < this.allDays.length; ++i) {
-        const day = this.allDays[i]
-        const date = day.dateObject
-
-        if (includeTouchedAvailability) {
-          const endDate = getDateHoursOffset(
-            date,
-            this.times.length * (this.timeslotDuration / 60)
-          )
-
-          // Check if manual availability has been added for the current date
-          let manualAvailabilityAdded = false
-
-          for (const time in curManualAvailability) {
-            if (date.getTime() <= time && time <= endDate.getTime()) {
-              curManualAvailability[time].forEach((a) => {
-                availability.add(new Date(a).getTime())
-              })
-              delete curManualAvailability[time]
-              manualAvailabilityAdded = true
-              break
-            }
-          }
-
-          if (manualAvailabilityAdded) continue
-
-          for (const time in fetchedManualAvailability) {
-            if (date.getTime() <= time && time <= endDate.getTime()) {
-              fetchedManualAvailability[time].forEach((a) => {
-                availability.add(new Date(a).getTime())
-              })
-              delete fetchedManualAvailability[time]
-              manualAvailabilityAdded = true
-              break
-            }
-          }
-
-          if (manualAvailabilityAdded) continue
-        }
-
-        // Calculate buffer time
-        const bufferTimeInMS = calendarOptions.bufferTime.enabled
-          ? calendarOptions.bufferTime.time * 1000 * 60
-          : 0
-
-        // Calculate working hours
-        const startTimeString = timeNumToTimeString(
-          calendarOptions.workingHours.startTime
-        )
-        const isoDateString = getISODateString(getDateWithTimezone(date), true)
-        const workingHoursStartDate = dayjs
-          .tz(`${isoDateString} ${startTimeString}`, this.curTimezone.value)
-          .toDate()
-        let duration =
-          calendarOptions.workingHours.endTime -
-          calendarOptions.workingHours.startTime
-        if (duration <= 0) duration += 24
-        const workingHoursEndDate = getDateHoursOffset(
-          workingHoursStartDate,
-          duration
-        )
-
-        for (let j = 0; j < this.times.length; ++j) {
-          const startDate = this.getDateFromDayTimeIndex(i, j)
-          if (!startDate) continue
-          const endDate = getDateHoursOffset(
-            startDate,
-            this.timeslotDuration / 60
-          )
-
-          // Working hours
-          if (calendarOptions.workingHours.enabled) {
-            if (
-              endDate.getTime() <= workingHoursStartDate.getTime() ||
-              startDate.getTime() >= workingHoursEndDate.getTime()
-            ) {
-              continue
-            }
-          }
-
-          // Check if there exists a calendar event that overlaps [startDate, endDate]
-          const index = calendarEventsByDay[i]?.findIndex((e) => {
-            const startDateBuffered = new Date(
-              e.startDate.getTime() - bufferTimeInMS
-            )
-            const endDateBuffered = new Date(
-              e.endDate.getTime() + bufferTimeInMS
-            )
-
-            const notIntersect =
-              dateCompare(endDate, startDateBuffered) <= 0 ||
-              dateCompare(startDate, endDateBuffered) >= 0
-            return !notIntersect && !e.free
-          })
-          if (index === -1) {
-            availability.add(startDate.getTime())
-          }
-        }
-      }
-      return availability
-    },
-    /** Constructs the availability array using calendarEvents array */
-    setAvailabilityAutomatically() {
-      // This is not a computed property because we should be able to change it manually from what it automatically fills in
-      this.availability = new Set()
-      const tmpAvailability = this.getAvailabilityFromCalendarEvents({
-        calendarEventsByDay: this.calendarEventsByDay,
-        calendarOptions: {
-          bufferTime: this.bufferTime,
-          workingHours: this.workingHours,
-        },
-      })
-
-      const pageStartDate = getDateDayOffset(
-        new Date(this.event.dates[0]),
-        this.page * this.maxDaysPerPage
-      )
-      const pageEndDate = getDateDayOffset(pageStartDate, this.maxDaysPerPage)
-      this.animateAvailability(tmpAvailability, pageStartDate, pageEndDate)
-    },
-    /** Animate the filling out of availability using setTimeout, between startDate and endDate */
-    animateAvailability(availability, startDate, endDate) {
-      this.availabilityAnimEnabled = true
-      this.availabilityAnimTimeouts = []
-
-      let msPerGroup = 25
-      let blocksPerGroup = 2
-      if (
-        (availability.size / blocksPerGroup) * msPerGroup >
-        this.maxAnimTime
-      ) {
-        blocksPerGroup = (availability.size * msPerGroup) / this.maxAnimTime
-      }
-      let availabilityArray = [...availability]
-      availabilityArray = availabilityArray.filter((a) =>
-        isDateBetween(a, startDate, endDate)
-      )
-
-      for (let i = 0; i < availabilityArray.length / blocksPerGroup + 1; ++i) {
-        const timeout = setTimeout(() => {
-          for (const a of availabilityArray.slice(
-            i * blocksPerGroup,
-            i * blocksPerGroup + blocksPerGroup
-          )) {
-            this.availability.add(a)
-          }
-          this.availability = new Set(this.availability)
-          if (i >= availabilityArray.length / blocksPerGroup) {
-            // Make sure the entire availability has been added (will not be guaranteed when only animating a portion of availability)
-            this.availability = new Set(availability)
-            this.availabilityAnimTimeouts.push(
-              setTimeout(() => {
-                this.availabilityAnimEnabled = false
-
-                if (this.showSnackbar) {
-                  this.showInfo("Your availability has been autofilled!")
-                }
-                this.unsavedChanges = false
-              }, 500)
-            )
-          }
-        }, i * msPerGroup)
-
-        this.availabilityAnimTimeouts.push(timeout)
-      }
-    },
-    stopAvailabilityAnim() {
-      for (const timeout of this.availabilityAnimTimeouts) {
-        clearTimeout(timeout)
-      }
-      this.availabilityAnimEnabled = false
-    },
-    async submitAvailability(guestPayload = { name: "", email: "" }) {
-      let payload = {}
-
-      let type = ""
-      // If this is a group submit enabled calendars, otherwise submit availability
-      if (this.isGroup) {
-        type = "group availability and calendars"
-        payload = generateEnabledCalendarsPayload(this.sharedCalendarAccounts)
-        payload.manualAvailability = {}
-        for (const day of Object.keys(this.manualAvailability)) {
-          payload.manualAvailability[day] = [
-            ...this.manualAvailability[day],
-          ].map((a) => new Date(a))
-        }
-        payload.calendarOptions = {
-          bufferTime: this.bufferTime,
-          workingHours: this.workingHours,
-        }
-      } else {
-        type = "availability"
-        payload.availability = this.availabilityArray
-        payload.ifNeeded = this.ifNeededArray
-        if (this.authUser && !this.addingAvailabilityAsGuest) {
-          payload.guest = false
-        } else {
-          payload.guest = true
-          payload.name = guestPayload.name
-          payload.email = guestPayload.email
-          localStorage[this.guestNameKey] = guestPayload.name
-        }
-      }
-
-      await post(`/events/${this.event._id}/response`, payload)
-
-      // Update analytics
-      const addedIfNeededTimes = this.ifNeededArray.length > 0
-      if (this.authUser) {
-        if (this.authUser._id in this.parsedResponses) {
-          this.$posthog?.capture(`Edited ${type}`, {
-            eventId: this.event._id,
-            addedIfNeededTimes,
-          })
-        } else {
-          this.$posthog?.capture(`Added ${type}`, {
-            eventId: this.event._id,
-            addedIfNeededTimes,
-            // bufferTime: this.bufferTime,
-            bufferTime: this.bufferTime.time,
-            bufferTimeActive: this.bufferTime.enabled,
-            workingHoursEnabled: this.workingHours.enabled,
-            workingHoursStartTime: this.workingHours.startTime,
-            workingHoursEndTime: this.workingHours.endTime,
-          })
-        }
-      } else {
-        if (guestPayload.name in this.parsedResponses) {
-          this.$posthog?.capture(`Edited ${type} as guest`, {
-            eventId: this.event._id,
-            addedIfNeededTimes,
-          })
-        } else {
-          this.$posthog?.capture(`Added ${type} as guest`, {
-            eventId: this.event._id,
-            addedIfNeededTimes,
-          })
-        }
-      }
-
-      this.refreshEvent()
-      this.unsavedChanges = false
-    },
-    async submitNewSignUpBlocks() {
-      if (
-        this.signUpBlocksToAddByDay.flat().length +
-          this.signUpBlocksByDay.flat().length ===
-        0
-      ) {
-        this.showError("Please add at least one sign-up block!")
-        return false
-      }
-
-      for (let i = 0; i < this.signUpBlocksToAddByDay.length; ++i) {
-        this.signUpBlocksByDay[i] = this.signUpBlocksByDay[i].concat(
-          this.signUpBlocksToAddByDay[i]
-        )
-        this.signUpBlocksToAddByDay[i] = []
-      }
-
-      const payload = {
-        name: this.event.name,
-        duration: this.event.duration,
-        dates: this.event.dates,
-        type: this.event.type,
-        signUpBlocks: this.signUpBlocksByDay.flat().map((block) => {
-          return {
-            _id: block._id,
-            name: block.name,
-            capacity: block.capacity,
-            startDate: block.startDate,
-            endDate: block.endDate,
-          }
-        }),
-      }
-
-      put(`/events/${this.event._id}`, payload)
-        .then(() => {
-          // window.location.reload()
-        })
-        .catch((err) => {
-          console.error(err)
-          this.showError(
-            "There was a problem editing this event! Please try again later."
-          )
-        })
-
-      return true
-    },
-
-    async deleteAvailability(name = "") {
-      const payload = {}
-      if (this.authUser && !this.addingAvailabilityAsGuest) {
-        payload.guest = false
-        payload.userId = this.authUser._id
-
-        this.$posthog?.capture("Deleted availability", {
-          eventId: this.event._id,
-        })
-      } else {
-        payload.guest = true
-        payload.name = name
-
-        this.$posthog?.capture("Deleted availability as guest", {
-          eventId: this.event._id,
-          name,
-        })
-      }
-      await _delete(`/events/${this.event._id}/response`, payload)
-      this.availability = new Set()
-      if (this.isGroup) this.$router.replace({ name: "home" })
-      else this.refreshEvent()
-    },
-    //#endregion
-
-    // -----------------------------------
-    //#region Timeslot
-    // -----------------------------------
-    setTimeslotSize() {
-      /* Gets the dimensions of each timeslot and assigns it to the timeslot variable */
-      const timeslotEl = document.querySelector(".timeslot")
-      if (timeslotEl) {
-        ;({ width: this.timeslot.width, height: this.timeslot.height } =
-          timeslotEl.getBoundingClientRect())
-      }
     },
     /** Returns a class string and style object for the given time timeslot div */
     getTimeTimeslotClassStyle(day, time, d, t) {
@@ -3496,35 +2319,6 @@ export default {
         this.$emit("setCurGuestId", id)
       })
     },
-    openEditGuestNameDialog() {
-      this.newGuestName = this.curGuestId
-      this.editGuestNameDialog = true
-    },
-    async saveGuestName() {
-      const newName = this.newGuestName.trim()
-      if (newName.length === 0) {
-        this.showError("Guest name cannot be empty")
-        return
-      }
-      if (newName === this.curGuestId) {
-        this.editGuestNameDialog = false
-        return
-      }
-      try {
-        await post(`/events/${this.event._id}/rename-user`, {
-          oldName: this.curGuestId,
-          newName,
-        })
-        localStorage[this.guestNameKey] = newName
-        this.showInfo("Guest name updated successfully")
-        this.editGuestNameDialog = false
-        this.$emit("setCurGuestId", newName)
-        this.refreshEvent()
-      } catch (err) {
-        const errorMessage = err.parsed?.error || err.message || "Failed to update guest name"
-        this.showError(errorMessage)
-      }
-    },
     refreshEvent() {
       this.$emit("refreshEvent")
     },
@@ -3622,344 +2416,6 @@ export default {
       this.state = this.defaultState
     },
     //#endregion
-
-    // -----------------------------------
-    //#region Drag Stuff
-    // -----------------------------------
-    normalizeXY(e) {
-      /* Normalize the touch event to be relative to element */
-      let pageX, pageY
-      if ("touches" in e) {
-        // is a touch event
-        ;({ pageX, pageY } = e.touches[0])
-      } else {
-        // is a mouse event
-        ;({ pageX, pageY } = e)
-      }
-      const { left, top } = e.currentTarget.getBoundingClientRect()
-      const x = pageX - left
-      const y = pageY - top - window.scrollY
-      return { x, y }
-    },
-    clampRow(row) {
-      if (this.event.daysOnly) {
-        row = clamp(row, 0, Math.floor(this.monthDays.length / 7))
-      } else {
-        row = clamp(row, 0, this.times.length - 1)
-      }
-      return row
-    },
-    clampCol(col) {
-      if (this.event.daysOnly) {
-        col = clamp(col, 0, 7 - 1)
-      } else {
-        col = clamp(col, 0, this.days.length - 1)
-      }
-      return col
-    },
-    /** Returns row, col for the timeslot we are currently hovering over given the x and y position */
-    getRowColFromXY(x, y) {
-      const { width, height } = this.timeslot
-      let col = Math.floor(x / width)
-      if (!this.event.daysOnly) {
-        col = this.columnOffsets.length
-        for (let i = 0; i < this.columnOffsets.length; ++i) {
-          if (x < this.columnOffsets[i]) {
-            col = i - 1
-            break
-          }
-        }
-      }
-      let row = Math.floor(y / height)
-
-      // Account for split gap
-      if (!this.event.daysOnly && row > this.splitTimes[0].length) {
-        const adjustedRow = Math.floor((y - this.SPLIT_GAP_HEIGHT) / height)
-        if (adjustedRow >= this.splitTimes[0].length) {
-          // Make sure we don't go to a lesser index
-          row = adjustedRow
-        }
-      }
-
-      row = this.clampRow(row)
-      col = this.clampCol(col)
-      return {
-        row,
-        col,
-      }
-    },
-    endDrag() {
-      if (!this.allowDrag) return
-
-      if (!this.dragStart || !this.dragCur) return
-
-      // Update availability set based on drag region
-      if (
-        this.state === this.states.EDIT_AVAILABILITY ||
-        this.state === this.states.SET_SPECIFIC_TIMES
-      ) {
-        // Determine colInc and rowInc
-        let colInc =
-          (this.dragCur.col - this.dragStart.col) /
-          Math.abs(this.dragCur.col - this.dragStart.col)
-        let rowInc =
-          (this.dragCur.row - this.dragStart.row) /
-          Math.abs(this.dragCur.row - this.dragStart.row)
-        if (isNaN(colInc)) colInc = 1
-        if (isNaN(rowInc)) rowInc = 1
-
-        // Determine iteration variables
-        let rowStart = this.dragStart.row
-        let rowMax = this.dragCur.row + rowInc
-        let colStart = this.dragStart.col
-        let colMax = this.dragCur.col + colInc
-
-        // Correct iteration variables if days only
-        if (this.event.daysOnly) {
-          colStart = 0
-          colMax = 7
-          colInc = 1
-        }
-
-        // Iterate all selected time slots and either add or remove them
-        for (let r = rowStart; r != rowMax; r += rowInc) {
-          for (let c = colStart; c != colMax; c += colInc) {
-            const date = this.getDateFromRowCol(r, c)
-            if (!date) continue
-
-            if (this.event.daysOnly) {
-              // Don't add to availability set if month day is not included
-              const isMonthDayIncluded =
-                this.monthDayIncluded.get(date.getTime()) &&
-                this.inDragRange(r, c)
-              if (!isMonthDayIncluded) continue
-            }
-
-            if (this.dragType === this.DRAG_TYPES.ADD) {
-              if (this.state === this.states.SET_SPECIFIC_TIMES) {
-                this.tempTimes.add(date.getTime())
-              } else {
-                // Add / remove time from availability set
-                if (this.availabilityType === availabilityTypes.AVAILABLE) {
-                  this.availability.add(date.getTime())
-                  this.ifNeeded.delete(date.getTime())
-                } else if (
-                  this.availabilityType === availabilityTypes.IF_NEEDED
-                ) {
-                  this.ifNeeded.add(date.getTime())
-                  this.availability.delete(date.getTime())
-                }
-              }
-            } else if (this.dragType === this.DRAG_TYPES.REMOVE) {
-              if (this.state === this.states.SET_SPECIFIC_TIMES) {
-                this.tempTimes.delete(date.getTime())
-              } else {
-                // Add / remove time from availability set
-                this.availability.delete(date.getTime())
-                this.ifNeeded.delete(date.getTime())
-              }
-            }
-
-            // Edit manualAvailability set if event is a GROUP
-            if (this.event.type === eventTypes.GROUP) {
-              const discreteDate = dateToDowDate(
-                this.event.dates,
-                date,
-                this.weekOffset,
-                true
-              )
-              const startDateOfDay = dateToDowDate(
-                this.event.dates,
-                this.days[c].dateObject,
-                this.weekOffset,
-                true
-              )
-
-              // If date not touched, then add all of the existing calendar availabilities and mark it as touched
-              if (!(startDateOfDay.getTime() in this.manualAvailability)) {
-                // Create new set
-                this.manualAvailability[startDateOfDay.getTime()] = new Set()
-
-                // Add the existing calendar availabilities
-                const existingAvailability = this.getAvailabilityForColumn(c)
-                for (const a of existingAvailability) {
-                  const convertedDate = dateToDowDate(
-                    this.event.dates,
-                    new Date(a),
-                    this.weekOffset,
-                    true
-                  )
-                  this.manualAvailability[startDateOfDay.getTime()].add(
-                    convertedDate.getTime()
-                  )
-                }
-              }
-
-              // Add / remove time from manual availability set
-              if (this.dragType === this.DRAG_TYPES.ADD) {
-                this.manualAvailability[startDateOfDay.getTime()].add(
-                  discreteDate.getTime()
-                )
-              } else if (this.dragType === this.DRAG_TYPES.REMOVE) {
-                this.manualAvailability[startDateOfDay.getTime()].delete(
-                  discreteDate.getTime()
-                )
-              }
-            }
-          }
-        }
-        this.availability = new Set(this.availability)
-      } else if (this.state === this.states.SCHEDULE_EVENT) {
-        // Update scheduled event
-        const col = this.dragStart.col
-        const row = this.dragStart.row
-        const numRows = this.dragCur.row - this.dragStart.row + 1
-
-        if (numRows > 0) {
-          this.curScheduledEvent = { col, row, numRows }
-        } else {
-          this.curScheduledEvent = null
-        }
-      } else if (this.state === this.states.EDIT_SIGN_UP_BLOCKS) {
-        // Update sign up blocks
-        const dayIndex = this.dragStart.col
-        const hoursOffset = this.dragStart.row / 4
-        const hoursLength = (this.dragCur.row - this.dragStart.row + 1) / 4
-        if (hoursLength > 0) {
-          this.signUpBlocksToAddByDay[dayIndex].push(
-            this.createSignUpBlock(dayIndex, hoursOffset, hoursLength)
-          )
-        }
-      }
-
-      // Set dragging defaults
-      this.dragging = false
-      this.dragStart = null
-      this.dragCur = null
-    },
-    inDragRange(row, col) {
-      /* Returns whether the given row and col is within the drag range */
-      if (this.dragging) {
-        if (this.event.daysOnly) {
-          if (
-            isBetween(row, this.dragStart.row, this.dragCur.row) ||
-            isBetween(row, this.dragCur.row, this.dragStart.row)
-          ) {
-            if (this.dragCur.row < this.dragStart.row) {
-              return (
-                (this.dragCur.row === row && this.dragCur.col <= col) ||
-                (this.dragStart.row === row && this.dragStart.col >= col) ||
-                (this.dragStart.row !== row && this.dragCur.row !== row)
-              )
-            } else if (this.dragCur.row > this.dragStart.row) {
-              return (
-                (this.dragCur.row === row && this.dragCur.col >= col) ||
-                (this.dragStart.row === row && this.dragStart.col <= col) ||
-                (this.dragStart.row !== row && this.dragCur.row !== row)
-              )
-            } else {
-              // cur row == start row
-              return (
-                isBetween(col, this.dragStart.col, this.dragCur.col) ||
-                isBetween(col, this.dragCur.col, this.dragStart.col)
-              )
-            }
-          }
-          return false
-        }
-
-        return (
-          (isBetween(row, this.dragStart.row, this.dragCur.row) ||
-            isBetween(row, this.dragCur.row, this.dragStart.row)) &&
-          (isBetween(col, this.dragStart.col, this.dragCur.col) ||
-            isBetween(col, this.dragCur.col, this.dragStart.col))
-        )
-      }
-      return false
-    },
-    moveDrag(e) {
-      if (!this.allowDrag) return
-      if (e.touches?.length > 1) return // If dragging with more than one finger
-      if (!this.dragStart) return
-
-      e.preventDefault()
-      let { row, col } = this.getRowColFromXY(
-        ...Object.values(this.normalizeXY(e))
-      )
-
-      if (
-        this.maxSignUpBlockRowSize &&
-        row >= this.dragStart.row + this.maxSignUpBlockRowSize
-      ) {
-        row = this.dragStart.row + this.maxSignUpBlockRowSize - 1
-      } else if (this.state === this.states.SCHEDULE_EVENT) {
-        const isFirstSplit = this.dragStart.row < this.splitTimes[0].length
-        if (isFirstSplit) {
-          row = Math.min(row, this.splitTimes[0].length - 1)
-        }
-      }
-
-      this.dragCur = { row, col }
-    },
-    startDrag(e) {
-      const { row, col } = this.getRowColFromXY(
-        ...Object.values(this.normalizeXY(e))
-      )
-
-      // If sign up form, check if trying to drag in a block
-      if (this.isSignUp) {
-        for (const block of this.signUpBlocksByDay[col].concat(
-          this.signUpBlocksToAddByDay[col]
-        )) {
-          if (
-            isBetween(
-              row,
-              block.hoursOffset * 4,
-              (block.hoursOffset + block.hoursLength) * 4 - 1
-            )
-          ) {
-            this.$refs.signUpBlocksList.scrollToSignUpBlock(block._id)
-            return
-          }
-        }
-      }
-
-      if (!this.allowDrag) return
-      if (e.touches?.length > 1) return // If dragging with more than one finger
-
-      const date = this.getDateFromRowCol(row, col)
-      if (!date) return
-
-      // Dont start dragging if day not included in daysonly event
-      if (this.event.daysOnly && !this.monthDayIncluded.get(date.getTime())) {
-        return
-      }
-
-      this.dragging = true
-      this.dragStart = { row, col }
-      this.dragCur = { row, col }
-
-      // Prevent scroll
-      e.preventDefault()
-
-      // Set drag type
-      if (this.isSignUp) {
-        this.dragType = this.DRAG_TYPES.ADD
-      } else if (
-        (this.state === this.states.SET_SPECIFIC_TIMES &&
-          this.tempTimes.has(date.getTime())) ||
-        (this.availabilityType === availabilityTypes.AVAILABLE &&
-          this.availability.has(date.getTime())) ||
-        (this.availabilityType === availabilityTypes.IF_NEEDED &&
-          this.ifNeeded.has(date.getTime()))
-      ) {
-        this.dragType = this.DRAG_TYPES.REMOVE
-      } else {
-        this.dragType = this.DRAG_TYPES.ADD
-      }
-    },
-    //#endregion
-
     // -----------------------------------
     //#region Options
     // -----------------------------------
@@ -3979,19 +2435,9 @@ export default {
       )
         this.state = this.defaultState
     },
-    toggleShowEditOptions() {
-      this.showEditOptions = !this.showEditOptions
-      localStorage["showEditOptions"] = this.showEditOptions
-    },
     toggleShowEventOptions() {
       this.showEventOptions = !this.showEventOptions
       localStorage["showEventOptions"] = this.showEventOptions
-    },
-    updateOverlayAvailability(val) {
-      this.overlayAvailability = !!val
-      this.$posthog.capture("overlay_availability_toggled", {
-        enabled: !!val,
-      })
     },
     //#endregion
 
@@ -4197,114 +2643,6 @@ export default {
       return manualAvailabilityDow
     },
     //#endregion
-
-    // -----------------------------------
-    //#region Sign up form
-    // -----------------------------------
-
-    /** Creates a sign up block for the current day and hour offset */
-    createSignUpBlock(dayIndex, hoursOffset, hoursLength) {
-      const timeBlock = getTimeBlock(
-        this.days[dayIndex].dateObject,
-        hoursOffset,
-        hoursLength
-      )
-
-      return {
-        _id: ObjectID().toString(),
-        capacity: 1,
-        name: this.newSignUpBlockName,
-        ...timeBlock,
-        hoursOffset,
-        hoursLength,
-      }
-    },
-
-    /** Updates the sign up block with the same id */
-    editSignUpBlock(signUpBlock) {
-      this.signUpBlocksByDay.forEach((blocksInDay, dayIndex) => {
-        blocksInDay.forEach((block, blockIndex) => {
-          if (signUpBlock._id === block._id) {
-            this.signUpBlocksByDay[dayIndex][blockIndex] = signUpBlock
-            this.signUpBlocksByDay = [...this.signUpBlocksByDay]
-            return
-          }
-        })
-      })
-
-      this.signUpBlocksToAddByDay.forEach((blocksInDay, dayIndex) => {
-        blocksInDay.forEach((block, blockIndex) => {
-          if (signUpBlock._id === block._id) {
-            this.signUpBlocksToAddByDay[dayIndex][blockIndex] = signUpBlock
-            this.signUpBlocksToAddByDay = [...this.signUpBlocksToAddByDay]
-            return
-          }
-        })
-      })
-    },
-
-    /** Deletes the sign up block with the id */
-    deleteSignUpBlock(signUpBlockId) {
-      this.signUpBlocksByDay.forEach((blocksInDay, dayIndex) => {
-        blocksInDay.forEach((block, blockIndex) => {
-          if (signUpBlockId === block._id) {
-            this.signUpBlocksByDay[dayIndex].splice(blockIndex, 1)
-            return
-          }
-        })
-      })
-
-      this.signUpBlocksToAddByDay.forEach((blocksInDay, dayIndex) => {
-        blocksInDay.forEach((block, blockIndex) => {
-          if (signUpBlockId === block._id) {
-            this.signUpBlocksToAddByDay[dayIndex].splice(blockIndex, 1)
-            return
-          }
-        })
-      })
-    },
-
-    /** Reloads all the data for the sign up form */
-    resetSignUpForm() {
-      /** Split sign up blocks by day */
-      this.signUpBlocksByDay = splitTimeBlocksByDay(
-        this.event,
-        this.event.signUpBlocks ?? []
-      )
-
-      this.resetSignUpBlocksToAddByDay()
-
-      /** Populate sign up block responses */
-      for (const userId in this.event.signUpResponses) {
-        const signUpResponse = this.event.signUpResponses[userId]
-        for (const signUpBlockId of signUpResponse.signUpBlockIds) {
-          const signUpBlock = this.signUpBlocksByDay
-            .flat()
-            .find((signUpBlock) => signUpBlock._id === signUpBlockId)
-
-          if (!signUpBlock.responses) signUpBlock.responses = []
-          signUpBlock.responses.push(signUpResponse)
-        }
-      }
-    },
-
-    /** Initialize sign up blocks to be added array */
-    resetSignUpBlocksToAddByDay() {
-      this.signUpBlocksToAddByDay = []
-      for (const day of this.signUpBlocksByDay) {
-        this.signUpBlocksToAddByDay.push([])
-      }
-    },
-
-    /** Emits sign up for block to parent element */
-    handleSignUpBlockClick(block) {
-      const blockFull = (block.responses?.length || 0) >= block.capacity
-      if (!this.alreadyRespondedToSignUpForm && !blockFull && !this.isOwner)
-        this.$emit("signUpForBlock", block)
-    },
-
-    //#endregion
-
     // -----------------------------------
     //#region Specific times for specific days
     // -----------------------------------
@@ -4368,28 +2706,8 @@ export default {
 
     //#endregion
 
-    /** Recalculate availability the calendar based on calendar events */
-    reanimateAvailability() {
-      if (
-        this.state === this.states.EDIT_AVAILABILITY &&
-        this.authUser &&
-        !(this.authUser?._id in this.event.responses) && // User hasn't responded yet
-        !this.loadingCalendarEvents &&
-        (!this.unsavedChanges || this.availabilityAnimEnabled)
-      ) {
-        for (const timeout of this.availabilityAnimTimeouts) {
-          clearTimeout(timeout)
-        }
-        this.setAvailabilityAutomatically()
-      }
-    },
   },
   watch: {
-    availability() {
-      if (this.state === this.states.EDIT_AVAILABILITY) {
-        this.unsavedChanges = true
-      }
-    },
     event: {
       immediate: true,
       handler() {
@@ -4427,11 +2745,6 @@ export default {
           this.curTimeslotAvailability[respondent._id] = true
         }
       },
-    },
-    calendarEventsByDay(val, oldVal) {
-      if (JSON.stringify(val) !== JSON.stringify(oldVal)) {
-        this.reanimateAvailability()
-      }
     },
     page() {
       this.$nextTick(() => {
@@ -4473,38 +2786,11 @@ export default {
         this.fetchResponses()
       }
     },
-    hideIfNeeded() {
-      this.getResponsesFormatted()
-    },
-    parsedResponses() {
-      // Theoretically, parsed responses should only be changing for groups
-      this.getResponsesFormatted()
-
-      // Repopulate user availability when editing availability (this happens when switching weeks in a group)
-      if (
-        this.event.type === eventTypes.GROUP &&
-        this.state === this.states.EDIT_AVAILABILITY &&
-        this.authUser
-      ) {
-        this.availability = new Set()
-        this.populateUserAvailability(this.authUser._id)
-      }
-    },
     showBestTimes() {
       this.onShowBestTimesChange()
     },
     startCalendarOnMonday() {
       localStorage["startCalendarOnMonday"] = this.startCalendarOnMonday
-    },
-    bufferTime(cur, prev) {
-      if (cur.enabled !== prev.enabled || cur.enabled) {
-        this.reanimateAvailability()
-      }
-    },
-    workingHours(cur, prev) {
-      if (cur.enabled !== prev.enabled || cur.enabled) {
-        this.reanimateAvailability()
-      }
     },
     timeType() {
       localStorage["timeType"] = this.timeType
@@ -4578,19 +2864,6 @@ export default {
     this.setTimeslotSize()
     addEventListener("resize", this.onResize)
     addEventListener("scroll", this.onScroll)
-    if (!this.calendarOnly) {
-      const timesEl = document.getElementById("drag-section")
-      if (isTouchEnabled()) {
-        timesEl.addEventListener("touchstart", this.startDrag)
-        timesEl.addEventListener("touchmove", this.moveDrag)
-        timesEl.addEventListener("touchend", this.endDrag)
-        timesEl.addEventListener("touchcancel", this.endDrag)
-      }
-      timesEl.addEventListener("mousedown", this.startDrag)
-      timesEl.addEventListener("mousemove", this.moveDrag)
-      timesEl.addEventListener("mouseup", this.endDrag)
-    }
-
     // Parse sign up blocks and responses
     this.resetSignUpForm()
   },
@@ -4600,25 +2873,21 @@ export default {
     removeEventListener("scroll", this.onScroll)
   },
   components: {
-    AlertText,
     AvailabilityTypeToggle,
-    ColorLegend,
-    ExpandableSection,
-    BufferTimeSwitch,
+    DaysOnlyCalendar,
+    EditAvailabilitySidebar,
     UserAvatarContent,
     ZigZag,
     ConfirmDetailsDialog,
     ToolRow,
-    CalendarAccounts,
     RespondentsList,
     Advertisement,
     GCalWeekSelector,
-    WorkingHoursToggle,
     SignUpBlock,
     SignUpCalendarBlock,
     SignUpBlocksList,
-    CalendarEventBlock, // Added component registration
-    SpecificTimesInstructions, // Added component registration
+    CalendarEventBlock,
+    SpecificTimesInstructions,
     Tooltip,
   },
 }
