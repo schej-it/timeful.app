@@ -7,6 +7,7 @@ module.exports = {
     "./src/**/*.{vue,js,ts,jsx,tsx}",
   ],
   important: true,
+  darkMode: ["class", ".theme--dark"],
   theme: {
     extend: {
       fontSize: {
@@ -37,6 +38,15 @@ module.exports = {
       "light-gray-stroke": "#dfdfdf",
       "avail-green": colors.emerald, // The green used for marking availability
       red: "#DB1616",
+
+      // Semantic color tokens (auto-switch via CSS variables)
+      surface: "var(--color-surface)",
+      "surface-variant": "var(--color-surface-variant)",
+      "surface-muted": "var(--color-surface-muted)",
+      "text-primary": "var(--color-text-primary)",
+      "text-secondary": "var(--color-text-secondary)",
+      "text-muted": "var(--color-text-muted)",
+      "border-default": "var(--color-border)",
     },
     screens: {
       sm: "640px",

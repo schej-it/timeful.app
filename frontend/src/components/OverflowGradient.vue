@@ -3,8 +3,7 @@
     v-if="showGradient"
     class="tw-pointer-events-none tw-absolute tw-bottom-0 tw-left-0 tw-right-0 tw-z-20 tw-flex tw-h-16 tw-items-end tw-justify-center"
     :style="{
-      background:
-        'linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 100%)',
+      background: 'var(--gradient-overflow)',
     }"
   >
     <v-btn

@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="showBanner"
-    class="tw-fixed tw-bottom-5 tw-right-5 tw-z-50 tw-w-80 tw-max-w-[calc(100vw-40px)] tw-rounded-xl tw-bg-white tw-shadow-2xl max-[480px]:tw-bottom-2.5 max-[480px]:tw-left-2.5 max-[480px]:tw-w-[calc(100vw-20px)] max-[480px]:tw-max-w-none"
+    class="tw-fixed tw-bottom-5 tw-right-5 tw-z-50 tw-w-80 tw-max-w-[calc(100vw-40px)] tw-rounded-xl tw-bg-surface tw-shadow-2xl max-[480px]:tw-bottom-2.5 max-[480px]:tw-left-2.5 max-[480px]:tw-w-[calc(100vw-20px)] max-[480px]:tw-max-w-none"
   >
     <div
       class="tw-flex tw-items-center tw-justify-between tw-px-4 tw-pt-4 tw-font-medium"
@@ -58,7 +58,7 @@
       >
         <button
           @click="showCustomizeSection = !showCustomizeSection"
-          class="tw-w-full tw-flex-1 tw-cursor-pointer tw-rounded-md tw-border tw-border-solid tw-border-gray tw-bg-white tw-px-3 tw-py-2 tw-text-xs tw-font-medium tw-text-very-dark-gray sm:tw-w-auto"
+          class="tw-w-full tw-flex-1 tw-cursor-pointer tw-rounded-md tw-border tw-border-solid tw-border-gray tw-bg-surface tw-px-3 tw-py-2 tw-text-xs tw-font-medium tw-text-text-secondary sm:tw-w-auto"
         >
           Customize
         </button>

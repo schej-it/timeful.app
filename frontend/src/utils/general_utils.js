@@ -162,14 +162,15 @@ export const isElementInViewport = (
   )
 }
 
-/** Converts hex with transparency to equivalent hex without transparency (on white background) */
-export const removeTransparencyFromHex = (hexColor) => {
+/** Converts hex with transparency to equivalent hex without transparency on a given background */
+export const removeTransparencyFromHex = (hexColor, bgHex = "#FFFFFF") => {
   const color = Color(hexColor)
+  const bg = Color(bgHex)
 
-  // Y=255 - P*(255-X) : https://graphicdesign.stackexchange.com/questions/113007/how-to-determine-the-equivalent-opaque-rgb-color-for-a-given-partially-transpare
-  const red = 255 - color.alpha() * (255 - color.red())
-  const green = 255 - color.alpha() * (255 - color.green())
-  const blue = 255 - color.alpha() * (255 - color.blue())
+  // Y=bgChannel - P*(bgChannel-X) : https://graphicdesign.stackexchange.com/questions/113007/how-to-determine-the-equivalent-opaque-rgb-color-for-a-given-partially-transpare
+  const red = bg.red() - color.alpha() * (bg.red() - color.red())
+  const green = bg.green() - color.alpha() * (bg.green() - color.green())
+  const blue = bg.blue() - color.alpha() * (bg.blue() - color.blue())
 
   const newColor = Color.rgb(red, green, blue)
   return newColor.hex()

@@ -12,11 +12,11 @@
             How would you like to add <br class="tw-block sm:tw-hidden" />
             your availability?
           </div>
-          <div class="tw-pb-4 tw-text-center tw-text-xs tw-text-dark-gray">
+          <div class="tw-pb-4 tw-text-center tw-text-xs tw-text-text-muted">
             You can always manually edit after autofilling
           </div>
           <div class="tw-flex tw-flex-col tw-gap-2">
-            <v-btn block @click="autofillWithGcal" class="tw-bg-white">
+            <v-btn block @click="autofillWithGcal" class="tw-bg-surface">
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
                   class="tw-flex-initial"
@@ -29,7 +29,7 @@
                 <v-spacer />
               </div>
             </v-btn>
-            <v-btn block @click="autofillWithApple" class="tw-bg-white">
+            <v-btn block @click="autofillWithApple" class="tw-bg-surface">
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
                   class="tw-flex-initial"
@@ -42,7 +42,7 @@
                 <v-spacer />
               </div>
             </v-btn>
-            <v-btn block @click="autofillWithOutlook" class="tw-bg-white">
+            <v-btn block @click="autofillWithOutlook" class="tw-bg-surface">
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
                   class="tw-flex-initial"
@@ -58,7 +58,7 @@
             <div class="tw-flex tw-items-center tw-gap-3">
               <v-divider />
               <div
-                class="tw-text-center tw-text-xs tw-font-medium tw-text-dark-gray"
+                class="tw-text-center tw-text-xs tw-font-medium tw-text-text-muted"
               >
                 or
               </div>

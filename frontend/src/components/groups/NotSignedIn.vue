@@ -15,7 +15,7 @@
             event.name
           }}"
         </h1>
-        <div class="tw-text-center tw-text-dark-gray">
+        <div class="tw-text-center tw-text-text-muted">
           Join the group now to share your real-time <br v-if="!isPhone" />
           calendar availability with each other!
         </div>
@@ -23,7 +23,7 @@
       <v-btn @click="join" color="primary" class="tw-mb-8"
         >Join with Google Calendar</v-btn
       >
-      <div class="tw-text-center tw-text-dark-gray">
+      <div class="tw-text-center tw-text-text-muted">
         Already have a Timeful account?
         <a @click="signIn" class="tw-underline">Sign in</a>
       </div>

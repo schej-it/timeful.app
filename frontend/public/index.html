@@ -37,6 +37,17 @@
       loadTrackingScripts()
     </script>
 
+    <script>
+      // Prevent flash of light theme when dark mode is preferred
+      (function() {
+        try {
+          var dark = localStorage.getItem('darkMode');
+          if (dark === 'true' || (dark === null && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.style.backgroundColor = '#1E1E1E';
+          }
+        } catch(e) {}
+      })();
+    </script>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />

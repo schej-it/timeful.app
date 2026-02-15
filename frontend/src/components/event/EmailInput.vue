@@ -44,7 +44,7 @@
 
     <div class="tw-transition-all tw-relative" :class="emailsAreValid ? '-tw-mt-5' : ''" @click="requestContactsAccess">
       <v-expand-transition>
-        <div class="tw-text-xs tw-text-dark-gray" v-if="!hasContactsAccess">
+        <div class="tw-text-xs tw-text-text-muted" v-if="!hasContactsAccess">
           <a class="tw-underline" @click="requestContactsAccess"
             >Enable contacts access</a
           >

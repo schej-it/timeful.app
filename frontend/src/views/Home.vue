@@ -34,18 +34,18 @@
       </v-fade-transition>
 
       <div
-        class="tw-rounded-md tw-px-6 tw-py-4 sm:tw-mx-4 sm:tw-bg-[#f3f3f366]"
+        class="tw-rounded-md tw-px-6 tw-py-4 sm:tw-mx-4 sm:tw-bg-[var(--color-surface-highlight)]"
         v-if="!loading || eventsNotEmpty"
       >
         <div
-          class="tw-mb-3 tw-text-xl tw-font-medium tw-text-dark-green sm:tw-text-2xl"
+          class="tw-mb-3 tw-text-xl tw-font-medium tw-text-dark-green tw-dark:tw-text-light-green sm:tw-text-2xl"
         >
           Tools
         </div>
         <div class="tw-flex tw-flex-row tw-items-center tw-gap-2">
           <div
             @click="convertW2M"
-            class="tw-cursor-pointer tw-text-sm tw-font-normal tw-text-dark-gray tw-underline"
+            class="tw-cursor-pointer tw-text-sm tw-font-normal tw-text-text-muted tw-underline"
           >
             Convert When2meet to Timeful
           </div>

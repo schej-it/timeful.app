@@ -15,7 +15,7 @@
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
-      <v-card-text class="tw-text-very-dark-gray">
+      <v-card-text class="tw-text-text-secondary">
         <p class="tw-mb-4">
           If someone accidentally sends you a When2meet link instead of a
           Timeful, you can convert it by following these steps:

@@ -13,7 +13,7 @@
       <h1 class="tw-mb-2 tw-text-center tw-text-2xl tw-font-medium">
         You need access
       </h1>
-      <div class="tw-text-center tw-text-dark-gray">
+      <div class="tw-text-center tw-text-text-muted">
         Ask the group owner to share this group with your email: <br />
         <span class="tw-font-medium tw-text-green">{{ authUser.email }}</span>
       </div>

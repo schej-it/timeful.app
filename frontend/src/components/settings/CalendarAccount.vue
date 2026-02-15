@@ -1,7 +1,7 @@
 <template>
   <div v-if="showAccount" class="tw-flex tw-flex-col">
     <div
-      class="tw-group tw-flex tw-h-10 tw-flex-row tw-items-center tw-justify-between tw-text-black"
+      class="tw-group tw-flex tw-h-10 tw-flex-row tw-items-center tw-justify-between tw-text-text-primary"
     >
       <div
         :class="`tw-gap-${toggleState ? '0' : '2'}`"
@@ -26,7 +26,7 @@
 
             <v-icon
               :class="`tw-rotate-${showSubCalendars ? 90 : 0}`"
-              class="tw-text-dark-gray tw-transition-all"
+              class="tw-text-text-muted tw-transition-all"
               >mdi-chevron-right</v-icon
             >
           </div>
@@ -63,14 +63,14 @@
         } ${!allowDelete ? 'tw-hidden' : ''}`"
         class="group-hover:tw-opacity-100"
         @click="openRemoveDialog"
-        ><v-icon color="#4F4F4F">mdi-close</v-icon></v-btn
+        ><v-icon class="tw-text-text-secondary">mdi-close</v-icon></v-btn
       >
     </div>
 
     <!-- Sub-calendar accounts -->
 
     <v-expand-transition>
-      <div v-if="showSubCalendars" class="tw-space-y-2 tw-bg-[#EBF7EF] tw-py-2">
+      <div v-if="showSubCalendars" class="tw-space-y-2 tw-bg-[var(--color-surface-green)] tw-py-2">
         <div
           v-for="(subCalendar, id) in account.subCalendars"
           :key="id"

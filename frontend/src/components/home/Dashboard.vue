@@ -1,15 +1,15 @@
 <template>
-  <div class="tw-rounded-md tw-px-6 tw-py-4 sm:tw-mx-4 sm:tw-bg-[#f3f3f366]">
+  <div class="tw-rounded-md tw-px-6 tw-py-4 sm:tw-mx-4 sm:tw-bg-[var(--color-surface-highlight)]">
     <div class="tw-mb-3 tw-flex tw-items-center tw-justify-between">
       <div class="tw-flex tw-flex-col">
         <div
-          class="tw-text-xl tw-font-medium tw-text-dark-green sm:tw-text-2xl"
+          class="tw-text-xl tw-font-medium tw-text-dark-green tw-dark:tw-text-light-green sm:tw-text-2xl"
         >
           Dashboard
         </div>
         <div
           v-if="!isPremiumUser"
-          class="tw-flex tw-items-baseline tw-gap-2 tw-text-sm tw-font-normal tw-text-very-dark-gray"
+          class="tw-flex tw-items-baseline tw-gap-2 tw-text-sm tw-font-normal tw-text-text-secondary"
         >
           <div>
             {{ authUser?.numEventsCreated }} / {{ numFreeEvents }} free events
@@ -26,7 +26,7 @@
       <v-btn
         text
         @click="openCreateFolderDialog"
-        class="tw-text-very-dark-gray"
+        class="tw-text-text-secondary"
       >
         <v-icon class="tw-text-lg">mdi-folder-plus</v-icon>
         <span class="tw-ml-2">New folder</span>
@@ -49,7 +49,7 @@
             v-if="folder.type === 'regular'"
             :color="folder.color || '#D3D3D3'"
             small
-            class="tw-mr-2 tw-cursor-pointer tw-rounded tw-border tw-border-light-gray-stroke tw-px-2 tw-text-sm tw-font-medium"
+            class="tw-mr-2 tw-cursor-pointer tw-rounded tw-border tw-border-border-default tw-px-2 tw-text-sm tw-font-medium"
             @click="openEditFolderDialog(folder)"
           >
             {{ folder.name }}
@@ -116,7 +116,7 @@
                   eventsByFolder[folder.id].groups.length === 0 &&
                   eventsByFolder[folder.id].events.length === 0
                 "
-                class="tw-absolute tw-left-0 tw-py-4 tw-text-sm tw-text-very-dark-gray"
+                class="tw-absolute tw-left-0 tw-py-4 tw-text-sm tw-text-text-secondary"
                 :class="folder.type === 'regular' ? 'tw-ml-8' : 'tw-ml-7'"
               >
                 {{ folder.emptyMessage }}
@@ -146,7 +146,7 @@
       </div>
 
       <div v-if="allEvents.length === 0">
-        <div class="tw-py-4 tw-text-sm tw-text-very-dark-gray">
+        <div class="tw-py-4 tw-text-sm tw-text-text-secondary">
           No events yet! Create one to get started.
         </div>
       </div>
@@ -183,7 +183,7 @@
               <div
                 v-for="color in folderColors"
                 :key="color"
-                class="tw-h-6 tw-w-6 tw-cursor-pointer tw-rounded-full tw-border tw-border-light-gray-stroke"
+                class="tw-h-6 tw-w-6 tw-cursor-pointer tw-rounded-full tw-border tw-border-border-default"
                 :style="{ backgroundColor: color }"
                 :class="{
                   'tw-ring-2 tw-ring-gray tw-ring-offset-2':

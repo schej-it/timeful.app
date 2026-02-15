@@ -36,7 +36,7 @@
                 <div class="tw-flex tw-w-full">
                   <div
                     v-for="day in daysOfWeek"
-                    class="tw-flex-1 tw-p-2 tw-text-center tw-text-base tw-capitalize tw-text-dark-gray"
+                    class="tw-flex-1 tw-p-2 tw-text-center tw-text-base tw-capitalize tw-text-text-muted"
                   >
                     {{ day }}
                   </div>
@@ -66,7 +66,7 @@
                     class="tw-sticky tw-bottom-4 tw-z-10 tw-flex"
                   >
                     <div
-                      class="tw-mt-2 tw-flex tw-w-full tw-items-center tw-justify-between tw-gap-1 tw-rounded-md tw-bg-off-white tw-p-2 tw-px-[7px] tw-text-sm tw-text-very-dark-gray"
+                      class="tw-mt-2 tw-flex tw-w-full tw-items-center tw-justify-between tw-gap-1 tw-rounded-md tw-bg-surface-variant tw-p-2 tw-px-[7px] tw-text-sm tw-text-text-secondary"
                     >
                       <div class="tw-flex tw-items-center tw-gap-1">
                         <v-icon small>mdi-information-outline</v-icon>
@@ -109,7 +109,7 @@
               >
                 <div
                   :class="calendarOnly ? 'tw-invisible' : 'tw-visible'"
-                  class="tw-sticky tw-top-14 tw-z-10 -tw-ml-3 tw-mb-3 tw-h-11 tw-bg-white sm:tw-top-16 sm:tw-ml-0"
+                  class="tw-sticky tw-top-14 tw-z-10 -tw-ml-3 tw-mb-3 tw-h-11 tw-bg-surface sm:tw-top-16 sm:tw-ml-0"
                 >
                   <div
                     :class="hasPrevPage ? 'tw-visible' : 'tw-invisible'"
@@ -178,7 +178,7 @@
                         ? undefined
                         : 'tw-sticky tw-top-14'
                     "
-                    class="tw-z-10 tw-flex tw-h-14 tw-items-center tw-bg-white sm:tw-top-16"
+                    class="tw-z-10 tw-flex tw-h-14 tw-items-center tw-bg-surface sm:tw-top-16"
                   >
                     <template v-for="(day, i) in days">
                       <div
@@ -186,11 +186,11 @@
                         :style="{ width: `${SPLIT_GAP_WIDTH}px` }"
                         :key="`${i}-gap`"
                       ></div>
-                      <div :key="i" class="tw-flex-1 tw-bg-white">
+                      <div :key="i" class="tw-flex-1 tw-bg-surface">
                         <div class="tw-text-center">
                           <div
                             v-if="isSpecificDates || isGroup"
-                            class="tw-text-[12px] tw-font-light tw-capitalize tw-text-very-dark-gray sm:tw-text-xs"
+                            class="tw-text-[12px] tw-font-light tw-capitalize tw-text-text-secondary sm:tw-text-xs"
                           >
                             {{ day.dateString }}
                           </div>
@@ -419,8 +419,13 @@
                                   class="tw-h-full tw-w-full tw-border-2"
                                   :class="
                                     timeBlock.type === 'available'
-                                      ? 'overlay-avail-shadow-green tw-border-[#00994CB3] tw-bg-[#00994C66]'
-                                      : 'overlay-avail-shadow-yellow tw-border-[#997700CC] tw-bg-[#FFE8B8B3]'
+                                      ? 'overlay-avail-shadow-green'
+                                      : 'overlay-avail-shadow-yellow'
+                                  "
+                                  :style="
+                                    timeBlock.type === 'available'
+                                      ? { borderColor: 'var(--color-avail-green-overlay-border)', backgroundColor: 'var(--color-avail-green-overlay-bg)' }
+                                      : { borderColor: 'var(--color-ifneeded-border)', backgroundColor: 'var(--color-ifneeded-bg)' }
                                   "
                                 ></div>
                               </div>
@@ -451,7 +456,7 @@
                     class="tw-sticky tw-bottom-4 tw-z-10 tw-flex"
                   >
                     <div
-                      class="tw-mt-2 tw-flex tw-w-full tw-items-center tw-justify-between tw-gap-1 tw-rounded-md tw-bg-off-white tw-p-2 tw-px-[7px] tw-text-sm tw-text-very-dark-gray"
+                      class="tw-mt-2 tw-flex tw-w-full tw-items-center tw-justify-between tw-gap-1 tw-rounded-md tw-bg-surface-variant tw-p-2 tw-px-[7px] tw-text-sm tw-text-text-secondary"
                     >
                       <div class="tw-flex tw-items-center tw-gap-1">
                         <v-icon small>mdi-information-outline</v-icon>
@@ -471,7 +476,7 @@
                       !loadingResponses.loading
                     "
                   >
-                    <div class="tw-mt-2 tw-text-sm tw-text-dark-gray">
+                    <div class="tw-mt-2 tw-text-sm tw-text-text-muted">
                       Note: There's no time when all
                       {{ respondents.length }} respondents are available.
                     </div>
@@ -505,7 +510,7 @@
               <div
                 v-if="!calendarOnly"
                 :class="calendarOnly ? 'tw-invisible' : 'tw-visible'"
-                class="tw-sticky tw-top-14 tw-z-10 tw-mb-4 tw-h-11 tw-bg-white sm:tw-top-16"
+                class="tw-sticky tw-top-14 tw-z-10 tw-mb-4 tw-h-11 tw-bg-surface sm:tw-top-16"
               >
                 <div
                   :class="hasNextPage ? 'tw-visible' : 'tw-invisible'"
@@ -528,10 +533,10 @@
           >
             <!-- Show section on the right depending on some if conditions -->
             <template v-if="isSignUp">
-              <div class="tw-mb-2 tw-text-lg tw-text-black">Slots</div>
+              <div class="tw-mb-2 tw-text-lg tw-text-text-primary">Slots</div>
               <div v-if="!isOwner" class="tw-mb-3 tw-flex tw-flex-col">
                 <div
-                  class="tw-flex tw-flex-col tw-gap-1 tw-rounded-md tw-bg-light-gray tw-p-3 tw-text-xs tw-italic tw-text-dark-gray"
+                  class="tw-flex tw-flex-col tw-gap-1 tw-rounded-md tw-bg-surface-muted tw-p-3 tw-text-xs tw-italic tw-text-text-muted"
                 >
                   <div v-if="!authUser || alreadyRespondedToSignUpForm">
                     <a class="tw-underline" :href="`mailto:${event.ownerId}`"
@@ -577,7 +582,7 @@
                       !addingAvailabilityAsGuest
                     )
                   "
-                  class="tw-flex tw-flex-wrap tw-items-baseline tw-gap-1 tw-text-sm tw-italic tw-text-dark-gray"
+                  class="tw-flex tw-flex-wrap tw-items-baseline tw-gap-1 tw-text-sm tw-italic tw-text-text-muted"
                 >
                   {{
                     (userHasResponded && !addingAvailabilityAsGuest) ||
@@ -669,13 +674,13 @@
                     hide-details
                   >
                     <template v-slot:label>
-                      <div class="tw-text-sm tw-text-black">
+                      <div class="tw-text-sm tw-text-text-primary">
                         Overlay availabilities
                       </div>
                     </template>
                   </v-switch>
 
-                  <div class="tw-mt-2 tw-text-xs tw-text-dark-gray">
+                  <div class="tw-mt-2 tw-text-xs tw-text-text-muted">
                     View everyone's availability while inputting your own
                   </div>
                 </div>
@@ -764,7 +769,7 @@
 
                     <v-card>
                       <v-card-title>Are you sure?</v-card-title>
-                      <v-card-text class="tw-text-sm tw-text-dark-gray"
+                      <v-card-text class="tw-text-sm tw-text-text-muted"
                         >Are you sure you want to
                         {{
                           !isGroup
@@ -866,7 +871,7 @@
             <template v-if="hintTextShown">
               <div :key="hintText">
                 <div
-                  :class="`tw-flex tw-w-full tw-items-center tw-justify-between tw-gap-1 tw-bg-light-gray tw-px-2 tw-py-2 tw-text-sm tw-text-very-dark-gray`"
+                  :class="`tw-flex tw-w-full tw-items-center tw-justify-between tw-gap-1 tw-bg-surface-muted tw-px-2 tw-py-2 tw-text-sm tw-text-text-secondary`"
                 >
                   <div
                     :class="`tw-flex tw-gap-${hintText.length > 60 ? 2 : 1}`"
@@ -885,7 +890,7 @@
           <!-- Fixed pos availability toggle (mobile) -->
           <v-expand-transition>
             <div v-if="!isGroup && editing && !isSignUp">
-              <div class="tw-bg-white tw-p-4">
+              <div class="tw-bg-surface tw-p-4">
                 <AvailabilityTypeToggle
                   class="tw-w-full"
                   v-model="availabilityType"
@@ -911,7 +916,7 @@
           <!-- Respondents list -->
           <v-expand-transition>
             <div v-if="delayedShowStickyRespondents">
-              <div class="tw-bg-white tw-p-4">
+              <div class="tw-bg-surface tw-p-4">
                 <RespondentsList
                   :max-height="100"
                   :event="event"
@@ -953,7 +958,7 @@
           <v-expand-transition>
             <div
               v-if="state === states.SET_SPECIFIC_TIMES"
-              class="-tw-mb-16 tw-bg-white tw-p-4"
+              class="-tw-mb-16 tw-bg-surface tw-p-4"
             >
               <SpecificTimesInstructions
                 :numTempTimes="tempTimes.size"
@@ -1214,6 +1219,18 @@ export default {
   },
   computed: {
     ...mapState(["authUser", "overlayAvailabilitiesEnabled"]),
+    themeColors() {
+      const isDark = this.$vuetify.theme.dark
+      return {
+        availGreen: isDark ? '#29BC6844' : '#00994C77',
+        availGreenHover: isDark ? '#29BC6866' : '#00994C88',
+        availGreenSolid: isDark ? '#29BC68' : '#00994C',
+        unavailRed: isDark ? '#FF525215' : '#E523230D',
+        unavailRedHover: isDark ? '#FF525240' : '#E5232333',
+        unavailRedActive: isDark ? '#FF525250' : '#E523233B',
+        bgHex: isDark ? '#1E1E1E' : '#FFFFFF',
+      }
+    },
     /** Returns the width of the right side of the calendar */
     rightSideWidth() {
       if (this.isPhone) return "100%"
@@ -3048,21 +3065,21 @@ export default {
           this.state === this.states.SINGLE_AVAILABILITY ||
           totalRespondents === 1
         ) {
-          classStyle.class += "tw-border-[#999999] "
+          classStyle.class += "tw-border-[var(--color-grid-border-strong)] "
         } else {
-          classStyle.class += "tw-border-[#DDDDDD99] "
+          classStyle.class += "tw-border-[var(--color-grid-border)] "
         }
       }
 
       // Edit fill color and border color if day is not interactable
       if (isDisabled) {
         classStyle.class +=
-          "tw-bg-light-gray-stroke tw-border-light-gray-stroke "
+          "tw-bg-border-default tw-border-border-default "
       }
 
       // Change default red:
-      if (classStyle.style.backgroundColor === "#E523230D") {
-        classStyle.style.backgroundColor = "#E5232333"
+      if (classStyle.style.backgroundColor === this.themeColors.unavailRed) {
+        classStyle.style.backgroundColor = this.themeColors.unavailRedHover
       }
 
       return classStyle
@@ -3079,7 +3096,7 @@ export default {
       // Fill style
 
       if (this.isSignUp) {
-        c += "tw-bg-light-gray "
+        c += "tw-bg-surface-muted "
         return { class: c, style: s }
       }
 
@@ -3089,7 +3106,7 @@ export default {
         this.state === this.states.SET_SPECIFIC_TIMES
       ) {
         // Set default background color to red (unavailable)
-        s.backgroundColor = "#E523230D"
+        s.backgroundColor = this.themeColors.unavailRed
 
         // Show only current user availability
         const inDragRange = this.inDragRange(row, col)
@@ -3097,10 +3114,10 @@ export default {
           // Set style if drag range goes over the current timeslot
           if (this.dragType === this.DRAG_TYPES.ADD) {
             if (this.state === this.states.SET_SPECIFIC_TIMES) {
-              c += "tw-bg-white "
+              c += "tw-bg-surface "
             } else {
               if (this.availabilityType === availabilityTypes.AVAILABLE) {
-                s.backgroundColor = "#00994C77"
+                s.backgroundColor = this.themeColors.availGreen
               } else if (
                 this.availabilityType === availabilityTypes.IF_NEEDED
               ) {
@@ -3117,13 +3134,13 @@ export default {
           // Show current availability from availability set
           if (this.state === this.states.SET_SPECIFIC_TIMES) {
             if (this.tempTimes.has(date.getTime())) {
-              c += "tw-bg-white "
+              c += "tw-bg-surface "
             } else {
               c += "tw-bg-gray "
             }
           } else {
             if (this.availability.has(date.getTime())) {
-              s.backgroundColor = "#00994C77"
+              s.backgroundColor = this.themeColors.availGreen
             } else if (this.ifNeeded.has(date.getTime())) {
               c += "tw-bg-yellow "
             }
@@ -3138,10 +3155,10 @@ export default {
           if (this.parsedResponses[respondent]?.ifNeeded?.has(date.getTime())) {
             c += "tw-bg-yellow "
           } else {
-            s.backgroundColor = "#00994C77"
+            s.backgroundColor = this.themeColors.availGreen
           }
         } else {
-          s.backgroundColor = "#E523230D"
+          s.backgroundColor = this.themeColors.unavailRed
         }
         return { class: c, style: s }
       }
@@ -3193,11 +3210,9 @@ export default {
             // Only set timeslot to green for the times that most people are available
             if (totalRespondents === 1 || this.overlayAvailability) {
               // Make single responses less saturated
-              const green = "#00994C88"
-              s.backgroundColor = green
+              s.backgroundColor = this.themeColors.availGreenHover
             } else {
-              const green = "#00994C"
-              s.backgroundColor = green
+              s.backgroundColor = this.themeColors.availGreenSolid
             }
           }
         } else if (this.defaultState === this.states.HEATMAP) {
@@ -3214,13 +3229,12 @@ export default {
               ) {
                 c += "tw-bg-yellow "
               } else {
-                const green = "#00994C88"
-                s.backgroundColor = green
+                s.backgroundColor = this.themeColors.availGreenHover
               }
             } else {
               // Determine color of timeslot based on number of people available
               const frac = numRespondents / max
-              const green = "#00994C"
+              const green = this.themeColors.availGreenSolid
               let alpha
               if (!this.overlayAvailability) {
                 alpha = Math.floor(frac * (255 - 30))
@@ -3248,8 +3262,7 @@ export default {
               s.backgroundColor = green + alpha
             }
           } else if (totalRespondents === 1) {
-            const red = "#E523230D"
-            s.backgroundColor = red
+            s.backgroundColor = this.themeColors.unavailRed
           }
         }
       }
@@ -3271,20 +3284,20 @@ export default {
         const backgroundColor = classStyle.style.backgroundColor
         if (
           backgroundColor &&
-          lightOrDark(removeTransparencyFromHex(backgroundColor)) === "dark"
+          lightOrDark(removeTransparencyFromHex(backgroundColor, this.themeColors.bgHex)) === "dark"
         ) {
           classStyle.class += "tw-text-white "
         }
       } else {
         classStyle = {
-          class: "tw-bg-off-white tw-text-gray ",
+          class: "tw-bg-surface-variant tw-text-gray ",
           style: {},
         }
       }
 
       // Change default red:
-      if (classStyle.style.backgroundColor === "#E523230D") {
-        classStyle.style.backgroundColor = "#E523233B"
+      if (classStyle.style.backgroundColor === this.themeColors.unavailRed) {
+        classStyle.style.backgroundColor = this.themeColors.unavailRedActive
       }
 
       // Change edit green

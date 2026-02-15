@@ -13,7 +13,7 @@
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
-      <v-card-text class="tw-text-very-dark-gray">
+      <v-card-text class="tw-text-text-secondary">
         You've caught us a bit early! We're considering adding folders to
         Timeful, and will do so once we get enough demand from users.
         <v-textarea

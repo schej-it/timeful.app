@@ -7,7 +7,7 @@
   >
     <v-container
       v-ripple
-      class="tw-flex tw-min-h-16 tw-items-center tw-justify-between tw-rounded-lg tw-bg-white tw-px-4 tw-py-2.5 tw-text-black tw-drop-shadow tw-transition-all hover:tw-drop-shadow-md sm:tw-py-3"
+      class="tw-flex tw-min-h-16 tw-items-center tw-justify-between tw-rounded-lg tw-bg-surface tw-px-4 tw-py-2.5 tw-text-text-primary tw-drop-shadow tw-transition-all hover:tw-drop-shadow-md sm:tw-py-3"
       :data-ph-capture-attribute-event-id="event._id"
       :data-ph-capture-attribute-event-name="event.name"
     >
@@ -16,7 +16,7 @@
           class="tw-flex tw-size-10 tw-shrink-0 tw-items-center tw-justify-center tw-rounded"
           :class="{
             'tw-bg-pale-green': isOwner,
-            'tw-bg-off-white': !isOwner,
+            'tw-bg-surface-variant': !isOwner,
           }"
         >
           <v-icon :color="isOwner ? 'green' : 'grey'">{{
@@ -31,7 +31,7 @@
         </div>
         <div class="tw-ml-3">
           <div>{{ this.event.name }}</div>
-          <div class="tw-text-sm tw-font-light tw-text-very-dark-gray">
+          <div class="tw-text-sm tw-font-light tw-text-text-secondary">
             {{ dateString }}
           </div>
         </div>
@@ -46,7 +46,7 @@
         <v-chip
           v-else
           small
-          class="tw-m-0.5 tw-bg-off-white tw-text-very-dark-gray"
+          class="tw-m-0.5 tw-bg-surface-variant tw-text-text-secondary"
         >
           <v-icon left small> mdi-account-multiple </v-icon>
           {{ this.event.numResponses }}
@@ -134,7 +134,7 @@
                 <v-list-item
                   v-bind="attrsMenu"
                   v-on="onMenu"
-                  class="tw-cursor-pointer tw-pr-1 hover:tw-bg-light-gray"
+                  class="tw-cursor-pointer tw-pr-1 hover:tw-bg-surface-muted"
                 >
                   <v-list-item-title>Move to</v-list-item-title>
                   <v-list-item-icon>
