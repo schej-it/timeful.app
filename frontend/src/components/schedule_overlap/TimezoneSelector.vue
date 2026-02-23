@@ -43,6 +43,11 @@
 <script>
 import { allTimezones } from "@/constants"
 import spacetime from "spacetime"
+import dayjs from "dayjs"
+import utcPlugin from "dayjs/plugin/utc"
+import timezonePlugin from "dayjs/plugin/timezone"
+dayjs.extend(utcPlugin)
+dayjs.extend(timezonePlugin)
 
 export default {
   name: "TimezoneSelector",
@@ -123,13 +128,31 @@ export default {
     /** Returns a timezone object for the local timezone */
     getLocalTimezone() {
       const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+      // Step 1: Exact match on spacetime-canonical name
       let timezoneObject = this.timezones.find((t) => t.value === localTimezone)
 
       if (!timezoneObject) {
+        // Step 2: Match by offsets at two reference dates (Jan + Jul)
+        // Distinguishes DST-observing zones from non-DST zones that share
+        // the same current offset (e.g. Europe/Belgrade vs Africa/Casablanca)
+        const janOffset = dayjs.tz("2024-01-15 12:00", localTimezone).utcOffset()
+        const julOffset = dayjs.tz("2024-07-15 12:00", localTimezone).utcOffset()
+
+        timezoneObject = this.timezones.find((t) => {
+          const tJan = dayjs.tz("2024-01-15 12:00", t.value).utcOffset()
+          const tJul = dayjs.tz("2024-07-15 12:00", t.value).utcOffset()
+          return tJan === janOffset && tJul === julOffset
+        })
+      }
+
+      if (!timezoneObject) {
+        // Step 3: Final fallback — current offset only
         const offset =
           spacetime.now(localTimezone).timezone().current.offset * 60
         timezoneObject = this.timezones.find((t) => t.offset === offset)
       }
+
       return timezoneObject
     },
     /** Resets timezone to the local timezone and clears localstorage as well */
