@@ -2,7 +2,7 @@
   <v-container
     @click="$emit('click')"
     v-ripple
-    class="tw-flex tw-justify-between tw-rounded-md tw-bg-light-gray tw-py-2 tw-align-middle tw-text-black"
+    class="tw-flex tw-justify-between tw-rounded-md tw-bg-surface-muted tw-py-2 tw-align-middle tw-text-text-primary"
   >
     <div class="tw-flex">
       <div class="tw-mr-3">

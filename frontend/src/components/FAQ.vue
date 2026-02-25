@@ -1,9 +1,9 @@
 <template>
   <div
-    class="tw-flex tw-w-full tw-cursor-pointer tw-flex-col tw-overflow-hidden tw-rounded-md tw-border-[1px] tw-bg-white tw-p-4 tw-text-left tw-shadow-sm tw-transition-all sm:tw-p-6"
+    class="tw-flex tw-w-full tw-cursor-pointer tw-flex-col tw-overflow-hidden tw-rounded-md tw-border-[1px] tw-bg-surface tw-p-4 tw-text-left tw-shadow-sm tw-transition-all sm:tw-p-6"
     :class="{
       'tw-border-green': toggled,
-      'tw-border-light-gray-stroke': !toggled,
+      'tw-border-border-default': !toggled,
     }"
     @click="() => (toggled = !toggled)"
   >
@@ -39,7 +39,7 @@
           </div>
           <div
             v-if="authRequired"
-            class="tw-mt-6 tw-text-sm tw-font-medium tw-text-dark-gray"
+            class="tw-mt-6 tw-text-sm tw-font-medium tw-text-text-muted"
           >
             *
             <a @click.stop="$emit('signIn')" class="tw-text-green tw-underline"

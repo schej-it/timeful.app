@@ -12,7 +12,7 @@
           <v-btn
             block
             @click="signIn(calendarTypes.GOOGLE)"
-            class="tw-bg-white"
+            class="tw-bg-surface"
           >
             <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
               <v-img
@@ -29,7 +29,7 @@
           <v-btn
             block
             @click="signIn(calendarTypes.OUTLOOK)"
-            class="tw-bg-white"
+            class="tw-bg-surface"
           >
             <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
               <v-img

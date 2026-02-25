@@ -24,7 +24,7 @@
             >Timeful Premium</span
           >
         </h2>
-        <div class="tw-text-sm tw-font-medium tw-text-dark-gray">
+        <div class="tw-text-sm tw-font-medium tw-text-text-muted">
           <template
             v-if="upgradeDialogType === upgradeDialogTypes.CREATE_EVENT"
           >
@@ -48,7 +48,7 @@
           </template>
         </div>
         <!-- <ul
-          class="tw-inline-block tw-space-y-0.5 tw-p-0 tw-text-sm tw-font-medium tw-text-very-dark-gray"
+          class="tw-inline-block tw-space-y-0.5 tw-p-0 tw-text-sm tw-font-medium tw-text-text-secondary"
         >
           <li class="tw-flex tw-items-center">
             <v-icon class="tw-mr-2 tw-text-light-green">mdi-check</v-icon>
@@ -66,14 +66,14 @@
       </div>
       <!-- <div
         v-if="isStudent"
-        class="tw-mb-8 tw-rounded-lg tw-border tw-border-light-gray-stroke tw-p-4"
+        class="tw-mb-8 tw-rounded-lg tw-border tw-border-border-default tw-p-4"
       >
-        <div class="tw-mb-4 tw-text-sm tw-font-medium tw-text-dark-gray">
+        <div class="tw-mb-4 tw-text-sm tw-font-medium tw-text-text-muted">
           Timeful is free for students! But you have to prove it. And make sure
           to spread Timeful to as many of your friends as possible. Pinky
           promise.
         </div>
-        <div class="tw-text-sm tw-font-medium tw-text-dark-gray">
+        <div class="tw-text-sm tw-font-medium tw-text-text-muted">
           Email
           <span class="tw-font-medium tw-text-green tw-underline"
             >contact@timeful.app</span
@@ -106,16 +106,16 @@
                   ? formattedPrice(monthlyStudentPrice)
                   : formattedPrice(monthlyPrice)
               }}</span>
-              <span class="tw-text-dark-gray">USD</span>
+              <span class="tw-text-text-muted">USD</span>
             </div>
             <v-fade-transition>
               <div
                 v-if="monthlyPrice === null"
-                class="tw-absolute tw-left-0 tw-top-0 tw-h-full tw-w-full tw-bg-white"
+                class="tw-absolute tw-left-0 tw-top-0 tw-h-full tw-w-full tw-bg-surface"
               ></div>
             </v-fade-transition>
           </div>
-          <div class="tw-mb-4 tw-text-center tw-text-sm tw-text-very-dark-gray">
+          <div class="tw-mb-4 tw-text-center tw-text-sm tw-text-text-secondary">
             Per month.<br />Billed monthly.
           </div>
           <v-btn
@@ -149,7 +149,7 @@
         </div>
         <div
           v-if="showYearly"
-          class="tw-relative tw-flex tw-flex-1 tw-flex-col tw-items-center tw-gap-2 tw-rounded-lg tw-border tw-border-light-green tw-bg-white tw-p-4 tw-shadow-lg"
+          class="tw-relative tw-flex tw-flex-1 tw-flex-col tw-items-center tw-gap-2 tw-rounded-lg tw-border tw-border-light-green tw-bg-surface tw-p-4 tw-shadow-lg"
         >
           <div
             class="tw-absolute -tw-top-3 tw-rounded-full tw-bg-light-green tw-px-2 tw-py-0.5 tw-text-xs tw-font-medium tw-text-white"
@@ -168,16 +168,16 @@
                   ? formattedPrice(yearlyStudentPrice)
                   : formattedPrice(yearlyPrice)
               }}</span>
-              <span class="tw-text-dark-gray">USD</span>
+              <span class="tw-text-text-muted">USD</span>
             </div>
             <v-fade-transition>
               <div
                 v-if="yearlyPrice === null"
-                class="tw-absolute tw-left-0 tw-top-0 tw-h-full tw-w-full tw-bg-white"
+                class="tw-absolute tw-left-0 tw-top-0 tw-h-full tw-w-full tw-bg-surface"
               ></div>
             </v-fade-transition>
           </div>
-          <div class="tw-mb-4 tw-text-center tw-text-sm tw-text-very-dark-gray">
+          <div class="tw-mb-4 tw-text-center tw-text-sm tw-text-text-secondary">
             Per month.<br />Billed annually.
           </div>
           <v-btn
@@ -210,7 +210,7 @@
         </div>
         <div
           v-if="showLifetime"
-          class="tw-relative tw-flex tw-flex-1 tw-flex-col tw-items-center tw-gap-2 tw-rounded-lg tw-border tw-border-light-green tw-bg-white tw-p-4 tw-shadow-lg"
+          class="tw-relative tw-flex tw-flex-1 tw-flex-col tw-items-center tw-gap-2 tw-rounded-lg tw-border tw-border-light-green tw-bg-surface tw-p-4 tw-shadow-lg"
         >
           <div
             class="tw-absolute -tw-top-3 tw-rounded-full tw-bg-light-green tw-px-2 tw-py-0.5 tw-text-xs tw-font-medium tw-text-white"
@@ -224,7 +224,7 @@
           </div>
           <div class="tw-relative">
             <div class="tw-font-medium">
-              <span class="tw-mr-1 tw-text-dark-gray tw-line-through"
+              <span class="tw-mr-1 tw-text-text-muted tw-line-through"
                 >$100</span
               >
               <span class="tw-mr-1 tw-text-4xl">{{
@@ -232,16 +232,16 @@
                   ? formattedPrice(lifetimeStudentPrice)
                   : formattedPrice(lifetimePrice)
               }}</span>
-              <span class="tw-text-dark-gray">USD</span>
+              <span class="tw-text-text-muted">USD</span>
             </div>
             <v-fade-transition>
               <div
                 v-if="lifetimePrice === null"
-                class="tw-absolute tw-left-0 tw-top-0 tw-h-full tw-w-full tw-bg-white"
+                class="tw-absolute tw-left-0 tw-top-0 tw-h-full tw-w-full tw-bg-surface"
               ></div>
             </v-fade-transition>
           </div>
-          <div class="tw-mb-4 tw-text-center tw-text-sm tw-text-very-dark-gray">
+          <div class="tw-mb-4 tw-text-center tw-text-sm tw-text-text-secondary">
             One-time payment.<br />No subscription.
           </div>
           <v-btn
@@ -285,10 +285,10 @@
         </v-checkbox>
         <label
           for="student-checkbox"
-          class="tw-flex tw-cursor-pointer tw-select-none tw-flex-col tw-text-sm tw-text-very-dark-gray"
+          class="tw-flex tw-cursor-pointer tw-select-none tw-flex-col tw-text-sm tw-text-text-secondary"
         >
           <span class="tw-text-sm">I'm a student</span>
-          <span v-if="isStudent" class="tw-text-xs tw-text-dark-gray">
+          <span v-if="isStudent" class="tw-text-xs tw-text-text-muted">
             Pinky promise that you're actually a student?
           </span>
         </label>
@@ -297,7 +297,7 @@
         class="tw-flex tw-w-full tw-items-center tw-justify-center tw-gap-4 tw-text-center"
       >
         <div
-          class="tw-cursor-pointer tw-py-2 tw-text-xs tw-font-medium tw-text-dark-gray tw-underline"
+          class="tw-cursor-pointer tw-py-2 tw-text-xs tw-font-medium tw-text-text-muted tw-underline"
           @click="showDonatedDialog = true"
         >
           I already donated :)

@@ -19,7 +19,7 @@
         @click="$emit('signInLinkApple')"
         class="tw-mb-3 tw-w-full"
       />
-      <div class="tw-text-center tw-text-xs tw-text-dark-gray">
+      <div class="tw-text-center tw-text-xs tw-text-text-muted">
         By continuing, you agree to our
         <router-link
           class="tw-text-blue"
@@ -31,7 +31,7 @@
     </div>
     <div v-else>
       <div
-        class="tw-flex tw-items-center tw-justify-center tw-text-sm tw-text-dark-gray"
+        class="tw-flex tw-items-center tw-justify-center tw-text-sm tw-text-text-muted"
       >
         <v-icon class="tw-mx-2 tw-text-green" size="16"
           >mdi-check-circle</v-icon

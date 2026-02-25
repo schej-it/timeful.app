@@ -1,6 +1,6 @@
 <template>
   <div
-    class="tw-relative tw-flex tw-w-fit tw-items-center tw-rounded-md tw-border tw-border-light-gray-stroke"
+    class="tw-relative tw-flex tw-w-fit tw-items-center tw-rounded-md tw-border tw-border-border-default"
   >
     <div
       class="tw-absolute tw-h-full tw-rounded-md tw-border tw-transition-all"
@@ -50,7 +50,7 @@ export default {
       defaultActiveClass: "tw-text-green tw-bg-green/5",
       defaultBorderClass: "tw-border-green",
       defaultBorderStyle: { boxShadow: "0px 2px 8px 0px #00994C40" },
-      inactiveClass: "tw-text-dark-gray tw-bg-off-white",
+      inactiveClass: "tw-text-text-muted tw-bg-surface-variant",
     }
   },
 

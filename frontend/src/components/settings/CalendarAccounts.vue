@@ -1,7 +1,7 @@
 <template>
   <div
     :class="toggleState ? '' : 'tw-w-fit tw-min-w-[288px] tw-drop-shadow'"
-    class="tw-flex tw-flex-col tw-rounded-lg tw-bg-white tw-text-black tw-transition-all"
+    class="tw-flex tw-flex-col tw-rounded-lg tw-bg-surface tw-text-text-primary tw-transition-all"
   >
     <v-btn
       v-if="toggleState"
@@ -73,7 +73,7 @@
     <v-dialog v-model="removeDialog" width="500" persistent>
       <v-card>
         <v-card-title>Are you sure?</v-card-title>
-        <v-card-text class="tw-text-sm tw-text-dark-gray"
+        <v-card-text class="tw-text-sm tw-text-text-muted"
           >Are you sure you want to remove
           {{ removePayload.email }}?</v-card-text
         >

@@ -2,7 +2,7 @@
   <div class="mx-auto tw-w-full md:tw-w-2/3 lg:tw-w-1/2 tw-px-5 tw-pt-10">
     <h2 class="tw-mb-2.5 tw-text-xl tw-font-semibold">Cookie Preferences</h2>
     <div class="tw-mb-5 tw-flex tw-flex-col tw-gap-6">
-      <div class="tw-rounded-lg tw-border tw-bg-white tw-p-5">
+      <div class="tw-rounded-lg tw-border tw-bg-surface tw-p-5">
         <v-checkbox v-model="preferences.necessary" disabled>
           <template v-slot:label>
             <div>
@@ -23,7 +23,7 @@
         </div>
       </div>
 
-      <div class="tw-rounded-lg tw-border tw-bg-white tw-p-5">
+      <div class="tw-rounded-lg tw-border tw-bg-surface tw-p-5">
         <v-checkbox v-model="preferences.analytics">
           <template v-slot:label>
             <div>
@@ -48,7 +48,7 @@
         </div>
       </div>
 
-      <div class="tw-rounded-lg tw-border tw-bg-white tw-p-5">
+      <div class="tw-rounded-lg tw-border tw-bg-surface tw-p-5">
         <div>
           <v-checkbox v-model="preferences.advertising">
             <template v-slot:label>

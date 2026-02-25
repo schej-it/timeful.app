@@ -19,7 +19,7 @@
               Attendees
             </v-expansion-panel-header>
             <v-expansion-panel-content>
-              <div class="tw-mb-4 tw-text-dark-gray">
+              <div class="tw-mb-4 tw-text-text-muted">
                 Google Calendar invites will be sent to people at the following
                 email addresses.
                 <span v-if="!hasContactsAccess">
@@ -30,16 +30,16 @@
                 </span>
               </div>
               <div class="tw-max-h-96 tw-table-auto tw-overflow-y-auto">
-                <table class="tw-w-full tw-text-left tw-text-black">
+                <table class="tw-w-full tw-text-left tw-text-text-primary">
                   <thead>
-                    <tr class="tw-bg-white tw-font-medium">
+                    <tr class="tw-bg-surface tw-font-medium">
                       <th
-                        class="tw-sticky tw-top-0 tw-z-10 tw-bg-white tw-pb-4"
+                        class="tw-sticky tw-top-0 tw-z-10 tw-bg-surface tw-pb-4"
                       >
                         Name
                       </th>
                       <th
-                        class="tw-sticky tw-top-0 tw-z-10 tw-bg-white tw-pb-4"
+                        class="tw-sticky tw-top-0 tw-z-10 tw-bg-surface tw-pb-4"
                       >
                         Email
                       </th>

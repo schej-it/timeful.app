@@ -1,3 +1,93 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Light theme (default) */
+:root {
+  /* Surface colors */
+  --color-surface: #FFFFFF;
+  --color-surface-variant: #F2F2F2;
+  --color-surface-muted: #f3f4f6;
+  --color-surface-highlight: #f3f3f366;
+  --color-surface-green: #EBF7EF;
+
+  /* Text colors */
+  --color-text-primary: #000000;
+  --color-text-secondary: #4F4F4F;
+  --color-text-muted: #6B6B6B;
+
+  /* Border colors */
+  --color-border: #dfdfdf;
+
+  /* Schedule overlap colors */
+  --color-avail-green: #00994C77;
+  --color-avail-green-hover: #00994C88;
+  --color-avail-green-solid: #00994C;
+  --color-avail-green-overlay-border: #00994CB3;
+  --color-avail-green-overlay-bg: #00994C66;
+  --color-unavail-red: #E523230D;
+  --color-unavail-red-hover: #E5232333;
+  --color-unavail-red-active: #E523233B;
+  --color-unavail-red-legend: #E523232D;
+  --color-ifneeded-border: #997700CC;
+  --color-ifneeded-bg: #FFE8B8B3;
+  --color-grid-border: #DDDDDD99;
+  --color-grid-border-strong: #999999;
+
+  /* Overflow gradient */
+  --gradient-overflow: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 100%);
+
+  /* ZigZag fill */
+  --color-zigzag-fill: white;
+  --color-zigzag-line: black;
+
+  /* Shadows */
+  --color-shadow: rgba(0, 0, 0, 0.15);
+  --color-shadow-light: rgba(0, 0, 0, 0.1);
+  --color-input-border: #4f4f4f1f;
+}
+
+/* Dark theme */
+.theme--dark {
+  /* Surface colors */
+  --color-surface: #1E1E1E;
+  --color-surface-variant: #2A2A2A;
+  --color-surface-muted: #2A2A2A;
+  --color-surface-highlight: #3a3a3a66;
+  --color-surface-green: #1a3a28;
+
+  /* Text colors */
+  --color-text-primary: #E0E0E0;
+  --color-text-secondary: #BDBDBD;
+  --color-text-muted: #9E9E9E;
+
+  /* Border colors */
+  --color-border: #444444;
+
+  /* Schedule overlap colors */
+  --color-avail-green: #29BC6844;
+  --color-avail-green-hover: #29BC6866;
+  --color-avail-green-solid: #29BC68;
+  --color-avail-green-overlay-border: #29BC68B3;
+  --color-avail-green-overlay-bg: #29BC6866;
+  --color-unavail-red: #FF525215;
+  --color-unavail-red-hover: #FF525240;
+  --color-unavail-red-active: #FF525250;
+  --color-unavail-red-legend: #FF52522D;
+  --color-ifneeded-border: #E5A800CC;
+  --color-ifneeded-bg: #E5A80033;
+  --color-grid-border: #44444499;
+  --color-grid-border-strong: #666666;
+
+  /* Overflow gradient */
+  --gradient-overflow: linear-gradient(to bottom, rgba(30,30,30,0) 0%, rgba(30,30,30,1) 100%);
+
+  /* ZigZag fill */
+  --color-zigzag-fill: #1E1E1E;
+  --color-zigzag-line: #666666;
+
+  /* Shadows */
+  --color-shadow: rgba(0, 0, 0, 0.4);
+  --color-shadow-light: rgba(0, 0, 0, 0.3);
+  --color-input-border: #ffffff1f;
+}

@@ -1,5 +1,5 @@
 <template>
-  <div class="tw-bg-light-gray">
+  <div class="tw-bg-surface-muted">
     <div
       class="tw-relative tw-m-auto tw-mb-12 tw-flex tw-max-w-6xl tw-flex-col tw-px-4 sm:tw-mb-20"
     >
@@ -28,7 +28,7 @@
           class="tw-mb-6 tw-flex tw-max-w-[26rem] tw-flex-col tw-items-center sm:tw-w-[35rem] sm:tw-max-w-none"
         >
           <div
-            class="tw-mb-4 tw-flex tw-select-none tw-items-center tw-rounded-full tw-border tw-border-light-gray-stroke tw-bg-white/70 tw-px-2.5 tw-py-1.5 tw-text-sm tw-text-dark-gray"
+            class="tw-mb-4 tw-flex tw-select-none tw-items-center tw-rounded-full tw-border tw-border-border-default tw-bg-surface/70 tw-px-2.5 tw-py-1.5 tw-text-sm tw-text-text-muted"
           >
             We're open source!
             <github-button
@@ -48,7 +48,7 @@
           </div>
 
           <div
-            class="lg:tw-text-md tw-text-left tw-text-center tw-text-sm tw-text-very-dark-gray sm:tw-text-lg md:tw-text-lg xl:tw-text-lg"
+            class="lg:tw-text-md tw-text-left tw-text-center tw-text-sm tw-text-text-secondary sm:tw-text-lg md:tw-text-lg xl:tw-text-lg"
           >
             Coordinate group meetings without the back and forth.
             <br class="tw-hidden sm:tw-block" />
@@ -86,7 +86,7 @@
           </v-btn>
           <div
             v-if="!authUser"
-            class="tw-text-center tw-text-xs tw-text-dark-gray sm:tw-text-sm"
+            class="tw-text-center tw-text-xs tw-text-text-muted sm:tw-text-sm"
           >
             It's free! No login required.
           </div>
@@ -99,7 +99,7 @@
 
           <!-- Hero video -->
           <div
-            class="tw-relative tw-z-20 tw-w-full tw-rounded-lg tw-border tw-border-light-gray-stroke tw-bg-white tw-shadow-xl sm:tw-rounded-xl md:tw-mx-auto md:tw-w-fit"
+            class="tw-relative tw-z-20 tw-w-full tw-rounded-lg tw-border tw-border-border-default tw-bg-surface tw-shadow-xl sm:tw-rounded-xl md:tw-mx-auto md:tw-w-fit"
           >
             <div
               class="tw-relative tw-mx-4 tw-aspect-square md:tw-size-[700px] lg:tw-size-[800px]"
@@ -188,7 +188,7 @@
     </div>
 
     <!-- Reddit Testimonials -->
-    <div class="tw-flex tw-justify-center tw-bg-light-gray tw-py-12">
+    <div class="tw-flex tw-justify-center tw-bg-surface-muted tw-py-12">
       <div class="tw-mx-4 tw-max-w-3xl tw-flex-1 sm:tw-mx-16">
         <div class="tw-text-center">
           <Header> People love us on Reddit! </Header>
@@ -198,7 +198,7 @@
             <div
               v-for="(comment, index) in redditComments"
               :key="index"
-              class="tw-flex tw-flex-col tw-rounded-lg tw-bg-white tw-p-4 tw-shadow-md"
+              class="tw-flex tw-flex-col tw-rounded-lg tw-bg-surface tw-p-4 tw-shadow-md"
               :class="{
                 'sm:tw-col-span-2 sm:tw-mx-auto sm:tw-max-w-md':
                   redditComments.length % 2 !== 0 &&
@@ -207,19 +207,19 @@
             >
               <div class="tw-flex tw-flex-1 tw-items-center">
                 <div
-                  class="reddit-comment tw-text-left tw-text-sm tw-text-very-dark-gray"
+                  class="reddit-comment tw-text-left tw-text-sm tw-text-text-secondary"
                   v-html="comment.text.replace(/\n/g, '<br />')"
                 ></div>
               </div>
               <div
-                class="tw-my-4 tw-h-px tw-w-full tw-bg-light-gray-stroke"
+                class="tw-my-4 tw-h-px tw-w-full tw-bg-surface-muted-stroke"
               ></div>
               <div class="tw-flex tw-items-center tw-justify-between">
                 <div class="tw-text-right">
                   <a
                     :href="comment.link"
                     target="_blank"
-                    class="tw-text-sm tw-font-medium tw-text-dark-gray hover:tw-underline"
+                    class="tw-text-sm tw-font-medium tw-text-text-muted hover:tw-underline"
                   >
                     {{ comment.author }}
                   </a>
@@ -281,7 +281,7 @@
 </style>
 <style>
 .rdt-h {
-  @apply tw-rounded tw-bg-light-green/20 tw-px-px tw-text-black;
+  @apply tw-rounded tw-bg-light-green/20 tw-px-px tw-text-text-primary;
 }
 </style>
 

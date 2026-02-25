@@ -11,7 +11,7 @@
         </div>
         <div
           v-if="dialog && showHelp"
-          class="tw-text-xs tw-font-normal tw-italic tw-text-dark-gray"
+          class="tw-text-xs tw-font-normal tw-italic tw-text-text-muted"
         >
           Ideal for one-time / recurring meetings
         </div>
@@ -69,7 +69,7 @@
         <div>
           <v-expand-transition>
             <div v-if="!daysOnly">
-              <div class="tw-mb-2 tw-text-lg tw-text-black">
+              <div class="tw-mb-2 tw-text-lg tw-text-text-primary">
                 What times might work?
               </div>
               <v-expand-transition>
@@ -109,8 +109,8 @@
                       class="tw-text-sm"
                       :class="
                         specificTimesEnabled
-                          ? 'tw-text-black'
-                          : 'tw-text-very-dark-gray'
+                          ? 'tw-text-text-primary'
+                          : 'tw-text-text-secondary'
                       "
                     >
                       Set specific times per day
@@ -120,7 +120,7 @@
                     <v-expand-transition>
                       <div
                         v-if="specificTimesEnabled"
-                        class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
+                        class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-text-muted"
                       >
                         {{ message }}
                       </div>
@@ -131,7 +131,7 @@
             </div>
           </v-expand-transition>
 
-          <div class="tw-mb-2 tw-text-lg tw-text-black">
+          <div class="tw-mb-2 tw-text-lg tw-text-text-primary">
             What
             {{ selectedDateOption === dateOptions.SPECIFIC ? "dates" : "days" }}
             might work?
@@ -147,7 +147,7 @@
 
           <v-expand-transition>
             <div v-if="selectedDateOption === dateOptions.SPECIFIC || daysOnly">
-              <div class="tw-mb-2 tw-text-xs tw-text-dark-gray">
+              <div class="tw-mb-2 tw-text-xs tw-text-text-muted">
                 Drag to select multiple dates
               </div>
               <v-input
@@ -189,7 +189,7 @@
               </v-input>
               <v-checkbox class="tw-mt-2" v-model="startOnMonday" hide-details>
                 <template v-slot:label>
-                  <span class="tw-text-sm tw-text-very-dark-gray">
+                  <span class="tw-text-sm tw-text-text-secondary">
                     Start on Monday
                   </span>
                 </template>
@@ -205,7 +205,7 @@
           class="tw-mt-2"
         >
           <template v-slot:label>
-            <span class="tw-text-sm tw-text-very-dark-gray"
+            <span class="tw-text-sm tw-text-text-secondary"
               >Email me each time someone joins my event</span
             >
           </template>
@@ -224,9 +224,9 @@
           </template>
           <template v-slot:message="{ key, message }">
             <div
-              class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
+              class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-text-muted"
             >
-              <span class="tw-font-medium tw-text-very-dark-gray"
+              <span class="tw-font-medium tw-text-text-secondary"
                 ><a @click="$emit('signIn')">Sign in</a>
                 to use this feature
               </span>
@@ -246,13 +246,13 @@
                 v-show="authUser"
                 ref="emailInput"
                 @requestContactsAccess="requestContactsAccess"
-                labelColor="tw-text-very-dark-gray"
+                labelColor="tw-text-text-secondary"
                 :addedEmails="addedEmails"
                 @update:emails="(newEmails) => (emails = newEmails)"
               >
                 <template v-slot:header>
                   <div class="tw-flex tw-gap-1">
-                    <div class="tw-text-very-dark-gray">
+                    <div class="tw-text-text-secondary">
                       Remind people to fill out the event
                     </div>
 
@@ -285,7 +285,7 @@
           >
             <div class="tw-flex tw-flex-col tw-gap-5 tw-pt-2">
               <div v-if="!edit" class="tw-flex tw-items-center tw-gap-x-2">
-                <div class="tw-text-sm tw-text-black">Time increment:</div>
+                <div class="tw-text-sm tw-text-text-primary">Time increment:</div>
                 <v-select
                   v-model="timeIncrement"
                   dense
@@ -301,13 +301,13 @@
                 hide-details
               >
                 <template v-slot:label>
-                  <span class="tw-text-sm tw-text-black">
+                  <span class="tw-text-sm tw-text-text-primary">
                     Collect respondents' email addresses
                   </span>
                 </template>
                 <template v-slot:message="{ key, message }">
                   <div
-                    class="-tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
+                    class="-tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-text-muted"
                   >
                     {{ message }}
                   </div>
@@ -326,9 +326,9 @@
                 </template>
                 <template v-slot:message="{ key, message }">
                   <div
-                    class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
+                    class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-text-muted"
                   >
-                    <span class="tw-font-medium tw-text-very-dark-gray"
+                    <span class="tw-font-medium tw-text-text-secondary"
                       ><a @click="$emit('signIn')">Sign in</a>
                       to use this feature
                     </span>
@@ -341,13 +341,13 @@
                 messages="Only show responses to event creator"
               >
                 <template v-slot:label>
-                  <span class="tw-text-sm tw-text-black">
+                  <span class="tw-text-sm tw-text-text-primary">
                     Hide responses from respondents
                   </span>
                 </template>
                 <template v-slot:message="{ key, message }">
                   <div
-                    class="-tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
+                    class="-tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-text-muted"
                   >
                     {{ message }}
                   </div>
@@ -366,10 +366,10 @@
                 </template>
                 <template v-slot:message="{ key, message }">
                   <div
-                    class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
+                    class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-text-muted"
                   >
                     {{ message }}
-                    <span class="tw-font-medium tw-text-very-dark-gray"
+                    <span class="tw-font-medium tw-text-text-secondary"
                       ><a @click="$emit('signIn')">Sign in</a>
                       to use this feature
                     </span>
@@ -384,7 +384,7 @@
                 <template v-slot:label>
                   <div
                     :class="!sendEmailAfterXResponsesEnabled && 'tw-opacity-50'"
-                    class="tw-flex tw-items-center tw-gap-x-2 tw-text-sm tw-text-very-dark-gray"
+                    class="tw-flex tw-items-center tw-gap-x-2 tw-text-sm tw-text-text-secondary"
                   >
                     <div>Email me after</div>
                     <v-text-field

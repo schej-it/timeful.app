@@ -6,10 +6,15 @@ Vue.use(Vuetify)
 
 export default new Vuetify({
   theme: {
+    options: { customProperties: true },
     themes: {
       light: {
         primary: tailwind.theme.colors.green,
         error: tailwind.theme.colors.red,
+      },
+      dark: {
+        primary: "#29BC68",
+        error: "#FF5252",
       },
     },
   },

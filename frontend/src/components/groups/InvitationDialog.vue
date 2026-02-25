@@ -12,7 +12,7 @@
       >
         <v-card-text>
           <div
-            class="tw-mb-5 tw-text-wrap tw-text-xl tw-font-medium tw-text-black"
+            class="tw-mb-5 tw-text-wrap tw-text-xl tw-font-medium tw-text-text-primary"
           >
             <template v-if="isOwner"> Share calendar availability </template>
             <template v-else>
@@ -33,7 +33,7 @@
               ></CalendarAccounts>
 
               <div class="tw-mt-5 tw-space-y-4">
-                <div class="tw-font-medium tw-text-black">
+                <div class="tw-font-medium tw-text-text-primary">
                   Your calendar availability from these calendars will be shared
                   with:
                 </div>
@@ -50,7 +50,7 @@
                 <div v-else class="tw-flex tw-items-center tw-italic">
                   <div>No members added yet</div>
                 </div>
-                <div class="tw-text-xs tw-text-dark-gray">
+                <div class="tw-text-xs tw-text-text-muted">
                   Your calendar events will NOT be visible to others
                 </div>
               </div>
@@ -58,7 +58,7 @@
           </v-expand-transition>
 
           <v-expand-transition>
-            <div class="tw-p-5 tw-text-black" v-if="!calendarPermissionGranted">
+            <div class="tw-p-5 tw-text-text-primary" v-if="!calendarPermissionGranted">
               <CalendarPermissionsCard
                 v-show="true"
                 cancelLabel=""
@@ -86,7 +86,7 @@
         <v-card-actions v-else>
           <v-dialog v-model="rejectDialog" width="400" persistent>
             <template v-slot:activator="{ on, attrs }">
-              <v-btn text class="tw-text-dark-gray" v-bind="attrs" v-on="on"
+              <v-btn text class="tw-text-text-muted" v-bind="attrs" v-on="on"
                 >Reject invitation</v-btn
               >
             </template>
@@ -99,7 +99,7 @@
                 <v-spacer />
                 <v-btn
                   text
-                  class="tw-text-dark-gray"
+                  class="tw-text-text-muted"
                   @click="rejectDialog = false"
                   >Cancel</v-btn
                 >

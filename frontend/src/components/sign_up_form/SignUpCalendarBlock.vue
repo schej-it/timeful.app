@@ -1,6 +1,6 @@
 <template>
   <div
-    class="tw-h-full tw-w-full tw-cursor-pointer tw-overflow-hidden tw-rounded-md tw-border-2 tw-border-solid tw-bg-white"
+    class="tw-h-full tw-w-full tw-cursor-pointer tw-overflow-hidden tw-rounded-md tw-border-2 tw-border-solid tw-bg-surface"
     :class="unsaved ? 'tw-border-light-green' : 'tw-border-gray'"
   >
     <div
@@ -60,7 +60,7 @@ export default {
     fontColor() {
       return this.numberResponses == this.signUpBlock?.capacity && !this.unsaved
         ? "tw-text-white"
-        : "tw-text-dark-gray"
+        : "tw-text-text-muted"
     },
   },
 

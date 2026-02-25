@@ -3,7 +3,8 @@
     <div class="tw-text-sm tw-font-medium">Legend:</div>
     <div class="tw-flex tw-items-center tw-gap-2">
       <div
-        class="tw-h-4 tw-w-4 tw-rounded tw-border tw-border-gray tw-bg-[#00994C77]"
+        class="tw-h-4 tw-w-4 tw-rounded tw-border tw-border-gray"
+        :style="{ backgroundColor: 'var(--color-avail-green)' }"
       ></div>
       <span class="tw-text-sm">Available</span>
     </div>
@@ -15,7 +16,8 @@
     </div>
     <div class="tw-flex tw-items-center tw-gap-2">
       <div
-        class="tw-h-4 tw-w-4 tw-rounded tw-border tw-border-gray tw-bg-[#E523232D]"
+        class="tw-h-4 tw-w-4 tw-rounded tw-border tw-border-gray"
+        :style="{ backgroundColor: 'var(--color-unavail-red-legend)' }"
       ></div>
       <span class="tw-text-sm">Unavailable</span>
     </div>

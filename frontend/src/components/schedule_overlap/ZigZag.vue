@@ -10,9 +10,9 @@
 .line1-left {
   background: linear-gradient(
     45deg,
-    white,
-    white 49%,
-    black 49%,
+    var(--color-zigzag-fill),
+    var(--color-zigzag-fill) 49%,
+    var(--color-zigzag-line) 49%,
     transparent 51%
   );
 }
@@ -21,8 +21,8 @@
     -45deg,
     transparent,
     transparent 49%,
-    black 49%,
-    white 51%
+    var(--color-zigzag-line) 49%,
+    var(--color-zigzag-fill) 51%
   );
 }
 
@@ -31,16 +31,16 @@
     45deg,
     transparent,
     transparent 49%,
-    black 51%,
-    white 51%
+    var(--color-zigzag-line) 51%,
+    var(--color-zigzag-fill) 51%
   );
 }
 .line2-right {
   background: linear-gradient(
     -45deg,
-    white,
-    white 49%,
-    black 51%,
+    var(--color-zigzag-fill),
+    var(--color-zigzag-fill) 49%,
+    var(--color-zigzag-line) 51%,
     transparent 51%
   );
 }

@@ -16,7 +16,7 @@
     >
       <div
         v-if="isOwner && signUpBlocks.length === 0 && signUpBlocksToAdd.length === 0"
-        class="tw-text-sm tw-italic tw-text-dark-gray"
+        class="tw-text-sm tw-italic tw-text-text-muted"
       >
         Click and drag on the grid to create a slot
       </div>

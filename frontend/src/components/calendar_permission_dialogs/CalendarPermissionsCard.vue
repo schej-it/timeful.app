@@ -27,7 +27,7 @@
 
     <div class="tw-text-md tw-mb-4 tw-font-medium">These permissions will</div>
     <div
-      class="tw-mb-8 tw-flex tw-flex-col tw-gap-4 tw-text-sm tw-text-very-dark-gray"
+      class="tw-mb-8 tw-flex tw-flex-col tw-gap-4 tw-text-sm tw-text-text-secondary"
     >
       <div>Allow us to display the names/times of your calendar events</div>
       <div>

@@ -96,7 +96,7 @@
       <div class="tw-mx-auto tw-mt-4 tw-max-w-5xl">
         <div v-if="!isSettingSpecificTimes" class="tw-mx-4">
           <!-- Title and copy link -->
-          <div class="tw-flex tw-items-center tw-text-black">
+          <div class="tw-flex tw-items-center tw-text-text-primary">
             <div>
               <div
                 class="sm:mb-2 tw-flex tw-flex-wrap tw-items-center tw-gap-x-4 tw-gap-y-2"
@@ -106,14 +106,14 @@
                   v-if="event.when2meetHref?.length > 0"
                   :href="`https://when2meet.com${event.when2meetHref}`"
                   :small="isPhone"
-                  class="tw-cursor-pointer tw-select-none tw-rounded tw-bg-light-gray tw-px-2 tw-font-medium sm:tw-px-3"
+                  class="tw-cursor-pointer tw-select-none tw-rounded tw-bg-surface-muted tw-px-2 tw-font-medium sm:tw-px-3"
                   >Imported from when2meet</v-chip
                 >
                 <template v-if="isGroup">
                   <div class="">
                     <v-chip
                       :small="isPhone"
-                      class="tw-cursor-pointer tw-select-none tw-rounded tw-bg-light-gray tw-px-2 tw-font-medium sm:tw-px-3"
+                      class="tw-cursor-pointer tw-select-none tw-rounded tw-bg-surface-muted tw-px-2 tw-font-medium sm:tw-px-3"
                       @click="helpDialog = true"
                       >Availability group</v-chip
                     >
@@ -130,7 +130,7 @@
               </div>
               <div class="tw-flex tw-items-baseline tw-gap-1">
                 <div
-                  class="tw-text-sm tw-font-normal tw-text-very-dark-gray sm:tw-text-base"
+                  class="tw-text-sm tw-font-normal tw-text-text-secondary sm:tw-text-base"
                 >
                   {{ dateString }}
                 </div>
@@ -153,7 +153,7 @@
                   v-if="event.startOnMonday ? weekOffset != 1 : weekOffset != 0"
                   :icon="isPhone"
                   text
-                  class="tw-mr-1 tw-text-very-dark-gray sm:tw-mr-2.5"
+                  class="tw-mr-1 tw-text-text-secondary sm:tw-mr-2.5"
                   @click="resetWeekOffset"
                 >
                   <v-icon class="sm:tw-mr-2">mdi-calendar-today</v-icon>
@@ -334,7 +334,7 @@
           <v-spacer />
           <v-btn
             v-if="!isGroup && !authUser && selectedGuestRespondent"
-            class="tw-bg-white tw-text-green tw-transition-opacity"
+            class="tw-bg-surface tw-text-green tw-transition-opacity"
             :style="{ opacity: availabilityBtnOpacity }"
             @click="editGuestAvailability"
           >
@@ -342,7 +342,7 @@
           </v-btn>
           <v-btn
             v-else
-            class="tw-bg-white tw-text-green tw-transition-opacity"
+            class="tw-bg-surface tw-text-green tw-transition-opacity"
             :disabled="loading && !userHasResponded"
             :style="{ opacity: availabilityBtnOpacity }"
             @click="() => addAvailability()"
@@ -355,7 +355,7 @@
             Cancel
           </v-btn>
           <v-spacer />
-          <v-btn class="tw-bg-white tw-text-green" @click="() => saveChanges()">
+          <v-btn class="tw-bg-surface tw-text-green" @click="() => saveChanges()">
             Save
           </v-btn>
         </template>
@@ -366,7 +366,7 @@
           <v-spacer />
           <v-btn
             :disabled="!allowScheduleEvent"
-            class="tw-bg-white tw-text-blue"
+            class="tw-bg-surface tw-text-blue"
             @click="confirmScheduleEvent"
           >
             Schedule

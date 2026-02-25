@@ -13,7 +13,7 @@
       <h1 class="tw-mb-2 tw-text-center tw-text-2xl tw-font-medium">
         404 - Page not found
       </h1>
-      <div class="tw-text-center tw-text-dark-gray">
+      <div class="tw-text-center tw-text-text-muted">
         The page you’re looking for doesn’t exist or an error occurred.
       </div>
     </div>

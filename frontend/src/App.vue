@@ -20,7 +20,7 @@
     <CookieConsent />
     <div
       v-if="showHeader"
-      class="tw-fixed tw-z-40 tw-h-14 tw-w-screen tw-bg-white sm:tw-h-16"
+      class="tw-fixed tw-z-40 tw-h-14 tw-w-screen tw-bg-surface sm:tw-h-16"
       dark
     >
       <div
@@ -133,17 +133,18 @@ html {
 }
 
 .v-btn.v-btn--is-elevated {
-  -webkit-box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.15) !important;
-  -moz-box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.15) !important;
-  box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.15) !important;
-  border: 1px solid theme("colors.light-gray-stroke");
+  -webkit-box-shadow: 0px 2px 6px 0px var(--color-shadow) !important;
+  -moz-box-shadow: 0px 2px 6px 0px var(--color-shadow) !important;
+  box-shadow: 0px 2px 6px 0px var(--color-shadow) !important;
+  border: 1px solid var(--color-border);
 }
 
-.v-btn.v-btn--is-elevated.tw-bg-white {
-  -webkit-box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.25) !important;
-  -moz-box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.25) !important;
-  box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.25) !important;
-  border: 1px solid theme("colors.off-white");
+.v-btn.v-btn--is-elevated.tw-bg-white,
+.v-btn.v-btn--is-elevated.tw-bg-surface {
+  -webkit-box-shadow: 0px 1px 4px 0px var(--color-shadow) !important;
+  -moz-box-shadow: 0px 1px 4px 0px var(--color-shadow) !important;
+  box-shadow: 0px 1px 4px 0px var(--color-shadow) !important;
+  border: 1px solid var(--color-surface-variant);
 }
 
 .v-btn.v-btn--is-elevated.primary,
@@ -174,10 +175,10 @@ html {
 .v-text-field.v-text-field--solo:not(.v-text-field--solo-flat)
   > .v-input__control
   > .v-input__slot {
-  filter: drop-shadow(0 0.5px 2px rgba(0, 0, 0, 0.1)) !important;
-  box-shadow: inset 0 -1px 0 0 rgba(0, 0, 0, 0.1) !important;
+  filter: drop-shadow(0 0.5px 2px var(--color-shadow-light)) !important;
+  box-shadow: inset 0 -1px 0 0 var(--color-shadow-light) !important;
   border-radius: theme("borderRadius.md") !important;
-  border: 1px solid #4f4f4f1f !important;
+  border: 1px solid var(--color-input-border) !important;
 }
 .v-menu__content {
   box-shadow: 0px 5px 5px -1px rgba(0, 0, 0, 0.1),
@@ -236,6 +237,7 @@ import {
   signInOutlook,
   isPremiumUser,
 } from "@/utils"
+import { getDarkModePreference, applyDarkMode } from "@/utils/dark_mode"
 import {
   authTypes,
   calendarTypes,
@@ -410,6 +412,8 @@ export default {
   },
 
   async created() {
+    applyDarkMode(this.$vuetify, getDarkModePreference())
+
     await get("/user/profile")
       .then((authUser) => {
         this.setAuthUser(authUser)

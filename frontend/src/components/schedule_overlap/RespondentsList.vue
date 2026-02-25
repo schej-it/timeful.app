@@ -82,7 +82,7 @@
       <template v-if="isPhone">
         <v-spacer />
         <div
-          class="tw-mt-2 tw-text-sm tw-font-normal tw-text-dark-gray"
+          class="tw-mt-2 tw-text-sm tw-font-normal tw-text-text-muted"
           :class="showIfNeededStar ? 'tw-visible' : 'tw-invisible'"
         >
           * if needed
@@ -91,7 +91,7 @@
     </div>
     <div
       v-if="isOwner && !isPhone && event.blindAvailabilityEnabled"
-      class="tw-mb-2 tw-mt-1 tw-text-xs tw-italic tw-text-very-dark-gray"
+      class="tw-mb-2 tw-mt-1 tw-text-xs tw-italic tw-text-text-secondary"
     >
       Responses are only visible to {{ isOwner ? "you" : "event creator" }}
     </div>
@@ -117,12 +117,12 @@
       >
         <div v-if="respondents.length === 0" class="tw-mb-6">
           <span
-            class="tw-text-very-dark-gray"
+            class="tw-text-text-secondary"
             v-if="!isOwner && event.blindAvailabilityEnabled"
           >
             No response yet!
           </span>
-          <span class="tw-text-very-dark-gray" v-else>No responses yet!</span>
+          <span class="tw-text-text-secondary" v-else>No responses yet!</span>
         </div>
         <template v-else>
           <transition-group
@@ -153,7 +153,7 @@
                   @click="(e) => $emit('clickRespondent', e, user._id)"
                   color="primary"
                   :value="respondentSelected(user._id)"
-                  class="tw-absolute -tw-top-[2px] tw-left-0 tw-bg-white tw-opacity-0 group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
+                  class="tw-absolute -tw-top-[2px] tw-left-0 tw-bg-surface tw-opacity-0 group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
                   :class="
                     respondentSelected(user._id)
                       ? 'tw-opacity-100'
@@ -175,7 +175,7 @@
                 </div>
                 <div
                   v-if="isOwner && event.collectEmails"
-                  class="email-hover-target tw-flex tw-items-center tw-rounded-sm tw-p-px tw-text-xs tw-text-dark-gray tw-transition-all hover:tw-bg-light-gray"
+                  class="email-hover-target tw-flex tw-items-center tw-rounded-sm tw-p-px tw-text-xs tw-text-text-muted tw-transition-all hover:tw-bg-surface-muted"
                   :class="respondentClass(user._id)"
                   @mouseover.stop
                   @click.stop="copyEmailToClipboard(user.email)"
@@ -194,7 +194,7 @@
                   <v-menu right offset-x>
                     <template v-slot:activator="{ on, attrs }">
                       <v-btn icon v-on="on" v-bind="attrs">
-                        <v-icon small color="#4F4F4F">mdi-dots-vertical</v-icon>
+                        <v-icon small class="tw-text-text-secondary">mdi-dots-vertical</v-icon>
                       </v-btn>
                     </template>
                     <v-list class="tw-py-1" dense>
@@ -203,7 +203,7 @@
                         @click="$emit('editGuestAvailability', user._id)"
                       >
                         <v-list-item-title class="tw-flex tw-items-center">
-                          <v-icon small class="tw-mr-2" color="#4F4F4F"
+                          <v-icon small class="tw-mr-2 tw-text-text-secondary"
                             >mdi-pencil</v-icon
                           >
                           Edit
@@ -214,7 +214,7 @@
                         @click="() => showDeleteAvailabilityDialog(user)"
                       >
                         <v-list-item-title class="tw-flex tw-items-center">
-                          <v-icon small class="tw-mr-2" color="#4F4F4F"
+                          <v-icon small class="tw-mr-2 tw-text-text-secondary"
                             >mdi-delete</v-icon
                           >
                           Delete
@@ -228,17 +228,17 @@
                     v-if="isGuest(user)"
                     small
                     icon
-                    class="tw-bg-white"
+                    class="tw-bg-surface"
                     @click="$emit('editGuestAvailability', user._id)"
-                    ><v-icon small color="#4F4F4F">mdi-pencil</v-icon></v-btn
+                    ><v-icon small class="tw-text-text-secondary">mdi-pencil</v-icon></v-btn
                   >
                   <v-btn
                     v-if="isOwner && !isGroup"
                     small
                     icon
-                    class="tw-bg-white"
+                    class="tw-bg-surface"
                     @click="() => showDeleteAvailabilityDialog(user)"
-                    ><v-icon small class="hover:tw-text-red" color="#4F4F4F"
+                    ><v-icon small class="hover:tw-text-red tw-text-text-secondary"
                       >mdi-delete</v-icon
                     ></v-btn
                   >
@@ -260,7 +260,7 @@
 
       <div
         v-if="!isPhone && respondents.length > 0"
-        class="tw-col-span-full tw-mb-2 tw-mt-1 tw-text-sm tw-text-dark-gray"
+        class="tw-col-span-full tw-mb-2 tw-mt-1 tw-text-sm tw-text-text-muted"
         :class="showIfNeededStar ? 'tw-visible' : 'tw-invisible'"
       >
         * if needed
@@ -318,7 +318,7 @@
           hide-details
         >
           <template v-slot:label>
-            <div class="tw-text-sm tw-text-black">
+            <div class="tw-text-sm tw-text-text-primary">
               Show best {{ event.daysOnly ? "days" : "times" }}
             </div>
           </template>
@@ -346,7 +346,7 @@
 
     <div
       v-if="(!isOwner || isPhone) && event.blindAvailabilityEnabled"
-      class="tw-mt-2 tw-text-xs tw-italic tw-text-very-dark-gray"
+      class="tw-mt-2 tw-text-xs tw-italic tw-text-text-secondary"
     >
       Responses are only visible to {{ isOwner ? "you" : "event creator" }}
     </div>
@@ -354,7 +354,7 @@
     <v-dialog v-model="deleteAvailabilityDialog" width="500" persistent>
       <v-card>
         <v-card-title>Are you sure?</v-card-title>
-        <v-card-text class="tw-text-sm tw-text-dark-gray"
+        <v-card-text class="tw-text-sm tw-text-text-muted"
           >Are you sure you want to delete
           <strong>{{ userToDelete?.firstName }}</strong
           >'s availability from this
@@ -388,7 +388,7 @@
       hide-details
     >
       <template v-slot:label>
-        <div class="tw-text-sm tw-text-black">Overlay calendar events</div>
+        <div class="tw-text-sm tw-text-text-primary">Overlay calendar events</div>
       </template>
     </v-switch>
 
