@@ -184,7 +184,6 @@ import EmailInput from "./event/EmailInput.vue"
 import dayjs from "dayjs"
 import utcPlugin from "dayjs/plugin/utc"
 import timezonePlugin from "dayjs/plugin/timezone"
-import moment from "moment"
 dayjs.extend(utcPlugin)
 dayjs.extend(timezonePlugin)
 
@@ -315,16 +314,14 @@ export default {
       })
       for (const dayIndex of this.selectedDaysOfWeek) {
         const day = dayIndexToDayString[dayIndex]
-        let date = dayjs.tz(`${day} ${startTimeString}`, this.timezone.value)
+        const date = dayjs.tz(`${day} ${startTimeString}`, this.timezone.value)
 
-        // Check if cur date is NOT in daylight savings time
-        // because the dow days ARE in daylight savings time
-        if (!moment().isDST()) {
-          // Add one hour if not in DST
-          date = date.add(1, "hour")
-        }
-
-        dates.push(date.toDate())
+        // The reference dates (dayIndexToDayString) are from June 2018, which may have
+        // a different DST offset than the current date. Adjust so the stored UTC time
+        // corresponds to the user's current timezone offset.
+        const refOffset = date.utcOffset()
+        const currentOffset = dayjs().tz(this.timezone.value).utcOffset()
+        dates.push(date.subtract(currentOffset - refOffset, 'minutes').toDate())
       }
 
       this.loading = true
