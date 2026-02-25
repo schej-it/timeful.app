@@ -46,7 +46,7 @@
       <!-- Appearance section -->
       <div class="tw-flex tw-flex-col tw-gap-5">
         <div
-          class="tw-text-xl tw-font-medium tw-text-dark-green tw-dark:tw-text-light-green tw-dark:tw-text-light-green sm:tw-text-2xl"
+          class="tw-text-xl tw-font-medium tw-text-dark-green tw-dark:tw-text-light-green sm:tw-text-2xl"
         >
           Appearance
         </div>
