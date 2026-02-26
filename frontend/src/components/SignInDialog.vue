@@ -53,7 +53,7 @@
                   src="@/assets/google_logo.svg"
                 />
                 <v-spacer />
-                Sign in with Google
+                Continue with Google
                 <v-spacer />
               </div>
             </v-btn>
@@ -70,7 +70,7 @@
                   src="@/assets/outlook_logo.svg"
                 />
                 <v-spacer />
-                Sign in with Outlook
+                Continue with Outlook
                 <v-spacer />
               </div>
             </v-btn>
