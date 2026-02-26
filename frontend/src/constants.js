@@ -9,6 +9,9 @@ export const errors = Object.freeze({
   UserDoesNotExist: "user-does-not-exist",
   EventNotFound: "event-not-found",
   InvalidCredentials: "invalid-credentials",
+  OtpExpired: "otp-expired",
+  OtpInvalidCode: "otp-invalid-code",
+  OtpTooManyAttempts: "otp-too-many-attempts",
 })
 
 // Auth types
