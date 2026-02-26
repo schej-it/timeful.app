@@ -1601,3 +1601,4 @@ func getResponsesMap(responses []models.EventResponse) map[string]*models.Respon
 	}
 	return result
 }
+

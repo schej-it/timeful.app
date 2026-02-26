@@ -268,6 +268,8 @@
         />
       </div>
 
+      <CarbonAd :ownerId="event.ownerId" />
+
       <template v-if="showFeedbackBtn">
         <div class="tw-w-full tw-border-t tw-border-solid tw-border-gray"></div>
 
@@ -425,6 +427,7 @@ import InvitationDialog from "@/components/groups/InvitationDialog.vue"
 import HelpDialog from "@/components/HelpDialog.vue"
 import EventDescription from "@/components/event/EventDescription.vue"
 import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
+import CarbonAd from "@/components/event/CarbonAd.vue"
 export default {
   name: "Event",
 
@@ -448,6 +451,7 @@ export default {
     HelpDialog,
     EventDescription,
     FormerlyKnownAs,
+    CarbonAd,
   },
 
   data: () => ({
