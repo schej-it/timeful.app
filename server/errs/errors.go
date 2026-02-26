@@ -18,6 +18,9 @@ const (
 	AttendeeEmailNotFound string = "attendee-email-not-found"
 	EventNotGroup         string = "event-not-group"
 	InvalidCredentials    string = "invalid-credentials"
+	OtpExpired            string = "otp-expired"
+	OtpInvalidCode        string = "otp-invalid-code"
+	OtpTooManyAttempts    string = "otp-too-many-attempts"
 )
 
 type GoogleAPIError struct {
