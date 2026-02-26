@@ -122,6 +122,8 @@
             placeholder="Email..."
             solo
             hide-details="auto"
+            disabled
+            background-color="#f5f5f5"
             class="tw-mb-3"
           />
           <v-btn
