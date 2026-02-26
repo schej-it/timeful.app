@@ -4,7 +4,7 @@
     <AutoSnackbar color="error" :text="error" />
     <AutoSnackbar color="tw-bg-blue" :text="info" />
     <SignInNotSupportedDialog v-model="webviewDialog" />
-    <SignInDialog v-model="signInDialog" @signIn="_signIn" />
+    <SignInDialog v-model="signInDialog" @signIn="_signIn" @emailSignIn="_emailSignIn" />
     <NewDialog
       v-model="newDialogOptions.show"
       :type="newDialogOptions.openNewGroup ? 'group' : 'event'"
@@ -386,6 +386,17 @@ export default {
             selectAccount: true,
           })
         }
+      }
+    },
+    _emailSignIn(user) {
+      this.setAuthUser(user)
+      this.$posthog?.identify(user._id, {
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      })
+      if (this.$route.name === "landing") {
+        this.$router.push({ name: "home" })
       }
     },
     setFeatureFlags() {
