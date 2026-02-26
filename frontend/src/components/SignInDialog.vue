@@ -10,27 +10,29 @@
       <template v-if="step === 'select'">
         <v-card-title>Sign in</v-card-title>
         <v-card-text class="tw-flex tw-flex-col tw-items-center">
-          <div class="tw-mb-4 tw-flex tw-w-full tw-flex-col">
-            <div class="tw-mb-1 tw-text-sm tw-font-medium">Email address</div>
-            <v-text-field
-              v-model="email"
-              class="tw-mb-2"
-              placeholder="Enter your email..."
-              type="email"
-              solo
-              hide-details="auto"
-              :error-messages="emailError"
-              @keydown.enter="submitEmail"
-            />
-            <v-btn
-              block
-              color="primary"
-              :loading="sending"
-              :disabled="sending"
-              @click="submitEmail"
-            >
-              Continue with Email
-            </v-btn>
+          <div class="tw-mb-4 tw-flex tw-w-full tw-flex-col tw-gap-y-2">
+            <div>
+              <div class="tw-mb-1 tw-text-sm tw-font-medium">Email address</div>
+              <v-text-field
+                v-model="email"
+                class="tw-mb-2"
+                placeholder="Enter your email..."
+                type="email"
+                solo
+                hide-details="auto"
+                :error-messages="emailError"
+                @keydown.enter="submitEmail"
+              />
+              <v-btn
+                block
+                color="primary"
+                :loading="sending"
+                :disabled="sending"
+                @click="submitEmail"
+              >
+                Continue with Email
+              </v-btn>
+            </div>
 
             <div class="tw-my-2 tw-flex tw-items-center tw-gap-3">
               <v-divider />
