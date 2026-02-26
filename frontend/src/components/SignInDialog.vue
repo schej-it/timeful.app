@@ -225,9 +225,26 @@ export default {
     signIn(provider) {
       this.$emit("signIn", provider)
     },
+    validateEmail() {
+      const email = this.email.trim()
+      if (!email) {
+        this.emailError = "Please enter an email address."
+        return false
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        this.emailError = "Please enter a valid email address."
+        return false
+      }
+      if (email.includes("+")) {
+        this.emailError = "Email aliases with '+' are not allowed."
+        return false
+      }
+      return true
+    },
     async submitEmail() {
-      if (!this.email || this.sending) return
+      if (this.sending) return
       this.emailError = ""
+      if (!this.validateEmail()) return
       this.sending = true
       try {
         const res = await post("/auth/otp/check-email", { email: this.email })
