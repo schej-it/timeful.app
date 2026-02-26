@@ -112,6 +112,7 @@ func main() {
 	apiRouter := router.Group("/api")
 	routes.InitAuth(apiRouter)
 	routes.InitUser(apiRouter)
+	routes.InitUsers(apiRouter)
 	routes.InitEvents(apiRouter)
 	routes.InitAnalytics(apiRouter)
 	routes.InitStripe(apiRouter)
