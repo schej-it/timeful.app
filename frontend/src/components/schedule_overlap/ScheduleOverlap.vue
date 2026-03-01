@@ -2856,12 +2856,8 @@ export default {
           payload.guest = true
           payload.name = guestPayload.name
           payload.email = guestPayload.email
-          // Store with event._id (current format used by guestNameKey)
+
           localStorage[this.guestNameKey] = guestPayload.name
-          // Also store with shortId or _id (to match eventId prop format used in Event.vue)
-          // This allows refreshEvent() to read it immediately without needing event._id first
-          const eventIdKey = `${this.event.shortId ?? this.event._id}.guestName`
-          localStorage[eventIdKey] = guestPayload.name
         }
       }
 
@@ -3528,9 +3524,6 @@ export default {
         })
         // Store with event._id (current format used by guestNameKey)
         localStorage[this.guestNameKey] = newName
-        // Also store with shortId or _id (to match eventId prop format used in Event.vue)
-        const eventIdKey = `${this.event.shortId ?? this.event._id}.guestName`
-        localStorage[eventIdKey] = newName
         this.showInfo("Guest name updated successfully")
         this.editGuestNameDialog = false
         this.$emit("setCurGuestId", newName)

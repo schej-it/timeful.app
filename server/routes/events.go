@@ -29,6 +29,7 @@ func InitEvents(router *gin.RouterGroup) {
 
 	eventRouter.POST("", createEvent)
 	eventRouter.PUT("/:eventId", editEvent)
+	eventRouter.GET("/:eventId/ids", getEventIds)
 	eventRouter.GET("/:eventId", getEvent)
 	eventRouter.GET("/:eventId/responses", getResponses)
 	eventRouter.POST("/:eventId/response", updateEventResponse)
@@ -444,6 +445,32 @@ func editEvent(c *gin.Context) {
 	}
 
 	c.Status(http.StatusOK)
+}
+
+// @Summary Resolves an event identifier to both short and long IDs
+// @Tags events
+// @Produce json
+// @Param eventId path string true "Event shortId or longId"
+// @Success 200 {object} object{shortId=string,longId=string}
+// @Failure 404 {object} responses.Error
+// @Router /events/{eventId}/ids [get]
+func getEventIds(c *gin.Context) {
+	eventId := c.Param("eventId")
+	event := db.GetEventByEitherId(eventId)
+	if event == nil {
+		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
+		return
+	}
+
+	shortId := ""
+	if event.ShortId != nil {
+		shortId = *event.ShortId
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"shortId": shortId,
+		"longId":  event.Id.Hex(),
+	})
 }
 
 // @Summary Gets an event based on its id
