@@ -792,6 +792,12 @@
                 </div>
               </div>
               <template v-else>
+                <!-- <div
+                  class="tw-my-4 tw-block tw-h-40 tw-w-full tw-bg-red lg:tw-hidden"
+                > -->
+                <div class="tw-my-4 tw-block lg:tw-hidden">
+                  <div id="meet_incontent" data-fuse="meet_incontent"></div>
+                </div>
                 <RespondentsList
                   ref="respondentsList"
                   :event="event"
@@ -2278,6 +2284,14 @@ export default {
     ...mapMutations(["setAuthUser"]),
     ...mapActions(["showInfo", "showError", "showUpgradeDialog"]),
 
+    /** Registers the fusetag zones for the schedule overlap component */
+    registerFusetagZones() {
+      const fusetag = window.fusetag || (window.fusetag = { que: [] })
+      fusetag.que.push(function () {
+        fusetag.registerZone("meet_incontent")
+      })
+    },
+
     // -----------------------------------
     //#region Date
     // -----------------------------------
@@ -3360,14 +3374,13 @@ export default {
                 const date = this.getDateFromRowCol(row, col)
                 if (date) {
                   // Debug logging for hover slot
-                  
+
                   date.setTime(date.getTime() - this.timezoneOffset * 60 * 1000)
                   const startDate = dayjs(date).utc()
                   const endDate = dayjs(date)
                     .utc()
                     .add(this.timeslotDuration, "minutes")
-                    
-                  
+
                   const timeFormat =
                     this.timeType === timeTypes.HOUR12 ? "h:mm A" : "HH:mm"
                   let dateFormat
@@ -3376,14 +3389,13 @@ export default {
                   } else {
                     dateFormat = "ddd"
                   }
-                  
+
                   const formattedTimeRange = `${startDate.format(
                     dateFormat
                   )} ${startDate.format(timeFormat)} to ${endDate.format(
                     timeFormat
                   )}`
-                  
-                  
+
                   this.tooltipContent = formattedTimeRange
                 }
               }
@@ -3416,12 +3428,12 @@ export default {
      */
     getAllValidTimeRanges() {
       const timeSlotToRowCol = new Map()
-      
+
       // Skip if event is daysOnly (no time slots)
       if (this.event.daysOnly) {
         return timeSlotToRowCol
       }
-      
+
       // Iterate through all displayed days (columns)
       for (let col = 0; col < this.days.length; col++) {
         // Iterate through all displayed times (rows)
@@ -3430,15 +3442,15 @@ export default {
           // For example, if event is 9 AM PST, this returns 2026-12-21T17:00:00.000Z (9 AM PST = 17:00 UTC)
           const date = this.getDateFromRowCol(row, col)
           if (!date) continue
-          
+
           // getDateFromRowCol already returns the correct UTC Date representing the local time
           // No need to adjust - use it directly and add timeslot duration
           const startDate = dayjs(date).utc()
           const endDate = dayjs(date)
             .utc()
             .add(this.timeslotDuration, "minutes")
-          
-// Convert dayjs UTC objects to Date objects using UTC milliseconds directly
+
+          // Convert dayjs UTC objects to Date objects using UTC milliseconds directly
           const startTime = new Date(startDate.valueOf())
           const endTime = new Date(endDate.valueOf())
 
@@ -3447,11 +3459,11 @@ export default {
             row,
             col,
             startTime, // Date object matching exactly what hover tooltip displays
-            endTime,   // Date object (startTime + timeslotDuration)
+            endTime, // Date object (startTime + timeslotDuration)
           })
         }
       }
-      
+
       return timeSlotToRowCol
     },
     //#endregion
@@ -3521,7 +3533,8 @@ export default {
         this.$emit("setCurGuestId", newName)
         this.refreshEvent()
       } catch (err) {
-        const errorMessage = err.parsed?.error || err.message || "Failed to update guest name"
+        const errorMessage =
+          err.parsed?.error || err.message || "Failed to update guest name"
         this.showError(errorMessage)
       }
     },
@@ -4593,6 +4606,9 @@ export default {
 
     // Parse sign up blocks and responses
     this.resetSignUpForm()
+
+    // Register fusetag zones
+    this.registerFusetagZones()
   },
   beforeDestroy() {
     removeEventListener("click", this.deselectRespondents)

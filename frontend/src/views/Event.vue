@@ -614,7 +614,7 @@ export default {
       const fusetag = window.fusetag || (window.fusetag = { que: [] })
       fusetag.que.push(function () {
         fusetag.pageInit({
-          blockingFuseIds: ["meet_vrec_lhs", "meet_vrec_rhs"],
+          blockingFuseIds: ["meet_vrec_lhs", "meet_vrec_rhs", "meet_incontent"],
         })
       })
     },
