@@ -22,13 +22,13 @@
       })(window, document, "script", "dataLayer", "GTM-M677X6V")
           }
 
-          if (consentData?.preferences?.advertising) {
-            var script = document.createElement("script")
-            script.src =
-              "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4082178684015354"
-            script.crossOrigin = "anonymous"
-            document.head.appendChild(script)
-          }
+          // if (consentData?.preferences?.advertising) {
+          //   var script = document.createElement("script")
+          //   script.src =
+          //     "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4082178684015354"
+          //   script.crossOrigin = "anonymous"
+          //   document.head.appendChild(script)
+          // }
         } catch (error) {
           console.error("Error loading tracking scripts:", error)
         }
@@ -36,6 +36,7 @@
 
       loadTrackingScripts()
     </script>
+    <script async src="https://cdn.fuseplatform.net/publift/tags/2/4241/fuse.js"></script>
 
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
