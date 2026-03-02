@@ -98,7 +98,7 @@
       >
         <!-- <div class="tw-hidden tw-h-40 tw-w-40 tw-bg-red lg:tw-block"> -->
         <div class="tw-hidden lg:tw-block">
-          <div data-fuse="meet_vrec_lhs"></div>
+          <div id="meet_vrec_lhs" data-fuse="meet_vrec_lhs"></div>
         </div>
         <div class="tw-mx-auto tw-max-w-5xl tw-flex-1">
           <div v-if="!isSettingSpecificTimes" class="tw-mx-4">
@@ -278,7 +278,7 @@
         </div>
         <!-- <div class="tw-hidden tw-h-40 tw-w-40 tw-bg-red lg:tw-block"> -->
         <div class="tw-hidden lg:tw-block">
-          <div data-fuse="meet_vrec_rhs"></div>
+          <div id="meet_vrec_rhs" data-fuse="meet_vrec_rhs"></div>
         </div>
       </div>
 
@@ -509,6 +509,10 @@ export default {
     currSignUpBlock: null,
   }),
 
+  beforeMount() {
+    this.initFusetag()
+  },
+
   mounted() {
     // If coming from enabling contacts, show the dialog. Checks if contactsPayload is not an Observer.
     this.editEventDialog = Object.keys(this.contactsPayload).length > 0
@@ -516,6 +520,8 @@ export default {
     if (this.linkApple) {
       this.choiceDialog = true
     }
+
+    this.registerFusetagZones()
   },
 
   computed: {
@@ -603,6 +609,24 @@ export default {
   methods: {
     ...mapActions(["showError", "showInfo", "getEvents"]),
     ...mapMutations(["setAuthUser"]),
+
+    initFusetag() {
+      const fusetag = window.fusetag || (window.fusetag = { que: [] })
+      fusetag.que.push(function () {
+        fusetag.pageInit({
+          blockingFuseIds: ["meet_vrec_lhs", "meet_vrec_rhs"],
+        })
+      })
+    },
+
+    registerFusetagZones() {
+      const fusetag = window.fusetag || (window.fusetag = { que: [] })
+      fusetag.que.push(function () {
+        fusetag.registerZone("meet_vrec_lhs")
+        fusetag.registerZone("meet_vrec_rhs")
+      })
+    },
+
     /** Show choice dialog if not signed in, otherwise, immediately start editing availability */
     addAvailability() {
       if (!this.scheduleOverlapComponent) return
