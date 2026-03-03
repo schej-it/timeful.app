@@ -2287,11 +2287,13 @@ export default {
 
     /** Registers the fusetag zones for the schedule overlap component */
     registerFusetagZones() {
+      console.log("registerFusetagZones called, registering zones: ", [
+        "meet_incontent",
+      ])
       const fusetag = window.fusetag || (window.fusetag = { que: [] })
       fusetag.que.push(function () {
         fusetag.registerZone("meet_incontent")
       })
-      console.log("registered meet_incontent zone")
     },
 
     // -----------------------------------
