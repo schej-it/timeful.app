@@ -1,5 +1,5 @@
 <template>
-  <span>
+  <span :key="eventId">
     <FormerlyKnownAs
       class="tw-mx-auto tw-mb-10 tw-mt-3 tw-max-w-6xl tw-pl-4 sm:tw-pl-12"
     />
