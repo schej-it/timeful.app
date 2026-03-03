@@ -96,8 +96,8 @@
       <div
         class="tw-mx-auto tw-mt-4 lg:tw-flex lg:tw-items-start lg:tw-justify-center lg:tw-gap-6"
       >
-        <!-- <div class="tw-hidden tw-h-40 tw-w-40 tw-bg-red xl:tw-block"> -->
-        <div class="tw-hidden xl:tw-block">
+        <!-- <div class="tw-hidden tw-h-40 tw-w-[250px] tw-bg-red xl:tw-block"> -->
+        <div class="tw-hidden tw-w-[250px] xl:tw-block">
           <div id="meet_vrec_lhs" data-fuse="meet_vrec_lhs"></div>
         </div>
         <div class="tw-mx-auto tw-max-w-5xl tw-flex-1">
@@ -276,16 +276,16 @@
             @signUpForBlock="initiateSignUpFlow"
           />
         </div>
-        <!-- <div class="tw-hidden tw-h-40 tw-w-40 tw-bg-red xl:tw-block"> -->
-        <div class="tw-hidden xl:tw-block">
+        <!-- <div class="tw-hidden tw-h-40 tw-w-[250px] tw-bg-red xl:tw-block"> -->
+        <div class="tw-hidden tw-w-[250px] xl:tw-block">
           <div id="meet_vrec_rhs" data-fuse="meet_vrec_rhs"></div>
         </div>
       </div>
 
       <!-- <div
-        class="tw-my-4 tw-hidden tw-h-40 tw-w-full tw-bg-red sm:tw-block xl:tw-hidden"
+        class="tw-my-4 tw-hidden tw-h-[250px] tw-w-full tw-bg-red sm:tw-block xl:tw-hidden"
       > -->
-      <div class="tw-my-4 tw-hidden sm:tw-block xl:tw-hidden">
+      <div class="tw-my-4 tw-hidden tw-h-[250px] sm:tw-block xl:tw-hidden">
         <div id="meet_incontent_md" data-fuse="meet_incontent"></div>
       </div>
 

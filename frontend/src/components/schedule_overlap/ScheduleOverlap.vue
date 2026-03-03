@@ -793,9 +793,9 @@
               </div>
               <template v-else>
                 <!-- <div
-                  class="tw-my-4 tw-block tw-h-40 tw-w-full tw-bg-red sm:tw-hidden"
+                  class="tw-my-4 tw-block tw-h-[250px] tw-w-full tw-bg-red sm:tw-hidden"
                 > -->
-                <div class="tw-my-4 tw-block sm:tw-hidden">
+                <div class="tw-my-4 tw-block tw-h-[250px] sm:tw-hidden">
                   <div id="meet_incontent" data-fuse="meet_incontent"></div>
                 </div>
                 <RespondentsList
