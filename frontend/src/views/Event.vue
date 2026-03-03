@@ -516,9 +516,7 @@ export default {
     currSignUpBlock: null,
   }),
 
-  beforeMount() {
-    this.initFusetag()
-  },
+  beforeMount() {},
 
   mounted() {
     // If coming from enabling contacts, show the dialog. Checks if contactsPayload is not an Observer.
@@ -528,6 +526,7 @@ export default {
       this.choiceDialog = true
     }
 
+    this.initFusetag()
     this.registerFusetagZones()
   },
 
