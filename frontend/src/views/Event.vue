@@ -96,8 +96,8 @@
       <div
         class="tw-mx-auto tw-mt-4 lg:tw-flex lg:tw-items-start lg:tw-justify-center lg:tw-gap-6"
       >
-        <!-- <div class="tw-hidden tw-h-40 tw-w-40 tw-bg-red lg:tw-block"> -->
-        <div class="tw-hidden lg:tw-block">
+        <!-- <div class="tw-hidden tw-h-40 tw-w-40 tw-bg-red xl:tw-block"> -->
+        <div class="tw-hidden xl:tw-block">
           <div id="meet_vrec_lhs" data-fuse="meet_vrec_lhs"></div>
         </div>
         <div class="tw-mx-auto tw-max-w-5xl tw-flex-1">
@@ -276,10 +276,17 @@
             @signUpForBlock="initiateSignUpFlow"
           />
         </div>
-        <!-- <div class="tw-hidden tw-h-40 tw-w-40 tw-bg-red lg:tw-block"> -->
-        <div class="tw-hidden lg:tw-block">
+        <!-- <div class="tw-hidden tw-h-40 tw-w-40 tw-bg-red xl:tw-block"> -->
+        <div class="tw-hidden xl:tw-block">
           <div id="meet_vrec_rhs" data-fuse="meet_vrec_rhs"></div>
         </div>
+      </div>
+
+      <!-- <div
+        class="tw-my-4 tw-hidden tw-h-40 tw-w-full tw-bg-red sm:tw-block xl:tw-hidden"
+      > -->
+      <div class="tw-my-4 tw-hidden sm:tw-block xl:tw-hidden">
+        <div id="meet_incontent_md" data-fuse="meet_incontent"></div>
       </div>
 
       <!-- <CarbonAd :ownerId="event.ownerId" /> -->
@@ -614,7 +621,12 @@ export default {
       const fusetag = window.fusetag || (window.fusetag = { que: [] })
       fusetag.que.push(function () {
         fusetag.pageInit({
-          blockingFuseIds: ["meet_vrec_lhs", "meet_vrec_rhs", "meet_incontent"],
+          blockingFuseIds: [
+            "meet_vrec_lhs",
+            "meet_vrec_rhs",
+            "meet_incontent",
+            "meet_incontent_md",
+          ],
         })
       })
     },
@@ -624,6 +636,7 @@ export default {
       fusetag.que.push(function () {
         fusetag.registerZone("meet_vrec_lhs")
         fusetag.registerZone("meet_vrec_rhs")
+        fusetag.registerZone("meet_incontent_md")
       })
     },
 
