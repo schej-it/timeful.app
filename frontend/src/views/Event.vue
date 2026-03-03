@@ -96,10 +96,9 @@
       <div
         class="tw-mx-auto tw-mt-4 lg:tw-flex lg:tw-items-start lg:tw-justify-center lg:tw-gap-6"
       >
-        <!-- <div class="tw-hidden tw-h-40 tw-w-[250px] tw-bg-red xl:tw-block"> -->
-        <div class="tw-hidden tw-w-[250px] xl:tw-block">
+        <PubliftAd :ownerId="event.ownerId" class="tw-hidden xl:tw-block">
           <div id="meet_vrec_lhs" data-fuse="meet_vrec_lhs"></div>
-        </div>
+        </PubliftAd>
         <div class="tw-mx-auto tw-max-w-5xl tw-flex-1">
           <div v-if="!isSettingSpecificTimes" class="tw-mx-4">
             <!-- Title and copy link -->
@@ -276,18 +275,17 @@
             @signUpForBlock="initiateSignUpFlow"
           />
         </div>
-        <!-- <div class="tw-hidden tw-h-40 tw-w-[250px] tw-bg-red xl:tw-block"> -->
-        <div class="tw-hidden tw-w-[250px] xl:tw-block">
+        <PubliftAd :ownerId="event.ownerId" class="tw-hidden xl:tw-block">
           <div id="meet_vrec_rhs" data-fuse="meet_vrec_rhs"></div>
-        </div>
+        </PubliftAd>
       </div>
 
-      <!-- <div
-        class="tw-my-4 tw-hidden tw-h-[250px] tw-w-full tw-bg-red sm:tw-block xl:tw-hidden"
-      > -->
-      <div class="tw-my-4 tw-hidden tw-h-[250px] sm:tw-block xl:tw-hidden">
+      <PubliftAd
+        :ownerId="event.ownerId"
+        class="tw-my-4 tw-hidden sm:tw-block xl:tw-hidden"
+      >
         <div id="meet_incontent_md" data-fuse="meet_incontent"></div>
-      </div>
+      </PubliftAd>
 
       <!-- <CarbonAd :ownerId="event.ownerId" /> -->
 
@@ -456,6 +454,7 @@ import HelpDialog from "@/components/HelpDialog.vue"
 import EventDescription from "@/components/event/EventDescription.vue"
 import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
 import CarbonAd from "@/components/event/CarbonAd.vue"
+import PubliftAd from "@/components/event/PubliftAd.vue"
 export default {
   name: "Event",
 
@@ -480,6 +479,7 @@ export default {
     EventDescription,
     FormerlyKnownAs,
     CarbonAd,
+    PubliftAd,
   },
 
   data: () => ({
@@ -618,6 +618,7 @@ export default {
     ...mapMutations(["setAuthUser"]),
 
     initFusetag() {
+      console.log("initFusetag")
       const fusetag = window.fusetag || (window.fusetag = { que: [] })
       fusetag.que.push(function () {
         fusetag.pageInit({

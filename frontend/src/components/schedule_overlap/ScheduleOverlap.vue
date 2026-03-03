@@ -792,12 +792,12 @@
                 </div>
               </div>
               <template v-else>
-                <!-- <div
-                  class="tw-my-4 tw-block tw-h-[250px] tw-w-full tw-bg-red sm:tw-hidden"
-                > -->
-                <div class="tw-my-4 tw-block tw-h-[250px] sm:tw-hidden">
+                <PubliftAd
+                  :ownerId="event.ownerId"
+                  class="tw-my-4 tw-block sm:tw-hidden"
+                >
                   <div id="meet_incontent" data-fuse="meet_incontent"></div>
-                </div>
+                </PubliftAd>
                 <RespondentsList
                   ref="respondentsList"
                   :event="event"
@@ -1035,6 +1035,7 @@ import { mapMutations, mapActions, mapState } from "vuex"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
 import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
 import Advertisement from "@/components/event/Advertisement.vue"
+import PubliftAd from "@/components/event/PubliftAd.vue"
 import SignUpBlock from "@/components/sign_up_form/SignUpBlock.vue"
 import SignUpCalendarBlock from "@/components/sign_up_form/SignUpCalendarBlock.vue"
 import SignUpBlocksList from "@/components/sign_up_form/SignUpBlocksList.vue"
@@ -4628,6 +4629,7 @@ export default {
     CalendarAccounts,
     RespondentsList,
     Advertisement,
+    PubliftAd,
     GCalWeekSelector,
     WorkingHoursToggle,
     SignUpBlock,
