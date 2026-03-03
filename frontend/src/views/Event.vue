@@ -618,7 +618,12 @@ export default {
     ...mapMutations(["setAuthUser"]),
 
     initFusetag() {
-      console.log("initFusetag")
+      console.log("initFusetag called, blockingFuseIds: ", [
+        "meet_vrec_lhs",
+        "meet_vrec_rhs",
+        "meet_incontent",
+        "meet_incontent_md",
+      ])
       const fusetag = window.fusetag || (window.fusetag = { que: [] })
       fusetag.que.push(function () {
         fusetag.pageInit({
@@ -633,6 +638,11 @@ export default {
     },
 
     registerFusetagZones() {
+      console.log("registerFusetagZones called, registering zones: ", [
+        "meet_vrec_lhs",
+        "meet_vrec_rhs",
+        "meet_incontent_md",
+      ])
       const fusetag = window.fusetag || (window.fusetag = { que: [] })
       fusetag.que.push(function () {
         fusetag.registerZone("meet_vrec_lhs")
