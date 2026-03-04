@@ -793,7 +793,8 @@
               </div>
               <template v-else>
                 <PubliftAd
-                  :ownerId="event.ownerId"
+                  :ownerIsPremium="ownerIsPremium"
+                  fuseId="meet_incontent"
                   class="tw-my-4 tw-block sm:tw-hidden"
                 >
                   <div id="meet_incontent" data-fuse="meet_incontent"></div>
@@ -1065,6 +1066,7 @@ export default {
   name: "ScheduleOverlap",
   props: {
     event: { type: Object, required: true },
+    ownerIsPremium: { type: Boolean, default: false },
     fromEditEvent: { type: Boolean, default: false },
 
     loadingCalendarEvents: { type: Boolean, default: false }, // Whether we are currently loading the calendar events
@@ -2284,19 +2286,6 @@ export default {
   methods: {
     ...mapMutations(["setAuthUser"]),
     ...mapActions(["showInfo", "showError", "showUpgradeDialog"]),
-
-    /** Registers the fusetag zones for the schedule overlap component */
-    registerFusetagZones() {
-      setTimeout(() => {
-        console.log("registerFusetagZones called, registering zones: ", [
-          "meet_incontent",
-        ])
-        const fusetag = window.fusetag || (window.fusetag = { que: [] })
-        fusetag.que.push(function () {
-          fusetag.registerZone("meet_incontent")
-        })
-      }, 100)
-    },
 
     // -----------------------------------
     //#region Date
@@ -4612,9 +4601,6 @@ export default {
 
     // Parse sign up blocks and responses
     this.resetSignUpForm()
-
-    // Register fusetag zones
-    this.registerFusetagZones()
   },
   beforeDestroy() {
     removeEventListener("click", this.deselectRespondents)

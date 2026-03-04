@@ -1,9 +1,9 @@
 <template>
-  <span :key="eventId">
+  <span>
     <FormerlyKnownAs
       class="tw-mx-auto tw-mb-10 tw-mt-3 tw-max-w-6xl tw-pl-4 sm:tw-pl-12"
     />
-    <div v-if="event" class="tw-mt-8 tw-h-full">
+    <div v-if="event && ownerPremiumChecked" class="tw-mt-8 tw-h-full">
       <!-- Mark availability option dialog -->
       <MarkAvailabilityDialog
         v-model="choiceDialog"
@@ -97,7 +97,8 @@
         class="tw-mx-auto tw-mt-4 lg:tw-flex lg:tw-items-start lg:tw-justify-center lg:tw-gap-6"
       >
         <PubliftAd
-          :ownerId="event.ownerId"
+          :ownerIsPremium="ownerIsPremium"
+          fuseId="meet_vrec_lhs"
           class="tw-hidden publift-l:tw-block"
         >
           <div class="publift-l:tw-w-[160px] publift-xl:tw-w-[300px]">
@@ -262,6 +263,7 @@
           <ScheduleOverlap
             ref="scheduleOverlap"
             :event="event"
+            :ownerIsPremium="ownerIsPremium"
             :fromEditEvent="fromEditEvent"
             :loadingCalendarEvents="loading"
             :calendarEventsMap="calendarEventsMap"
@@ -281,7 +283,8 @@
           />
         </div>
         <PubliftAd
-          :ownerId="event.ownerId"
+          :ownerIsPremium="ownerIsPremium"
+          fuseId="meet_vrec_rhs"
           class="tw-hidden publift-l:tw-block"
         >
           <div class="publift-l:tw-w-[160px] publift-xl:tw-w-[300px]">
@@ -291,13 +294,14 @@
       </div>
 
       <PubliftAd
-        :ownerId="event.ownerId"
+        :ownerIsPremium="ownerIsPremium"
+        fuseId="meet_incontent_md"
         class="tw-my-4 tw-hidden sm:tw-block xl:tw-hidden"
       >
         <div id="meet_incontent_md" data-fuse="meet_incontent"></div>
       </PubliftAd>
 
-      <!-- <CarbonAd :ownerId="event.ownerId" /> -->
+      <!-- <CarbonAd :ownerIsPremium="ownerIsPremium" /> -->
 
       <template v-if="showFeedbackBtn">
         <div class="tw-w-full tw-border-t tw-border-solid tw-border-gray"></div>
@@ -455,6 +459,7 @@ import {
   calendarTypes,
   dayIndexToDayString,
   allTimezones,
+  guestUserId,
 } from "@/constants"
 import isWebview from "is-ua-webview"
 import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
@@ -510,6 +515,9 @@ export default {
     scheduleOverlapComponent: null,
     scheduleOverlapComponentLoaded: false,
 
+    ownerIsPremium: false,
+    ownerPremiumChecked: false,
+
     curGuestId: "", // Id of the current guest being edited
     calendarPermissionGranted: true,
     addingAvailabilityAsGuest: false, // Whether a signed in user is current adding availability as a guest
@@ -537,7 +545,6 @@ export default {
     }
 
     this.initFusetag()
-    this.registerFusetagZones()
   },
 
   computed: {
@@ -646,22 +653,6 @@ export default {
       })
     },
 
-    registerFusetagZones() {
-      setTimeout(() => {
-        console.log("registerFusetagZones called, registering zones: ", [
-          "meet_vrec_lhs",
-          "meet_vrec_rhs",
-          "meet_incontent_md",
-        ])
-        const fusetag = window.fusetag || (window.fusetag = { que: [] })
-        fusetag.que.push(function () {
-          fusetag.registerZone("meet_vrec_lhs")
-          fusetag.registerZone("meet_vrec_rhs")
-          fusetag.registerZone("meet_incontent_md")
-        })
-      }, 100)
-    },
-
     /** Show choice dialog if not signed in, otherwise, immediately start editing availability */
     addAvailability() {
       if (!this.scheduleOverlapComponent) return
@@ -735,6 +726,19 @@ export default {
       let sanitizedId = this.eventId.replaceAll(".", "")
       this.event = await get(`/events/${sanitizedId}`)
       processEvent(this.event)
+    },
+
+    async checkOwnerPremium() {
+      const ownerId = this.event?.ownerId
+      if (ownerId && ownerId !== guestUserId) {
+        try {
+          const res = await get(`/users/${ownerId}/is-premium`)
+          this.ownerIsPremium = res.isPremium
+        } catch {
+          this.ownerIsPremium = false
+        }
+      }
+      this.ownerPremiumChecked = true
     },
 
     setAvailabilityAutomatically(calendarType = calendarTypes.GOOGLE) {
@@ -1698,6 +1702,7 @@ export default {
     // Get event details
     try {
       await this.refreshEvent()
+      await this.checkOwnerPremium()
 
       // Redirect if we're at the wrong route
       if (this.event.type === eventTypes.GROUP) {

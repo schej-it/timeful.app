@@ -13,38 +13,39 @@
 </template>
 
 <script>
-import { get } from "@/utils"
-import { guestUserId } from "@/constants"
 import { mapGetters } from "vuex"
 
 export default {
   name: "PubliftAd",
 
   props: {
-    ownerId: { type: String, default: "" },
+    ownerIsPremium: { type: Boolean, default: false },
+    fuseId: { type: String, required: true },
   },
 
-  data: () => ({
-    ownerIsPremium: false,
-    ownerLoaded: false,
-  }),
-
-  async mounted() {
-    if (this.ownerId && this.ownerId !== guestUserId) {
-      try {
-        const res = await get(`/users/${this.ownerId}/is-premium`)
-        this.ownerIsPremium = res.isPremium
-      } catch {
-        this.ownerIsPremium = false
-      }
-    }
-    this.ownerLoaded = true
+  watch: {
+    showAd: {
+      immediate: true,
+      handler(val) {
+        if (val) this.registerZone()
+      },
+    },
   },
 
   computed: {
     ...mapGetters(["isPremiumUser"]),
     showAd() {
-      return this.ownerLoaded && !this.ownerIsPremium && !this.isPremiumUser
+      return !this.ownerIsPremium && !this.isPremiumUser
+    },
+  },
+
+  methods: {
+    registerZone() {
+      const fuseId = this.fuseId
+      const fusetag = window.fusetag || (window.fusetag = { que: [] })
+      fusetag.que.push(function () {
+        fusetag.registerZone(fuseId)
+      })
     },
   },
 }
