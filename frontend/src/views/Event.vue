@@ -656,14 +656,10 @@ export default {
       let sanitizedId = this.eventId.replaceAll(".", "")
 
       let resolvedLongId = this.event?._id || ""
-      let resolvedShortId = sanitizedId
       try {
         const ids = await get(`/events/${sanitizedId}/ids`)
         if (ids?.longId) {
           resolvedLongId = ids.longId
-        }
-        if (ids?.shortId) {
-          resolvedShortId = ids.shortId
         }
       } catch (err) {
         // If ID resolution fails, continue with existing fallback behavior.
