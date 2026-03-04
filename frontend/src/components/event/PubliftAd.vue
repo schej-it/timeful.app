@@ -23,9 +23,12 @@ export default {
     fuseId: { type: String, required: true },
   },
 
+  mounted() {
+    if (this.showAd) this.$nextTick(() => this.registerZone())
+  },
+
   watch: {
     showAd: {
-      immediate: true,
       handler(val) {
         if (val) this.$nextTick(() => this.registerZone())
       },
