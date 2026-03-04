@@ -637,7 +637,7 @@ export default {
     },
 
     registerFusetagZones() {
-      this.$nextTick(() => {
+      setTimeout(() => {
         console.log("registerFusetagZones called, registering zones: ", [
           "meet_vrec_lhs",
           "meet_vrec_rhs",

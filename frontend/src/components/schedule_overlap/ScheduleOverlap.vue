@@ -2287,7 +2287,7 @@ export default {
 
     /** Registers the fusetag zones for the schedule overlap component */
     registerFusetagZones() {
-      this.$nextTick(() => {
+      setTimeout(() => {
         console.log("registerFusetagZones called, registering zones: ", [
           "meet_incontent",
         ])
