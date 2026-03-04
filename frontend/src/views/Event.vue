@@ -101,7 +101,9 @@
           fuseId="meet_vrec_lhs"
           class="tw-hidden publift-l:tw-block"
         >
-          <div class="publift-l:tw-w-[160px] publift-xl:tw-w-[300px]">
+          <div
+            class="tw-h-[600px] publift-l:tw-w-[160px] publift-xl:tw-w-[300px]"
+          >
             <div id="meet_vrec_lhs" data-fuse="meet_vrec_lhs"></div>
           </div>
         </PubliftAd>
@@ -287,7 +289,9 @@
           fuseId="meet_vrec_rhs"
           class="tw-hidden publift-l:tw-block"
         >
-          <div class="publift-l:tw-w-[160px] publift-xl:tw-w-[300px]">
+          <div
+            class="tw-h-[600px] publift-l:tw-w-[160px] publift-xl:tw-w-[300px]"
+          >
             <div id="meet_vrec_rhs" data-fuse="meet_vrec_rhs"></div>
           </div>
         </PubliftAd>
