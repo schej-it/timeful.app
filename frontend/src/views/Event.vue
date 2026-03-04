@@ -98,9 +98,11 @@
       >
         <PubliftAd
           :ownerId="event.ownerId"
-          class="tw-hidden publift-l:tw-w-[160px] xl:tw-block publift-xl:tw-w-[300px]"
+          class="tw-hidden publift-l:tw-block"
         >
-          <div id="meet_vrec_lhs" data-fuse="meet_vrec_lhs"></div>
+          <div class="publift-l:tw-w-[160px] publift-xl:tw-w-[300px]">
+            <div id="meet_vrec_lhs" data-fuse="meet_vrec_lhs"></div>
+          </div>
         </PubliftAd>
         <div class="tw-mx-auto tw-max-w-5xl tw-flex-1">
           <div v-if="!isSettingSpecificTimes" class="tw-mx-4">
@@ -280,9 +282,11 @@
         </div>
         <PubliftAd
           :ownerId="event.ownerId"
-          class="tw-hidden publift-l:tw-w-[160px] xl:tw-block publift-xl:tw-w-[300px]"
+          class="tw-hidden publift-l:tw-block"
         >
-          <div id="meet_vrec_rhs" data-fuse="meet_vrec_rhs"></div>
+          <div class="publift-l:tw-w-[160px] publift-xl:tw-w-[300px]">
+            <div id="meet_vrec_rhs" data-fuse="meet_vrec_rhs"></div>
+          </div>
         </PubliftAd>
       </div>
 
