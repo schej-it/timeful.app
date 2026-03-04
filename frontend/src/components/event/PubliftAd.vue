@@ -27,7 +27,7 @@ export default {
     showAd: {
       immediate: true,
       handler(val) {
-        if (val) this.registerZone()
+        if (val) this.$nextTick(() => this.registerZone())
       },
     },
   },
