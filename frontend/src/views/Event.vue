@@ -637,16 +637,18 @@ export default {
     },
 
     registerFusetagZones() {
-      console.log("registerFusetagZones called, registering zones: ", [
-        "meet_vrec_lhs",
-        "meet_vrec_rhs",
-        "meet_incontent_md",
-      ])
-      const fusetag = window.fusetag || (window.fusetag = { que: [] })
-      fusetag.que.push(function () {
-        fusetag.registerZone("meet_vrec_lhs")
-        fusetag.registerZone("meet_vrec_rhs")
-        fusetag.registerZone("meet_incontent_md")
+      this.$nextTick(() => {
+        console.log("registerFusetagZones called, registering zones: ", [
+          "meet_vrec_lhs",
+          "meet_vrec_rhs",
+          "meet_incontent_md",
+        ])
+        const fusetag = window.fusetag || (window.fusetag = { que: [] })
+        fusetag.que.push(function () {
+          fusetag.registerZone("meet_vrec_lhs")
+          fusetag.registerZone("meet_vrec_rhs")
+          fusetag.registerZone("meet_incontent_md")
+        })
       })
     },
 
