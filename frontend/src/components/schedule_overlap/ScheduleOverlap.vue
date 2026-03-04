@@ -2295,7 +2295,7 @@ export default {
         fusetag.que.push(function () {
           fusetag.registerZone("meet_incontent")
         })
-      })
+      }, 100)
     },
 
     // -----------------------------------

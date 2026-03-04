@@ -96,7 +96,10 @@
       <div
         class="tw-mx-auto tw-mt-4 lg:tw-flex lg:tw-items-start lg:tw-justify-center lg:tw-gap-6"
       >
-        <PubliftAd :ownerId="event.ownerId" class="tw-hidden xl:tw-block">
+        <PubliftAd
+          :ownerId="event.ownerId"
+          class="tw-hidden publift-l:tw-w-[160px] xl:tw-block publift-xl:tw-w-[300px]"
+        >
           <div id="meet_vrec_lhs" data-fuse="meet_vrec_lhs"></div>
         </PubliftAd>
         <div class="tw-mx-auto tw-max-w-5xl tw-flex-1">
@@ -275,7 +278,10 @@
             @signUpForBlock="initiateSignUpFlow"
           />
         </div>
-        <PubliftAd :ownerId="event.ownerId" class="tw-hidden xl:tw-block">
+        <PubliftAd
+          :ownerId="event.ownerId"
+          class="tw-hidden publift-l:tw-w-[160px] xl:tw-block publift-xl:tw-w-[300px]"
+        >
           <div id="meet_vrec_rhs" data-fuse="meet_vrec_rhs"></div>
         </PubliftAd>
       </div>
@@ -649,7 +655,7 @@ export default {
           fusetag.registerZone("meet_vrec_rhs")
           fusetag.registerZone("meet_incontent_md")
         })
-      })
+      }, 100)
     },
 
     /** Show choice dialog if not signed in, otherwise, immediately start editing availability */

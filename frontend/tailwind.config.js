@@ -45,6 +45,8 @@ module.exports = {
       lg: "1024px",
       xl: "1280px",
       "2xl": "1536px",
+      "publift-l": "1225px",
+      "publift-xl": "1475px",
     },
   },
   plugins: [],
