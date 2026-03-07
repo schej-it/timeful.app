@@ -100,6 +100,11 @@
             <div>
               <div
                 class="sm:mb-2 tw-flex tw-flex-wrap tw-items-center tw-gap-x-4 tw-gap-y-2"
+                :class="
+                  canEdit &&
+                  'tw-cursor-text tw-rounded -tw-mx-2 -tw-my-1 tw-px-2 tw-py-1 tw-transition-all hover:tw-bg-light-gray'
+                "
+                @click="canEdit && editEvent()"
               >
                 <div class="tw-text-xl sm:tw-text-3xl">{{ event.name }}</div>
                 <v-chip
@@ -107,6 +112,7 @@
                   :href="`https://when2meet.com${event.when2meetHref}`"
                   :small="isPhone"
                   class="tw-cursor-pointer tw-select-none tw-rounded tw-bg-light-gray tw-px-2 tw-font-medium sm:tw-px-3"
+                  @click.native.stop
                   >Imported from when2meet</v-chip
                 >
                 <template v-if="isGroup">
@@ -114,7 +120,7 @@
                     <v-chip
                       :small="isPhone"
                       class="tw-cursor-pointer tw-select-none tw-rounded tw-bg-light-gray tw-px-2 tw-font-medium sm:tw-px-3"
-                      @click="helpDialog = true"
+                      @click.stop="helpDialog = true"
                       >Availability group</v-chip
                     >
                   </div>
