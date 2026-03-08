@@ -1860,6 +1860,11 @@ export default {
         document.title = `${this.event.name} - Timeful`
       }
     },
+    ownerPremiumChecked() {
+      this.$nextTick(() => {
+        this.scheduleOverlapComponent = this.$refs.scheduleOverlap
+      })
+    },
     scheduleOverlapComponent() {
       if (!this.scheduleOverlapComponentLoaded) {
         this.scheduleOverlapComponentLoaded = true
