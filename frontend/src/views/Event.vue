@@ -107,7 +107,7 @@
             <div
               id="meet_vrec_lhs"
               data-fuse="meet_vrec_lhs"
-              class="tw-flex tw-justify-center"
+              class="tw-flex tw-items-center tw-justify-center"
             ></div>
           </div>
         </PubliftAd>
@@ -299,7 +299,7 @@
             <div
               id="meet_vrec_rhs"
               data-fuse="meet_vrec_rhs"
-              class="tw-flex tw-justify-center"
+              class="tw-flex tw-items-center tw-justify-center"
             ></div>
           </div>
         </PubliftAd>
@@ -313,7 +313,7 @@
         <div
           id="meet_incontent_md"
           data-fuse="meet_incontent"
-          class="tw-flex tw-justify-center"
+          class="tw-flex tw-items-center tw-justify-center"
         ></div>
       </PubliftAd>
 

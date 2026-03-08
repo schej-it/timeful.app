@@ -800,7 +800,7 @@
                   <div
                     id="meet_incontent"
                     data-fuse="meet_incontent"
-                    class="tw-flex tw-justify-center"
+                    class="tw-flex tw-items-center tw-justify-center"
                   ></div>
                 </PubliftAd>
                 <RespondentsList
