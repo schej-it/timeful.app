@@ -547,7 +547,6 @@ export default {
     if (this.linkApple) {
       this.choiceDialog = true
     }
-
     this.initFusetag()
   },
 
@@ -728,7 +727,32 @@ export default {
     /** Refresh event details */
     async refreshEvent() {
       let sanitizedId = this.eventId.replaceAll(".", "")
-      this.event = await get(`/events/${sanitizedId}`)
+
+      let resolvedLongId = this.event?._id || ""
+      try {
+        const ids = await get(`/events/${sanitizedId}/ids`)
+        if (ids?.longId) {
+          resolvedLongId = ids.longId
+        }
+      } catch (err) {
+        // If ID resolution fails, continue with existing fallback behavior.
+      }
+      // Try to get guest name from localStorage using resolved longId.
+      let guestName = null
+      if (typeof localStorage !== "undefined") {
+        if (resolvedLongId) {
+          guestName = localStorage[`${resolvedLongId}.guestName`]
+        }
+      }
+
+      // Build URL with guestName if available
+      let url = `/events/${sanitizedId}`
+      if (guestName && guestName.length > 0) {
+        url += `?guestName=${encodeURIComponent(guestName)}`
+      }
+
+      // Make single request with guestName if available
+      this.event = await get(url)
       processEvent(this.event)
     },
 
@@ -1162,9 +1186,28 @@ export default {
       // Validation: Check timeIncrement exists, default to 15 if not
       const timeIncrement = this.event.timeIncrement ?? 15
 
-      // Check if guestName is provided in payload - if so, force guest mode
+      // Security check: If blindAvailabilityEnabled is true and user is NOT the owner,
+      // reject any request with guestName parameter
       const payloadGuestName = event.data?.payload?.guestName
-      const forceGuestMode = payloadGuestName && payloadGuestName.length > 0
+      const hasGuestName = payloadGuestName && payloadGuestName.length > 0
+
+      if (this.event.blindAvailabilityEnabled) {
+        // Check if user is owner: ownerId is only returned by backend if user is the owner
+        // So if ownerId exists and matches current user's ID, they are the owner
+        const isOwner =
+          this.event.ownerId && this.authUser?._id === this.event.ownerId
+        if (!isOwner && hasGuestName) {
+          sendPluginError(
+            requestId,
+            command,
+            "Non-owners cannot set guest availability when 'Hide responses from respondents' is enabled."
+          )
+          return
+        }
+      }
+
+      // Check if guestName is provided in payload - if so, force guest mode
+      const forceGuestMode = hasGuestName
 
       // Determine if current user is guest or logged-in
       // If guestName is provided in payload, always treat as guest (ignore login status)
@@ -1179,6 +1222,7 @@ export default {
         if (forceGuestMode) {
           // guestName provided in payload - use it and store in localStorage
           guestName = payloadGuestName
+          // Store with event._id only (canonical guestName storage key)
           localStorage[guestNameKey] = guestName
 
           // If event collects emails, require guestEmail in payload
@@ -1583,7 +1627,20 @@ export default {
 
       try {
         // Fetch responses between timeMin and timeMax
-        const url = `/events/${sanitizedId}/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+
+        // Try to get guest name from localStorage using long event id only.
+        let guestName = null
+        if (typeof localStorage !== "undefined" && this.event?._id) {
+          const guestNameKey = `${this.event._id}.guestName`
+          guestName = localStorage[guestNameKey]
+        }
+
+        // Build URL with guestName if available
+        let url = `/events/${sanitizedId}/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+        if (guestName && guestName.length > 0) {
+          url += `&guestName=${encodeURIComponent(guestName)}`
+        }
+
         const responses = await get(url)
 
         // Build response object with all users' slots

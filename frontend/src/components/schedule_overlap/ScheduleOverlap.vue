@@ -2464,9 +2464,15 @@ export default {
       if (!timeMin || !timeMax) return
 
       // Fetch responses between timeMin and timeMax
-      const url = `/events/${
+      let url = `/events/${
         this.event._id
       }/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+      
+      // Add guestName query parameter if user is a guest
+      if (this.guestName && this.guestName.length > 0) {
+        url += `&guestName=${encodeURIComponent(this.guestName)}`
+      }
+      
       get(url)
         .then((responses) => {
           this.fetchedResponses = responses
@@ -2859,6 +2865,7 @@ export default {
           payload.guest = true
           payload.name = guestPayload.name
           payload.email = guestPayload.email
+
           localStorage[this.guestNameKey] = guestPayload.name
         }
       }
@@ -3522,6 +3529,7 @@ export default {
           oldName: this.curGuestId,
           newName,
         })
+        // Store with event._id (current format used by guestNameKey)
         localStorage[this.guestNameKey] = newName
         this.showInfo("Guest name updated successfully")
         this.editGuestNameDialog = false
