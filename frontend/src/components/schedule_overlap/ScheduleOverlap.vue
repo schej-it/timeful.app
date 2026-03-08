@@ -797,11 +797,13 @@
                   fuseId="meet_incontent"
                   class="tw-my-4 tw-block sm:tw-hidden"
                 >
-                  <div
-                    id="meet_incontent"
-                    data-fuse="meet_incontent"
-                    class="tw-flex tw-items-center tw-justify-center"
-                  ></div>
+                  <div class="tw-h-[280px] publift-m:tw-h-[90px]">
+                    <div
+                      id="meet_incontent"
+                      data-fuse="meet_incontent"
+                      class="tw-flex tw-items-center tw-justify-center"
+                    ></div>
+                  </div>
                 </PubliftAd>
                 <RespondentsList
                   ref="respondentsList"
