@@ -273,7 +273,7 @@
       </v-btn>
 
       <!-- Header -->
-      <div class="tw-mb-2 tw-flex tw-flex-col tw-items-start tw-gap-2">
+      <div class="tw-mb-6 tw-flex tw-flex-col tw-items-start tw-gap-2">
         <h2 class="tw-text-xl tw-font-medium">
           Upgrade to
           <span
@@ -308,53 +308,27 @@
       </div>
 
       <!-- Monthly / Yearly toggle -->
-      <div class="tw-mb-5 tw-flex tw-items-center tw-justify-center tw-gap-2">
-        <span
-          class="tw-text-sm tw-font-medium"
-          :class="
-            v2BillingCycle === 'monthly'
-              ? 'tw-text-very-dark-gray'
-              : 'tw-text-dark-gray'
-          "
-          >Monthly</span
+      <div class="tw-mb-4 tw-flex tw-items-center tw-justify-center">
+        <SlideToggle
+          class="tw-w-full"
+          :value="v2BillingCycle"
+          :options="v2BillingOptions"
+          @input="v2BillingCycle = $event"
         >
-        <button
-          class="tw-relative tw-inline-flex tw-h-6 tw-w-11 tw-flex-shrink-0 tw-cursor-pointer tw-rounded-full tw-border-2 tw-border-transparent tw-transition-colors tw-duration-200 tw-ease-in-out focus:tw-outline-none"
-          :class="
-            v2BillingCycle === 'yearly' ? 'tw-bg-light-green' : 'tw-bg-gray-300'
-          "
-          @click="
-            v2BillingCycle = v2BillingCycle === 'monthly' ? 'yearly' : 'monthly'
-          "
-        >
-          <span
-            class="tw-pointer-events-none tw-inline-block tw-h-5 tw-w-5 tw-transform tw-rounded-full tw-bg-white tw-shadow tw-ring-0 tw-transition tw-duration-200 tw-ease-in-out"
-            :class="
-              v2BillingCycle === 'yearly'
-                ? 'tw-translate-x-5'
-                : 'tw-translate-x-0'
-            "
-          ></span>
-        </button>
-        <span
-          class="tw-text-sm tw-font-medium"
-          :class="
-            v2BillingCycle === 'yearly'
-              ? 'tw-text-very-dark-gray'
-              : 'tw-text-dark-gray'
-          "
-          >Yearly</span
-        >
-        <span
-          v-if="yearlyDiscount > 0"
-          class="tw-ml-1 tw-rounded-full tw-bg-light-green tw-px-2 tw-py-0.5 tw-text-xs tw-font-medium tw-text-white"
-          >{{ yearlyDiscount }}% OFF</span
-        >
+          <template #option-yearly="{ active }">
+            <span class="tw-line-clamp-1">Yearly</span>
+            <span
+              v-if="yearlyDiscount > 0"
+              class="tw-whitespace-nowrap tw-rounded-full tw-bg-light-green tw-px-1.5 tw-py-0.5 tw-text-xs tw-font-medium tw-text-white"
+              >{{ yearlyDiscount }}% OFF</span
+            >
+          </template>
+        </SlideToggle>
       </div>
 
       <!-- Plan comparison cards -->
       <div
-        class="tw-mb-5 tw-flex tw-flex-col tw-gap-6 sm:tw-flex-row sm:tw-gap-4"
+        class="tw-mb-5 tw-flex tw-flex-col tw-gap-4 sm:tw-flex-row sm:tw-gap-4"
       >
         <!-- Free plan -->
         <div
@@ -391,16 +365,17 @@
 
         <!-- Premium plan -->
         <div
-          class="tw-relative tw-flex tw-flex-1 tw-flex-col tw-rounded-lg tw-border-2 tw-border-light-green tw-p-5 tw-shadow-xl"
+          class="tw-relative tw-flex tw-flex-1 tw-flex-col tw-rounded-lg tw-border-2 tw-border-light-green tw-p-5"
+          style="box-shadow: 0 10px 30px -5px rgba(76, 175, 80, 0.3)"
           :style="{
             background: `linear-gradient( 135deg, rgba(76, 175, 80, 0.1) 0%, #fff 50%, rgba(76, 175, 80, 0.1) 100%)`,
           }"
         >
-          <div
+          <!-- <div
             class="tw-absolute -tw-top-3 tw-left-1/2 -tw-translate-x-1/2 tw-whitespace-nowrap tw-rounded-full tw-bg-light-green tw-px-3 tw-py-0.5 tw-text-xs tw-font-medium tw-text-white"
           >
             Recommended
-          </div>
+          </div> -->
           <div class="tw-mb-1 tw-text-xl tw-font-semibold">
             <span
               class="tw-bg-gradient-to-r tw-from-darkest-green tw-to-light-green tw-bg-clip-text tw-text-transparent"
@@ -494,12 +469,14 @@ import { mapState, mapActions } from "vuex"
 import { upgradeDialogTypes } from "@/constants"
 import AlreadyDonatedDialog from "./AlreadyDonatedDialog.vue"
 import StudentProofDialog from "./StudentProofDialog.vue"
+import SlideToggle from "@/components/SlideToggle.vue"
 
 export default {
   name: "UpgradeDialog",
   components: {
     AlreadyDonatedDialog,
     StudentProofDialog,
+    SlideToggle,
   },
   props: {
     value: { type: Boolean, required: true },
@@ -565,6 +542,12 @@ export default {
             100
         )
       )
+    },
+    v2BillingOptions() {
+      return [
+        { text: "Monthly", value: "monthly", style: { minWidth: "150px" } },
+        { text: "Yearly", value: "yearly", style: { minWidth: "150px" } },
+      ]
     },
     v2ActivePrice() {
       if (this.v2BillingCycle === "yearly") {

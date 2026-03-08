@@ -13,13 +13,16 @@
     ></div>
     <template v-for="(tab, i) in options">
       <div
-        class="tw-line-clamp-1 tw-flex-1 tw-cursor-pointer tw-overflow-hidden tw-px-4 tw-py-2.5 tw-text-center tw-text-sm tw-font-medium tw-transition-all"
+        class="tw-flex tw-flex-1 tw-cursor-pointer tw-items-center tw-justify-center tw-gap-1.5 tw-overflow-hidden tw-px-4 tw-py-2.5 tw-text-center tw-text-sm tw-font-medium tw-transition-all"
         :class="
           i === index ? tab.activeClass ?? defaultActiveClass : inactiveClass
         "
+        :style="tab.style || {}"
         @click="$emit('input', tab.value)"
       >
-        {{ tab.text }}
+        <slot :name="'option-' + tab.value" :option="tab" :active="i === index">
+          <span class="tw-line-clamp-1">{{ tab.text }}</span>
+        </slot>
       </div>
     </template>
   </div>
