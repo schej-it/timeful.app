@@ -53,6 +53,7 @@ export const upgradeDialogTypes = Object.freeze({
   CREATE_EVENT: "create-event",
   SCHEDULE_EVENT: "schedule-event",
   UPGRADE_MANUALLY: "upgrade-manually",
+  REMOVE_ADS: "remove-ads",
 })
 
 export const timeslotDurations = Object.freeze({
