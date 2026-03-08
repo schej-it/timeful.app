@@ -794,6 +794,7 @@
               <template v-else>
                 <PubliftAd
                   :ownerIsPremium="ownerIsPremium"
+                  :isSettingSpecificTimes="state === states.SET_SPECIFIC_TIMES"
                   fuseId="meet_incontent"
                   class="tw-my-4 tw-block sm:tw-hidden"
                 >

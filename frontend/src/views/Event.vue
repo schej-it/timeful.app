@@ -98,6 +98,7 @@
       >
         <PubliftAd
           :ownerIsPremium="ownerIsPremium"
+          :isSettingSpecificTimes="isSettingSpecificTimes"
           fuseId="meet_vrec_lhs"
           class="tw-hidden publift-l:tw-block"
         >
@@ -290,6 +291,7 @@
         </div>
         <PubliftAd
           :ownerIsPremium="ownerIsPremium"
+          :isSettingSpecificTimes="isSettingSpecificTimes"
           fuseId="meet_vrec_rhs"
           class="tw-hidden publift-l:tw-block"
         >
@@ -307,6 +309,7 @@
 
       <PubliftAd
         :ownerIsPremium="ownerIsPremium"
+        :isSettingSpecificTimes="isSettingSpecificTimes"
         fuseId="meet_incontent_md"
         class="tw-my-4 tw-hidden sm:tw-block publift-l:tw-hidden"
       >

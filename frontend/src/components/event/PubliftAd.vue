@@ -20,6 +20,7 @@ export default {
 
   props: {
     ownerIsPremium: { type: Boolean, default: false },
+    isSettingSpecificTimes: { type: Boolean, default: false },
     fuseId: { type: String, required: true },
   },
 
@@ -38,7 +39,11 @@ export default {
   computed: {
     ...mapGetters(["isPremiumUser"]),
     showAd() {
-      return !this.ownerIsPremium && !this.isPremiumUser
+      return (
+        !this.ownerIsPremium &&
+        !this.isPremiumUser &&
+        !this.isSettingSpecificTimes
+      )
     },
   },
 
