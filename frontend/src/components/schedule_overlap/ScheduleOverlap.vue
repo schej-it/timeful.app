@@ -797,7 +797,11 @@
                   fuseId="meet_incontent"
                   class="tw-my-4 tw-block sm:tw-hidden"
                 >
-                  <div id="meet_incontent" data-fuse="meet_incontent"></div>
+                  <div
+                    id="meet_incontent"
+                    data-fuse="meet_incontent"
+                    class="tw-flex tw-justify-center"
+                  ></div>
                 </PubliftAd>
                 <RespondentsList
                   ref="respondentsList"
@@ -2467,12 +2471,12 @@ export default {
       let url = `/events/${
         this.event._id
       }/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
-      
+
       // Add guestName query parameter if user is a guest
       if (this.guestName && this.guestName.length > 0) {
         url += `&guestName=${encodeURIComponent(this.guestName)}`
       }
-      
+
       get(url)
         .then((responses) => {
           this.fetchedResponses = responses

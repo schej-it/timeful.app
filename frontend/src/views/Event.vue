@@ -104,7 +104,11 @@
           <div
             class="tw-h-[600px] publift-l:tw-w-[160px] publift-xl:tw-w-[300px]"
           >
-            <div id="meet_vrec_lhs" data-fuse="meet_vrec_lhs"></div>
+            <div
+              id="meet_vrec_lhs"
+              data-fuse="meet_vrec_lhs"
+              class="tw-flex tw-justify-center"
+            ></div>
           </div>
         </PubliftAd>
         <div class="tw-mx-auto tw-max-w-5xl tw-flex-1">
@@ -292,7 +296,11 @@
           <div
             class="tw-h-[600px] publift-l:tw-w-[160px] publift-xl:tw-w-[300px]"
           >
-            <div id="meet_vrec_rhs" data-fuse="meet_vrec_rhs"></div>
+            <div
+              id="meet_vrec_rhs"
+              data-fuse="meet_vrec_rhs"
+              class="tw-flex tw-justify-center"
+            ></div>
           </div>
         </PubliftAd>
       </div>
@@ -302,7 +310,11 @@
         fuseId="meet_incontent_md"
         class="tw-my-4 tw-hidden sm:tw-block xl:tw-hidden"
       >
-        <div id="meet_incontent_md" data-fuse="meet_incontent"></div>
+        <div
+          id="meet_incontent_md"
+          data-fuse="meet_incontent"
+          class="tw-flex tw-justify-center"
+        ></div>
       </PubliftAd>
 
       <!-- <CarbonAd :ownerIsPremium="ownerIsPremium" /> -->
