@@ -310,7 +310,7 @@
         fuseId="meet_incontent_md"
         class="tw-my-4 tw-hidden sm:tw-block xl:tw-hidden"
       >
-        <div class="tw-h-[280px] publift-m:tw-h-[90px]">
+        <div class="tw-h-[300px] publift-m:tw-h-[90px]">
           <div
             id="meet_incontent_md"
             data-fuse="meet_incontent"
