@@ -70,8 +70,7 @@ export default {
     $route: {
       immediate: true,
       handler() {
-        const showOnRoute =
-          this.$route.name === "home" || this.$route.name === "event"
+        const showOnRoute = this.$route.name === "home" // || this.$route.name === "event"
         const userHasDismissed =
           localStorage.getItem(this.localStorageKey) === "true"
 
