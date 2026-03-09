@@ -342,20 +342,14 @@
           <div class="tw-mb-5 tw-text-xs tw-text-dark-gray">Free, forever</div>
           <ul class="tw-m-0 tw-mb-5 tw-list-none tw-space-y-2.5 tw-p-0">
             <li
+              v-for="item in freeFeatures"
+              :key="item"
               class="tw-flex tw-items-start tw-text-sm tw-text-very-dark-gray"
             >
               <v-icon small class="tw-mr-2 tw-mt-0.5 tw-text-gray"
                 >mdi-check</v-icon
               >
-              Create 3 events per month
-            </li>
-            <li
-              class="tw-flex tw-items-start tw-text-sm tw-text-very-dark-gray"
-            >
-              <v-icon small class="tw-mr-2 tw-mt-0.5 tw-text-gray"
-                >mdi-check</v-icon
-              >
-              Ads displayed on all your events
+              {{ item }}
             </li>
           </ul>
           <v-btn depressed disabled class="tw-mt-auto">
@@ -368,7 +362,7 @@
           class="tw-relative tw-flex tw-flex-1 tw-flex-col tw-rounded-lg tw-border-2 tw-border-light-green tw-p-5"
           style="box-shadow: 0 10px 30px -5px rgba(76, 175, 80, 0.3)"
           :style="{
-            background: `linear-gradient( 135deg, rgba(76, 175, 80, 0.15) 0%, #fff 50%, rgba(76, 175, 80, 0.15) 100%)`,
+            background: `linear-gradient( 135deg, rgba(76, 175, 80, 0.1) 0%, #fff 50%, rgba(76, 175, 80, 0.1) 100%)`,
           }"
         >
           <!-- <div
@@ -399,37 +393,14 @@
 
           <ul class="tw-m-0 tw-mb-5 tw-list-none tw-space-y-2.5 tw-p-0">
             <li
+              v-for="item in premiumFeatures"
+              :key="item.text"
               class="tw-flex tw-items-start tw-text-sm tw-text-very-dark-gray"
             >
               <v-icon small class="tw-mr-2 tw-mt-0.5 tw-text-light-green"
                 >mdi-check</v-icon
               >
-              <span
-                >Create <span class="rdt-h">unlimited events</span> per
-                month</span
-              >
-            </li>
-            <li
-              class="tw-flex tw-items-start tw-text-sm tw-text-very-dark-gray"
-            >
-              <v-icon small class="tw-mr-2 tw-mt-0.5 tw-text-light-green"
-                >mdi-check</v-icon
-              >
-              <span
-                ><span class="rdt-h">No ads</span> displayed on your
-                events</span
-              >
-            </li>
-            <li
-              class="tw-flex tw-items-start tw-text-sm tw-text-very-dark-gray"
-            >
-              <v-icon small class="tw-mr-2 tw-mt-0.5 tw-text-light-green"
-                >mdi-check</v-icon
-              >
-              <span
-                ><span class="rdt-h">Don't see ads</span> on other people's
-                events</span
-              >
+              <span v-html="item.html"></span>
             </li>
           </ul>
 
@@ -552,6 +523,31 @@ export default {
         )
       )
     },
+    isRemoveAdsMode() {
+      return this.upgradeDialogType === upgradeDialogTypes.REMOVE_ADS
+    },
+    freeFeatures() {
+      const events = "Create 3 events per month"
+      const ads = "Ads displayed on all your events"
+      return this.isRemoveAdsMode ? [ads, events] : [events, ads]
+    },
+    premiumFeatures() {
+      const events = {
+        text: "events",
+        html: 'Create <span class="rdt-h">unlimited events</span> per month',
+      }
+      const noAdsOwn = {
+        text: "no-ads-own",
+        html: '<span class="rdt-h">No ads</span> displayed on your events',
+      }
+      const noAdsOthers = {
+        text: "no-ads-others",
+        html: "<span class=\"rdt-h\">Don't see ads</span> on other people's events",
+      }
+      return this.isRemoveAdsMode
+        ? [noAdsOwn, noAdsOthers, events]
+        : [events, noAdsOwn, noAdsOthers]
+    },
     v2BillingOptions() {
       return [
         { text: "Monthly", value: "monthly", style: { minWidth: "150px" } },
@@ -664,6 +660,24 @@ export default {
       this.$posthog.capture("upgrade_clicked", {
         price: this.formattedPrice(price),
       })
+
+      if (!this.authUser) {
+        const upgradeParams = {
+          priceId: price.id,
+          isSubscription: price.recurring !== null,
+          originUrl: window.location.href,
+        }
+        this.$emit("input", false)
+        this.$router.push({
+          name: "sign-up",
+          query: {
+            redirect: "upgrade",
+            upgradeParams: JSON.stringify(upgradeParams),
+          },
+        })
+        return
+      }
+
       this.$set(this.loadingCheckoutUrl, price.id, true)
       try {
         let originUrl = window.location.href

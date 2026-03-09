@@ -232,15 +232,15 @@
           Already have an account?
           <router-link
             class="tw-font-medium tw-text-green"
-            :to="{ name: 'sign-in' }"
-            >Sign in</router-link
+            :to="{ name: 'sign-in', query: $route.query }"
+            >Log in</router-link
           >
         </template>
         <template v-else>
           Don't have an account?
           <router-link
             class="tw-font-medium tw-text-green"
-            :to="{ name: 'sign-up' }"
+            :to="{ name: 'sign-up', query: $route.query }"
             >Sign up</router-link
           >
         </template>
@@ -250,7 +250,7 @@
 </template>
 
 <script>
-import { calendarTypes } from "@/constants"
+import { authTypes, calendarTypes } from "@/constants"
 import { post, signInGoogle, signInOutlook } from "@/utils"
 import { mapMutations } from "vuex"
 import Logo from "@/components/Logo.vue"
@@ -270,6 +270,12 @@ export default {
 
   components: {
     Logo,
+  },
+
+  computed: {
+    upgradeRedirect() {
+      return this.$route.query.redirect === "upgrade"
+    },
   },
 
   data() {
@@ -294,10 +300,13 @@ export default {
   methods: {
     ...mapMutations(["setAuthUser"]),
     signIn(provider) {
+      const state = this.upgradeRedirect
+        ? { type: authTypes.UPGRADE, upgradeParams: this.$route.query.upgradeParams }
+        : null
       if (provider === calendarTypes.GOOGLE) {
-        signInGoogle({ state: null, selectAccount: true })
+        signInGoogle({ state, selectAccount: true })
       } else if (provider === calendarTypes.OUTLOOK) {
-        signInOutlook({ state: null, selectAccount: true })
+        signInOutlook({ state, selectAccount: true })
       }
     },
     validateEmail() {
@@ -390,7 +399,7 @@ export default {
           firstName: user.firstName,
           lastName: user.lastName,
         })
-        this.$router.replace({ name: "home" })
+        await this.handlePostAuthRedirect(user)
       } catch (err) {
         const errorCode = err?.parsed?.error
         if (errorCode === "otp-expired") {
@@ -403,6 +412,24 @@ export default {
       } finally {
         this.verifying = false
       }
+    },
+    async handlePostAuthRedirect(user) {
+      if (this.upgradeRedirect) {
+        try {
+          const params = JSON.parse(this.$route.query.upgradeParams)
+          const res = await post("/stripe/create-checkout-session", {
+            priceId: params.priceId,
+            userId: user._id,
+            isSubscription: params.isSubscription,
+            originUrl: params.originUrl,
+          })
+          window.location.href = res.url
+          return
+        } catch (e) {
+          console.error(e)
+        }
+      }
+      this.$router.replace({ name: "home" })
     },
     startResendCooldown() {
       this.resendCooldown = 30
