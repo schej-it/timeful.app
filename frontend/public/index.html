@@ -1,15 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- Cookie Consent Check and Conditional Loading -->
+    <!-- Google Tag Manager -->
     <script>
-      // Check cookie consent before loading tracking scripts
-      function loadTrackingScripts() {
-        try {
-          const consent = localStorage.getItem("cookieConsent")
-          const consentData = consent ? JSON.parse(consent) : null
-
-          if (consentData?.preferences?.analytics) {
       ;(function (w, d, s, l, i) {
         w[l] = w[l] || []
         w[l].push({ "gtm.start": new Date().getTime(), event: "gtm.js" })
@@ -20,22 +13,8 @@
         j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl
         f.parentNode.insertBefore(j, f)
       })(window, document, "script", "dataLayer", "GTM-M677X6V")
-          }
-
-          // if (consentData?.preferences?.advertising) {
-          //   var script = document.createElement("script")
-          //   script.src =
-          //     "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4082178684015354"
-          //   script.crossOrigin = "anonymous"
-          //   document.head.appendChild(script)
-          // }
-        } catch (error) {
-          console.error("Error loading tracking scripts:", error)
-        }
-      }
-
-      loadTrackingScripts()
     </script>
+    <!-- End Google Tag Manager -->
     <script async src="https://cdn.fuseplatform.net/publift/tags/2/4241/fuse.js"></script>
     <script>
       window.enableStickyFooter = false;
@@ -84,19 +63,14 @@
   </head>
   <body>
     <!-- Google Tag Manager (noscript) -->
-    <script>
-      try {
-        const consent = localStorage.getItem("cookieConsent")
-        const consentData = consent ? JSON.parse(consent) : null
-        if (consentData?.preferences?.analytics) {
-          document.write(
-            '<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-M677X6V" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>'
-          )
-        }
-      } catch (error) {
-        // Silent fail for noscript GTM
-      }
-    </script>
+    <noscript
+      ><iframe
+        src="https://www.googletagmanager.com/ns.html?id=GTM-M677X6V"
+        height="0"
+        width="0"
+        style="display: none; visibility: hidden"
+      ></iframe
+    ></noscript>
     <!-- End Google Tag Manager (noscript) -->
     <noscript>
       <strong

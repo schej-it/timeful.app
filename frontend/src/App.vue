@@ -21,7 +21,6 @@
       @input="handleUpgradeDialogInput"
     />
     <UpvoteRedditSnackbar />
-    <CookieConsent />
     <div
       v-if="showHeader"
       class="tw-fixed tw-z-40 tw-h-14 tw-w-screen tw-bg-white sm:tw-h-16"
@@ -257,7 +256,6 @@ import NewDialog from "./components/NewDialog.vue"
 import UpgradeDialog from "@/components/pricing/UpgradeDialog.vue"
 import SignInDialog from "@/components/SignInDialog.vue"
 import DiscordBanner from "@/components/DiscordBanner.vue"
-import CookieConsent from "@/components/CookieConsent.vue"
 
 export default {
   name: "App",
@@ -278,7 +276,6 @@ export default {
     UpgradeDialog,
     SignInDialog,
     DiscordBanner,
-    CookieConsent,
   },
 
   data: () => ({
