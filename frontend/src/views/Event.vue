@@ -565,6 +565,8 @@ export default {
       this.choiceDialog = true
     }
     this.initFusetag()
+
+    window.enableStickyFooter = true
   },
 
   computed: {
