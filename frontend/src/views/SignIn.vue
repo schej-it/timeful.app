@@ -20,9 +20,11 @@
         <!-- Main sign-in screen -->
         <template v-if="step === 'select'">
           <v-card-title class="tw-flex tw-flex-col tw-items-center tw-pb-0">
-            <div class="tw-text-2xl tw-font-medium">Welcome back</div>
+            <div class="tw-text-2xl tw-font-medium">
+              {{ isSignUp ? "Create an account" : "Welcome back" }}
+            </div>
             <div class="tw-mt-1 tw-text-sm tw-font-normal tw-text-dark-gray">
-              Sign in to your account
+              {{ isSignUp ? "Sign up to get started" : "Sign in to your account" }}
             </div>
           </v-card-title>
           <v-card-text class="tw-flex tw-flex-col tw-items-center tw-pt-6">
@@ -40,7 +42,7 @@
                     src="@/assets/google_logo.svg"
                   />
                   <v-spacer />
-                  Continue with Google
+                  {{ isSignUp ? "Sign up with" : "Continue with" }} Google
                   <v-spacer />
                 </div>
               </v-btn>
@@ -57,7 +59,7 @@
                     src="@/assets/outlook_logo.svg"
                   />
                   <v-spacer />
-                  Continue with Outlook
+                  {{ isSignUp ? "Sign up with" : "Continue with" }} Outlook
                   <v-spacer />
                 </div>
               </v-btn>
@@ -89,7 +91,7 @@
                   :disabled="sending"
                   @click="submitEmail"
                 >
-                  Continue with Email
+                  {{ isSignUp ? "Sign up with" : "Continue with" }} Email
                 </v-btn>
               </div>
             </div>
@@ -219,6 +221,17 @@
           </v-card-text>
         </template>
       </v-card>
+
+      <div class="tw-mt-4 tw-rounded-xl tw-bg-light-gray-stroke/50 tw-py-4 tw-text-center tw-text-sm tw-text-dark-gray">
+        <template v-if="isSignUp">
+          Already have an account?
+          <a class="tw-cursor-pointer tw-font-medium tw-text-green" @click="isSignUp = false">Sign in</a>
+        </template>
+        <template v-else>
+          Don't have an account?
+          <a class="tw-cursor-pointer tw-font-medium tw-text-green" @click="isSignUp = true">Sign up</a>
+        </template>
+      </div>
     </div>
   </div>
 </template>
@@ -243,6 +256,7 @@ export default {
   data() {
     return {
       calendarTypes,
+      isSignUp: false,
       step: "select",
       email: "",
       firstName: "",
