@@ -26,7 +26,7 @@
             </div>
             <div class="tw-mt-1 tw-text-sm tw-font-normal tw-text-dark-gray">
               {{
-                isSignUp ? "Sign up to get started" : "Log in to your account"
+                isSignUp ? "Sign up to get started" : "Sign in to your account"
               }}
             </div>
           </v-card-title>
@@ -233,7 +233,7 @@
           <router-link
             class="tw-font-medium tw-text-green"
             :to="{ name: 'sign-in' }"
-            >Log in</router-link
+            >Sign in</router-link
           >
         </template>
         <template v-else>
@@ -264,7 +264,7 @@ export default {
 
   metaInfo() {
     return {
-      title: this.isSignUp ? "Sign Up - Timeful" : "Log In - Timeful",
+      title: this.isSignUp ? "Sign Up - Timeful" : "Sign In - Timeful",
     }
   },
 
