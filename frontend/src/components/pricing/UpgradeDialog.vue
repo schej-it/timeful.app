@@ -355,7 +355,7 @@
               <v-icon small class="tw-mr-2 tw-mt-0.5 tw-text-gray"
                 >mdi-check</v-icon
               >
-              Ads on all your events
+              Ads displayed on all your events
             </li>
           </ul>
           <v-btn depressed disabled class="tw-mt-auto">
@@ -412,7 +412,7 @@
               <v-icon small class="tw-mr-2 tw-mt-0.5 tw-text-light-green"
                 >mdi-check</v-icon
               >
-              No ads on your events
+              No ads displayed on your events
             </li>
             <li
               class="tw-flex tw-items-start tw-text-sm tw-text-very-dark-gray"

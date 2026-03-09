@@ -302,6 +302,7 @@ export default {
       return (
         this.$route.name !== "landing" &&
         this.$route.name !== "auth" &&
+        this.$route.name !== "sign-in" &&
         this.$route.name !== "privacy-policy"
       )
     },
@@ -355,6 +356,8 @@ export default {
           return
         }
         this.signInDialog = true
+      } else {
+        this.$router.push({ name: "sign-in" })
       }
     },
     _signIn(calendarType) {

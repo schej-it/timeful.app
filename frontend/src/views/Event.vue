@@ -3,7 +3,7 @@
     <FormerlyKnownAs
       class="tw-mx-auto tw-mb-10 tw-mt-3 tw-max-w-6xl tw-pl-4 sm:tw-pl-12"
     />
-    <div v-if="event && ownerPremiumChecked" class="tw-mt-8 tw-h-full">
+    <div v-if="event" class="tw-mt-8 tw-h-full">
       <!-- Mark availability option dialog -->
       <MarkAvailabilityDialog
         v-model="choiceDialog"
@@ -1860,11 +1860,11 @@ export default {
         document.title = `${this.event.name} - Timeful`
       }
     },
-    ownerPremiumChecked() {
-      this.$nextTick(() => {
-        this.scheduleOverlapComponent = this.$refs.scheduleOverlap
-      })
-    },
+    // ownerPremiumChecked() {
+    //   this.$nextTick(() => {
+    //     this.scheduleOverlapComponent = this.$refs.scheduleOverlap
+    //   })
+    // },
     scheduleOverlapComponent() {
       if (!this.scheduleOverlapComponentLoaded) {
         this.scheduleOverlapComponentLoaded = true
