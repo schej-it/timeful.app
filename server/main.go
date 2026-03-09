@@ -198,17 +198,20 @@ func noRouteHandler() gin.HandlerFunc {
 			eventId := path[match[2]:match[3]]
 			event := db.GetEventByEitherId(eventId)
 
+			params["enableStickyFooter"] = true
+
 			if event != nil {
 				title := fmt.Sprintf("%s - Timeful (formerly Schej)", event.Name)
-				params = gin.H{
-					"title":   title,
-					"ogTitle": title,
-				}
+				params["title"] = title
+				params["ogTitle"] = title
 
 				if len(utils.Coalesce(event.When2meetHref)) > 0 {
 					params["ogImage"] = "/img/when2meetOgImage2.png"
 				}
 			}
+		} else if regexp.MustCompile(`\/g\/`).MatchString(path) {
+			// /g/ routes
+			params["enableStickyFooter"] = true
 		}
 
 		c.HTML(http.StatusOK, "index.html", params)
