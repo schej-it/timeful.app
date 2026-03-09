@@ -379,7 +379,12 @@
           <div class="tw-mb-4 tw-text-xs tw-font-medium tw-text-dark-gray">
             Unlock everything
           </div>
-          <div class="tw-relative tw-mb-1">
+          <div class="tw-relative tw-mb-1 tw-flex tw-items-baseline tw-gap-1.5">
+            <span
+              v-if="v2BillingCycle === 'yearly' && v2MonthlyPrice"
+              class="tw-text-lg tw-text-dark-gray tw-line-through"
+              >{{ formattedPrice(v2MonthlyPrice) }}</span
+            >
             <span class="tw-text-4xl tw-font-medium">{{
               v2ActivePrice ? formattedPrice(v2ActivePrice) : "..."
             }}</span>
@@ -558,6 +563,9 @@ export default {
       if (this.v2BillingCycle === "yearly") {
         return this.isStudent ? this.yearlyStudentPrice : this.yearlyPrice
       }
+      return this.isStudent ? this.monthlyStudentPrice : this.monthlyPrice
+    },
+    v2MonthlyPrice() {
       return this.isStudent ? this.monthlyStudentPrice : this.monthlyPrice
     },
     pricesShown() {
