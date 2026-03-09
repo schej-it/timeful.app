@@ -6,7 +6,13 @@
       <!-- Logo -->
       <div class="tw-mb-8 tw-flex tw-justify-center">
         <router-link :to="{ name: 'landing' }">
-          <Logo type="timeful" />
+          <v-img
+            alt="Timeful Logo"
+            class="shrink tw-max-w-40 tw-cursor-pointer"
+            contain
+            src="@/assets/timeful_logo_with_text.png"
+            transition="fade-transition"
+          />
         </router-link>
       </div>
 
@@ -14,14 +20,18 @@
         <!-- Main sign-in screen -->
         <template v-if="step === 'select'">
           <v-card-title class="tw-flex tw-flex-col tw-items-center tw-pb-0">
-            <div class="tw-text-2xl tw-font-semibold">Welcome back</div>
+            <div class="tw-text-2xl tw-font-medium">Welcome back</div>
             <div class="tw-mt-1 tw-text-sm tw-font-normal tw-text-dark-gray">
               Sign in to your account
             </div>
           </v-card-title>
           <v-card-text class="tw-flex tw-flex-col tw-items-center tw-pt-6">
             <div class="tw-mb-4 tw-flex tw-w-full tw-flex-col tw-gap-y-2">
-              <v-btn block @click="signIn(calendarTypes.GOOGLE)" class="tw-bg-white">
+              <v-btn
+                block
+                @click="signIn(calendarTypes.GOOGLE)"
+                class="tw-bg-white"
+              >
                 <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                   <v-img
                     class="tw-flex-initial"
@@ -34,7 +44,11 @@
                   <v-spacer />
                 </div>
               </v-btn>
-              <v-btn block @click="signIn(calendarTypes.OUTLOOK)" class="tw-bg-white">
+              <v-btn
+                block
+                @click="signIn(calendarTypes.OUTLOOK)"
+                class="tw-bg-white"
+              >
                 <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                   <v-img
                     class="tw-flex-initial"
@@ -55,7 +69,9 @@
               </div>
 
               <div>
-                <div class="tw-mb-1 tw-text-sm tw-font-medium">Email address</div>
+                <div class="tw-mb-1 tw-text-sm tw-font-medium">
+                  Email address
+                </div>
                 <v-text-field
                   v-model="email"
                   class="tw-mb-2"
@@ -79,7 +95,10 @@
             </div>
             <div class="tw-text-center tw-text-xs">
               By continuing, you agree to our
-              <router-link class="tw-text-blue" :to="{ name: 'privacy-policy' }">
+              <router-link
+                class="tw-text-blue"
+                :to="{ name: 'privacy-policy' }"
+              >
                 privacy policy
               </router-link>
             </div>
@@ -105,7 +124,9 @@
               solo
               hide-details="auto"
               autofocus
-              @keydown.enter="$refs.lastNameField && $refs.lastNameField.focus()"
+              @keydown.enter="
+                $refs.lastNameField && $refs.lastNameField.focus()
+              "
               class="tw-mb-3"
             />
             <div class="tw-mb-1 tw-text-sm tw-font-medium">Last name</div>
@@ -158,7 +179,9 @@
               Enter the 6-digit code sent to
               <strong>{{ email }}</strong>
             </p>
-            <div class="tw-mb-1 tw-text-sm tw-font-medium">Verification code</div>
+            <div class="tw-mb-1 tw-text-sm tw-font-medium">
+              Verification code
+            </div>
             <v-text-field
               v-model="otpCode"
               placeholder="Enter 6-digit code..."
@@ -180,7 +203,12 @@
               Verify
             </v-btn>
             <div class="tw-mt-3 tw-text-center">
-              <v-btn text x-small :disabled="resendCooldown > 0" @click="resendOtp">
+              <v-btn
+                text
+                x-small
+                :disabled="resendCooldown > 0"
+                @click="resendOtp"
+              >
                 {{
                   resendCooldown > 0
                     ? `Resend code (${resendCooldown}s)`

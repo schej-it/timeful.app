@@ -368,7 +368,7 @@
           class="tw-relative tw-flex tw-flex-1 tw-flex-col tw-rounded-lg tw-border-2 tw-border-light-green tw-p-5"
           style="box-shadow: 0 10px 30px -5px rgba(76, 175, 80, 0.3)"
           :style="{
-            background: `linear-gradient( 135deg, rgba(76, 175, 80, 0.1) 0%, #fff 50%, rgba(76, 175, 80, 0.1) 100%)`,
+            background: `linear-gradient( 135deg, rgba(76, 175, 80, 0.15) 0%, #fff 50%, rgba(76, 175, 80, 0.15) 100%)`,
           }"
         >
           <!-- <div
@@ -404,7 +404,10 @@
               <v-icon small class="tw-mr-2 tw-mt-0.5 tw-text-light-green"
                 >mdi-check</v-icon
               >
-              Create unlimited events per month
+              <span
+                >Create <span class="rdt-h">unlimited events</span> per
+                month</span
+              >
             </li>
             <li
               class="tw-flex tw-items-start tw-text-sm tw-text-very-dark-gray"
@@ -412,7 +415,10 @@
               <v-icon small class="tw-mr-2 tw-mt-0.5 tw-text-light-green"
                 >mdi-check</v-icon
               >
-              No ads displayed on your events
+              <span
+                ><span class="rdt-h">No ads</span> displayed on your
+                events</span
+              >
             </li>
             <li
               class="tw-flex tw-items-start tw-text-sm tw-text-very-dark-gray"
@@ -420,7 +426,10 @@
               <v-icon small class="tw-mr-2 tw-mt-0.5 tw-text-light-green"
                 >mdi-check</v-icon
               >
-              Don't see ads on other people's events
+              <span
+                ><span class="rdt-h">Don't see ads</span> on other people's
+                events</span
+              >
             </li>
           </ul>
 
