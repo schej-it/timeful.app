@@ -16,7 +16,15 @@
             <div v-if="authUser" class="tw-ml-2">
               <AuthUserMenu />
             </div>
-            <v-btn v-else text :to="{ name: 'sign-in' }">Sign in</v-btn>
+            <v-btn v-else text :to="{ name: 'sign-in' }">Log in</v-btn>
+            <v-btn
+              v-if="!authUser"
+              color="primary"
+              class="tw-ml-2 tw-rounded-md"
+              :to="{ name: 'sign-up' }"
+            >
+              Sign up
+            </v-btn>
           </LandingPageHeader>
         </div>
 

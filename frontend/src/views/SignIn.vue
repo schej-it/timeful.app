@@ -8,10 +8,11 @@
         <router-link :to="{ name: 'landing' }">
           <v-img
             alt="Timeful Logo"
-            class="shrink tw-max-w-40 tw-cursor-pointer"
+            class="shrink tw-cursor-pointer"
             contain
             src="@/assets/timeful_logo_with_text.png"
             transition="fade-transition"
+            width="160"
           />
         </router-link>
       </div>
@@ -24,7 +25,9 @@
               {{ isSignUp ? "Create an account" : "Welcome back" }}
             </div>
             <div class="tw-mt-1 tw-text-sm tw-font-normal tw-text-dark-gray">
-              {{ isSignUp ? "Sign up to get started" : "Sign in to your account" }}
+              {{
+                isSignUp ? "Sign up to get started" : "Log in to your account"
+              }}
             </div>
           </v-card-title>
           <v-card-text class="tw-flex tw-flex-col tw-items-center tw-pt-6">
@@ -222,14 +225,24 @@
         </template>
       </v-card>
 
-      <div class="tw-mt-4 tw-rounded-xl tw-bg-light-gray-stroke/50 tw-py-4 tw-text-center tw-text-sm tw-text-dark-gray">
+      <div
+        class="tw-mt-4 tw-rounded-xl tw-bg-light-gray-stroke/50 tw-py-4 tw-text-center tw-text-sm tw-text-dark-gray"
+      >
         <template v-if="isSignUp">
           Already have an account?
-          <a class="tw-cursor-pointer tw-font-medium tw-text-green" @click="isSignUp = false">Sign in</a>
+          <router-link
+            class="tw-font-medium tw-text-green"
+            :to="{ name: 'sign-in' }"
+            >Log in</router-link
+          >
         </template>
         <template v-else>
           Don't have an account?
-          <a class="tw-cursor-pointer tw-font-medium tw-text-green" @click="isSignUp = true">Sign up</a>
+          <router-link
+            class="tw-font-medium tw-text-green"
+            :to="{ name: 'sign-up' }"
+            >Sign up</router-link
+          >
         </template>
       </div>
     </div>
@@ -245,8 +258,14 @@ import Logo from "@/components/Logo.vue"
 export default {
   name: "SignIn",
 
-  metaInfo: {
-    title: "Sign In - Timeful",
+  props: {
+    initialIsSignUp: { type: Boolean, default: false },
+  },
+
+  metaInfo() {
+    return {
+      title: this.isSignUp ? "Sign Up - Timeful" : "Log In - Timeful",
+    }
   },
 
   components: {
@@ -256,7 +275,7 @@ export default {
   data() {
     return {
       calendarTypes,
-      isSignUp: false,
+      isSignUp: this.initialIsSignUp,
       step: "select",
       email: "",
       firstName: "",

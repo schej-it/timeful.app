@@ -52,6 +52,12 @@ const routes = [
     component: () => import("@/views/SignIn.vue"),
   },
   {
+    path: "/sign-up",
+    name: "sign-up",
+    component: () => import("@/views/SignIn.vue"),
+    props: { initialIsSignUp: true },
+  },
+  {
     path: "/auth",
     name: "auth",
     component: () => import("@/views/Auth.vue"),
@@ -91,7 +97,7 @@ const router = new VueRouter({
 
 router.beforeEach(async (to, from, next) => {
   const authRoutes = ["home", "settings"]
-  const noAuthRoutes = ["sign-in"]
+  const noAuthRoutes = ["sign-in", "sign-up"]
   try {
     await get("/auth/status")
 

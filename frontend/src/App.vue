@@ -303,6 +303,7 @@ export default {
         this.$route.name !== "landing" &&
         this.$route.name !== "auth" &&
         this.$route.name !== "sign-in" &&
+        this.$route.name !== "sign-up" &&
         this.$route.name !== "privacy-policy"
       )
     },
