@@ -873,7 +873,7 @@
         <div
           v-if="isPhone && !calendarOnly"
           class="tw-fixed tw-z-20 tw-w-full"
-          :style="{ bottom: showAds ? 'calc(4rem + 100px)' : '4rem' }"
+          :style="{ bottom: showAds ? 'calc(4rem + 115px)' : '4rem' }"
         >
           <!-- Hint text (mobile) -->
           <v-expand-transition>
@@ -1232,7 +1232,11 @@ export default {
     ...mapState(["authUser", "overlayAvailabilitiesEnabled"]),
     ...mapGetters(["isPremiumUser"]),
     showAds() {
-      return !this.ownerIsPremium && !this.isPremiumUser && this.state !== this.states.SET_SPECIFIC_TIMES
+      return (
+        !this.ownerIsPremium &&
+        !this.isPremiumUser &&
+        this.state !== this.states.SET_SPECIFIC_TIMES
+      )
     },
     /** Returns the width of the right side of the calendar */
     rightSideWidth() {
