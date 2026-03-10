@@ -25,6 +25,7 @@ export const authTypes = Object.freeze({
   GROUP_CREATE: "group-create",
   ADD_CALENDAR_ACCOUNT: "add-calendar-account",
   ADD_CALENDAR_ACCOUNT_FROM_EDIT: "add-calendar-account-from-edit",
+  UPGRADE: "upgrade",
 })
 
 export const eventTypes = Object.freeze({
@@ -53,6 +54,7 @@ export const upgradeDialogTypes = Object.freeze({
   CREATE_EVENT: "create-event",
   SCHEDULE_EVENT: "schedule-event",
   UPGRADE_MANUALLY: "upgrade-manually",
+  REMOVE_ADS: "remove-ads",
 })
 
 export const timeslotDurations = Object.freeze({

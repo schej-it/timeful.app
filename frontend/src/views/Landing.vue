@@ -16,7 +16,7 @@
             <div v-if="authUser" class="tw-ml-2">
               <AuthUserMenu />
             </div>
-            <v-btn v-else text @click="signIn">Sign in</v-btn>
+            <v-btn v-else text :to="{ name: 'sign-in' }">Sign in</v-btn>
           </LandingPageHeader>
         </div>
 
@@ -258,7 +258,11 @@
     <Footer />
 
     <!-- Sign in dialog -->
-    <SignInDialog v-model="signInDialog" @signIn="_signIn" @emailSignIn="_emailSignIn" />
+    <SignInDialog
+      v-model="signInDialog"
+      @signIn="_signIn"
+      @emailSignIn="_emailSignIn"
+    />
 
     <!-- New event dialog -->
     <NewDialog v-model="newDialog" no-tabs @signIn="signIn" />
@@ -494,7 +498,7 @@ export default {
       this.$router.replace({ name: "home" })
     },
     signIn() {
-      this.signInDialog = true
+      this.$router.push({ name: "sign-in" })
     },
     openHowItWorksDialog() {
       this.showHowItWorksDialog = true
