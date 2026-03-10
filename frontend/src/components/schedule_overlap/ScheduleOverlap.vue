@@ -872,7 +872,8 @@
         <!-- Fixed bottom section for mobile -->
         <div
           v-if="isPhone && !calendarOnly"
-          class="tw-fixed tw-bottom-16 tw-z-20 tw-w-full"
+          class="tw-fixed tw-z-20 tw-w-full"
+          :style="{ bottom: showAds ? 'calc(4rem + 100px)' : '4rem' }"
         >
           <!-- Hint text (mobile) -->
           <v-expand-transition>

@@ -367,7 +367,9 @@
         </router-link>
       </div>
 
-      <div class="tw-h-8"></div>
+      <div
+        :class="isPhone ? (showAds ? 'tw-h-[110px]' : 'tw-h-8') : 'tw-h-8'"
+      ></div>
       <!-- Bottom bar for phones -->
       <div
         v-if="!isSettingSpecificTimes && isPhone && (!isSignUp || canEdit)"
@@ -433,6 +435,19 @@
             </v-btn>
           </template>
         </div>
+        <PubliftAd
+          :showAd="showAds"
+          fuseId=""
+          class="tw-h-[100px] tw-w-full !tw-rounded-none !tw-p-0"
+        >
+          <div class="tw-h-[100px]"></div>
+        </PubliftAd>
+      </div>
+      <!-- Fixed bottom ad for desktop -->
+      <div
+        v-if="!isPhone && showAds"
+        class="tw-fixed tw-bottom-0 tw-left-0 tw-z-20 tw-w-full"
+      >
         <PubliftAd
           :showAd="showAds"
           fuseId=""
