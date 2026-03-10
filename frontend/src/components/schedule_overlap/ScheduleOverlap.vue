@@ -795,9 +795,9 @@
                 <PubliftAd
                   :showAd="showAds"
                   fuseId="meet_incontent"
-                  class="tw-my-4 tw-block sm:tw-hidden"
+                  class="-tw-mx-4 tw-my-4 tw-block !tw-rounded-none sm:tw-hidden"
                 >
-                  <div class="tw-h-[300px] publift-m:tw-h-[90px]">
+                  <div class="tw-h-[375px] publift-m:tw-h-[90px]">
                     <div
                       id="meet_incontent"
                       data-fuse="meet_incontent"
