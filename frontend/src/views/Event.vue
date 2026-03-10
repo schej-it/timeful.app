@@ -368,13 +368,13 @@
       </div>
 
       <div
-        :class="isPhone ? (showAds ? 'tw-h-[110px]' : 'tw-h-8') : 'tw-h-8'"
+        :class="isPhone ? (showAds ? 'tw-h-[125px]' : 'tw-h-8') : 'tw-h-8'"
       ></div>
       <!-- Bottom bar for phones -->
       <div
         v-if="!isSettingSpecificTimes && isPhone && (!isSignUp || canEdit)"
         class="tw-fixed tw-bottom-0 tw-z-20 tw-flex tw-w-full tw-flex-col"
-        :style="showAds ? { bottom: '100px' } : {}"
+        :style="showAds ? { bottom: '115px' } : {}"
       >
         <div
           class="tw-flex tw-h-[4rem] tw-w-full tw-items-center tw-px-4"
@@ -438,9 +438,9 @@
         <PubliftAd
           :showAd="showAds"
           fuseId=""
-          class="tw-h-[100px] tw-w-full !tw-rounded-none !tw-p-0"
+          class="tw-h-[115px] tw-w-full !tw-rounded-none !tw-p-0"
         >
-          <div class="tw-h-[100px]"></div>
+          <div class="tw-h-[115px]"></div>
         </PubliftAd>
       </div>
       <!-- Fixed bottom ad for desktop -->
@@ -451,9 +451,9 @@
         <PubliftAd
           :showAd="showAds"
           fuseId=""
-          class="tw-h-[100px] tw-w-full !tw-rounded-none !tw-p-0"
+          class="tw-h-[115px] tw-w-full !tw-rounded-none !tw-p-0"
         >
-          <div class="tw-h-[100px]"></div>
+          <div class="tw-h-[115px]"></div>
         </PubliftAd>
       </div>
     </div>
