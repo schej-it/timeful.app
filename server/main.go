@@ -198,7 +198,7 @@ func noRouteHandler() gin.HandlerFunc {
 			eventId := path[match[2]:match[3]]
 			event := db.GetEventByEitherId(eventId)
 
-			params["enableStickyFooter"] = true
+			// params["enableStickyFooter"] = true
 
 			if event != nil {
 				title := fmt.Sprintf("%s - Timeful (formerly Schej)", event.Name)
@@ -211,7 +211,7 @@ func noRouteHandler() gin.HandlerFunc {
 			}
 		} else if regexp.MustCompile(`\/g\/`).MatchString(path) {
 			// /g/ routes
-			params["enableStickyFooter"] = true
+			// params["enableStickyFooter"] = true
 		}
 
 		c.HTML(http.StatusOK, "index.html", params)

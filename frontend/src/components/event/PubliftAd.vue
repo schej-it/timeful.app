@@ -23,38 +23,26 @@
 </template>
 
 <script>
-import { mapGetters, mapActions } from "vuex"
+import { mapActions } from "vuex"
 import { upgradeDialogTypes } from "@/constants"
 
 export default {
   name: "PubliftAd",
 
   props: {
-    ownerIsPremium: { type: Boolean, default: false },
-    isSettingSpecificTimes: { type: Boolean, default: false },
-    fuseId: { type: String, required: true },
+    showAd: { type: Boolean, default: false },
+    fuseId: { type: String, default: "" },
   },
 
   mounted() {
-    if (this.showAd) this.$nextTick(() => this.registerZone())
+    if (this.showAd && this.fuseId) this.$nextTick(() => this.registerZone())
   },
 
   watch: {
     showAd: {
       handler(val) {
-        if (val) this.$nextTick(() => this.registerZone())
+        if (val && this.fuseId) this.$nextTick(() => this.registerZone())
       },
-    },
-  },
-
-  computed: {
-    ...mapGetters(["isPremiumUser"]),
-    showAd() {
-      return (
-        !this.ownerIsPremium &&
-        !this.isPremiumUser &&
-        !this.isSettingSpecificTimes
-      )
     },
   },
 

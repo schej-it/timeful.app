@@ -793,8 +793,7 @@
               </div>
               <template v-else>
                 <PubliftAd
-                  :ownerIsPremium="ownerIsPremium"
-                  :isSettingSpecificTimes="state === states.SET_SPECIFIC_TIMES"
+                  :showAd="showAds"
                   fuseId="meet_incontent"
                   class="tw-my-4 tw-block sm:tw-hidden"
                 >
@@ -1039,7 +1038,7 @@ import {
   timeslotDurations,
   upgradeDialogTypes,
 } from "@/constants"
-import { mapMutations, mapActions, mapState } from "vuex"
+import { mapMutations, mapActions, mapState, mapGetters } from "vuex"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
 import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
 import Advertisement from "@/components/event/Advertisement.vue"
@@ -1230,6 +1229,10 @@ export default {
   },
   computed: {
     ...mapState(["authUser", "overlayAvailabilitiesEnabled"]),
+    ...mapGetters(["isPremiumUser"]),
+    showAds() {
+      return !this.ownerIsPremium && !this.isPremiumUser && this.state !== this.states.SET_SPECIFIC_TIMES
+    },
     /** Returns the width of the right side of the calendar */
     rightSideWidth() {
       if (this.isPhone) return "100%"

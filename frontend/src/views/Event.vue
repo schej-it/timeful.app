@@ -97,8 +97,7 @@
         class="tw-mx-auto tw-mt-4 lg:tw-flex lg:tw-items-start lg:tw-justify-center lg:tw-gap-6"
       >
         <PubliftAd
-          :ownerIsPremium="ownerIsPremium"
-          :isSettingSpecificTimes="isSettingSpecificTimes"
+          :showAd="showAds"
           fuseId="meet_vrec_lhs"
           class="tw-hidden publift-l:tw-block"
         >
@@ -290,8 +289,7 @@
           />
         </div>
         <PubliftAd
-          :ownerIsPremium="ownerIsPremium"
-          :isSettingSpecificTimes="isSettingSpecificTimes"
+          :showAd="showAds"
           fuseId="meet_vrec_rhs"
           class="tw-hidden publift-l:tw-block"
         >
@@ -308,8 +306,7 @@
       </div>
 
       <PubliftAd
-        :ownerIsPremium="ownerIsPremium"
-        :isSettingSpecificTimes="isSettingSpecificTimes"
+        :showAd="showAds"
         fuseId="meet_incontent_md"
         class="tw-my-4 tw-hidden sm:tw-block publift-l:tw-hidden"
       >
@@ -374,60 +371,75 @@
       <!-- Bottom bar for phones -->
       <div
         v-if="!isSettingSpecificTimes && isPhone && (!isSignUp || canEdit)"
-        class="tw-fixed tw-bottom-0 tw-z-20 tw-flex tw-h-16 tw-w-full tw-items-center tw-px-4"
-        :class="`${isIOS ? 'tw-pb-2' : ''} ${
-          isScheduling ? 'tw-bg-blue' : 'tw-bg-green'
-        }`"
+        class="tw-fixed tw-bottom-0 tw-z-20 tw-flex tw-w-full tw-flex-col"
+        :style="showAds ? { bottom: '100px' } : {}"
       >
-        <template v-if="!isEditing && !isScheduling">
-          <v-btn
-            v-if="!event.daysOnly && numResponses > 0"
-            text
-            class="tw-text-white"
-            @click="scheduleEvent"
-            >Schedule</v-btn
-          >
-          <v-spacer />
-          <v-btn
-            v-if="!isGroup && !authUser && selectedGuestRespondent"
-            class="tw-bg-white tw-text-green tw-transition-opacity"
-            :style="{ opacity: availabilityBtnOpacity }"
-            @click="editGuestAvailability"
-          >
-            {{ mobileGuestActionButtonText }}
-          </v-btn>
-          <v-btn
-            v-else
-            class="tw-bg-white tw-text-green tw-transition-opacity"
-            :disabled="loading && !userHasResponded"
-            :style="{ opacity: availabilityBtnOpacity }"
-            @click="() => addAvailability()"
-          >
-            {{ mobileActionButtonText }}
-          </v-btn>
-        </template>
-        <template v-else-if="isEditing">
-          <v-btn text class="tw-text-white" @click="cancelEditing">
-            Cancel
-          </v-btn>
-          <v-spacer />
-          <v-btn class="tw-bg-white tw-text-green" @click="() => saveChanges()">
-            Save
-          </v-btn>
-        </template>
-        <template v-else-if="isScheduling">
-          <v-btn text class="tw-text-white" @click="cancelScheduleEvent">
-            Cancel
-          </v-btn>
-          <v-spacer />
-          <v-btn
-            :disabled="!allowScheduleEvent"
-            class="tw-bg-white tw-text-blue"
-            @click="confirmScheduleEvent"
-          >
-            Schedule
-          </v-btn>
-        </template>
+        <div
+          class="tw-flex tw-h-[4rem] tw-w-full tw-items-center tw-px-4"
+          :class="`${isIOS ? 'tw-pb-2' : ''} ${
+            isScheduling ? 'tw-bg-blue' : 'tw-bg-green'
+          }`"
+        >
+          <template v-if="!isEditing && !isScheduling">
+            <v-btn
+              v-if="!event.daysOnly && numResponses > 0"
+              text
+              class="tw-text-white"
+              @click="scheduleEvent"
+              >Schedule</v-btn
+            >
+            <v-spacer />
+            <v-btn
+              v-if="!isGroup && !authUser && selectedGuestRespondent"
+              class="tw-bg-white tw-text-green tw-transition-opacity"
+              :style="{ opacity: availabilityBtnOpacity }"
+              @click="editGuestAvailability"
+            >
+              {{ mobileGuestActionButtonText }}
+            </v-btn>
+            <v-btn
+              v-else
+              class="tw-bg-white tw-text-green tw-transition-opacity"
+              :disabled="loading && !userHasResponded"
+              :style="{ opacity: availabilityBtnOpacity }"
+              @click="() => addAvailability()"
+            >
+              {{ mobileActionButtonText }}
+            </v-btn>
+          </template>
+          <template v-else-if="isEditing">
+            <v-btn text class="tw-text-white" @click="cancelEditing">
+              Cancel
+            </v-btn>
+            <v-spacer />
+            <v-btn
+              class="tw-bg-white tw-text-green"
+              @click="() => saveChanges()"
+            >
+              Save
+            </v-btn>
+          </template>
+          <template v-else-if="isScheduling">
+            <v-btn text class="tw-text-white" @click="cancelScheduleEvent">
+              Cancel
+            </v-btn>
+            <v-spacer />
+            <v-btn
+              :disabled="!allowScheduleEvent"
+              class="tw-bg-white tw-text-blue"
+              @click="confirmScheduleEvent"
+            >
+              Schedule
+            </v-btn>
+          </template>
+        </div>
+        <PubliftAd
+          :showAd="showAds"
+          fuseId=""
+          class="tw-h-[100px] tw-w-full !tw-rounded-none !tw-p-0"
+        >
+          <div class="tw-h-[100px]"></div>
+        </PubliftAd>
       </div>
     </div>
   </span>
@@ -462,7 +474,7 @@ import {
 } from "@/utils"
 import { isBetween } from "@/utils/general_utils"
 import { validateEmail } from "@/utils"
-import { mapActions, mapState, mapMutations } from "vuex"
+import { mapActions, mapState, mapMutations, mapGetters } from "vuex"
 import dayjs from "dayjs"
 import utcPlugin from "dayjs/plugin/utc"
 import timezonePlugin from "dayjs/plugin/timezone"
@@ -571,6 +583,14 @@ export default {
 
   computed: {
     ...mapState(["authUser", "events"]),
+    ...mapGetters(["isPremiumUser"]),
+    showAds() {
+      return (
+        !this.ownerIsPremium &&
+        !this.isPremiumUser &&
+        !this.isSettingSpecificTimes
+      )
+    },
     allowScheduleEvent() {
       return this.scheduleOverlapComponent?.allowScheduleEvent
     },
