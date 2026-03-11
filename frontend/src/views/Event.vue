@@ -591,8 +591,8 @@ export default {
     if (this.linkApple) {
       this.choiceDialog = true
     }
-    window.enableStickyFooter = true
-    this.initFusetag()
+    // window.enableStickyFooter = true
+    // this.initFusetag()
   },
 
   computed: {
