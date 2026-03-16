@@ -586,7 +586,7 @@ func getEvent(c *gin.Context) {
 			privatizedResponse, err = utils.PrivatizeEventResponse(event, []string{}, []utils.PartialOmission{})
 		} else {
 			// User is NOT the owner - privatize response
-			privateFields := []string{"ownerId", "numResponses"}
+			privateFields := []string{"numResponses"}
 			partialOmissions := []utils.PartialOmission{
 				{
 					FieldName: "responses",
@@ -597,7 +597,7 @@ func getEvent(c *gin.Context) {
 		}
 	} else if guestName != "" {
 		// Guest name query parameter exists
-		privateFields := []string{"ownerId", "numResponses"}
+		privateFields := []string{"numResponses"}
 		partialOmissions := []utils.PartialOmission{
 			{
 				FieldName: "responses",
@@ -607,7 +607,7 @@ func getEvent(c *gin.Context) {
 		privatizedResponse, err = utils.PrivatizeEventResponse(event, privateFields, partialOmissions)
 	} else {
 		// No session, no guest name - remove all private fields
-		privateFields := []string{"ownerId", "numResponses", "responses", "remindees"}
+		privateFields := []string{"numResponses", "responses", "remindees"}
 		privatizedResponse, err = utils.PrivatizeEventResponse(event, privateFields, []utils.PartialOmission{})
 	}
 
