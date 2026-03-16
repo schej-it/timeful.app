@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -36,6 +37,17 @@ import (
 // @description This is the API for Schej.it!
 
 // @host localhost:3002/api
+
+func init() {
+	mime.AddExtensionType(".css", "text/css")
+	mime.AddExtensionType(".js", "application/javascript")
+	mime.AddExtensionType(".svg", "image/svg+xml")
+	mime.AddExtensionType(".woff", "font/woff")
+	mime.AddExtensionType(".woff2", "font/woff2")
+	mime.AddExtensionType(".ttf", "font/ttf")
+	mime.AddExtensionType(".json", "application/json")
+	mime.AddExtensionType(".map", "application/json")
+}
 
 func main() {
 	// Set release flag
@@ -88,7 +100,7 @@ func main() {
 
 	// Cors
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:8080", "https://www.schej.it", "https://schej.it", "https://www.timeful.app", "https://timeful.app"},
+		AllowOrigins:     []string{"http://localhost:8080", "https://www.schej.it", "https://schej.it", "https://www.timeful.app", "https://timeful.app", "https://staging.timeful.app"},
 		AllowMethods:     []string{"GET", "POST", "PATCH", "PUT", "DELETE"},
 		AllowHeaders:     []string{"Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -112,6 +124,7 @@ func main() {
 	apiRouter := router.Group("/api")
 	routes.InitAuth(apiRouter)
 	routes.InitUser(apiRouter)
+	routes.InitUsers(apiRouter)
 	routes.InitEvents(apiRouter)
 	routes.InitAnalytics(apiRouter)
 	routes.InitStripe(apiRouter)
@@ -185,17 +198,20 @@ func noRouteHandler() gin.HandlerFunc {
 			eventId := path[match[2]:match[3]]
 			event := db.GetEventByEitherId(eventId)
 
+			// params["enableStickyFooter"] = true
+
 			if event != nil {
 				title := fmt.Sprintf("%s - Timeful (formerly Schej)", event.Name)
-				params = gin.H{
-					"title":   title,
-					"ogTitle": title,
-				}
+				params["title"] = title
+				params["ogTitle"] = title
 
 				if len(utils.Coalesce(event.When2meetHref)) > 0 {
 					params["ogImage"] = "/img/when2meetOgImage2.png"
 				}
 			}
+		} else if regexp.MustCompile(`\/g\/`).MatchString(path) {
+			// /g/ routes
+			// params["enableStickyFooter"] = true
 		}
 
 		c.HTML(http.StatusOK, "index.html", params)

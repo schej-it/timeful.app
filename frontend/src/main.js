@@ -7,10 +7,7 @@ import vuetify from "./plugins/vuetify"
 import posthogPlugin from "./plugins/posthog"
 import VueGtm from "@gtm-support/vue2-gtm"
 import VueMeta from "vue-meta"
-import { initializeGTMConsent, hasAnalyticsConsent } from "./utils/cookie_utils"
 import "./index.css"
-
-initializeGTMConsent()
 
 // Posthog
 Vue.use(posthogPlugin)
@@ -19,7 +16,6 @@ Vue.use(posthogPlugin)
 Vue.use(VueGtm, {
   id: "GTM-M677X6V",
   vueRouter: router,
-  enabled: hasAnalyticsConsent(),
 })
 
 // Site Metadata

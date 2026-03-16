@@ -16,7 +16,7 @@
             <div v-if="authUser" class="tw-ml-2">
               <AuthUserMenu />
             </div>
-            <v-btn v-else text @click="signIn">Sign in</v-btn>
+            <v-btn v-else text :to="{ name: 'sign-in' }">Sign in</v-btn>
           </LandingPageHeader>
         </div>
 
@@ -258,7 +258,11 @@
     <Footer />
 
     <!-- Sign in dialog -->
-    <SignInDialog v-model="signInDialog" @signIn="_signIn" />
+    <SignInDialog
+      v-model="signInDialog"
+      @signIn="_signIn"
+      @emailSignIn="_emailSignIn"
+    />
 
     <!-- New event dialog -->
     <NewDialog v-model="newDialog" no-tabs @signIn="signIn" />
@@ -302,7 +306,7 @@ import HowItWorksDialog from "@/components/HowItWorksDialog.vue"
 import { vueVimeoPlayer } from "vue-vimeo-player"
 import Footer from "@/components/Footer.vue"
 import PronunciationMenu from "@/components/PronunciationMenu.vue"
-import { mapState } from "vuex"
+import { mapState, mapMutations } from "vuex"
 import AuthUserMenu from "@/components/AuthUserMenu.vue"
 import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
 
@@ -454,6 +458,7 @@ export default {
   },
 
   methods: {
+    ...mapMutations(["setAuthUser"]),
     loadRiveAnimation() {
       // if (!this.rive) {
       //   this.rive = new Rive({
@@ -483,8 +488,17 @@ export default {
         signInOutlook({ state: null, selectAccount: true })
       }
     },
+    _emailSignIn(user) {
+      this.setAuthUser(user)
+      this.$posthog?.identify(user._id, {
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      })
+      this.$router.replace({ name: "home" })
+    },
     signIn() {
-      this.signInDialog = true
+      this.$router.push({ name: "sign-in" })
     },
     openHowItWorksDialog() {
       this.showHowItWorksDialog = true

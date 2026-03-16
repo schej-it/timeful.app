@@ -792,6 +792,19 @@
                 </div>
               </div>
               <template v-else>
+                <PubliftAd
+                  :showAd="showAds"
+                  fuseId="meet_incontent"
+                  class="-tw-mx-4 tw-my-4 tw-block !tw-rounded-none sm:tw-hidden"
+                >
+                  <div class="tw-h-[375px] publift-m:tw-h-[90px]">
+                    <div
+                      id="meet_incontent"
+                      data-fuse="meet_incontent"
+                      class="tw-flex tw-items-center tw-justify-center"
+                    ></div>
+                  </div>
+                </PubliftAd>
                 <RespondentsList
                   ref="respondentsList"
                   :event="event"
@@ -859,7 +872,8 @@
         <!-- Fixed bottom section for mobile -->
         <div
           v-if="isPhone && !calendarOnly"
-          class="tw-fixed tw-bottom-16 tw-z-20 tw-w-full"
+          class="tw-fixed tw-z-20 tw-w-full"
+          :style="{ bottom: showAds ? 'calc(4rem + 115px)' : '4rem' }"
         >
           <!-- Hint text (mobile) -->
           <v-expand-transition>
@@ -1025,10 +1039,11 @@ import {
   timeslotDurations,
   upgradeDialogTypes,
 } from "@/constants"
-import { mapMutations, mapActions, mapState } from "vuex"
+import { mapMutations, mapActions, mapState, mapGetters } from "vuex"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
 import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
 import Advertisement from "@/components/event/Advertisement.vue"
+import PubliftAd from "@/components/event/PubliftAd.vue"
 import SignUpBlock from "@/components/sign_up_form/SignUpBlock.vue"
 import SignUpCalendarBlock from "@/components/sign_up_form/SignUpCalendarBlock.vue"
 import SignUpBlocksList from "@/components/sign_up_form/SignUpBlocksList.vue"
@@ -1058,6 +1073,7 @@ export default {
   name: "ScheduleOverlap",
   props: {
     event: { type: Object, required: true },
+    ownerIsPremium: { type: Boolean, default: false },
     fromEditEvent: { type: Boolean, default: false },
 
     loadingCalendarEvents: { type: Boolean, default: false }, // Whether we are currently loading the calendar events
@@ -1214,6 +1230,14 @@ export default {
   },
   computed: {
     ...mapState(["authUser", "overlayAvailabilitiesEnabled"]),
+    ...mapGetters(["isPremiumUser"]),
+    showAds() {
+      return (
+        !this.ownerIsPremium &&
+        !this.isPremiumUser &&
+        this.state !== this.states.SET_SPECIFIC_TIMES
+      )
+    },
     /** Returns the width of the right side of the calendar */
     rightSideWidth() {
       if (this.isPhone) return "100%"
@@ -2455,9 +2479,15 @@ export default {
       if (!timeMin || !timeMax) return
 
       // Fetch responses between timeMin and timeMax
-      const url = `/events/${
+      let url = `/events/${
         this.event._id
       }/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+
+      // Add guestName query parameter if user is a guest
+      if (this.guestName && this.guestName.length > 0) {
+        url += `&guestName=${encodeURIComponent(this.guestName)}`
+      }
+
       get(url)
         .then((responses) => {
           this.fetchedResponses = responses
@@ -2850,6 +2880,7 @@ export default {
           payload.guest = true
           payload.name = guestPayload.name
           payload.email = guestPayload.email
+
           localStorage[this.guestNameKey] = guestPayload.name
         }
       }
@@ -3360,14 +3391,13 @@ export default {
                 const date = this.getDateFromRowCol(row, col)
                 if (date) {
                   // Debug logging for hover slot
-                  
+
                   date.setTime(date.getTime() - this.timezoneOffset * 60 * 1000)
                   const startDate = dayjs(date).utc()
                   const endDate = dayjs(date)
                     .utc()
                     .add(this.timeslotDuration, "minutes")
-                    
-                  
+
                   const timeFormat =
                     this.timeType === timeTypes.HOUR12 ? "h:mm A" : "HH:mm"
                   let dateFormat
@@ -3376,14 +3406,13 @@ export default {
                   } else {
                     dateFormat = "ddd"
                   }
-                  
+
                   const formattedTimeRange = `${startDate.format(
                     dateFormat
                   )} ${startDate.format(timeFormat)} to ${endDate.format(
                     timeFormat
                   )}`
-                  
-                  
+
                   this.tooltipContent = formattedTimeRange
                 }
               }
@@ -3416,12 +3445,12 @@ export default {
      */
     getAllValidTimeRanges() {
       const timeSlotToRowCol = new Map()
-      
+
       // Skip if event is daysOnly (no time slots)
       if (this.event.daysOnly) {
         return timeSlotToRowCol
       }
-      
+
       // Iterate through all displayed days (columns)
       for (let col = 0; col < this.days.length; col++) {
         // Iterate through all displayed times (rows)
@@ -3430,15 +3459,15 @@ export default {
           // For example, if event is 9 AM PST, this returns 2026-12-21T17:00:00.000Z (9 AM PST = 17:00 UTC)
           const date = this.getDateFromRowCol(row, col)
           if (!date) continue
-          
+
           // getDateFromRowCol already returns the correct UTC Date representing the local time
           // No need to adjust - use it directly and add timeslot duration
           const startDate = dayjs(date).utc()
           const endDate = dayjs(date)
             .utc()
             .add(this.timeslotDuration, "minutes")
-          
-// Convert dayjs UTC objects to Date objects using UTC milliseconds directly
+
+          // Convert dayjs UTC objects to Date objects using UTC milliseconds directly
           const startTime = new Date(startDate.valueOf())
           const endTime = new Date(endDate.valueOf())
 
@@ -3447,11 +3476,11 @@ export default {
             row,
             col,
             startTime, // Date object matching exactly what hover tooltip displays
-            endTime,   // Date object (startTime + timeslotDuration)
+            endTime, // Date object (startTime + timeslotDuration)
           })
         }
       }
-      
+
       return timeSlotToRowCol
     },
     //#endregion
@@ -3515,13 +3544,15 @@ export default {
           oldName: this.curGuestId,
           newName,
         })
+        // Store with event._id (current format used by guestNameKey)
         localStorage[this.guestNameKey] = newName
         this.showInfo("Guest name updated successfully")
         this.editGuestNameDialog = false
         this.$emit("setCurGuestId", newName)
         this.refreshEvent()
       } catch (err) {
-        const errorMessage = err.parsed?.error || err.message || "Failed to update guest name"
+        const errorMessage =
+          err.parsed?.error || err.message || "Failed to update guest name"
         this.showError(errorMessage)
       }
     },
@@ -4612,6 +4643,7 @@ export default {
     CalendarAccounts,
     RespondentsList,
     Advertisement,
+    PubliftAd,
     GCalWeekSelector,
     WorkingHoursToggle,
     SignUpBlock,
