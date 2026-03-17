@@ -67,14 +67,14 @@
       <AppleCredentials
         v-if="state === states.APPLE_CREDENTIALS"
         @back="state = states.PICK_CALENDAR"
-        @addedAppleCalendar="$emit('addedCalendar')"
+        @addedCalendar="$emit('addedCalendar')"
       />
     </v-expand-transition>
     <v-expand-transition>
       <ICSCredentials
         v-if="state === states.ICS_CREDENTIALS"
         @back="state = states.PICK_CALENDAR"
-        @addedIcsCalendar="$emit('addedCalendar')"
+        @addedCalendar="$emit('addedCalendar')"
       />
     </v-expand-transition>
   </v-card>
