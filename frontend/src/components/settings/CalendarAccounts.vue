@@ -167,9 +167,6 @@ export default {
         requestCalendarPermission: true,
       })
     },
-    addIcsCalendar() {
-
-    },
     addedCalendar() {
       this.addCalendarAccountDialog = false
       this.calendarAccounts = this.authUser.calendarAccounts
