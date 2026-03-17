@@ -64,8 +64,8 @@
           </template>
           <CalendarTypeSelector
             @addGoogleCalendar="addGoogleCalendar"
-            @addedAppleCalendar="addedAppleCalendar"
             @addOutlookCalendar="addOutlookCalendar"
+            @addedCalendar="addedCalendar"
           />
         </v-dialog>
       </span>
@@ -155,10 +155,6 @@ export default {
         selectAccount: true,
       })
     },
-    addedAppleCalendar() {
-      this.addCalendarAccountDialog = false
-      this.calendarAccounts = this.authUser.calendarAccounts
-    },
     addOutlookCalendar() {
       signInOutlook({
         state: {
@@ -170,6 +166,13 @@ export default {
         },
         requestCalendarPermission: true,
       })
+    },
+    addIcsCalendar() {
+
+    },
+    addedCalendar() {
+      this.addCalendarAccountDialog = false
+      this.calendarAccounts = this.authUser.calendarAccounts
     },
     openRemoveDialog(payload) {
       this.removeDialog = true

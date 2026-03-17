@@ -46,6 +46,19 @@
                 <v-spacer />
               </div>
             </v-btn>
+            <v-btn block @click="state = states.ICS_CREDENTIALS">
+              <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
+                <v-icon
+                  class="tw-flex-initial"
+                  size="20"
+                >
+                  mdi-calendar-sync
+                </v-icon>
+                <v-spacer />
+                ICS Calendar Feed
+                <v-spacer />
+              </div>
+            </v-btn>
           </div>
         </v-card-text>
       </div>
@@ -54,7 +67,14 @@
       <AppleCredentials
         v-if="state === states.APPLE_CREDENTIALS"
         @back="state = states.PICK_CALENDAR"
-        @addedAppleCalendar="$emit('addedAppleCalendar')"
+        @addedAppleCalendar="$emit('addedCalendar')"
+      />
+    </v-expand-transition>
+    <v-expand-transition>
+      <ICSCredentials
+        v-if="state === states.ICS_CREDENTIALS"
+        @back="state = states.PICK_CALENDAR"
+        @addedIcsCalendar="$emit('addedCalendar')"
       />
     </v-expand-transition>
   </v-card>
@@ -62,12 +82,14 @@
 
 <script>
 import AppleCredentials from "@/components/calendar_permission_dialogs/AppleCredentials.vue"
+import ICSCredentials from "@/components/calendar_permission_dialogs/ICSCredentials.vue";
 
 export default {
   name: "CalendarTypeSelector",
 
   components: {
     AppleCredentials,
+    ICSCredentials
   },
 
   data() {
@@ -75,6 +97,7 @@ export default {
       states: {
         PICK_CALENDAR: "pick-calendar",
         APPLE_CREDENTIALS: "apple-credentials",
+        ICS_CREDENTIALS: "ics-credentials",
       },
       state: "pick-calendar",
     }

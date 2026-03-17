@@ -90,7 +90,7 @@ export default {
       })
         .then(async () => {
           await this.refreshAuthUser()
-          this.$emit("addedAppleCalendar")
+          this.$emit("addedCalendar")
 
           this.$posthog.capture("Apple Calendar Added")
         })
