@@ -634,11 +634,11 @@ export default {
       )
     },
     async init() {
-      // if (this.featureFlagsLoaded) {
+      // Don't call fetchPrice in development mode as the Stripe API won't be accessible
+      if (process.env.NODE_ENV === "development") return;
       if (!this.lifetimePrice || !this.monthlyPrice) {
         await this.fetchPrice()
       }
-      // }
     },
     async fetchPrice() {
       const res = await get("/stripe/price?exp=" + this.pricingPageConversion)
