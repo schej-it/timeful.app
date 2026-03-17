@@ -68,7 +68,7 @@
               <span
                 >Timeful allows you to autofill your availability from Google
                 Calendar,<br class="tw-hidden sm:tw-block" />
-                Outlook, and Apple Calendar</span
+                Outlook, Apple Calendar, or an ICS feed URL.</span
               > </v-tooltip
             >.
           </div>
@@ -359,7 +359,7 @@ export default {
       {
         question: "What calendars does Timeful integrate with?",
         answer:
-          "Timeful allows you to autofill your availability from your Google Calendar, Outlook, and Apple Calendar. We are working on adding more calendar types soon!",
+          "Timeful allows you to autofill your availability from your Google Calendar, Outlook, Apple Calendar, or an ICS feed URL. We are working on adding more calendar types soon!",
       },
       {
         question: "Is calendar access required in order to use Timeful?",
