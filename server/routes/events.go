@@ -97,9 +97,12 @@ func createEvent(c *gin.Context) {
 	if signedIn {
 		ownerId = utils.StringToObjectID(userId)
 		user = db.GetUserById(userId)
-	} else {
-		ownerId = primitive.NilObjectID
+		if user == nil {
+			signedIn = false
+		}
 	}
+
+	ownerId = primitive.NilObjectID
 
 	// Construct event object
 	numResponses := 0
