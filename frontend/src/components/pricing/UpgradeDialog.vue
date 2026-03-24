@@ -634,14 +634,26 @@ export default {
       )
     },
     async init() {
-      // Don't call fetchPrice in development mode as the Stripe API won't be accessible
-      if (process.env.NODE_ENV === "development") return;
       if (!this.lifetimePrice || !this.monthlyPrice) {
         await this.fetchPrice()
       }
     },
     async fetchPrice() {
-      const res = await get("/stripe/price?exp=" + this.pricingPageConversion)
+      let res;
+      // Mock stripe price results in development mode as the Stripe API won't be accessible
+      if (process.env.NODE_ENV === "development") {
+        res = {
+          lifetime: { id: "price_dev_lifetime", unit_amount: 9999, recurring: null },
+          monthly: { id: "price_dev_monthly", unit_amount: 999, recurring: { interval: "month" } },
+          yearly: { id: "price_dev_yearly", unit_amount: 7999, recurring: { interval: "year" } },
+          lifetimeStudent: { id: "price_dev_lifetime_student", unit_amount: 4999, recurring: null },
+          monthlyStudent: { id: "price_dev_monthly_student", unit_amount: 499, recurring: { interval: "month" } },
+          yearlyStudent: { id: "price_dev_yearly_student", unit_amount: 3999, recurring: { interval: "year" } },
+        }
+      } else {
+        res = await get("/stripe/price?exp=" + this.pricingPageConversion)
+      }
+
       const {
         lifetime,
         monthly,
