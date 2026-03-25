@@ -187,6 +187,52 @@ export const getDateHoursOffset = (date, hoursOffset) => {
   return newDate
 }
 
+/** Returns the date used to derive timezone offsets for the current event view */
+export const getTimezoneReferenceDateForEvent = (event, weekOffset = 0) => {
+  if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
+    const referenceDate = new Date()
+    referenceDate.setDate(referenceDate.getDate() + weekOffset * 7)
+    referenceDate.setHours(12, 0, 0, 0)
+    return referenceDate
+  }
+
+  if (event.dates?.length > 0) {
+    return new Date(event.dates[0])
+  }
+
+  return new Date()
+}
+
+/** Returns the timezone offset for a timezone at a specific date */
+export const getTimezoneOffsetForDate = (curTimezone, referenceDate) => {
+  if (!("offset" in curTimezone)) {
+    return new Date(referenceDate).getTimezoneOffset()
+  }
+
+  if (!curTimezone.value) {
+    return curTimezone.offset * -1
+  }
+
+  return dayjs(referenceDate).tz(curTimezone.value).utcOffset() * -1
+}
+
+/** Returns the timezone offset used by ScheduleOverlap for the current event view */
+export const getScheduleTimezoneOffset = (
+  event,
+  curTimezone,
+  weekOffset = 0
+) => {
+  if (!("offset" in curTimezone)) {
+    return new Date().getTimezoneOffset()
+  }
+
+  if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
+    return curTimezone.offset * -1
+  }
+
+  return dayjs(event.dates[0]).tz(curTimezone.value).utcOffset() * -1
+}
+
 /**
  * Returns a date, transformed to be in the same week of the dows array.
  * `reverse` determines whether to do the opposite calculation (dow date to date)
