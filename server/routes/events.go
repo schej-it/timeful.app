@@ -99,8 +99,9 @@ func createEvent(c *gin.Context) {
 		if user == nil {
 			signedIn = false
 			ownerId = primitive.NilObjectID
+		} else {
+			ownerId = utils.StringToObjectID(userId)
 		}
-		ownerId = utils.StringToObjectID(userId)
 	} else {
 		ownerId = primitive.NilObjectID
 	}
