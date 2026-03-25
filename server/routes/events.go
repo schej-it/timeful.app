@@ -95,12 +95,12 @@ func createEvent(c *gin.Context) {
 	var user *models.User
 	var ownerId primitive.ObjectID
 	if signedIn {
-		ownerId = utils.StringToObjectID(userId)
 		user = db.GetUserById(userId)
 		if user == nil {
 			signedIn = false
 			ownerId = primitive.NilObjectID
 		}
+		ownerId = utils.StringToObjectID(userId)
 	} else {
 		ownerId = primitive.NilObjectID
 	}
@@ -689,8 +689,6 @@ func getResponses(c *gin.Context) {
 		response.ManualAvailability = &subsetManualAvailability
 		responsesMap[userId] = response
 	}
-
-	
 
 	// Apply privacy logic based on blindAvailabilityEnabled
 	if !utils.Coalesce(event.BlindAvailabilityEnabled) {
@@ -1632,4 +1630,3 @@ func getResponsesMap(responses []models.EventResponse) map[string]*models.Respon
 	}
 	return result
 }
-
