@@ -83,6 +83,7 @@
                   :state="state"
                   :states="states"
                   :cur-timezone.sync="curTimezone"
+                  :timezone-reference-date="timezoneReferenceDate"
                   :show-best-times.sync="showBestTimes"
                   :hide-if-needed.sync="hideIfNeeded"
                   :is-weekly="isWeekly"
@@ -484,6 +485,7 @@
                   :state="state"
                   :states="states"
                   :cur-timezone.sync="curTimezone"
+                  :timezone-reference-date="timezoneReferenceDate"
                   :show-best-times.sync="showBestTimes"
                   :hide-if-needed.sync="hideIfNeeded"
                   :is-weekly="isWeekly"
@@ -851,6 +853,7 @@
           :state="state"
           :states="states"
           :cur-timezone.sync="curTimezone"
+          :timezone-reference-date="timezoneReferenceDate"
           :show-best-times.sync="showBestTimes"
           :hide-if-needed.sync="hideIfNeeded"
           :start-calendar-on-monday.sync="startCalendarOnMonday"
@@ -1027,6 +1030,7 @@ import {
   getISODateString,
   getDateWithTimezone,
   getScheduleTimezoneOffset,
+  getTimezoneReferenceDateForEvent,
   timeNumToTimeString,
   isPremiumUser,
   prefersStartOnMonday,
@@ -2013,6 +2017,9 @@ export default {
         this.curTimezone,
         this.weekOffset
       )
+    },
+    timezoneReferenceDate() {
+      return getTimezoneReferenceDateForEvent(this.event, this.weekOffset)
     },
     userHasResponded() {
       return this.authUser && this.authUser._id in this.parsedResponses

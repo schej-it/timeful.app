@@ -222,15 +222,10 @@ export const getScheduleTimezoneOffset = (
   curTimezone,
   weekOffset = 0
 ) => {
-  if (!("offset" in curTimezone)) {
-    return new Date().getTimezoneOffset()
-  }
-
-  if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
-    return curTimezone.offset * -1
-  }
-
-  return dayjs(event.dates[0]).tz(curTimezone.value).utcOffset() * -1
+  return getTimezoneOffsetForDate(
+    curTimezone,
+    getTimezoneReferenceDateForEvent(event, weekOffset)
+  )
 }
 
 /**
