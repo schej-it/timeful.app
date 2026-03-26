@@ -1,0 +1,27 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    depends_on:
+      mongodb:
+        condition: service_started
+    volumes:
+      - ./server/.env:/app/server/.env:ro
+    networks:
+      - timeful
+
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - timeful
+
+volumes:
+  mongodb_data:
+
+networks:
+  timeful:
