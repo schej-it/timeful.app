@@ -116,9 +116,11 @@ func main() {
 	closeConnection := db.Init()
 	defer closeConnection()
 
-	// Init google cloud stuff
-	closeTasks := gcloud.InitTasks()
-	defer closeTasks()
+	// Init google cloud stuff (skip if no service account configured)
+	if os.Getenv("SERVICE_ACCOUNT_KEY_PATH") != "" {
+		closeTasks := gcloud.InitTasks()
+		defer closeTasks()
+	}
 
 	// Session
 	store := cookie.NewStore([]byte(os.Getenv("SESSION_SECRET")))
