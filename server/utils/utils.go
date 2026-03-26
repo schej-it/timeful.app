@@ -115,13 +115,13 @@ func PrintHttpResponse(resp *http.Response) {
 
 // Returns the correct base url, based on whether we're on dev or prod
 func GetBaseUrl() string {
-	if envUrl := os.Getenv("BASE_URL"); envUrl != "" {
-		return envUrl
-	}
+	var baseUrl string
 	if IsRelease() {
-		return "https://timeful.app"
+		baseUrl = "https://timeful.app"
+	} else {
+		baseUrl = "http://localhost:8080"
 	}
-	return "http://localhost:8080"
+	return baseUrl
 }
 
 // Returns the value of the first non nil pointer in `args`.

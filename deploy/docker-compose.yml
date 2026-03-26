@@ -1,14 +1,18 @@
 services:
   app:
-    build: .
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
     restart: unless-stopped
     ports:
       - "3002:3002"
     depends_on:
       mongodb:
         condition: service_started
-    volumes:
-      - ./server/.env:/app/server/.env:ro
+    env_file:
+      - .env
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
     networks:
       - timeful
 

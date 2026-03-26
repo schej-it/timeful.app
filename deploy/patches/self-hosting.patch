@@ -1,0 +1,90 @@
+diff --git a/server/db/init.go b/server/db/init.go
+index a701d71..300f2ac 100644
+--- a/server/db/init.go
++++ b/server/db/init.go
+@@ -2,6 +2,7 @@ package db
+
+ import (
+ 	"context"
++	"os"
+ 	"time"
+
+ 	"go.mongodb.org/mongo-driver/bson"
+@@ -26,7 +27,11 @@ func Init() func() {
+ 	// Establish mongodb connection
+ 	var ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+ 	defer cancel()
+-	Client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost"))
++	mongoURI := os.Getenv("MONGODB_URI")
++	if mongoURI == "" {
++		mongoURI = "mongodb://localhost"
++	}
++	Client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
+ 	if err != nil {
+ 		logger.StdErr.Panicln(err)
+ 	}
+diff --git a/server/main.go b/server/main.go
+index 7a7b713..9d30092 100644
+--- a/server/main.go
++++ b/server/main.go
+@@ -99,8 +99,12 @@ func main() {
+ 	router.Use(gin.Recovery())
+
+ 	// Cors
++	allowOrigins := []string{"http://localhost:8080", "https://www.schej.it", "https://schej.it", "https://www.timeful.app", "https://timeful.app", "https://staging.timeful.app"}
++	if extra := os.Getenv("CORS_ORIGIN"); extra != "" {
++		allowOrigins = append(allowOrigins, extra)
++	}
+ 	router.Use(cors.New(cors.Config{
+-		AllowOrigins:     []string{"http://localhost:8080", "https://www.schej.it", "https://schej.it", "https://www.timeful.app", "https://timeful.app", "https://staging.timeful.app"},
++		AllowOrigins:     allowOrigins,
+ 		AllowMethods:     []string{"GET", "POST", "PATCH", "PUT", "DELETE"},
+ 		AllowHeaders:     []string{"Content-Type"},
+ 		ExposeHeaders:    []string{"Content-Length"},
+@@ -112,9 +116,11 @@ func main() {
+ 	closeConnection := db.Init()
+ 	defer closeConnection()
+
+-	// Init google cloud stuff
+-	closeTasks := gcloud.InitTasks()
+-	defer closeTasks()
++	// Init google cloud stuff (skip if no service account configured)
++	if os.Getenv("SERVICE_ACCOUNT_KEY_PATH") != "" {
++		closeTasks := gcloud.InitTasks()
++		defer closeTasks()
++	}
+
+ 	// Session
+ 	store := cookie.NewStore([]byte(os.Getenv("SESSION_SECRET")))
+@@ -162,7 +168,7 @@ func main() {
+ func loadDotEnv() {
+ 	err := godotenv.Load(".env")
+ 	if err != nil {
+-		logger.StdErr.Panicln("Error loading .env file")
++		logger.StdOut.Println("No .env file found, using environment variables")
+ 	}
+
+ 	// Load stripe key
+diff --git a/server/utils/utils.go b/server/utils/utils.go
+index 0858e2d..c92455c 100644
+--- a/server/utils/utils.go
++++ b/server/utils/utils.go
+@@ -116,13 +116,13 @@ func PrintHttpResponse(resp *http.Response) {
+
+ // Returns the correct base url, based on whether we're on dev or prod
+ func GetBaseUrl() string {
+-	var baseUrl string
++	if envUrl := os.Getenv("BASE_URL"); envUrl != "" {
++		return envUrl
++	}
+ 	if IsRelease() {
+-		baseUrl = "https://timeful.app"
+-	} else {
+-		baseUrl = "http://localhost:8080"
++		return "https://timeful.app"
+ 	}
+-	return baseUrl
++	return "http://localhost:8080"
+ }
+
+ // Returns the value of the first non nil pointer in `args`.

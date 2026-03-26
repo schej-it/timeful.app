@@ -99,12 +99,8 @@ func main() {
 	router.Use(gin.Recovery())
 
 	// Cors
-	allowOrigins := []string{"http://localhost:8080", "https://www.schej.it", "https://schej.it", "https://www.timeful.app", "https://timeful.app", "https://staging.timeful.app"}
-	if extra := os.Getenv("CORS_ORIGIN"); extra != "" {
-		allowOrigins = append(allowOrigins, extra)
-	}
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     allowOrigins,
+		AllowOrigins:     []string{"http://localhost:8080", "https://www.schej.it", "https://schej.it", "https://www.timeful.app", "https://timeful.app", "https://staging.timeful.app"},
 		AllowMethods:     []string{"GET", "POST", "PATCH", "PUT", "DELETE"},
 		AllowHeaders:     []string{"Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -116,11 +112,9 @@ func main() {
 	closeConnection := db.Init()
 	defer closeConnection()
 
-	// Init google cloud stuff (skip if no service account configured)
-	if os.Getenv("SERVICE_ACCOUNT_KEY_PATH") != "" {
-		closeTasks := gcloud.InitTasks()
-		defer closeTasks()
-	}
+	// Init google cloud stuff
+	closeTasks := gcloud.InitTasks()
+	defer closeTasks()
 
 	// Session
 	store := cookie.NewStore([]byte(os.Getenv("SESSION_SECRET")))

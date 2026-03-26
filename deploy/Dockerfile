@@ -6,20 +6,22 @@ RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-# Stage 2: Build Go server
+# Stage 2: Build Go server with self-hosting patches
 FROM golang:1.20-alpine AS server-build
-RUN apk add --no-cache git
+RUN apk add --no-cache patch
+WORKDIR /build
+COPY server/ server/
+COPY deploy/patches/self-hosting.patch .
+RUN patch -p1 < self-hosting.patch
 WORKDIR /build/server
-COPY server/go.mod server/go.sum ./
 RUN go mod download
-COPY server/ ./
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -buildvcs=false -o server .
 
 # Stage 3: Runtime
 FROM alpine:3.19
 RUN apk add --no-cache ca-certificates tzdata
 
-# Match the directory layout expected by main.go (frontendPath = "../frontend/dist")
+# Match directory layout expected by main.go (frontendPath = "../frontend/dist")
 WORKDIR /app/server
 COPY --from=server-build /build/server/server ./
 COPY --from=frontend-build /build/frontend/dist /app/frontend/dist
