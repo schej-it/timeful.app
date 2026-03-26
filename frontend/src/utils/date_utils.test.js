@@ -50,6 +50,22 @@ describe("DST timezone regression", () => {
     ).toBe(-120)
   })
 
+  it("keeps the standard offset during non-DST viewed weeks", () => {
+    const weeklyEvent = {
+      type: eventTypes.DOW,
+      startOnMonday: false,
+      dates: ["2018-06-17T09:00:00.000Z"],
+    }
+    const selectedTimezone = {
+      value: "Europe/Vienna",
+      offset: 60,
+    }
+
+    expect(
+      getScheduleTimezoneOffset(weeklyEvent, selectedTimezone, -10)
+    ).toBe(-60)
+  })
+
   it("falls back to the stored numeric offset when no timezone name exists", () => {
     const selectedTimezone = {
       offset: 90,
@@ -77,5 +93,23 @@ describe("DST timezone regression", () => {
     expect(
       getScheduleTimezoneOffset(weeklyEvent, selectedTimezone, 3)
     ).toBe(-120)
+  })
+
+  it("shows the viewed event week using the new offset after fall-back DST changes", () => {
+    vi.setSystemTime(new Date("2026-10-20T12:00:00Z"))
+
+    const weeklyEvent = {
+      type: eventTypes.DOW,
+      startOnMonday: false,
+      dates: ["2018-06-17T09:00:00.000Z"],
+    }
+    const selectedTimezone = {
+      value: "Europe/Vienna",
+      offset: 120,
+    }
+
+    expect(
+      getScheduleTimezoneOffset(weeklyEvent, selectedTimezone, 2)
+    ).toBe(-60)
   })
 })
