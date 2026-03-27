@@ -1019,6 +1019,7 @@ import {
   _delete,
   get,
   getDateDayOffset,
+  getSpecificTimesDayStarts,
   isDateBetween,
   generateEnabledCalendarsPayload,
   isTouchEnabled,
@@ -1477,35 +1478,17 @@ export default {
         (this.state === this.states.SET_SPECIFIC_TIMES ||
           this.event.times?.length === 0)
       ) {
-        let prevDate = null // Stores the prevDate to check if the current date is consecutive to the previous date
-        for (let i = 0; i < this.event.dates.length; ++i) {
-          const date = new Date(this.event.dates[i])
-          const localDate = new Date(
-            date.getTime() - this.timezoneOffset * 60 * 1000
-          )
-          localDate.setUTCHours(0, 0, 0, 0)
-          localDate.setTime(
-            localDate.getTime() + this.timezoneOffset * 60 * 1000
-          )
-
-          if (!datesSoFar.has(localDate.getTime())) {
-            datesSoFar.add(localDate.getTime())
-
-            let isConsecutive = true
-            if (prevDate) {
-              isConsecutive =
-                prevDate.getTime() === localDate.getTime() - 24 * 60 * 60 * 1000
-            }
-            const { dayString, dateString } = getDateString(localDate)
-            days.push({
-              dayText: dayString,
-              dateString,
-              dateObject: localDate,
-              isConsecutive,
-            })
-
-            prevDate = new Date(localDate)
-          }
+        for (const day of getSpecificTimesDayStarts(
+          this.event.dates,
+          this.curTimezone
+        )) {
+          const { dayString, dateString } = getDateString(day.dateObject)
+          days.push({
+            dayText: dayString,
+            dateString,
+            dateObject: day.dateObject,
+            isConsecutive: day.isConsecutive,
+          })
         }
         return days
       }
