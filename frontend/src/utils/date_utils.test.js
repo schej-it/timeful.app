@@ -144,7 +144,6 @@ describe("specific-times DST regression", () => {
       )
     ).toEqual(expectedDates)
   })
-
   it("keeps one civil day per selected date during non-DST periods", () => {
     const timezone = "America/Los_Angeles"
     const eventDates = [
