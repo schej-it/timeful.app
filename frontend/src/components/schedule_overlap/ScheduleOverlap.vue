@@ -83,6 +83,7 @@
                   :state="state"
                   :states="states"
                   :cur-timezone.sync="curTimezone"
+                  :timezone-reference-date="timezoneReferenceDate"
                   :show-best-times.sync="showBestTimes"
                   :hide-if-needed.sync="hideIfNeeded"
                   :is-weekly="isWeekly"
@@ -484,6 +485,7 @@
                   :state="state"
                   :states="states"
                   :cur-timezone.sync="curTimezone"
+                  :timezone-reference-date="timezoneReferenceDate"
                   :show-best-times.sync="showBestTimes"
                   :hide-if-needed.sync="hideIfNeeded"
                   :is-weekly="isWeekly"
@@ -851,6 +853,7 @@
           :state="state"
           :states="states"
           :cur-timezone.sync="curTimezone"
+          :timezone-reference-date="timezoneReferenceDate"
           :show-best-times.sync="showBestTimes"
           :hide-if-needed.sync="hideIfNeeded"
           :start-calendar-on-monday.sync="startCalendarOnMonday"
@@ -1026,6 +1029,8 @@ import {
   getCalendarAccountKey,
   getISODateString,
   getDateWithTimezone,
+  getScheduleTimezoneOffset,
+  getTimezoneReferenceDateForEvent,
   timeNumToTimeString,
   isPremiumUser,
   prefersStartOnMonday,
@@ -2007,23 +2012,14 @@ export default {
       return Math.floor(this.HOUR_HEIGHT / 4)
     },
     timezoneOffset() {
-      if (!("offset" in this.curTimezone)) {
-        return new Date().getTimezoneOffset()
-      }
-
-      if (
-        this.event.type === eventTypes.DOW ||
-        this.event.type === eventTypes.GROUP
-      ) {
-        return this.curTimezone.offset * -1
-      }
-
-      // Can't just get the offset directly from curTimezone because it doesn't account for dates in the future
-      // when daylight savings might be in or out of effect, so instead, we get the timezone for the first date
-      // of the event
-      return (
-        dayjs(this.event.dates[0]).tz(this.curTimezone.value).utcOffset() * -1 // Multiply by -1 because offset is flipped
+      return getScheduleTimezoneOffset(
+        this.event,
+        this.curTimezone,
+        this.weekOffset
       )
+    },
+    timezoneReferenceDate() {
+      return getTimezoneReferenceDateForEvent(this.event, this.weekOffset)
     },
     userHasResponded() {
       return this.authUser && this.authUser._id in this.parsedResponses
