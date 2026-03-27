@@ -228,6 +228,52 @@ export const getScheduleTimezoneOffset = (
   )
 }
 
+const getDateInTimezone = (date, curTimezone) => {
+  if (curTimezone?.value) {
+    return dayjs(date).tz(curTimezone.value)
+  }
+
+  if ("offset" in curTimezone) {
+    return dayjs(date).utcOffset(curTimezone.offset)
+  }
+
+  return dayjs(date)
+}
+
+/** Returns the unique day-start datetimes for specific-times events */
+export const getSpecificTimesDayStarts = (eventDates, curTimezone) => {
+  const days = []
+  const datesSoFar = new Set()
+  let prevDay = null
+
+  for (const eventDate of eventDates) {
+    const localDate = getDateInTimezone(eventDate, curTimezone)
+      .startOf("day")
+      .toDate()
+
+    if (!datesSoFar.has(localDate.getTime())) {
+      datesSoFar.add(localDate.getTime())
+
+      let isConsecutive = true
+      if (prevDay) {
+        isConsecutive = prevDay.add(1, "day").isSame(
+          getDateInTimezone(localDate, curTimezone),
+          "day"
+        )
+      }
+
+      days.push({
+        dateObject: localDate,
+        isConsecutive,
+      })
+
+      prevDay = getDateInTimezone(localDate, curTimezone)
+    }
+  }
+
+  return days
+}
+
 /**
  * Returns a date, transformed to be in the same week of the dows array.
  * `reverse` determines whether to do the opposite calculation (dow date to date)
