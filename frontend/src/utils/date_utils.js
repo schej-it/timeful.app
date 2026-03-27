@@ -227,7 +227,6 @@ export const getScheduleTimezoneOffset = (
     getTimezoneReferenceDateForEvent(event, weekOffset)
   )
 }
-
 const getDateInTimezone = (date, curTimezone) => {
   if (curTimezone?.value) {
     return dayjs(date).tz(curTimezone.value)

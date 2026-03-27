@@ -1480,7 +1480,7 @@ export default {
       ) {
         for (const day of getSpecificTimesDayStarts(
           this.event.dates,
-          this.timezoneOffset
+          this.curTimezone
         )) {
           const { dayString, dateString } = getDateString(day.dateObject)
           days.push({
