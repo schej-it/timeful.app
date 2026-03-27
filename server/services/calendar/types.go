@@ -25,6 +25,10 @@ func GetCalendarProvider(calendarAccount models.CalendarAccount) CalendarProvide
 		return &AppleCalendar{
 			AppleCalendarAuth: *calendarAccount.AppleCalendarAuth,
 		}
+	case models.ICSCalendarType:
+		return &ICSCalendar{
+			ICSCalendarAuth: *calendarAccount.ICSCalendarAuth,
+		}
 	}
 	return nil
 }
