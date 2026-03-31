@@ -119,7 +119,16 @@
                 <div
                   class="sm:mb-2 tw-flex tw-flex-wrap tw-items-center tw-gap-x-4 tw-gap-y-2"
                 >
-                  <div class="tw-text-xl sm:tw-text-3xl">{{ event.name }}</div>
+                  <div
+                    class="tw-text-xl sm:tw-text-3xl"
+                    :class="
+                      canEdit &&
+                      '-tw-mx-2 -tw-my-1 tw-cursor-pointer tw-rounded tw-px-2 tw-py-1 tw-transition-all hover:tw-bg-light-gray'
+                    "
+                    @click="canEdit && editEvent()"
+                  >
+                    {{ event.name }}
+                  </div>
                   <v-chip
                     v-if="event.when2meetHref?.length > 0"
                     :href="`https://when2meet.com${event.when2meetHref}`"
