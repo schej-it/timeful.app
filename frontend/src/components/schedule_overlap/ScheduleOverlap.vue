@@ -2273,7 +2273,8 @@ export default {
 
     // Options
     showOverlayInvertAvailability() {
-      return this.respondents.length > 0
+      // might be useful to gat something later
+      return true
     },
 
     showOverlayAvailabilityToggle() {
@@ -2510,13 +2511,7 @@ export default {
 
       this.$worker
         .run(
-          (
-            days,
-            times,
-            parsedResponses,
-            daysOnly,
-            hideIfNeeded
-          ) => {
+          (days, times, parsedResponses, daysOnly, hideIfNeeded) => {
             // Define functions locally because we can't import functions
             const splitTimeNum = (timeNum) => {
               const hours = Math.floor(timeNum)
@@ -2557,10 +2552,11 @@ export default {
 
               // Check every response and see if they are available for the given time
               for (const response of Object.values(parsedResponses)) {
-                const isAvailable =
+                // Check availability array
+                if (
                   response.availability?.has(date.getTime()) ||
                   (response.ifNeeded?.has(date.getTime()) && !hideIfNeeded)
-                if (isAvailable) {
+                ) {
                   formatted.get(date.getTime()).add(response.user._id)
                   continue
                 }
