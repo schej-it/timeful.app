@@ -682,6 +682,25 @@
                   </div>
                 </div>
 
+                <div v-if="showOverlayInvertAvailability">
+                  <v-switch
+                    id="invert-availability-toggle"
+                    inset
+                    :input-value="invertAvailability"
+                    @change="updateInvertAvailability"
+                    hide-details
+                  >
+                    <template v-slot:label>
+                      <div class="tw-text-sm tw-text-black">
+                        Invert Availability
+                      </div>
+                    </template>
+                  </v-switch>
+                  <div class="tw-mt-2 tw-text-xs tw-text-dark-gray">
+                    Invert default availaibility editing mode
+                  </div>
+                </div>
+
                 <!-- Options section -->
                 <div
                   v-if="!event.daysOnly && showCalendarOptions"
@@ -1148,6 +1167,7 @@ export default {
           : localStorage["showEditOptions"] == "true",
       availabilityType: availabilityTypes.AVAILABLE, // The current availability type
       overlayAvailability: false, // Whether to overlay everyone's availability when editing
+      invertAvailability: false, // Whether to invert available/unavailable blocks when viewing
       bufferTime: calendarOptionsDefaults.bufferTime, // Set in mounted()
       workingHours: calendarOptionsDefaults.workingHours, // Set in mounted()
 
@@ -2252,6 +2272,10 @@ export default {
     },
 
     // Options
+    showOverlayInvertAvailability() {
+      return this.respondents.length > 0
+    },
+
     showOverlayAvailabilityToggle() {
       return this.respondents.length > 0 && this.overlayAvailabilitiesEnabled
     },
@@ -2486,7 +2510,14 @@ export default {
 
       this.$worker
         .run(
-          (days, times, parsedResponses, daysOnly, hideIfNeeded) => {
+          (
+            days,
+            times,
+            parsedResponses,
+            daysOnly,
+            hideIfNeeded,
+            invertAvailability
+          ) => {
             // Define functions locally because we can't import functions
             const splitTimeNum = (timeNum) => {
               const hours = Math.floor(timeNum)
@@ -2527,11 +2558,10 @@ export default {
 
               // Check every response and see if they are available for the given time
               for (const response of Object.values(parsedResponses)) {
-                // Check availability array
-                if (
+                const isAvailable =
                   response.availability?.has(date.getTime()) ||
                   (response.ifNeeded?.has(date.getTime()) && !hideIfNeeded)
-                ) {
+                if (invertAvailability ? !isAvailable : isAvailable) {
                   formatted.get(date.getTime()).add(response.user._id)
                   continue
                 }
@@ -2545,6 +2575,7 @@ export default {
             this.parsedResponses,
             this.event.daysOnly,
             this.hideIfNeeded,
+            this.invertAvailability,
           ]
         )
         .then((formatted) => {
@@ -3488,6 +3519,7 @@ export default {
       // Reset options
       this.availabilityType = availabilityTypes.AVAILABLE
       this.overlayAvailability = false
+      this.invertAvailability = false
     },
     highlightAvailabilityBtn() {
       this.$emit("highlightAvailabilityBtn")
@@ -3996,6 +4028,10 @@ export default {
     toggleShowEventOptions() {
       this.showEventOptions = !this.showEventOptions
       localStorage["showEventOptions"] = this.showEventOptions
+    },
+    updateInvertAvailability(val) {
+      this.invertAvailability = !!val
+      this.getResponsesFormatted()
     },
     updateOverlayAvailability(val) {
       this.overlayAvailability = !!val
