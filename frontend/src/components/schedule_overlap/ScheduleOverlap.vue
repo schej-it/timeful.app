@@ -2515,8 +2515,7 @@ export default {
             times,
             parsedResponses,
             daysOnly,
-            hideIfNeeded,
-            invertAvailability
+            hideIfNeeded
           ) => {
             // Define functions locally because we can't import functions
             const splitTimeNum = (timeNum) => {
@@ -2561,7 +2560,7 @@ export default {
                 const isAvailable =
                   response.availability?.has(date.getTime()) ||
                   (response.ifNeeded?.has(date.getTime()) && !hideIfNeeded)
-                if (invertAvailability ? !isAvailable : isAvailable) {
+                if (isAvailable) {
                   formatted.get(date.getTime()).add(response.user._id)
                   continue
                 }
@@ -2575,7 +2574,6 @@ export default {
             this.parsedResponses,
             this.event.daysOnly,
             this.hideIfNeeded,
-            this.invertAvailability,
           ]
         )
         .then((formatted) => {
@@ -2863,6 +2861,8 @@ export default {
       this.availabilityAnimEnabled = false
     },
     async submitAvailability(guestPayload = { name: "", email: "" }) {
+      this.invertAvailability = false
+
       let payload = {}
 
       let type = ""
@@ -4031,6 +4031,26 @@ export default {
     },
     updateInvertAvailability(val) {
       this.invertAvailability = !!val
+
+      if (this.event.daysOnly) return
+
+      const allSlots = new Set()
+      for (const day of this.allDays) {
+        for (const time of this.times) {
+          const date = getDateHoursOffset(day.dateObject, time.hoursOffset)
+          if (date) allSlots.add(date.getTime())
+        }
+      }
+
+      const newAvailability = new Set()
+      for (const ts of allSlots) {
+        if (!this.availability.has(ts) && !this.ifNeeded.has(ts)) {
+          newAvailability.add(ts)
+        }
+      }
+
+      this.availability = newAvailability
+
       this.getResponsesFormatted()
     },
     updateOverlayAvailability(val) {
