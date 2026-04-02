@@ -92,6 +92,13 @@ export default {
     ICSCredentials
   },
 
+  props: {
+    visible: {
+      type: Boolean,
+      default: true,
+    },
+  },
+
   data() {
     return {
       states: {
@@ -101,6 +108,14 @@ export default {
       },
       state: "pick-calendar",
     }
+  },
+
+  watch: {
+    visible(val) {
+      if (!val) {
+        this.state = this.states.PICK_CALENDAR
+      }
+    },
   },
 }
 </script>
