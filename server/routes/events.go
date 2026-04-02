@@ -555,23 +555,7 @@ func getEvent(c *gin.Context) {
 		event.Attendees = &attendees
 	}
 
-	// Update event.ResponsesMap to match the final responsesMap
-	event.ResponsesMap = responsesMap
-
-	// Apply privacy logic based on blindAvailabilityEnabled
-	if !utils.Coalesce(event.BlindAvailabilityEnabled) {
-		// Blind availability is NOT enabled - return response as-is
-		// Log response body
-		responseJSON, err := json.MarshalIndent(event, "", "  ")
-		if err != nil {
-			logger.StdErr.Printf("Failed to marshal event for logging: %v\n", err)
-		}
-		_ = responseJSON
-		c.JSON(http.StatusOK, event)
-		return
-	}
-
-	// Blind availability IS enabled - apply privacy filtering
+	// Determine if the requester is the event owner
 	ownerSesh := event.OwnerId.Hex()
 	session := sessions.Default(c)
 	userIdInterface := session.Get("userId")
@@ -580,6 +564,42 @@ func getEvent(c *gin.Context) {
 		userSesh = userIdInterface.(string)
 	}
 	guestName := c.Query("guestName")
+	isOwner := userSesh != "" && ownerSesh == userSesh
+
+	// Strip sensitive user info from all responses
+	showEmails := isOwner && utils.Coalesce(event.CollectEmails)
+	for userId, response := range responsesMap {
+		stripSensitiveUserFields(response.User)
+		if !showEmails {
+			response.Email = ""
+			if response.User != nil {
+				response.User.Email = ""
+			}
+		}
+		responsesMap[userId] = response
+	}
+	for userId, response := range event.SignUpResponses {
+		stripSensitiveUserFields(response.User)
+		if !showEmails {
+			response.Email = ""
+			if response.User != nil {
+				response.User.Email = ""
+			}
+		}
+		event.SignUpResponses[userId] = response
+	}
+
+	// Update event.ResponsesMap to match the final responsesMap
+	event.ResponsesMap = responsesMap
+
+	// Apply privacy logic based on blindAvailabilityEnabled
+	if !utils.Coalesce(event.BlindAvailabilityEnabled) {
+		// Blind availability is NOT enabled - return response as-is
+		c.JSON(http.StatusOK, event)
+		return
+	}
+
+	// Blind availability IS enabled - apply additional privacy filtering
 
 	var privatizedResponse map[string]interface{}
 	var err error
@@ -691,14 +711,7 @@ func getResponses(c *gin.Context) {
 		responsesMap[userId] = response
 	}
 
-	// Apply privacy logic based on blindAvailabilityEnabled
-	if !utils.Coalesce(event.BlindAvailabilityEnabled) {
-		// Blind availability is NOT enabled - return response as-is
-		c.JSON(http.StatusOK, responsesMap)
-		return
-	}
-
-	// Blind availability IS enabled - apply privacy filtering
+	// Determine if the requester is the event owner
 	ownerSesh := event.OwnerId.Hex()
 	session := sessions.Default(c)
 	userIdInterface := session.Get("userId")
@@ -707,6 +720,29 @@ func getResponses(c *gin.Context) {
 		userSesh = userIdInterface.(string)
 	}
 	guestName := c.Query("guestName")
+	isOwner := userSesh != "" && ownerSesh == userSesh
+
+	// Strip sensitive user info from all responses
+	showEmails := isOwner && utils.Coalesce(event.CollectEmails)
+	for userId, response := range responsesMap {
+		stripSensitiveUserFields(response.User)
+		if !showEmails {
+			response.Email = ""
+			if response.User != nil {
+				response.User.Email = ""
+			}
+		}
+		responsesMap[userId] = response
+	}
+
+	// Apply privacy logic based on blindAvailabilityEnabled
+	if !utils.Coalesce(event.BlindAvailabilityEnabled) {
+		// Blind availability is NOT enabled - return response as-is
+		c.JSON(http.StatusOK, responsesMap)
+		return
+	}
+
+	// Blind availability IS enabled - apply privacy filtering
 	if userSesh != "" {
 		// User session exists (user is logged in)
 		if ownerSesh == userSesh {
@@ -1621,6 +1657,20 @@ func findResponse(responses []models.EventResponse, userId string) (int, *models
 		}
 	}
 	return -1, nil
+}
+
+// stripSensitiveUserFields removes fields from a User that should never be
+// exposed in the event page API response (calendar accounts, billing info, etc.).
+// Email is NOT stripped here as callers handle email visibility separately based
+// on the collectEmails setting and owner status.
+func stripSensitiveUserFields(user *models.User) {
+	if user == nil {
+		return
+	}
+	user.CalendarAccounts = nil
+	user.CalendarOptions = nil
+	user.StripeCustomerId = nil
+	user.PrimaryAccountKey = nil
 }
 
 // Helper function to get all responses as a map (for backward compatibility)
