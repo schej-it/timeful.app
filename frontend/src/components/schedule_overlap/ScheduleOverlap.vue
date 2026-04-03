@@ -42,21 +42,33 @@
                   </div>
                 </div>
                 <!-- Days grid -->
-                <div
-                  id="drag-section"
-                  class="tw-grid tw-grid-cols-7"
-                  @mouseleave="resetCurTimeslot"
-                >
+                <div class="tw-relative">
                   <div
-                    v-for="(day, i) in monthDays"
-                    :key="day.time"
-                    class="timeslot tw-aspect-square tw-p-2 tw-text-sm sm:tw-text-base"
-                    :class="dayTimeslotClassStyle[i].class"
-                    :style="dayTimeslotClassStyle[i].style"
-                    v-on="dayTimeslotVon[i]"
+                    id="drag-section"
+                    class="tw-grid tw-grid-cols-7"
+                    @mouseleave="resetCurTimeslot"
                   >
-                    {{ day.date }}
+                    <div
+                      v-for="(day, i) in monthDays"
+                      :key="day.time"
+                      class="timeslot tw-aspect-square tw-flex tw-items-center tw-justify-center tw-text-sm sm:tw-text-base"
+                      :class="dayTimeslotClassStyle[i].class"
+                      :style="dayTimeslotClassStyle[i].style"
+                      v-on="dayTimeslotVon[i]"
+                    >
+                      {{ day.date }}
+                    </div>
                   </div>
+                  <ZigZag
+                    v-if="hasPrevPage"
+                    left
+                    class="tw-absolute tw-left-0 tw-top-0 tw-h-full tw-w-3"
+                  />
+                  <ZigZag
+                    v-if="hasNextPage"
+                    right
+                    class="tw-absolute tw-right-0 tw-top-0 tw-h-full tw-w-3"
+                  />
                 </div>
 
                 <v-expand-transition>
