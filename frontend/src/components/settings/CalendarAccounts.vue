@@ -68,6 +68,7 @@
         </div>
       </template>
       <CalendarTypeSelector
+        :visible="addCalendarAccountDialog"
         @addGoogleCalendar="addGoogleCalendar"
         @addOutlookCalendar="addOutlookCalendar"
         @addedCalendar="addedCalendar"

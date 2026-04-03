@@ -37,7 +37,7 @@
             @keyup.enter="submit"
             :rules="emailRules"
             placeholder="Enter your email..."
-            hint="The event creator is collecting emails. We will never share your email with anyone or contact you in any way."
+            hint="The event creator has requested your email. It will only be visible to them."
             persistent-hint
             solo
           ></v-text-field>
