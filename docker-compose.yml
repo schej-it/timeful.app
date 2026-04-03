@@ -1,0 +1,29 @@
+services:
+  timeful:
+    build: .
+    container_name: timeful
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    env_file:
+      - .env
+    environment:
+      MONGODB_URI: mongodb://timeful-mongo:27017
+    depends_on:
+      timeful-mongo:
+        condition: service_healthy
+
+  timeful-mongo:
+    image: mongo:4.4
+    container_name: timeful-mongo
+    restart: unless-stopped
+    volumes:
+      - timeful-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  timeful-mongo-data:

@@ -100,7 +100,7 @@ func main() {
 
 	// Cors
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:8080", "https://www.schej.it", "https://schej.it", "https://www.timeful.app", "https://timeful.app", "https://staging.timeful.app"},
+		AllowOrigins:     []string{"http://localhost:8080", "https://www.schej.it", "https://schej.it", "https://www.timeful.app", "https://timeful.app", "https://staging.timeful.app", "https://meet.tcecs.org"},
 		AllowMethods:     []string{"GET", "POST", "PATCH", "PUT", "DELETE"},
 		AllowHeaders:     []string{"Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -161,10 +161,8 @@ func main() {
 
 // Load .env variables
 func loadDotEnv() {
-	err := godotenv.Load(".env")
-	if err != nil {
-		logger.StdErr.Panicln("Error loading .env file")
-	}
+	// .env file is optional — env vars may be injected directly (e.g. via Docker)
+	godotenv.Load(".env")
 
 	// Load stripe key
 	stripe.Key = os.Getenv("STRIPE_API_KEY")
