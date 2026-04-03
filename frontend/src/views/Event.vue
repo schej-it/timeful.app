@@ -17,6 +17,7 @@
         "
         @setAvailabilityManually="setAvailabilityManually"
         @addedAppleCalendar="addedAppleCalendar"
+        @addedICSCalendar="addedICSCalendar"
       />
 
       <!-- Google sign in not supported dialog -->
@@ -995,6 +996,12 @@ export default {
     },
     /** Called when user adds apple calendar account */
     addedAppleCalendar() {
+      this.choiceDialog = false
+      this.scheduleOverlapComponent?.startEditing()
+      this.scheduleOverlapComponent?.setAvailabilityAutomatically()
+    },
+    /** Called when user adds ICS calendar account */
+    addedICSCalendar() {
       this.choiceDialog = false
       this.scheduleOverlapComponent?.startEditing()
       this.scheduleOverlapComponent?.setAvailabilityAutomatically()
