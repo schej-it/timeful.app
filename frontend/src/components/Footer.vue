@@ -74,9 +74,6 @@
             <router-link :to="{ name: 'privacy-policy' }" class="tw-text-sm">
               Privacy Policy
             </router-link>
-            <router-link :to="{ name: 'cookie-settings' }" class="tw-text-sm">
-              Cookie Preferences
-            </router-link>
           </div>
         </div>
         <!-- Links -->

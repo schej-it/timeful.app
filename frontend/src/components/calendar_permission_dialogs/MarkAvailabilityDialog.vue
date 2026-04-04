@@ -55,6 +55,19 @@
                 <v-spacer />
               </div>
             </v-btn>
+            <v-btn block @click="autofillWithICS" class="tw-bg-white">
+              <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
+                <v-icon
+                  class="tw-flex-initial"
+                  size="20"
+                >
+                  mdi-calendar-sync
+                </v-icon>
+                <v-spacer />
+                Autofill with ICS Calendar Feed
+                <v-spacer />
+              </div>
+            </v-btn>
             <div class="tw-flex tw-items-center tw-gap-3">
               <v-divider />
               <div
@@ -91,6 +104,13 @@
           @addedAppleCalendar="$emit('addedAppleCalendar')"
         />
       </v-expand-transition>
+      <v-expand-transition>
+        <ICSCredentials
+          v-if="state === states.ICS_CREDENTIALS"
+          @back="state = states.CHOICES"
+          @addedCalendar="$emit('addedICSCalendar')"
+        />
+      </v-expand-transition>
     </v-card>
   </v-dialog>
 </template>
@@ -101,6 +121,7 @@ import { mapActions, mapState } from "vuex"
 import CalendarPermissionsCard from "./CalendarPermissionsCard"
 import CreateAccount from "./CreateAccount"
 import AppleCredentials from "./AppleCredentials"
+import ICSCredentials from "./ICSCredentials"
 
 export default {
   name: "MarkAvailabilityDialog",
@@ -114,6 +135,7 @@ export default {
     CalendarPermissionsCard,
     CreateAccount,
     AppleCredentials,
+    ICSCredentials,
   },
 
   data() {
@@ -123,6 +145,7 @@ export default {
         GCAL_PERMISSIONS: "gcal_permissions", // present to user the gcal permissions we request
         CREATE_ACCOUNT_APPLE: "create_account_apple", // present to user the create account dialog
         APPLE_CREDENTIALS: "apple_credentials", // present to user the apple credentials dialog
+        ICS_CREDENTIALS: "ics_credentials", // present to user the ICS feed URL dialog
       },
       state: this.initialState,
     }
@@ -155,6 +178,10 @@ export default {
     autofillWithOutlook() {
       this.$posthog.capture("autofill_with_outlook_clicked")
       this.$emit("allowOutlookCalendar")
+    },
+    autofillWithICS() {
+      this.$posthog.capture("autofill_with_ics_clicked")
+      this.state = this.states.ICS_CREDENTIALS
     },
     showChoices() {
       this.state = this.states.CHOICES

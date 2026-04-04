@@ -202,3 +202,56 @@ func UpdateGuestResponseName(eventId string, oldName string, newName string) {
 		logger.StdErr.Panicln(err)
 	}
 }
+
+// Checks if a guest name already exists for an event
+// Returns true if the guest name already exists, false otherwise
+// Also returns true if the name matches a logged-in user's ObjectID (to prevent conflicts)
+// Only checks for guest users (non-logged-in users), not logged-in users
+func GuestNameExists(eventId string, guestName string) bool {
+	event := GetEventByEitherId(eventId)
+	if event == nil {
+		return false
+	}
+
+	// Check if the name is a valid ObjectID that corresponds to an existing user
+	// If so, block it to prevent conflicts
+	//NOTE: we're checking against ALL logged in users because in case we allowed this, and a user with an account tried to 
+	// submit their availability, overwriting would happen and we'd lose data.
+	objectId, err := primitive.ObjectIDFromHex(guestName)
+	if err == nil {
+		// The name is a valid ObjectID format - check if a user exists with this ID
+		user := GetUserById(objectId.Hex())
+		if user != nil {
+			// A logged-in user exists with this ObjectID, so block it
+			return true
+		}
+	}
+
+
+	// For events, check EventResponsesCollection
+	eventObjectId, err := primitive.ObjectIDFromHex(event.Id.Hex())
+	if err != nil {
+		return false
+	}
+
+	// Check if a response exists with this userId AND it's a guest (userId is not a valid ObjectID)
+	result := EventResponsesCollection.FindOne(context.Background(), bson.M{
+		"eventId": eventObjectId,
+		"userId":  guestName,
+	})
+
+	if result.Err() == mongo.ErrNoDocuments {
+		// No response found with this userId
+		return false
+	}
+
+	// Response found - verify it's a guest (userId is not a valid ObjectID)
+	_, err = primitive.ObjectIDFromHex(guestName)
+	if err != nil {
+		// userId cannot be parsed as ObjectID, so it's a guest
+		return true
+	}
+
+	// userId can be parsed as ObjectID, so it's a logged-in user, not a guest
+	return false
+}

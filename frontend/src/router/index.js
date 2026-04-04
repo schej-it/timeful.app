@@ -47,6 +47,17 @@ const routes = [
     props: true,
   },
   {
+    path: "/sign-in",
+    name: "sign-in",
+    component: () => import("@/views/SignIn.vue"),
+  },
+  {
+    path: "/sign-up",
+    name: "sign-up",
+    component: () => import("@/views/SignIn.vue"),
+    props: { initialIsSignUp: true },
+  },
+  {
     path: "/auth",
     name: "auth",
     component: () => import("@/views/Auth.vue"),
@@ -86,7 +97,7 @@ const router = new VueRouter({
 
 router.beforeEach(async (to, from, next) => {
   const authRoutes = ["home", "settings"]
-  const noAuthRoutes = []
+  const noAuthRoutes = ["sign-in", "sign-up"]
   try {
     await get("/auth/status")
 
@@ -101,6 +112,13 @@ router.beforeEach(async (to, from, next) => {
     } else {
       next()
     }
+  }
+
+  if (to.name !== "event" && to.name !== "group") {
+    const fusetag = window.fusetag || (window.fusetag = { que: [] })
+    fusetag.que.push(function () {
+      fusetag.destroySticky()
+    })
   }
 })
 

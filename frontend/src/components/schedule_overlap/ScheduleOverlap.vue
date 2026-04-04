@@ -42,21 +42,33 @@
                   </div>
                 </div>
                 <!-- Days grid -->
-                <div
-                  id="drag-section"
-                  class="tw-grid tw-grid-cols-7"
-                  @mouseleave="resetCurTimeslot"
-                >
+                <div class="tw-relative">
                   <div
-                    v-for="(day, i) in monthDays"
-                    :key="day.time"
-                    class="timeslot tw-aspect-square tw-p-2 tw-text-sm sm:tw-text-base"
-                    :class="dayTimeslotClassStyle[i].class"
-                    :style="dayTimeslotClassStyle[i].style"
-                    v-on="dayTimeslotVon[i]"
+                    id="drag-section"
+                    class="tw-grid tw-grid-cols-7"
+                    @mouseleave="resetCurTimeslot"
                   >
-                    {{ day.date }}
+                    <div
+                      v-for="(day, i) in monthDays"
+                      :key="day.time"
+                      class="timeslot tw-aspect-square tw-flex tw-items-center tw-justify-center tw-text-sm sm:tw-text-base"
+                      :class="dayTimeslotClassStyle[i].class"
+                      :style="dayTimeslotClassStyle[i].style"
+                      v-on="dayTimeslotVon[i]"
+                    >
+                      {{ day.date }}
+                    </div>
                   </div>
+                  <ZigZag
+                    v-if="hasPrevPage"
+                    left
+                    class="tw-absolute tw-left-0 tw-top-0 tw-h-full tw-w-3"
+                  />
+                  <ZigZag
+                    v-if="hasNextPage"
+                    right
+                    class="tw-absolute tw-right-0 tw-top-0 tw-h-full tw-w-3"
+                  />
                 </div>
 
                 <v-expand-transition>
@@ -83,6 +95,7 @@
                   :state="state"
                   :states="states"
                   :cur-timezone.sync="curTimezone"
+                  :timezone-reference-date="timezoneReferenceDate"
                   :show-best-times.sync="showBestTimes"
                   :hide-if-needed.sync="hideIfNeeded"
                   :is-weekly="isWeekly"
@@ -484,6 +497,7 @@
                   :state="state"
                   :states="states"
                   :cur-timezone.sync="curTimezone"
+                  :timezone-reference-date="timezoneReferenceDate"
                   :show-best-times.sync="showBestTimes"
                   :hide-if-needed.sync="hideIfNeeded"
                   :is-weekly="isWeekly"
@@ -792,6 +806,19 @@
                 </div>
               </div>
               <template v-else>
+                <PubliftAd
+                  :showAd="showAds"
+                  fuseId="meet_incontent"
+                  class="-tw-mx-4 tw-my-4 tw-block !tw-rounded-none sm:tw-hidden"
+                >
+                  <div class="tw-h-[375px] publift-m:tw-h-[90px]">
+                    <div
+                      id="meet_incontent"
+                      data-fuse="meet_incontent"
+                      class="tw-flex tw-items-center tw-justify-center"
+                    ></div>
+                  </div>
+                </PubliftAd>
                 <RespondentsList
                   ref="respondentsList"
                   :event="event"
@@ -838,6 +865,7 @@
           :state="state"
           :states="states"
           :cur-timezone.sync="curTimezone"
+          :timezone-reference-date="timezoneReferenceDate"
           :show-best-times.sync="showBestTimes"
           :hide-if-needed.sync="hideIfNeeded"
           :start-calendar-on-monday.sync="startCalendarOnMonday"
@@ -859,7 +887,8 @@
         <!-- Fixed bottom section for mobile -->
         <div
           v-if="isPhone && !calendarOnly"
-          class="tw-fixed tw-bottom-16 tw-z-20 tw-w-full"
+          class="tw-fixed tw-z-20 tw-w-full"
+          :style="{ bottom: showAds ? 'calc(4rem + 115px)' : '4rem' }"
         >
           <!-- Hint text (mobile) -->
           <v-expand-transition>
@@ -1002,6 +1031,7 @@ import {
   _delete,
   get,
   getDateDayOffset,
+  getSpecificTimesDayStarts,
   isDateBetween,
   generateEnabledCalendarsPayload,
   isTouchEnabled,
@@ -1012,6 +1042,8 @@ import {
   getCalendarAccountKey,
   getISODateString,
   getDateWithTimezone,
+  getScheduleTimezoneOffset,
+  getTimezoneReferenceDateForEvent,
   timeNumToTimeString,
   isPremiumUser,
   prefersStartOnMonday,
@@ -1025,10 +1057,11 @@ import {
   timeslotDurations,
   upgradeDialogTypes,
 } from "@/constants"
-import { mapMutations, mapActions, mapState } from "vuex"
+import { mapMutations, mapActions, mapState, mapGetters } from "vuex"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
 import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
 import Advertisement from "@/components/event/Advertisement.vue"
+import PubliftAd from "@/components/event/PubliftAd.vue"
 import SignUpBlock from "@/components/sign_up_form/SignUpBlock.vue"
 import SignUpCalendarBlock from "@/components/sign_up_form/SignUpCalendarBlock.vue"
 import SignUpBlocksList from "@/components/sign_up_form/SignUpBlocksList.vue"
@@ -1058,6 +1091,7 @@ export default {
   name: "ScheduleOverlap",
   props: {
     event: { type: Object, required: true },
+    ownerIsPremium: { type: Boolean, default: false },
     fromEditEvent: { type: Boolean, default: false },
 
     loadingCalendarEvents: { type: Boolean, default: false }, // Whether we are currently loading the calendar events
@@ -1214,6 +1248,14 @@ export default {
   },
   computed: {
     ...mapState(["authUser", "overlayAvailabilitiesEnabled"]),
+    ...mapGetters(["isPremiumUser"]),
+    showAds() {
+      return (
+        !this.ownerIsPremium &&
+        !this.isPremiumUser &&
+        this.state !== this.states.SET_SPECIFIC_TIMES
+      )
+    },
     /** Returns the width of the right side of the calendar */
     rightSideWidth() {
       if (this.isPhone) return "100%"
@@ -1448,35 +1490,17 @@ export default {
         (this.state === this.states.SET_SPECIFIC_TIMES ||
           this.event.times?.length === 0)
       ) {
-        let prevDate = null // Stores the prevDate to check if the current date is consecutive to the previous date
-        for (let i = 0; i < this.event.dates.length; ++i) {
-          const date = new Date(this.event.dates[i])
-          const localDate = new Date(
-            date.getTime() - this.timezoneOffset * 60 * 1000
-          )
-          localDate.setUTCHours(0, 0, 0, 0)
-          localDate.setTime(
-            localDate.getTime() + this.timezoneOffset * 60 * 1000
-          )
-
-          if (!datesSoFar.has(localDate.getTime())) {
-            datesSoFar.add(localDate.getTime())
-
-            let isConsecutive = true
-            if (prevDate) {
-              isConsecutive =
-                prevDate.getTime() === localDate.getTime() - 24 * 60 * 60 * 1000
-            }
-            const { dayString, dateString } = getDateString(localDate)
-            days.push({
-              dayText: dayString,
-              dateString,
-              dateObject: localDate,
-              isConsecutive,
-            })
-
-            prevDate = new Date(localDate)
-          }
+        for (const day of getSpecificTimesDayStarts(
+          this.event.dates,
+          this.curTimezone
+        )) {
+          const { dayString, dateString } = getDateString(day.dateObject)
+          days.push({
+            dayText: dayString,
+            dateString,
+            dateObject: day.dateObject,
+            isConsecutive: day.isConsecutive,
+          })
         }
         return days
       }
@@ -1983,20 +2007,14 @@ export default {
       return Math.floor(this.HOUR_HEIGHT / 4)
     },
     timezoneOffset() {
-      if (!("offset" in this.curTimezone)) {
-        return new Date().getTimezoneOffset()
-      }
-
-      if (this.event.type === eventTypes.DOW) {
-        return this.curTimezone.offset * -1
-      }
-
-      // Can't just get the offset directly from curTimezone because it doesn't account for dates in the future
-      // when daylight savings might be in or out of effect, so instead, we get the timezone for the first date
-      // of the event
-      return (
-        dayjs(this.event.dates[0]).tz(this.curTimezone.value).utcOffset() * -1 // Multiply by -1 because offset is flipped
+      return getScheduleTimezoneOffset(
+        this.event,
+        this.curTimezone,
+        this.weekOffset
       )
+    },
+    timezoneReferenceDate() {
+      return getTimezoneReferenceDateForEvent(this.event, this.weekOffset)
     },
     userHasResponded() {
       return this.authUser && this.authUser._id in this.parsedResponses
@@ -2452,9 +2470,15 @@ export default {
       if (!timeMin || !timeMax) return
 
       // Fetch responses between timeMin and timeMax
-      const url = `/events/${
+      let url = `/events/${
         this.event._id
       }/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+
+      // Add guestName query parameter if user is a guest
+      if (this.guestName && this.guestName.length > 0) {
+        url += `&guestName=${encodeURIComponent(this.guestName)}`
+      }
+
       get(url)
         .then((responses) => {
           this.fetchedResponses = responses
@@ -2847,6 +2871,7 @@ export default {
           payload.guest = true
           payload.name = guestPayload.name
           payload.email = guestPayload.email
+
           localStorage[this.guestNameKey] = guestPayload.name
         }
       }
@@ -3356,11 +3381,14 @@ export default {
               if (!this.event.daysOnly) {
                 const date = this.getDateFromRowCol(row, col)
                 if (date) {
+                  // Debug logging for hover slot
+
                   date.setTime(date.getTime() - this.timezoneOffset * 60 * 1000)
                   const startDate = dayjs(date).utc()
                   const endDate = dayjs(date)
                     .utc()
                     .add(this.timeslotDuration, "minutes")
+
                   const timeFormat =
                     this.timeType === timeTypes.HOUR12 ? "h:mm A" : "HH:mm"
                   let dateFormat
@@ -3369,11 +3397,14 @@ export default {
                   } else {
                     dateFormat = "ddd"
                   }
-                  this.tooltipContent = `${startDate.format(
+
+                  const formattedTimeRange = `${startDate.format(
                     dateFormat
                   )} ${startDate.format(timeFormat)} to ${endDate.format(
                     timeFormat
                   )}`
+
+                  this.tooltipContent = formattedTimeRange
                 }
               }
             }
@@ -3397,6 +3428,51 @@ export default {
 
       // End drag if mouse left time grid
       this.endDrag()
+    },
+    /** Returns all valid displayed time ranges using existing logic (for validation for set slots)
+     * Returns an object that maps time slot Date objects to their row/col coordinates:
+     * - Map keys: time slot startTime Date objects (using getTime() as the key)
+     * - Map values: { row, col, startTime, endTime } objects
+     */
+    getAllValidTimeRanges() {
+      const timeSlotToRowCol = new Map()
+
+      // Skip if event is daysOnly (no time slots)
+      if (this.event.daysOnly) {
+        return timeSlotToRowCol
+      }
+
+      // Iterate through all displayed days (columns)
+      for (let col = 0; col < this.days.length; col++) {
+        // Iterate through all displayed times (rows)
+        for (let row = 0; row < this.times.length; row++) {
+          // Use existing getDateFromRowCol method - returns UTC Date representing the local time
+          // For example, if event is 9 AM PST, this returns 2026-12-21T17:00:00.000Z (9 AM PST = 17:00 UTC)
+          const date = this.getDateFromRowCol(row, col)
+          if (!date) continue
+
+          // getDateFromRowCol already returns the correct UTC Date representing the local time
+          // No need to adjust - use it directly and add timeslot duration
+          const startDate = dayjs(date).utc()
+          const endDate = dayjs(date)
+            .utc()
+            .add(this.timeslotDuration, "minutes")
+
+          // Convert dayjs UTC objects to Date objects using UTC milliseconds directly
+          const startTime = new Date(startDate.valueOf())
+          const endTime = new Date(endDate.valueOf())
+
+          // Map the startTime (using getTime() as key) to its row/col coordinates
+          timeSlotToRowCol.set(startTime.getTime(), {
+            row,
+            col,
+            startTime, // Date object matching exactly what hover tooltip displays
+            endTime, // Date object (startTime + timeslotDuration)
+          })
+        }
+      }
+
+      return timeSlotToRowCol
     },
     //#endregion
 
@@ -3459,13 +3535,16 @@ export default {
           oldName: this.curGuestId,
           newName,
         })
+        // Store with event._id (current format used by guestNameKey)
         localStorage[this.guestNameKey] = newName
         this.showInfo("Guest name updated successfully")
         this.editGuestNameDialog = false
         this.$emit("setCurGuestId", newName)
         this.refreshEvent()
       } catch (err) {
-        this.showError(err.message || "Failed to update guest name")
+        const errorMessage =
+          err.parsed?.error || err.message || "Failed to update guest name"
+        this.showError(errorMessage)
       }
     },
     refreshEvent() {
@@ -4555,6 +4634,7 @@ export default {
     CalendarAccounts,
     RespondentsList,
     Advertisement,
+    PubliftAd,
     GCalWeekSelector,
     WorkingHoursToggle,
     SignUpBlock,

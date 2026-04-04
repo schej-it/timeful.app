@@ -3,6 +3,7 @@ package routes
 
 import (
 	"context"
+	"encoding/json" //TODO: remove this before committing
 	"fmt"
 	"net/http"
 	"time"
@@ -28,6 +29,7 @@ func InitEvents(router *gin.RouterGroup) {
 
 	eventRouter.POST("", createEvent)
 	eventRouter.PUT("/:eventId", editEvent)
+	eventRouter.GET("/:eventId/ids", getEventIds)
 	eventRouter.GET("/:eventId", getEvent)
 	eventRouter.GET("/:eventId/responses", getResponses)
 	eventRouter.POST("/:eventId/response", updateEventResponse)
@@ -93,8 +95,13 @@ func createEvent(c *gin.Context) {
 	var user *models.User
 	var ownerId primitive.ObjectID
 	if signedIn {
-		ownerId = utils.StringToObjectID(userId)
 		user = db.GetUserById(userId)
+		if user == nil {
+			signedIn = false
+			ownerId = primitive.NilObjectID
+		} else {
+			ownerId = utils.StringToObjectID(userId)
+		}
 	} else {
 		ownerId = primitive.NilObjectID
 	}
@@ -445,6 +452,32 @@ func editEvent(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+// @Summary Resolves an event identifier to both short and long IDs
+// @Tags events
+// @Produce json
+// @Param eventId path string true "Event shortId or longId"
+// @Success 200 {object} object{shortId=string,longId=string}
+// @Failure 404 {object} responses.Error
+// @Router /events/{eventId}/ids [get]
+func getEventIds(c *gin.Context) {
+	eventId := c.Param("eventId")
+	event := db.GetEventByEitherId(eventId)
+	if event == nil {
+		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
+		return
+	}
+
+	shortId := ""
+	if event.ShortId != nil {
+		shortId = *event.ShortId
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"shortId": shortId,
+		"longId":  event.Id.Hex(),
+	})
+}
+
 // @Summary Gets an event based on its id
 // @Tags events
 // @Produce json
@@ -522,8 +555,102 @@ func getEvent(c *gin.Context) {
 		event.Attendees = &attendees
 	}
 
-	// Create a copy of the event with responses in map format
-	c.JSON(http.StatusOK, event)
+	// Determine if the requester is the event owner
+	ownerSesh := event.OwnerId.Hex()
+	session := sessions.Default(c)
+	userIdInterface := session.Get("userId")
+	var userSesh string
+	if userIdInterface != nil {
+		userSesh = userIdInterface.(string)
+	}
+	guestName := c.Query("guestName")
+	isOwner := userSesh != "" && ownerSesh == userSesh
+
+	// Strip sensitive user info from all responses
+	showEmails := isOwner && utils.Coalesce(event.CollectEmails)
+	for userId, response := range responsesMap {
+		stripSensitiveUserFields(response.User)
+		if !showEmails {
+			response.Email = ""
+			if response.User != nil {
+				response.User.Email = ""
+			}
+		}
+		responsesMap[userId] = response
+	}
+	for userId, response := range event.SignUpResponses {
+		stripSensitiveUserFields(response.User)
+		if !showEmails {
+			response.Email = ""
+			if response.User != nil {
+				response.User.Email = ""
+			}
+		}
+		event.SignUpResponses[userId] = response
+	}
+
+	// Update event.ResponsesMap to match the final responsesMap
+	event.ResponsesMap = responsesMap
+
+	// Apply privacy logic based on blindAvailabilityEnabled
+	if !utils.Coalesce(event.BlindAvailabilityEnabled) {
+		// Blind availability is NOT enabled - return response as-is
+		c.JSON(http.StatusOK, event)
+		return
+	}
+
+	// Blind availability IS enabled - apply additional privacy filtering
+
+	var privatizedResponse map[string]interface{}
+	var err error
+
+	if userSesh != "" {
+		// User session exists (user is logged in)
+		if ownerSesh == userSesh {
+			// User is the owner - return response as-is
+			privatizedResponse, err = utils.PrivatizeEventResponse(event, []string{}, []utils.PartialOmission{})
+		} else {
+			// User is NOT the owner - privatize response
+			privateFields := []string{"numResponses"}
+			partialOmissions := []utils.PartialOmission{
+				{
+					FieldName: "responses",
+					KeepKey:   userSesh,
+				},
+			}
+			privatizedResponse, err = utils.PrivatizeEventResponse(event, privateFields, partialOmissions)
+		}
+	} else if guestName != "" {
+		// Guest name query parameter exists
+		privateFields := []string{"numResponses"}
+		partialOmissions := []utils.PartialOmission{
+			{
+				FieldName: "responses",
+				KeepKey:   guestName,
+			},
+		}
+		privatizedResponse, err = utils.PrivatizeEventResponse(event, privateFields, partialOmissions)
+	} else {
+		// No session, no guest name - remove all private fields
+		privateFields := []string{"numResponses", "responses", "remindees"}
+		privatizedResponse, err = utils.PrivatizeEventResponse(event, privateFields, []utils.PartialOmission{})
+	}
+
+	if err != nil {
+		logger.StdErr.Printf("Failed to privatize event response: %v\n", err)
+		// Fall back to returning the original event if privatization fails
+		c.JSON(http.StatusOK, event)
+		return
+	}
+
+	// Log response body
+	responseJSON, err := json.MarshalIndent(privatizedResponse, "", "  ")
+	if err != nil {
+		logger.StdErr.Printf("Failed to marshal privatized response for logging: %v\n", err)
+	}
+	_ = responseJSON
+	// Return the privatized response
+	c.JSON(http.StatusOK, privatizedResponse)
 }
 
 // @Summary Gets responses for an event, filtering availability to be within the date ranges
@@ -584,7 +711,66 @@ func getResponses(c *gin.Context) {
 		responsesMap[userId] = response
 	}
 
-	c.JSON(http.StatusOK, responsesMap)
+	// Determine if the requester is the event owner
+	ownerSesh := event.OwnerId.Hex()
+	session := sessions.Default(c)
+	userIdInterface := session.Get("userId")
+	var userSesh string
+	if userIdInterface != nil {
+		userSesh = userIdInterface.(string)
+	}
+	guestName := c.Query("guestName")
+	isOwner := userSesh != "" && ownerSesh == userSesh
+
+	// Strip sensitive user info from all responses
+	showEmails := isOwner && utils.Coalesce(event.CollectEmails)
+	for userId, response := range responsesMap {
+		stripSensitiveUserFields(response.User)
+		if !showEmails {
+			response.Email = ""
+			if response.User != nil {
+				response.User.Email = ""
+			}
+		}
+		responsesMap[userId] = response
+	}
+
+	// Apply privacy logic based on blindAvailabilityEnabled
+	if !utils.Coalesce(event.BlindAvailabilityEnabled) {
+		// Blind availability is NOT enabled - return response as-is
+		c.JSON(http.StatusOK, responsesMap)
+		return
+	}
+
+	// Blind availability IS enabled - apply privacy filtering
+	if userSesh != "" {
+		// User session exists (user is logged in)
+		if ownerSesh == userSesh {
+			// User is the owner - return response as-is
+			c.JSON(http.StatusOK, responsesMap)
+			return
+		} else {
+			// User is NOT the owner - return only their own response
+			filteredMap := make(map[string]*models.Response)
+			if userResponse, exists := responsesMap[userSesh]; exists {
+				filteredMap[userSesh] = userResponse
+			}
+			c.JSON(http.StatusOK, filteredMap)
+			return
+		}
+	} else if guestName != "" {
+		// Guest name query parameter exists - return only that guest's response
+		filteredMap := make(map[string]*models.Response)
+		if guestResponse, exists := responsesMap[guestName]; exists {
+			filteredMap[guestName] = guestResponse
+		}
+		c.JSON(http.StatusOK, filteredMap)
+		return
+	} else {
+		// No session, no guest name - return empty map
+		c.JSON(http.StatusOK, make(map[string]*models.Response))
+		return
+	}
 }
 
 // @Summary Updates the current user's availability
@@ -624,6 +810,26 @@ func updateEventResponse(c *gin.Context) {
 		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
 		return
 	}
+
+	// Security check: If blindAvailabilityEnabled is true, non-owners cannot set guest availability
+	//NOTE: this ONLY stops a user from setting guest availability from their account (via setSlots), somebody could still
+	// go on incognito and set guest availability.
+	if utils.Coalesce(event.BlindAvailabilityEnabled) {
+		ownerSesh := event.OwnerId.Hex()
+		userIdInterface := session.Get("userId")
+		var userSesh string
+		if userIdInterface != nil {
+			userSesh = userIdInterface.(string)
+		}
+
+		// If user is logged in and NOT the owner, and they're trying to set guest availability, block it
+		if userSesh != "" && ownerSesh != userSesh && *payload.Guest {
+			c.JSON(http.StatusForbidden, responses.Error{Error: errs.UserNotEventOwner})
+			c.Abort()
+			return
+		}
+	}
+
 	eventResponses := db.GetEventResponses(event.Id.Hex())
 
 	var userIdString string
@@ -966,6 +1172,7 @@ func deleteEventResponse(c *gin.Context) {
 // @Param eventId path string true "Event ID"
 // @Param payload body object{oldName=string,newName=string} true "Object containing info about the guest response to rename"
 // @Success 200
+// @Failure 400 {object} responses.Error "Guest name already exists"
 // @Router /events/{eventId}/rename-user [post]
 func renameUser(c *gin.Context) {
 	payload := struct {
@@ -980,6 +1187,14 @@ func renameUser(c *gin.Context) {
 	if event == nil {
 		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
 		return
+	}
+
+	// Check if the new name already exists (only if it's different from the old name)
+	if payload.NewName != payload.OldName {
+		if db.GuestNameExists(event.Id.Hex(), payload.NewName) {
+			c.JSON(http.StatusBadRequest, responses.Error{Error: "A guest with this name already exists for this event"})
+			return
+		}
 	}
 
 	// Check if old name is a guest response
@@ -1442,6 +1657,20 @@ func findResponse(responses []models.EventResponse, userId string) (int, *models
 		}
 	}
 	return -1, nil
+}
+
+// stripSensitiveUserFields removes fields from a User that should never be
+// exposed in the event page API response (calendar accounts, billing info, etc.).
+// Email is NOT stripped here as callers handle email visibility separately based
+// on the collectEmails setting and owner status.
+func stripSensitiveUserFields(user *models.User) {
+	if user == nil {
+		return
+	}
+	user.CalendarAccounts = nil
+	user.CalendarOptions = nil
+	user.StripeCustomerId = nil
+	user.PrimaryAccountKey = nil
 }
 
 // Helper function to get all responses as a map (for backward compatibility)

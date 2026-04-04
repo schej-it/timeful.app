@@ -4,7 +4,11 @@
     <AutoSnackbar color="error" :text="error" />
     <AutoSnackbar color="tw-bg-blue" :text="info" />
     <SignInNotSupportedDialog v-model="webviewDialog" />
-    <SignInDialog v-model="signInDialog" @signIn="_signIn" />
+    <SignInDialog
+      v-model="signInDialog"
+      @signIn="_signIn"
+      @emailSignIn="_emailSignIn"
+    />
     <NewDialog
       v-model="newDialogOptions.show"
       :type="newDialogOptions.openNewGroup ? 'group' : 'event'"
@@ -17,7 +21,6 @@
       @input="handleUpgradeDialogInput"
     />
     <UpvoteRedditSnackbar />
-    <CookieConsent />
     <div
       v-if="showHeader"
       class="tw-fixed tw-z-40 tw-h-14 tw-w-screen tw-bg-white sm:tw-h-16"
@@ -58,14 +61,14 @@
         >
           Give feedback
         </v-btn>
-        <v-btn
+        <!-- <v-btn
           v-if="!isPhone"
           text
           href="https://www.paypal.com/donate/?hosted_button_id=KWCH6LGJCP6E6"
           target="_blank"
         >
           Donate
-        </v-btn>
+        </v-btn> -->
         <v-btn
           v-if="$route.name === 'home' && !isPhone"
           color="primary"
@@ -253,7 +256,6 @@ import NewDialog from "./components/NewDialog.vue"
 import UpgradeDialog from "@/components/pricing/UpgradeDialog.vue"
 import SignInDialog from "@/components/SignInDialog.vue"
 import DiscordBanner from "@/components/DiscordBanner.vue"
-import CookieConsent from "@/components/CookieConsent.vue"
 
 export default {
   name: "App",
@@ -274,7 +276,6 @@ export default {
     UpgradeDialog,
     SignInDialog,
     DiscordBanner,
-    CookieConsent,
   },
 
   data: () => ({
@@ -302,6 +303,8 @@ export default {
       return (
         this.$route.name !== "landing" &&
         this.$route.name !== "auth" &&
+        this.$route.name !== "sign-in" &&
+        this.$route.name !== "sign-up" &&
         this.$route.name !== "privacy-policy"
       )
     },
@@ -354,7 +357,10 @@ export default {
           this.webviewDialog = true
           return
         }
-        this.signInDialog = true
+        this.$router.push({ name: "sign-in" })
+        // this.signInDialog = true
+      } else {
+        this.$router.push({ name: "sign-in" })
       }
     },
     _signIn(calendarType) {
@@ -386,6 +392,17 @@ export default {
             selectAccount: true,
           })
         }
+      }
+    },
+    _emailSignIn(user) {
+      this.setAuthUser(user)
+      this.$posthog?.identify(user._id, {
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      })
+      if (this.$route.name === "landing") {
+        this.$router.push({ name: "home" })
       }
     },
     setFeatureFlags() {

@@ -315,7 +315,13 @@ export default {
       for (const dayIndex of this.selectedDaysOfWeek) {
         const day = dayIndexToDayString[dayIndex]
         const date = dayjs.tz(`${day} ${startTimeString}`, this.timezone.value)
-        dates.push(date.toDate())
+
+        // The reference dates (dayIndexToDayString) are from June 2018, which may have
+        // a different DST offset than the current date. Adjust so the stored UTC time
+        // corresponds to the user's current timezone offset.
+        const refOffset = date.utcOffset()
+        const currentOffset = dayjs().tz(this.timezone.value).utcOffset()
+        dates.push(date.subtract(currentOffset - refOffset, 'minutes').toDate())
       }
 
       this.loading = true
@@ -426,7 +432,13 @@ export default {
     updateFieldsFromEvent() {
       if (this.event) {
         this.name = this.event.name
-        this.startTime = Math.floor(dateToTimeNum(this.event.dates[0]))
+
+        // Set start time, accounting for the timezone
+        this.startTime = Math.floor(
+          dateToTimeNum(getDateWithTimezone(this.event.dates[0]), true)
+        )
+        this.startTime %= 24
+
         this.endTime = (this.startTime + this.event.duration) % 24
         this.startOnMonday = this.event.startOnMonday
 

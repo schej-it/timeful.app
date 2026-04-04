@@ -22,6 +22,12 @@ import (
 var TasksClient *cloudtasks.Client
 
 func InitTasks() func() {
+	credsFile := os.Getenv("SERVICE_ACCOUNT_KEY_PATH")
+	if credsFile == "" || credsFile == "?" {
+		logger.StdErr.Println("SERVICE_ACCOUNT_KEY_PATH not set, skipping Cloud Tasks initialization")
+		return func() {}
+	}
+
 	ctx := context.Background()
 
 	var err error

@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -36,6 +37,17 @@ import (
 // @description This is the API for Schej.it!
 
 // @host localhost:3002/api
+
+func init() {
+	mime.AddExtensionType(".css", "text/css")
+	mime.AddExtensionType(".js", "application/javascript")
+	mime.AddExtensionType(".svg", "image/svg+xml")
+	mime.AddExtensionType(".woff", "font/woff")
+	mime.AddExtensionType(".woff2", "font/woff2")
+	mime.AddExtensionType(".ttf", "font/ttf")
+	mime.AddExtensionType(".json", "application/json")
+	mime.AddExtensionType(".map", "application/json")
+}
 
 func main() {
 	// Set release flag
@@ -88,7 +100,7 @@ func main() {
 
 	// Cors
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:8080", "https://www.schej.it", "https://schej.it", "https://www.timeful.app", "https://timeful.app"},
+		AllowOrigins:     []string{"http://localhost:8080", "https://www.schej.it", "https://schej.it", "https://www.timeful.app", "https://timeful.app", "https://staging.timeful.app"},
 		AllowMethods:     []string{"GET", "POST", "PATCH", "PUT", "DELETE"},
 		AllowHeaders:     []string{"Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -105,21 +117,23 @@ func main() {
 	defer closeTasks()
 
 	// Session
-	store := cookie.NewStore([]byte("secret"))
+	store := cookie.NewStore([]byte(os.Getenv("SESSION_SECRET")))
 	router.Use(sessions.Sessions("session", store))
 
 	// Init routes
 	apiRouter := router.Group("/api")
 	routes.InitAuth(apiRouter)
 	routes.InitUser(apiRouter)
-	routes.InitEvents(apiRouter)
 	routes.InitUsers(apiRouter)
+	routes.InitEvents(apiRouter)
 	routes.InitAnalytics(apiRouter)
 	routes.InitStripe(apiRouter)
 	routes.InitFolders(apiRouter)
 	slackbot.InitSlackbot(apiRouter)
 
-	err = filepath.WalkDir("../frontend/dist", func(path string, d fs.DirEntry, err error) error {
+	// Get frontend path
+	frontendPath := "../frontend/dist"
+	err = filepath.WalkDir(frontendPath, func(path string, d fs.DirEntry, err error) error {
 		if !d.IsDir() && d.Name() != "index.html" {
 			split := splitPath(path)
 			newPath := filepath.Join(split[3:]...)
@@ -131,25 +145,45 @@ func main() {
 		log.Fatalf("failed to walk directories: %s", err)
 	}
 
-	router.LoadHTMLFiles("../frontend/dist/index.html")
+	router.LoadHTMLFiles(filepath.Join(frontendPath, "index.html"))
 	router.NoRoute(noRouteHandler())
 
 	// Init swagger documentation
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	// Run server
-	router.Run(":3002")
+	if os.Getenv("NODE_ENV") == "staging" {
+		router.Run(":3003")
+	} else {
+		router.Run(":3002")
+	}
 }
 
 // Load .env variables
 func loadDotEnv() {
 	err := godotenv.Load(".env")
+	if err != nil {
+		logger.StdErr.Panicln("Error loading .env file")
+	}
 
 	// Load stripe key
 	stripe.Key = os.Getenv("STRIPE_API_KEY")
 
-	if err != nil {
-		logger.StdErr.Panicln("Error loading .env file")
+	// Validate session secret
+	validateSessionSecret()
+}
+
+// validateSessionSecret ensures SESSION_SECRET is set and meets security requirements
+func validateSessionSecret() {
+	secret := os.Getenv("SESSION_SECRET")
+
+	if secret == "" {
+		logger.StdErr.Panicln("SESSION_SECRET environment variable is required but not set")
+	}
+
+	// Minimum 32 characters for adequate security (256 bits)
+	if len(secret) < 32 {
+		logger.StdErr.Panicln("SESSION_SECRET must be at least 32 characters long")
 	}
 }
 
@@ -164,17 +198,20 @@ func noRouteHandler() gin.HandlerFunc {
 			eventId := path[match[2]:match[3]]
 			event := db.GetEventByEitherId(eventId)
 
+			// params["enableStickyFooter"] = true
+
 			if event != nil {
 				title := fmt.Sprintf("%s - Timeful (formerly Schej)", event.Name)
-				params = gin.H{
-					"title":   title,
-					"ogTitle": title,
-				}
+				params["title"] = title
+				params["ogTitle"] = title
 
 				if len(utils.Coalesce(event.When2meetHref)) > 0 {
 					params["ogImage"] = "/img/when2meetOgImage2.png"
 				}
 			}
+		} else if regexp.MustCompile(`\/g\/`).MatchString(path) {
+			// /g/ routes
+			// params["enableStickyFooter"] = true
 		}
 
 		c.HTML(http.StatusOK, "index.html", params)

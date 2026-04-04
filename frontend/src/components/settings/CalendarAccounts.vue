@@ -44,32 +44,36 @@
             @openRemoveDialog="openRemoveDialog"
           ></CalendarAccount>
         </div>
-        <v-dialog
-          v-if="allowAddCalendarAccount"
-          v-model="addCalendarAccountDialog"
-          width="400"
-          content-class="tw-m-0"
-        >
-          <template v-slot:activator="{ on, attrs }">
-            <v-btn
-              text
-              color="primary"
-              :class="
-                toggleState ? '-tw-ml-2 tw-mt-0 tw-w-min tw-px-2' : 'tw-w-full'
-              "
-              v-bind="attrs"
-              v-on="on"
-              >+ Add calendar</v-btn
-            >
-          </template>
-          <CalendarTypeSelector
-            @addGoogleCalendar="addGoogleCalendar"
-            @addedAppleCalendar="addedAppleCalendar"
-            @addOutlookCalendar="addOutlookCalendar"
-          />
-        </v-dialog>
       </span>
     </v-expand-transition>
+    <v-dialog
+      v-if="allowAddCalendarAccount && (showCalendars || !toggleState)"
+      v-model="addCalendarAccountDialog"
+      width="400"
+      content-class="tw-m-0"
+    >
+      <template v-slot:activator="{ on, attrs }">
+        <div>
+          <v-btn
+            text
+            color="primary"
+            :class="
+              toggleState ? '-tw-ml-2 tw-mt-0 tw-w-min tw-px-2' : 'tw-w-full'
+            "
+            v-bind="attrs"
+            v-on="on"
+            >+ Add calendar</v-btn
+          >
+          <p class="tw-text-xs tw-text-dark-gray">Only your available times are shared with respondents. Your personal event details are never shared.</p>
+        </div>
+      </template>
+      <CalendarTypeSelector
+        :visible="addCalendarAccountDialog"
+        @addGoogleCalendar="addGoogleCalendar"
+        @addOutlookCalendar="addOutlookCalendar"
+        @addedCalendar="addedCalendar"
+      />
+    </v-dialog>
     <v-dialog v-model="removeDialog" width="500" persistent>
       <v-card>
         <v-card-title>Are you sure?</v-card-title>
@@ -155,10 +159,6 @@ export default {
         selectAccount: true,
       })
     },
-    addedAppleCalendar() {
-      this.addCalendarAccountDialog = false
-      this.calendarAccounts = this.authUser.calendarAccounts
-    },
     addOutlookCalendar() {
       signInOutlook({
         state: {
@@ -170,6 +170,10 @@ export default {
         },
         requestCalendarPermission: true,
       })
+    },
+    addedCalendar() {
+      this.addCalendarAccountDialog = false
+      this.calendarAccounts = this.authUser.calendarAccounts
     },
     openRemoveDialog(payload) {
       this.removeDialog = true

@@ -42,7 +42,11 @@
 
 <script>
 import { allTimezones } from "@/constants"
-import spacetime from "spacetime"
+import dayjs from "dayjs"
+import utcPlugin from "dayjs/plugin/utc"
+import timezonePlugin from "dayjs/plugin/timezone"
+dayjs.extend(utcPlugin)
+dayjs.extend(timezonePlugin)
 
 export default {
   name: "TimezoneSelector",
@@ -51,6 +55,7 @@ export default {
     value: { type: Object, required: true },
     label: { type: String, default: "Shown in" },
     labelColor: { type: String, default: "" },
+    referenceDate: { type: Date, default: null },
   },
 
   created() {
@@ -77,6 +82,9 @@ export default {
   },
 
   computed: {
+    effectiveReferenceDate() {
+      return this.referenceDate ?? new Date()
+    },
     /** Returns an array of all supported timezones */
     timezones() {
       // ===============================================================================
@@ -86,10 +94,9 @@ export default {
       const t = Object.entries(allTimezones)
         .map((zone) => {
           try {
-            const now = spacetime.now(zone[0])
-            const tz = now.timezone()
-
-            const min = tz.current.offset * 60
+            const min = dayjs(this.effectiveReferenceDate)
+              .tz(zone[0])
+              .utcOffset()
             const hr = `${(min / 60) ^ 0}:${
               min % 60 === 0 ? "00" : Math.abs(min % 60)
             }`
@@ -97,10 +104,10 @@ export default {
             const label = `${zone[1]}`
 
             return {
-              value: tz.name,
+              value: zone[0],
               label: label,
               gmtString: gmtString,
-              offset: tz.current.offset * 60,
+              offset: min,
             }
           } catch (e) {
             console.error(e)
@@ -123,13 +130,32 @@ export default {
     /** Returns a timezone object for the local timezone */
     getLocalTimezone() {
       const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+      // Step 1: Exact match on spacetime-canonical name
       let timezoneObject = this.timezones.find((t) => t.value === localTimezone)
 
       if (!timezoneObject) {
-        const offset =
-          spacetime.now(localTimezone).timezone().current.offset * 60
+        // Step 2: Match by offsets at two reference dates (Jan + Jul)
+        // Distinguishes DST-observing zones from non-DST zones that share
+        // the same current offset (e.g. Europe/Belgrade vs Africa/Casablanca)
+        const janOffset = dayjs.tz("2024-01-15 12:00", localTimezone).utcOffset()
+        const julOffset = dayjs.tz("2024-07-15 12:00", localTimezone).utcOffset()
+
+        timezoneObject = this.timezones.find((t) => {
+          const tJan = dayjs.tz("2024-01-15 12:00", t.value).utcOffset()
+          const tJul = dayjs.tz("2024-07-15 12:00", t.value).utcOffset()
+          return tJan === janOffset && tJul === julOffset
+        })
+      }
+
+      if (!timezoneObject) {
+        // Step 3: Final fallback — current offset only
+        const offset = dayjs(this.effectiveReferenceDate)
+          .tz(localTimezone)
+          .utcOffset()
         timezoneObject = this.timezones.find((t) => t.offset === offset)
       }
+
       return timezoneObject
     },
     /** Resets timezone to the local timezone and clears localstorage as well */
@@ -137,6 +163,28 @@ export default {
       this.$emit("input", this.getLocalTimezone())
       localStorage.removeItem("timezone")
       this.timezoneModified = false
+    },
+  },
+
+  watch: {
+    referenceDate() {
+      if (!this.value?.value) {
+        return
+      }
+
+      const refreshedTimezone = this.timezones.find(
+        (timezone) => timezone.value === this.value.value
+      )
+
+      if (!refreshedTimezone || refreshedTimezone.offset === this.value.offset) {
+        return
+      }
+
+      if (localStorage["timezone"]) {
+        localStorage["timezone"] = JSON.stringify(refreshedTimezone)
+      }
+
+      this.$emit("input", refreshedTimezone)
     },
   },
 }

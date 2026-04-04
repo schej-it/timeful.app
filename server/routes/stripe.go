@@ -20,6 +20,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"schej.it/server/db"
 	"schej.it/server/logger"
+	"schej.it/server/middleware"
+	"schej.it/server/models"
 	"schej.it/server/slackbot"
 	"schej.it/server/utils"
 )
@@ -31,7 +33,7 @@ func InitStripe(router *gin.RouterGroup) {
 	stripeRouter.GET("/price", getPrice)
 	stripeRouter.POST("/fulfill-checkout", fulfillCheckout)
 	stripeRouter.POST("/webhook", stripeWebhook)
-	stripeRouter.GET("/billing-portal", getBillingPortalUrl)
+	stripeRouter.GET("/billing-portal", middleware.AuthRequired(), getBillingPortalUrl)
 }
 
 type CheckoutSessionPayload struct {
@@ -120,6 +122,7 @@ func getPrice(c *gin.Context) {
 	monthlyStudentPriceId := os.Getenv("STRIPE_MONTHLY_STUDENT_PRICE_ID")
 	lifetimeStudentPriceId := os.Getenv("STRIPE_LIFETIME_STUDENT_PRICE_ID")
 	yearlyPriceId := os.Getenv("STRIPE_YEARLY_PRICE_ID")
+	yearlyStudentPriceId := os.Getenv("STRIPE_YEARLY_STUDENT_PRICE_ID")
 
 	var lifetimePriceId string
 	switch exp {
@@ -166,12 +169,20 @@ func getPrice(c *gin.Context) {
 		return
 	}
 
+	yearlyStudentResult, err := price.Get(yearlyStudentPriceId, params)
+	if err != nil {
+		log.Printf("price.Get error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch price"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"lifetime":        lifetimeResult,
 		"monthly":         monthlyResult,
 		"yearly":          yearlyResult,
 		"lifetimeStudent": lifetimeStudentResult,
 		"monthlyStudent":  monthlyStudentResult,
+		"yearlyStudent":   yearlyStudentResult,
 	})
 }
 
@@ -343,6 +354,10 @@ func stripeWebhook(c *gin.Context) {
 }
 
 func getBillingPortalUrl(c *gin.Context) {
+	// Get authenticated user
+	userInterface, _ := c.Get("authUser")
+	user := userInterface.(*models.User)
+
 	// The URL to which the user is redirected when they're done managing
 	// billing in the portal.
 	returnURL := c.Query("returnUrl")
@@ -350,16 +365,20 @@ func getBillingPortalUrl(c *gin.Context) {
 		returnURL = utils.GetBaseUrl() // Fallback to base URL if not provided
 	}
 
-	customerID := c.Query("customerId")
-	if customerID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Customer ID is required"})
+	// Use the authenticated user's Stripe customer ID
+	if user.StripeCustomerId == nil || *user.StripeCustomerId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User has no Stripe customer ID"})
 		return
 	}
 
 	params := &stripe.BillingPortalSessionParams{
-		Customer:  stripe.String(customerID),
+		Customer:  stripe.String(*user.StripeCustomerId),
 		ReturnURL: stripe.String(returnURL),
 	}
-	ps, _ := portalsession.New(params)
+	ps, err := portalsession.New(params)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create billing portal session"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"url": ps.URL})
 }

@@ -14,6 +14,7 @@
             hide-details
           />
           <div
+            v-if="hasSubCalendars"
             class="-tw-ml-2 tw-h-fit tw-w-fit tw-cursor-pointer"
             @click="
               () => {
@@ -70,7 +71,7 @@
     <!-- Sub-calendar accounts -->
 
     <v-expand-transition>
-      <div v-if="showSubCalendars" class="tw-space-y-2 tw-bg-[#EBF7EF] tw-py-2">
+      <div v-if="hasSubCalendars && showSubCalendars" class="tw-space-y-2 tw-bg-[#EBF7EF] tw-py-2">
         <div
           v-for="(subCalendar, id) in account.subCalendars"
           :key="id"
@@ -135,6 +136,9 @@ export default {
           this.account.email == this.authUser.email) ||
         this.toggleState
       )
+    },
+    hasSubCalendars() {
+      return this.account.calendarType !== calendarTypes.ICS
     },
     accountHasError() {
       const account =

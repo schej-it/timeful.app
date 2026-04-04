@@ -9,6 +9,9 @@ export const errors = Object.freeze({
   UserDoesNotExist: "user-does-not-exist",
   EventNotFound: "event-not-found",
   InvalidCredentials: "invalid-credentials",
+  OtpExpired: "otp-expired",
+  OtpInvalidCode: "otp-invalid-code",
+  OtpTooManyAttempts: "otp-too-many-attempts",
 })
 
 // Auth types
@@ -22,6 +25,7 @@ export const authTypes = Object.freeze({
   GROUP_CREATE: "group-create",
   ADD_CALENDAR_ACCOUNT: "add-calendar-account",
   ADD_CALENDAR_ACCOUNT_FROM_EDIT: "add-calendar-account-from-edit",
+  UPGRADE: "upgrade",
 })
 
 export const eventTypes = Object.freeze({
@@ -44,12 +48,14 @@ export const calendarTypes = Object.freeze({
   GOOGLE: "google",
   APPLE: "apple",
   OUTLOOK: "outlook",
+  ICS: "ics"
 })
 
 export const upgradeDialogTypes = Object.freeze({
   CREATE_EVENT: "create-event",
   SCHEDULE_EVENT: "schedule-event",
   UPGRADE_MANUALLY: "upgrade-manually",
+  REMOVE_ADS: "remove-ads",
 })
 
 export const timeslotDurations = Object.freeze({
@@ -176,3 +182,5 @@ export const allTimezones = Object.freeze({
 export const guestUserId = "000000000000000000000000"
 
 export const numFreeEvents = 3
+
+export const urlRegex = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/

@@ -51,6 +51,11 @@ Built with [Vue 2](https://github.com/vuejs/vue), [MongoDB](https://github.com/m
 - Tool versions: `.tool-versions` pins `golang 1.20.14` and `nodejs 18.20.2` (works with asdf or as a reference) to avoid mismatched runtimes with the Go module and Vue CLI 5 stack.
 - asdf + zsh: `asdf plugin add golang nodejs` (if not present), `asdf install`, ensure `source "$HOME/.asdf/asdf.sh"` is in `~/.zshrc`, and add `export PATH="$PATH:$(go env GOPATH)/bin"` so Go-installed tools (e.g., `air`) are found.
 - Seed demo data (optional): `cd server/scripts/seed_demo && MONGODB_URI=mongodb://localhost:27017 go run main.go` creates a demo user/event for local testing. Avoid running other scripts in `server/scripts/*` unless you know the migration you need.
+## Plugin API
+
+Read these docs to design your own browser plugins to get + set availability on Timeful events programmatically!
+
+[Plugin API Docs](./PLUGIN_API_README.md)
 
 ## Self-hosting
 

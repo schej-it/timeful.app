@@ -95,7 +95,7 @@ export const dataURItoBlob = (dataURI) => {
 /** Reformats the given event object to the format we want */
 export const processEvent = (event) => {
   let startDate = event.dates[0]
-  if (event.type === eventTypes.DOW) {
+  if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
     startDate = dateToDowDate(event.dates, startDate, 0, true)
   }
 
