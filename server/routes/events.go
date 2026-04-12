@@ -3,9 +3,10 @@ package routes
 
 import (
 	"context"
-	"encoding/json" //TODO: remove this before committing
+	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -229,8 +230,7 @@ func createEvent(c *gin.Context) {
 	// var creator string
 	if signedIn {
 		// creator = fmt.Sprintf("%s %s (%s)", user.FirstName, user.LastName, user.Email)
-		user.NumEventsCreated++
-		db.UsersCollection.UpdateOne(context.Background(), bson.M{"_id": ownerId}, bson.M{"$set": user})
+		db.UsersCollection.UpdateOne(context.Background(), bson.M{"_id": ownerId}, bson.M{"$inc": bson.M{"numEventsCreated": 1}})
 	} else {
 		// creator = "Guest :face_with_open_eyes_and_hand_over_mouth:"
 	}
@@ -1678,6 +1678,20 @@ func importEvent(c *gin.Context) {
 		return
 	}
 
+	// Block private/internal IP addresses to prevent SSRF
+	hostname := parsed.Hostname()
+	ips, err := net.LookupIP(hostname)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, responses.Error{Error: "invalid-url"})
+		return
+	}
+	for _, ip := range ips {
+		if ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+			c.JSON(http.StatusBadRequest, responses.Error{Error: "private-address"})
+			return
+		}
+	}
+
 	// Extract event ID from path (e.g., /e/abc123 or /g/abc123)
 	pathParts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
 	if len(pathParts) < 2 || (pathParts[0] != "e" && pathParts[0] != "g") {
@@ -1687,7 +1701,12 @@ func importEvent(c *gin.Context) {
 	remoteEventId := pathParts[1]
 	baseURL := fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
 
-	httpClient := &http.Client{Timeout: 10 * time.Second}
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 
 	// Fetch the remote event
 	eventResp, err := httpClient.Get(fmt.Sprintf("%s/api/events/%s", baseURL, remoteEventId))
@@ -1755,11 +1774,13 @@ func importEvent(c *gin.Context) {
 	}
 
 	remoteResponses := make(map[string]*models.Response)
-	if respResp.StatusCode == http.StatusOK {
-		if err := json.Unmarshal(respBody, &remoteResponses); err != nil {
-			c.JSON(http.StatusBadGateway, responses.Error{Error: "remote-fetch-failed"})
-			return
-		}
+	if respResp.StatusCode != http.StatusOK {
+		c.JSON(http.StatusBadGateway, responses.Error{Error: "remote-responses-failed"})
+		return
+	}
+	if err := json.Unmarshal(respBody, &remoteResponses); err != nil {
+		c.JSON(http.StatusBadGateway, responses.Error{Error: "remote-fetch-failed"})
+		return
 	}
 
 	// Create local event with new identity
@@ -1822,8 +1843,7 @@ func importEvent(c *gin.Context) {
 	)
 
 	// Increment user's NumEventsCreated
-	user.NumEventsCreated++
-	db.UsersCollection.UpdateOne(context.Background(), bson.M{"_id": user.Id}, bson.M{"$set": user})
+	db.UsersCollection.UpdateOne(context.Background(), bson.M{"_id": user.Id}, bson.M{"$inc": bson.M{"numEventsCreated": 1}})
 
 	c.JSON(http.StatusCreated, gin.H{"eventId": newId.Hex(), "shortId": shortId})
 }

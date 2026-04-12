@@ -73,8 +73,30 @@ export default {
     },
   },
   methods: {
+    isBlockedUrl(urlStr) {
+      try {
+        const parsed = new URL(urlStr)
+        const hostname = parsed.hostname
+        if (hostname === window.location.hostname) return true
+        // note, this is just extra client-side validation for optimistic UI. the server checks the outgoing ip properly
+        if (
+          /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.|169\.254\.|0\.0\.0\.0|localhost$|\[?::1\]?)/.test(
+            hostname
+          )
+        )
+          return true
+        return false
+      } catch {
+        return false
+      }
+    },
     async importEvent() {
       if (!this.url.trim() || this.loading) return
+
+      if (this.isBlockedUrl(this.url.trim())) {
+        this.error = "Not allowed to import from this URL."
+        return
+      }
 
       this.error = ""
       this.loading = true
@@ -90,6 +112,9 @@ export default {
           "invalid-url": "Invalid URL. Please enter a valid Timeful event URL.",
           "remote-fetch-failed": "Could not reach the remote server.",
           "remote-event-not-found": "Event not found on the remote server.",
+          "private-address": "Not allowed to import from this URL.",
+          "remote-responses-failed":
+            "Event found but could not fetch responses from the remote server.",
         }
         this.error = errorMessages[msg] || msg
       } finally {

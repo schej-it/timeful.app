@@ -11,8 +11,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
@@ -98,14 +100,18 @@ func main() {
 	router.Use(gin.Recovery())
 
 	// Cors
-	// router.Use(cors.New(cors.Config{
-	// 	AllowOrigins:     []string{"http://localhost:8080", "https://www.schej.it", "https://schej.it", "https://www.timeful.app", "https://timeful.app", "https://staging.timeful.app"},
-	// 	AllowMethods:     []string{"GET", "POST", "PATCH", "PUT", "DELETE"},
-	// 	AllowHeaders:     []string{"Content-Type"},
-	// 	ExposeHeaders:    []string{"Content-Length"},
-	// 	AllowCredentials: true,
-	// 	MaxAge:           12 * time.Hour,
-	// }))
+	corsOrigins := os.Getenv("CORS_ORIGINS")
+	if corsOrigins == "" {
+		corsOrigins = "https://www.schej.it,https://schej.it,https://www.timeful.app,https://timeful.app"
+	}
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     strings.Split(corsOrigins, ","),
+		AllowMethods:     []string{"GET", "POST", "PATCH", "PUT", "DELETE"},
+		AllowHeaders:     []string{"Content-Type"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Init database
 	closeConnection := db.Init()
@@ -218,7 +224,7 @@ func noRouteHandler() gin.HandlerFunc {
 			// params["enableStickyFooter"] = true
 
 			if event != nil {
-				title := fmt.Sprintf("%s - Timeful", event.Name)
+				title := fmt.Sprintf("%s - Timeful (formerly Schej)", event.Name)
 				params["title"] = title
 				params["ogTitle"] = title
 
