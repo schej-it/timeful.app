@@ -24,16 +24,16 @@ var TasksClient *cloudtasks.Client
 func InitTasks() func() {
 	credsFile := os.Getenv("SERVICE_ACCOUNT_KEY_PATH")
 	if credsFile == "" || credsFile == "?" {
-		logger.StdErr.Println("SERVICE_ACCOUNT_KEY_PATH not set, skipping Cloud Tasks initialization")
+		logger.StdOut.Println("SERVICE_ACCOUNT_KEY_PATH not set, Cloud Tasks disabled")
 		return func() {}
 	}
 
 	ctx := context.Background()
-
 	var err error
 	TasksClient, err = cloudtasks.NewClient(ctx, option.WithCredentialsFile(credsFile))
 	if err != nil {
-		logger.StdErr.Panicln(err)
+		logger.StdErr.Println("Failed to initialize Cloud Tasks:", err)
+		return func() {}
 	}
 
 	// Return function to close client

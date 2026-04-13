@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -99,8 +100,12 @@ func main() {
 	router.Use(gin.Recovery())
 
 	// Cors
+	corsOrigins := os.Getenv("CORS_ORIGINS")
+	if corsOrigins == "" {
+		corsOrigins = "https://www.schej.it,https://schej.it,https://www.timeful.app,https://timeful.app"
+	}
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:8080", "https://www.schej.it", "https://schej.it", "https://www.timeful.app", "https://timeful.app", "https://staging.timeful.app"},
+		AllowOrigins:     strings.Split(corsOrigins, ","),
 		AllowMethods:     []string{"GET", "POST", "PATCH", "PUT", "DELETE"},
 		AllowHeaders:     []string{"Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -131,21 +136,38 @@ func main() {
 	routes.InitFolders(apiRouter)
 	slackbot.InitSlackbot(apiRouter)
 
-	// Get frontend path
-	frontendPath := "../frontend/dist"
-	err = filepath.WalkDir(frontendPath, func(path string, d fs.DirEntry, err error) error {
+	frontendDist := os.Getenv("FRONTEND_DIST")
+	if frontendDist == "" {
+		frontendDist = "./frontend/dist"
+		if _, err := os.Stat(frontendDist); os.IsNotExist(err) {
+			frontendDist = "../frontend/dist"
+		}
+	}
+
+	err = filepath.WalkDir(frontendDist, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		if !d.IsDir() && d.Name() != "index.html" {
-			split := splitPath(path)
-			newPath := filepath.Join(split[3:]...)
-			router.StaticFile(fmt.Sprintf("/%s", newPath), path)
+			// Get the path relative to frontendDist
+			relPath, err := filepath.Rel(frontendDist, path)
+			if err != nil || relPath == "" || relPath == "." {
+				return nil
+			}
+			router.StaticFile(fmt.Sprintf("/%s", relPath), path)
 		}
 		return nil
 	})
 	if err != nil {
-		log.Fatalf("failed to walk directories: %s", err)
+		logger.StdErr.Printf("Warning: failed to walk frontend dist: %s", err)
 	}
 
-	router.LoadHTMLFiles(filepath.Join(frontendPath, "index.html"))
+	indexPath := filepath.Join(frontendDist, "index.html")
+	if _, err := os.Stat(indexPath); err == nil {
+		router.LoadHTMLFiles(indexPath)
+	} else {
+		logger.StdErr.Printf("Warning: index.html not found at %s", indexPath)
+	}
 	router.NoRoute(noRouteHandler())
 
 	// Init swagger documentation
@@ -163,7 +185,8 @@ func main() {
 func loadDotEnv() {
 	err := godotenv.Load(".env")
 	if err != nil {
-		logger.StdErr.Panicln("Error loading .env file")
+		// .env file is optional - env vars can be passed directly (e.g., via Docker)
+		logger.StdOut.Println("No .env file found, using environment variables")
 	}
 
 	// Load stripe key
