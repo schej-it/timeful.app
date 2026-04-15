@@ -102,7 +102,7 @@ func main() {
 	// Cors
 	corsOrigins := os.Getenv("CORS_ORIGINS")
 	if corsOrigins == "" {
-		corsOrigins = "https://www.schej.it,https://schej.it,https://www.timeful.app,https://timeful.app"
+		corsOrigins = "https://www.schej.it,https://schej.it,https://www.timeful.app,https://timeful.app,http://localhost:8080"
 	}
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     strings.Split(corsOrigins, ","),
