@@ -3,8 +3,8 @@
     <FormerlyKnownAs
       class="tw-mx-auto tw-mb-10 tw-mt-3 tw-max-w-6xl tw-pl-4 sm:tw-pl-12"
     />
-      <!-- Video Ad (desktop only) -->
-      <div v-if="!isPhone" ref="videoAdContainer"></div>
+    <!-- Video Ad (desktop only) -->
+    <div v-if="!isPhone" ref="videoAdContainer"></div>
     <div v-if="event" class="tw-mt-8 tw-h-full">
       <!-- Mark availability option dialog -->
       <MarkAvailabilityDialog
