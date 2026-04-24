@@ -43,37 +43,42 @@
             "
             @openRemoveDialog="openRemoveDialog"
           ></CalendarAccount>
+          <v-dialog
+            v-if="allowAddCalendarAccount"
+            v-model="addCalendarAccountDialog"
+            width="400"
+            content-class="tw-m-0"
+          >
+            <template v-slot:activator="{ on, attrs }">
+              <div>
+                <v-btn
+                  text
+                  color="primary"
+                  :class="
+                    toggleState
+                      ? '-tw-ml-2 tw-mt-0 tw-w-min tw-px-2'
+                      : '-tw-ml-2 tw-w-fit tw-px-2'
+                  "
+                  v-bind="attrs"
+                  v-on="on"
+                  >+ Add calendar</v-btn
+                >
+                <p class="tw-mb-0 tw-mt-1 tw-text-xs tw-text-dark-gray">
+                  Only your available times are shared with respondents. Your
+                  personal event details are never shared.
+                </p>
+              </div>
+            </template>
+            <CalendarTypeSelector
+              :visible="addCalendarAccountDialog"
+              @addGoogleCalendar="addGoogleCalendar"
+              @addOutlookCalendar="addOutlookCalendar"
+              @addedCalendar="addedCalendar"
+            />
+          </v-dialog>
         </div>
       </span>
     </v-expand-transition>
-    <v-dialog
-      v-if="allowAddCalendarAccount && (showCalendars || !toggleState)"
-      v-model="addCalendarAccountDialog"
-      width="400"
-      content-class="tw-m-0"
-    >
-      <template v-slot:activator="{ on, attrs }">
-        <div>
-          <v-btn
-            text
-            color="primary"
-            :class="
-              toggleState ? '-tw-ml-2 tw-mt-0 tw-w-min tw-px-2' : 'tw-w-full'
-            "
-            v-bind="attrs"
-            v-on="on"
-            >+ Add calendar</v-btn
-          >
-          <p class="tw-text-xs tw-text-dark-gray">Only your available times are shared with respondents. Your personal event details are never shared.</p>
-        </div>
-      </template>
-      <CalendarTypeSelector
-        :visible="addCalendarAccountDialog"
-        @addGoogleCalendar="addGoogleCalendar"
-        @addOutlookCalendar="addOutlookCalendar"
-        @addedCalendar="addedCalendar"
-      />
-    </v-dialog>
     <v-dialog v-model="removeDialog" width="500" persistent>
       <v-card>
         <v-card-title>Are you sure?</v-card-title>
