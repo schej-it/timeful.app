@@ -24,6 +24,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue"
+import { Temporal } from "temporal-polyfill"
 
 const props = withDefaults(
   defineProps<{
@@ -54,23 +55,36 @@ function pad2(n: number): string {
   return String(n).padStart(2, "0")
 }
 
-function toIsoDate(d: Date): string {
-  return `${String(d.getFullYear())}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+function toIsoDate(plainDate: Temporal.PlainDate): string {
+  return plainDate.toString()
 }
 
 const dateValue = computed<Date[]>({
-  get: () => props.modelValue.map((s) => new Date(s)),
+  get: () => props.modelValue.map((s) => {
+    const plainDate = Temporal.PlainDate.from(s)
+    // BOUNDARY CONVERSION: Vuetify's v-date-picker requires native Date objects
+    // We convert from Temporal.PlainDate (our internal representation) to Date (library requirement)
+    return new Date(plainDate.year, plainDate.month - 1, plainDate.day)
+  }),
   set: (val) => {
     const arr = Array.isArray(val) ? val : [val]
     emit(
       "update:modelValue",
-      arr.map((d) => toIsoDate(d))
+      arr.map((d) => {
+        // BOUNDARY CONVERSION: Convert native Date from Vuetify back to ISO string using Temporal
+        const plainDate = Temporal.PlainDate.from({
+          year: d.getFullYear(),
+          month: d.getMonth() + 1,
+          day: d.getDate(),
+        })
+        return toIsoDate(plainDate)
+      })
     )
   },
 })
 
-const today = new Date()
-const pickerDate = ref(`${String(today.getFullYear())}-${pad2(today.getMonth() + 1)}`)
+const today = Temporal.Now.plainDateISO()
+const pickerDate = ref(`${String(today.year)}-${pad2(today.month)}`)
 
 function onMonthChange(month: number) {
   const [year] = pickerDate.value.split("-")
@@ -79,7 +93,7 @@ function onMonthChange(month: number) {
 
 function onYearChange(year: number) {
   const parts = pickerDate.value.split("-")
-  const month = parts[1] ?? pad2(today.getMonth() + 1)
+  const month = parts[1] ?? pad2(today.month)
   pickerDate.value = `${String(year)}-${month}`
 }
 

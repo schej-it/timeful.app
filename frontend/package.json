@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@gtm-support/vue-gtm": "^3.1.0",
+    "temporal-polyfill": "^0.3.2",
     "@mdi/font": "^7.4.47",
     "@rive-app/canvas": "^2.10.0",
     "@unhead/vue": "^1.11.11",
@@ -24,7 +25,6 @@
     "canvas-confetti": "^1.9.3",
     "color": "^4.2.3",
     "copy-image-clipboard": "^2.1.2",
-    "dayjs": "^1.11.10",
     "is-ua-webview": "^1.1.2",
     "moment": "^2.30.1",
     "pinia": "^2.2.6",

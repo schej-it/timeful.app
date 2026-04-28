@@ -76,6 +76,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue"
+import { Temporal } from "temporal-polyfill"
 
 interface Preferences {
   necessary: boolean
@@ -107,7 +108,7 @@ const checkConsentStatus = () => {
 
 const saveConsent = () => {
   const consentData = {
-    timestamp: new Date().toISOString(),
+    timestamp: Temporal.Now.instant().toString(),
     preferences: preferences.value,
   }
   localStorage.setItem("cookieConsent", JSON.stringify(consentData))

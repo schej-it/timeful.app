@@ -2,9 +2,9 @@
   General utils
 */
 
-import { eventTypes } from "@/constants"
+import { eventTypes, UTC } from "@/constants"
 import type { Event, User } from "@/types"
-import { dateToDowDate, dateToTimeNum, type DateLike } from "./date_utils"
+import { dateToDowDate, toZDT, type ZonedDateTime } from "./date_utils"
 import Color from "color"
 import type { useDisplay } from "vuetify"
 
@@ -111,13 +111,18 @@ export const dataURItoBlob = (dataURI: string): Blob => {
 /** Reformats the given event object to the format we want */
 export const processEvent = (event: Event): void => {
   if (!event.dates?.length || event.duration == null) return
-  let startDate: DateLike = event.dates[0]
+  let startDate: ZonedDateTime = event.dates[0]
   if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
     startDate = dateToDowDate(event.dates, startDate, 0, true)
   }
 
-  event.startTime = dateToTimeNum(startDate, true)
-  event.endTime = (event.startTime + event.duration) % 24
+  // Convert to PlainTime for startTime using toZDT helper
+  const startZDT = toZDT(startDate, UTC)
+  event.startTime = startZDT.toPlainTime()
+
+  // Calculate endTime by adding duration to startTime
+  const endZDT = startZDT.add(event.duration)
+  event.endTime = endZDT.toPlainTime()
 }
 
 /** Checks whether email is a valid email */
@@ -167,8 +172,8 @@ export const isTouchEnabled = (): boolean => {
   return (
     "ontouchstart" in window ||
     navigator.maxTouchPoints > 0 ||
-    ((navigator as Navigator & { msMaxTouchPoints?: number }).msMaxTouchPoints ??
-      0) > 0
+    ((navigator as Navigator & { msMaxTouchPoints?: number })
+      .msMaxTouchPoints ?? 0) > 0
   )
 }
 
@@ -226,7 +231,8 @@ export const lightOrDark = (color: string): "light" | "dark" => {
   // Check the format of the color, HEX or RGB?
   if (/^rgb/.exec(color)) {
     // If RGB --> store the red, green, blue values in separate variables
-    const match = /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)$/.exec(color)
+    const match =
+      /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)$/.exec(color)
     if (!match) {
       return "light"
     }
@@ -314,29 +320,32 @@ function weekStart(
 ): "sun" | "sat" | "mon" {
   const regionSat = "AEAFBHDJDZEGIQIRJOKWLYOMQASDSY".match(/../g) as string[]
   const regionSun =
-    ("AGARASAUBDBRBSBTBWBZCACNCODMDOETGTGUHKHNIDILINJMJPKEKHKRLAMHMMMOMTMXMZNINPPAPEPHPKPRPTPYSASGSVTHTTTWUMUSVEVIWSYEZAZW".match(
+    "AGARASAUBDBRBSBTBWBZCACNCODMDOETGTGUHKHNIDILINJMJPKEKHKRLAMHMMMOMTMXMZNINPPAPEPHPKPRPTPYSASGSVTHTTTWUMUSVEVIWSYEZAZW".match(
       /../g
-    ) as string[])
+    ) as string[]
   const languageSat = ["ar", "arq", "arz", "fa"]
   const languageSun =
-    ("amasbndzengnguhehiidjajvkmknkolomhmlmrmtmyneomorpapssdsmsnsutatethtnurzhzu".match(
+    "amasbndzengnguhehiidjajvkmknkolomhmlmrmtmyneomorpapssdsmsnsutatethtnurzhzu".match(
       /../g
-    ) as string[])
+    ) as string[]
 
   return region
     ? regionSun.includes(region)
       ? "sun"
       : regionSat.includes(region)
-        ? "sat"
-        : "mon"
+      ? "sat"
+      : "mon"
     : language && languageSun.includes(language)
-      ? "sun"
-      : language && languageSat.includes(language)
-        ? "sat"
-        : "mon"
+    ? "sun"
+    : language && languageSat.includes(language)
+    ? "sat"
+    : "mon"
 }
 function weekStartLocale(locale: string): "sun" | "sat" | "mon" {
-  const parts = /^([a-z]{2,3})(?:-([a-z]{3})(?=$|-))?(?:-([a-z]{4})(?=$|-))?(?:-([a-z]{2}|\d{3})(?=$|-))?/i.exec(locale)
+  const parts =
+    /^([a-z]{2,3})(?:-([a-z]{3})(?=$|-))?(?:-([a-z]{4})(?=$|-))?(?:-([a-z]{2}|\d{3})(?=$|-))?/i.exec(
+      locale
+    )
   if (!parts) return "mon"
   return weekStart(parts[4], parts[1])
 }

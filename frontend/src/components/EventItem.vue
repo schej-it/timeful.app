@@ -207,7 +207,6 @@
 import { computed, ref, watch } from "vue"
 import { storeToRefs } from "pinia"
 import { getDateRangeStringForEvent, _delete, post } from "@/utils"
-import type { EventLike } from "@/utils/date_utils"
 import { eventTypes } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
@@ -233,7 +232,7 @@ const duplicateDialogOptions = ref({
 })
 const removeDialog = ref(false)
 
-const dateString = computed(() => getDateRangeStringForEvent(props.event as EventLike))
+const dateString = computed(() => getDateRangeStringForEvent(props.event))
 const isOwner = computed(() => props.event.ownerId === authUser.value?._id)
 const isGroup = computed(() => props.event.type === eventTypes.GROUP)
 const isDow = computed(() => props.event.type === eventTypes.DOW)

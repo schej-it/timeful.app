@@ -14,7 +14,6 @@
 import { computed } from "vue"
 import { dateToDowDate } from "@/utils"
 import type { Event } from "@/types"
-import dayjs from "dayjs"
 
 const props = withDefaults(
   defineProps<{
@@ -37,11 +36,12 @@ const weekText = computed(() => {
     props.weekOffset,
     true
   )
-  date.setDate(date.getDate() - date.getDay())
-  if (props.startOnMonday) {
-    date.setDate(date.getDate() + 1)
-  }
-  return dayjs(date).format("M/D")
+  // Get Sunday (or Monday if startOnMonday) of that week
+  const dayOfWeek = date.dayOfWeek // 1-7 (Mon-Sun)
+  const daysToSubtract = props.startOnMonday ? dayOfWeek - 1 : dayOfWeek % 7
+  const weekStart = date.subtract({ days: daysToSubtract })
+  const plainDate = weekStart.toPlainDate()
+  return `${String(plainDate.month)}/${String(plainDate.day)}`
 })
 
 const nextWeek = () => { emit("update:weekOffset", props.weekOffset + 1); }

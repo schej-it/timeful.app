@@ -10,7 +10,8 @@ import {
   updateFolder as updateFolderService,
 } from "@/utils/services/FolderService"
 import { archiveEvent as archiveEventService } from "@/utils/services/EventService"
-import type { Event, Folder, NewDialogOptions, User } from "@/types"
+import type { Event, Folder, NewDialogOptions, User, RawEvent } from "@/types"
+import { fromRawEvent } from "@/types"
 
 export const useMainStore = defineStore("main", () => {
   const error = ref("")
@@ -201,7 +202,7 @@ export const useMainStore = defineStore("main", () => {
     if (authUser.value) {
       return Promise.allSettled([
         get<Folder[]>("/user/folders"),
-        get<Event[]>("/user/events"),
+        get<RawEvent[]>("/user/events"),
       ])
         .then(([foldersResult, eventsResult]) => {
           if (
@@ -209,7 +210,9 @@ export const useMainStore = defineStore("main", () => {
             eventsResult.status === "fulfilled"
           ) {
             setFolders(foldersResult.value)
-            setEvents(eventsResult.value)
+            // Convert raw events to Temporal-based events
+            const convertedEvents = eventsResult.value.map(fromRawEvent)
+            setEvents(convertedEvents)
           } else {
             showError("There was a problem fetching events!")
             console.error(

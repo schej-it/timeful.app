@@ -1,6 +1,11 @@
 import { ref, type Ref, type ComputedRef } from "vue"
+import { Temporal } from "temporal-polyfill"
 import { clamp, dateToDowDate, isBetween } from "@/utils"
-import { availabilityTypes, eventTypes, type AvailabilityType } from "@/constants"
+import {
+  availabilityTypes,
+  eventTypes,
+  type AvailabilityType,
+} from "@/constants"
 import {
   DRAG_TYPES,
   SPLIT_GAP_HEIGHT,
@@ -24,34 +29,38 @@ export interface UseDragPaintOptions {
   // grid info
   splitTimes: ComputedRef<TimeItem[][]>
   times: ComputedRef<TimeItem[]>
-  days: ComputedRef<{ isConsecutive?: boolean; dateObject: Date }[]>
+  days: ComputedRef<
+    { isConsecutive?: boolean; dateObject: Temporal.ZonedDateTime }[]
+  >
   monthDays: ComputedRef<MonthDayItem[]>
-  monthDayIncluded: ComputedRef<Map<number, boolean>>
+  monthDayIncluded: ComputedRef<Map<Temporal.ZonedDateTime, boolean>>
   columnOffsets: ComputedRef<number[]>
   timeslot: Ref<{ width: number; height: number }>
 
   // mutable state from other composables
-  availability: Ref<Set<number>>
-  ifNeeded: Ref<Set<number>>
-  tempTimes: Ref<Set<number>>
+  availability: Ref<Set<Temporal.ZonedDateTime>>
+  ifNeeded: Ref<Set<Temporal.ZonedDateTime>>
+  tempTimes: Ref<Set<Temporal.ZonedDateTime>>
   availabilityType: Ref<AvailabilityType>
   signUpBlocksByDay: Ref<SignUpBlockLite[][]>
   signUpBlocksToAddByDay: Ref<SignUpBlockLite[][]>
-  manualAvailability: Ref<Record<number, Set<number>>>
+  manualAvailability: Ref<
+    Map<Temporal.ZonedDateTime, Set<Temporal.ZonedDateTime>>
+  >
   curScheduledEvent: Ref<ScheduledEvent | null>
   maxSignUpBlockRowSize: ComputedRef<number | null>
 
   // helpers
   allowDrag: ComputedRef<boolean>
-  getDateFromRowCol: (row: number, col: number) => Date | null
+  getDateFromRowCol: (row: number, col: number) => Temporal.ZonedDateTime | null
   getAvailabilityForColumn: (
     col: number,
-    availability?: number[]
-  ) => Set<number>
+    availability?: Temporal.ZonedDateTime[]
+  ) => Set<Temporal.ZonedDateTime>
   createSignUpBlock: (
     dayIndex: number,
-    hoursOffset: number,
-    hoursLength: number
+    hoursOffset: Temporal.Duration,
+    hoursLength: Temporal.Duration
   ) => SignUpBlockLite
   scrollToSignUpBlock?: (id: string) => void
 }
@@ -62,7 +71,9 @@ export function useDragPaint(opts: UseDragPaintOptions) {
   const dragStart = ref<RowCol | null>(null)
   const dragCur = ref<RowCol | null>(null)
 
-  const normalizeXY = (e: MouseEvent | TouchEvent): { x: number; y: number } => {
+  const normalizeXY = (
+    e: MouseEvent | TouchEvent
+  ): { x: number; y: number } => {
     let clientX: number
     let clientY: number
     if ("touches" in e && e.touches.length > 0) {
@@ -122,10 +133,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
     const dc = dragCur.value
 
     if (opts.event.value.daysOnly) {
-      if (
-        isBetween(row, ds.row, dc.row) ||
-        isBetween(row, dc.row, ds.row)
-      ) {
+      if (isBetween(row, ds.row, dc.row) || isBetween(row, dc.row, ds.row)) {
         if (dc.row < ds.row) {
           return (
             (dc.row === row && dc.col <= col) ||
@@ -140,9 +148,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
             (ds.row !== row && dc.row !== row)
           )
         }
-        return (
-          isBetween(col, ds.col, dc.col) || isBetween(col, dc.col, ds.col)
-        )
+        return isBetween(col, ds.col, dc.col) || isBetween(col, dc.col, ds.col)
       }
       return false
     }
@@ -164,8 +170,11 @@ export function useDragPaint(opts: UseDragPaintOptions) {
         if (
           isBetween(
             row,
-            block.hoursOffset * 4,
-            (block.hoursOffset + block.hoursLength) * 4 - 1
+            block.hoursOffset.total("hours") * 4,
+            (block.hoursOffset.total("hours") +
+              block.hoursLength.total("hours")) *
+              4 -
+              1
           )
         ) {
           opts.scrollToSignUpBlock?.(block._id)
@@ -182,7 +191,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
 
     if (
       opts.event.value.daysOnly &&
-      !opts.monthDayIncluded.value.get(date.getTime())
+      !opts.monthDayIncluded.value.get(date)
     )
       return
 
@@ -196,11 +205,11 @@ export function useDragPaint(opts: UseDragPaintOptions) {
       dragType.value = DRAG_TYPES.ADD
     } else if (
       (opts.state.value === states.SET_SPECIFIC_TIMES &&
-        opts.tempTimes.value.has(date.getTime())) ||
+        opts.tempTimes.value.has(date)) ||
       (opts.availabilityType.value === availabilityTypes.AVAILABLE &&
-        opts.availability.value.has(date.getTime())) ||
+        opts.availability.value.has(date)) ||
       (opts.availabilityType.value === availabilityTypes.IF_NEEDED &&
-        opts.ifNeeded.value.has(date.getTime()))
+        opts.ifNeeded.value.has(date))
     ) {
       dragType.value = DRAG_TYPES.REMOVE
     } else {
@@ -266,29 +275,29 @@ export function useDragPaint(opts: UseDragPaintOptions) {
 
           if (eventValue.daysOnly) {
             const isMonthDayIncluded =
-              opts.monthDayIncluded.value.get(date.getTime()) &&
+              opts.monthDayIncluded.value.get(date) &&
               inDragRange(r, c)
             if (!isMonthDayIncluded) continue
           }
 
           if (dragType.value === DRAG_TYPES.ADD) {
             if (opts.state.value === states.SET_SPECIFIC_TIMES) {
-              opts.tempTimes.value.add(date.getTime())
+              opts.tempTimes.value.add(date)
             } else {
               if (opts.availabilityType.value === availabilityTypes.AVAILABLE) {
-                opts.availability.value.add(date.getTime())
-                opts.ifNeeded.value.delete(date.getTime())
+                opts.availability.value.add(date)
+                opts.ifNeeded.value.delete(date)
               } else {
-                opts.ifNeeded.value.add(date.getTime())
-                opts.availability.value.delete(date.getTime())
+                opts.ifNeeded.value.add(date)
+                opts.availability.value.delete(date)
               }
             }
           } else {
             if (opts.state.value === states.SET_SPECIFIC_TIMES) {
-              opts.tempTimes.value.delete(date.getTime())
+              opts.tempTimes.value.delete(date)
             } else {
-              opts.availability.value.delete(date.getTime())
-              opts.ifNeeded.value.delete(date.getTime())
+              opts.availability.value.delete(date)
+              opts.ifNeeded.value.delete(date)
             }
           }
 
@@ -307,34 +316,35 @@ export function useDragPaint(opts: UseDragPaintOptions) {
               true
             )
 
-            if (
-              !(startDateOfDay.getTime() in opts.manualAvailability.value)
-            ) {
-              opts.manualAvailability.value[startDateOfDay.getTime()] =
-                new Set<number>()
+            const startDateOfDayKey = startDateOfDay
+            if (!opts.manualAvailability.value.has(startDateOfDayKey)) {
+              opts.manualAvailability.value.set(
+                startDateOfDayKey,
+                new Set<Temporal.ZonedDateTime>()
+              )
 
               const existingAvailability = opts.getAvailabilityForColumn(c)
               for (const a of existingAvailability) {
                 const convertedDate = dateToDowDate(
                   eventDates,
-                  new Date(a),
+                  a,
                   opts.weekOffset.value,
                   true
                 )
-                opts.manualAvailability.value[startDateOfDay.getTime()].add(
-                  convertedDate.getTime()
-                )
+                opts.manualAvailability.value
+                  .get(startDateOfDayKey)
+                  ?.add(convertedDate)
               }
             }
 
             if (dragType.value === DRAG_TYPES.ADD) {
-              opts.manualAvailability.value[startDateOfDay.getTime()].add(
-                discreteDate.getTime()
-              )
+              opts.manualAvailability.value
+                .get(startDateOfDayKey)
+                ?.add(discreteDate)
             } else {
-              opts.manualAvailability.value[startDateOfDay.getTime()].delete(
-                discreteDate.getTime()
-              )
+              opts.manualAvailability.value
+                .get(startDateOfDayKey)
+                ?.delete(discreteDate)
             }
           }
         }
@@ -353,9 +363,12 @@ export function useDragPaint(opts: UseDragPaintOptions) {
       }
     } else if (opts.state.value === states.EDIT_SIGN_UP_BLOCKS) {
       const dayIndex = ds.col
-      const hoursOffset = ds.row / 4
-      const hoursLength = (dc.row - ds.row + 1) / 4
-      if (hoursLength > 0) {
+      const hoursOffsetNum = ds.row / 4
+      const hoursLengthNum = (dc.row - ds.row + 1) / 4
+      if (hoursLengthNum > 0) {
+        // Convert numbers to Duration for createSignUpBlock
+        const hoursOffset = Temporal.Duration.from({ hours: hoursOffsetNum })
+        const hoursLength = Temporal.Duration.from({ hours: hoursLengthNum })
         opts.signUpBlocksToAddByDay.value[dayIndex].push(
           opts.createSignUpBlock(dayIndex, hoursOffset, hoursLength)
         )

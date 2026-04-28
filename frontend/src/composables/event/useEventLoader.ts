@@ -3,11 +3,10 @@ import {
   get,
   getCalendarEventsMap,
   processEvent,
-  isDstObserved,
-  doesDstExist,
 } from "@/utils"
 import { eventTypes, guestUserId } from "@/constants"
-import type { Event, User } from "@/types"
+import type { Event, User, RawEvent } from "@/types"
+import { fromRawEvent } from "@/types"
 import type {
   CalendarEventLite,
   CalendarEventsMap,
@@ -52,7 +51,9 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     }
     let url = `/events/${sanitizedId}`
     if (guestName && guestName.length > 0) url += `?guestName=${encodeURIComponent(guestName)}`
-    event.value = await get<Event>(url)
+    const rawEvent = await get<RawEvent>(url)
+    // Convert raw event to Temporal-based event
+    event.value = fromRawEvent(rawEvent)
     processEvent(event.value)
   }
 
@@ -78,18 +79,7 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
         if (curWeekOffset !== opts.weekOffset.value) return
         const avails = result as Record<string, CalendarEntry[]>
         calendarAvailabilities.value = avails
-        for (const userId in calendarAvailabilities.value) {
-          for (const entry of calendarAvailabilities.value[userId]) {
-            const startDate = new Date(entry.startDate)
-            const endDate = new Date(entry.endDate)
-            if (doesDstExist(startDate) && !isDstObserved(startDate)) {
-              startDate.setHours(startDate.getHours() - 1)
-              endDate.setHours(endDate.getHours() - 1)
-            }
-            entry.startDate = startDate.toISOString()
-            entry.endDate = endDate.toISOString()
-          }
-        }
+        // With Temporal, DST is handled automatically - no manual adjustment needed
       })
       .catch((err: unknown) => { console.error(err) })
   }
@@ -112,16 +102,8 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
           for (const calendarId in calendarEventsMap.value) {
             const entries = calendarEventsMap.value[calendarId].calendarEvents
             if (!entries) continue
-            for (const entry of entries) {
-              const startDate = new Date(entry.startDate)
-              const endDate = new Date(entry.endDate)
-              if (doesDstExist(startDate) && !isDstObserved(startDate)) {
-                startDate.setHours(startDate.getHours() - 1)
-                endDate.setHours(endDate.getHours() - 1)
-              }
-              entry.startDate = startDate.toISOString()
-              entry.endDate = endDate.toISOString()
-            }
+            // With Temporal, DST is handled automatically - no manual adjustment needed
+            // The dates are already ZonedDateTime objects with proper timezone info
           }
         }
 

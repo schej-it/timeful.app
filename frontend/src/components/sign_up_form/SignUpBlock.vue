@@ -157,8 +157,8 @@ const newName = ref("")
 const timeRangeString = computed(() => {
   if (!props.signUpBlock.startDate || !props.signUpBlock.endDate) return ""
   return getStartEndDateString(
-    new Date(props.signUpBlock.startDate),
-    new Date(props.signUpBlock.endDate)
+    props.signUpBlock.startDate,
+    props.signUpBlock.endDate
   )
 })
 

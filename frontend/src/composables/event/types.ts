@@ -1,4 +1,5 @@
 import type { states } from "@/composables/schedule_overlap/types"
+import type { Temporal } from "temporal-polyfill"
 
 export interface ScheduleOverlapInstance {
   editing: boolean
@@ -15,7 +16,10 @@ export interface ScheduleOverlapInstance {
   stopEditing(): void
   setAvailabilityAutomatically(): void
   populateUserAvailability(userId: string): void
-  submitAvailability(payload?: { name: string; email: string }, sharedCalendarAccounts?: Record<string, unknown>): Promise<void>
+  submitAvailability(
+    payload?: { name: string; email: string },
+    sharedCalendarAccounts?: Record<string, unknown>
+  ): Promise<void>
   submitNewSignUpBlocks(): Promise<boolean>
   deleteAvailability(name?: string): Promise<void>
   resetCurUserAvailability(): void
@@ -23,5 +27,28 @@ export interface ScheduleOverlapInstance {
   scheduleEvent(): void
   cancelScheduleEvent(): void
   confirmScheduleEvent(): void
-  getAllValidTimeRanges(): Map<number, { row: number; col: number; startTime: Date; endTime: Date }>
+  getAllValidTimeRanges(): Map<
+    number,
+    {
+      row: number
+      col: number
+      startTime: Temporal.ZonedDateTime
+      endTime: Temporal.ZonedDateTime
+    }
+  >
+}
+
+export interface ContactsPayload {
+  emails?: string[]
+  name?: string
+  startTime?: Temporal.PlainTime
+  endTime?: Temporal.PlainTime
+  daysOnly?: boolean
+  selectedDateOption?: string
+  selectedDaysOfWeek?: number[]
+  selectedDays?: Temporal.PlainDate[]
+  notificationsEnabled?: boolean
+  timezone?: { value?: string; [k: string]: unknown }
+  specificTimesEnabled?: boolean
+  startOnMonday?: boolean
 }

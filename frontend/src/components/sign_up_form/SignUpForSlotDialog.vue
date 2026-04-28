@@ -87,6 +87,7 @@ import { validateEmail } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import SignUpBlock from "./SignUpBlock.vue"
 import type { Event } from "@/types"
+import type { Temporal } from "temporal-polyfill"
 
 type Rule = (val: string) => true | string
 interface FormRef {
@@ -98,8 +99,8 @@ export interface SignUpBlockProp {
   _id?: string
   name?: string
   capacity?: number
-  startDate?: number
-  endDate?: number
+  startDate?: Temporal.ZonedDateTime
+  endDate?: Temporal.ZonedDateTime
   responses?: {
     user?: {
       _id?: string

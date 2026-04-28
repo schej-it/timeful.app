@@ -1,21 +1,26 @@
 import { computed, ref, watch, type Ref } from "vue"
+import { Temporal } from "temporal-polyfill"
 import {
   dateToDowDate,
   getDateHoursOffset,
   getScheduleTimezoneOffset,
   getSpecificTimesDayStarts,
   getTimezoneReferenceDateForEvent,
+  plainTimeToTimeNum,
   prefersStartOnMonday,
   timeNumToTimeText,
   utcTimeToLocalTime,
+  utcTimeToLocalTimeNum,
   userPrefers12h,
   type EventLike as DateUtilsEventLike,
 } from "@/utils"
 import {
   eventTypes,
   timeTypes,
-  timeslotDurations,
+  durations,
   type TimeType,
+  hoursPlainTime,
+  UTC,
 } from "@/constants"
 import {
   HOUR_HEIGHT,
@@ -92,8 +97,8 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
   )
   const isWeekly = computed(() => event.value.type === eventTypes.DOW)
   const isGroup = computed(() => event.value.type === eventTypes.GROUP)
-  const isSpecificTimes = computed(
-    () => Boolean((event.value as Record<string, unknown>).hasSpecificTimes)
+  const isSpecificTimes = computed(() =>
+    Boolean((event.value as Record<string, unknown>).hasSpecificTimes)
   )
 
   const daysOfWeek = computed<string[]>(() => {
@@ -105,68 +110,92 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       : ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
   })
 
-  const timezoneOffset = computed<number>(() =>
+  const timezoneOffset = computed<Temporal.Duration>(() =>
     getScheduleTimezoneOffset(event.value, curTimezone.value, weekOffset.value)
   )
 
   const timezoneReferenceDate = computed(() =>
-    getTimezoneReferenceDateForEvent(event.value as DateUtilsEventLike, weekOffset.value)
-  )
-
-  const dayOffset = computed(() =>
-    Math.floor(
-      (((event.value as Record<string, unknown>).startTime as number) - timezoneOffset.value / 60) / 24
+    getTimezoneReferenceDateForEvent(
+      event.value as DateUtilsEventLike,
+      weekOffset.value
     )
   )
 
-  const timeslotDuration = computed<number>(
+  const dayOffset = computed(() => {
+    const startTimeNum = event.value.startTime
+      ? plainTimeToTimeNum(event.value.startTime)
+      : 0
+    // Convert Duration to minutes, then to hours for division
+    return Temporal.Duration.from({
+      days: Math.floor(
+        (startTimeNum - timezoneOffset.value.total("hours")) / 24
+      ),
+    })
+  })
+
+  const timeslotDuration = computed<Temporal.Duration>(
     () =>
-      (event.value as { timeIncrement?: number }).timeIncrement ??
-      timeslotDurations.FIFTEEN_MINUTES
+      (event.value as { timeIncrement?: Temporal.Duration }).timeIncrement ??
+      durations.FIFTEEN_MINUTES
   )
 
   const timeslotHeight = computed(() => {
     const dur = timeslotDuration.value
-    if (dur === timeslotDurations.FIFTEEN_MINUTES) return Math.floor(HOUR_HEIGHT / 4)
-    if (dur === timeslotDurations.THIRTY_MINUTES) return Math.floor(HOUR_HEIGHT / 2)
-    if (dur === timeslotDurations.ONE_HOUR) return HOUR_HEIGHT
+    if (dur === durations.FIFTEEN_MINUTES) return Math.floor(HOUR_HEIGHT / 4)
+    if (dur === durations.THIRTY_MINUTES) return Math.floor(HOUR_HEIGHT / 2)
+    if (dur === durations.ONE_HOUR) return HOUR_HEIGHT
     return Math.floor(HOUR_HEIGHT / 4)
   })
 
-  const specificTimesSet = computed<Set<number>>(() => {
-    const times = (event.value as { times?: (string | Date | number)[] }).times
-    return new Set(times?.map((t) => new Date(t).getTime()) ?? [])
+  /** Returns a set containing the times for the event if it has specific times */
+  const specificTimesSet = computed<Set<Temporal.ZonedDateTime>>(() => {
+    const times = (event.value as { times?: Temporal.ZonedDateTime[] }).times
+    return new Set(times ?? [])
   })
 
+  /**
+   * Returns a two dimensional array of times
+   * IF endTime < startTime:
+   * the first element is an array of times between 12am and end time and the second element is an array of times between start time and 12am
+   * ELSE:
+   * the first element is an array of times between start time and end time. the second element is an empty array
+   * */
   const splitTimes = computed<TimeItem[][]>(() => {
     const split: TimeItem[][] = [[], []]
-    const utcStartTime = event.value.startTime ?? 0
-    const utcEndTime = utcStartTime + (event.value.duration ?? 0)
-    const localStartTime = utcTimeToLocalTime(utcStartTime, timezoneOffset.value)
+    const utcStartTime =
+      event.value.startTime ?? Temporal.PlainTime.from({ hour: 0 })
+    const durationHours = event.value.duration ?? durations.ZERO
+    const utcEndTime = utcStartTime.add(durationHours)
+    const localStartTime = utcTimeToLocalTime(
+      utcStartTime,
+      timezoneOffset.value
+    )
     const localEndTime = utcTimeToLocalTime(utcEndTime, timezoneOffset.value)
 
-    const isWeirdTimezone = timezoneOffset.value % 60 !== 0
-    const startTimeIsWeird = utcStartTime % 1 !== 0
-    let timeOffset = 0
-    if (isWeirdTimezone !== startTimeIsWeird) timeOffset = -0.5
+    const isWeirdTimezone = timezoneOffset.value.total("hours") % 1 !== 0
+    const startTimeIsWeird = utcStartTime.second !== 0
+    let timeOffset = durations.ZERO
+    if (isWeirdTimezone !== startTimeIsWeird) {
+      timeOffset = durations.THIRTY_MINUTES.negated()
+    }
 
-    const getExtraTimes = (hoursOffset: number): TimeItem[] => {
-      if (timeslotDuration.value === timeslotDurations.FIFTEEN_MINUTES) {
+    const getExtraTimes = (hoursOffset: Temporal.Duration): TimeItem[] => {
+      if (timeslotDuration.value === durations.FIFTEEN_MINUTES) {
         return [
-          { hoursOffset: hoursOffset + 0.25 },
-          { hoursOffset: hoursOffset + 0.5 },
-          { hoursOffset: hoursOffset + 0.75 },
+          { hoursOffset: hoursOffset.add(durations.FIFTEEN_MINUTES) },
+          { hoursOffset: hoursOffset.add(durations.THIRTY_MINUTES) },
+          { hoursOffset: hoursOffset.add(durations.FORTY_FIVE_MINUTES) },
         ]
       }
-      if (timeslotDuration.value === timeslotDurations.THIRTY_MINUTES) {
-        return [{ hoursOffset: hoursOffset + 0.5 }]
+      if (timeslotDuration.value === durations.THIRTY_MINUTES) {
+        return [{ hoursOffset: hoursOffset.add(durations.THIRTY_MINUTES) }]
       }
       return []
     }
 
     if (state.value === states.SET_SPECIFIC_TIMES) {
       for (let i = 0; i <= 23; ++i) {
-        const hoursOffset = i
+        const hoursOffset = Temporal.Duration.from({ hours: i })
         const text = timeNumToTimeText(i, timeType.value === timeTypes.HOUR12)
         if (i === 9) {
           split[0].push({ id: "time-9", hoursOffset, text })
@@ -178,53 +207,87 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       return split
     }
 
-    const duration = event.value.duration ?? 0
-    if (localEndTime <= localStartTime && localEndTime !== 0) {
-      for (let i = 0; i < localEndTime; ++i) {
+    if (
+      Temporal.PlainTime.compare(localEndTime, localStartTime) <= 0 &&
+      // TODO
+      !localEndTime.equals(Temporal.PlainTime.from({ hour: 0 }))
+    ) {
+      // Convert PlainTime to hours for iteration
+      const localEndHour = localEndTime.hour
+      for (let i = 0; i < localEndHour; ++i) {
+        // TODO
+        // Calculate hoursOffsetValue as a number
+        const localEndHoursNum = localEndTime.hour + localEndTime.minute / 60
+        const hoursOffsetValue =
+          durationHours.total("hours") - (localEndHoursNum - i)
         split[0].push({
-          hoursOffset: duration - (localEndTime - i),
+          hoursOffset: Temporal.Duration.from({ hours: hoursOffsetValue }),
           text: timeNumToTimeText(i, timeType.value === timeTypes.HOUR12),
         })
-        split[0].push(...getExtraTimes(duration - (localEndTime - i)))
+        split[0].push(
+          ...getExtraTimes(Temporal.Duration.from({ hours: hoursOffsetValue }))
+        )
       }
-      for (let i = 0; i < 24 - localStartTime; ++i) {
-        const adjustedI = i + timeOffset
+
+      // Convert localStartTime to hours for iteration
+      const localStartHoursNum =
+        localStartTime.hour + localStartTime.minute / 60
+      for (let i = 0; i < 24 - localStartHoursNum; ++i) {
+        const adjustedI = i + timeOffset.total("hours")
+        const localTimeNum = localStartHoursNum + adjustedI
         split[1].push({
-          hoursOffset: adjustedI,
-          text: timeNumToTimeText(
-            localStartTime + adjustedI,
-            timeType.value === timeTypes.HOUR12
-          ),
-        })
-        split[1].push(...getExtraTimes(adjustedI))
-      }
-    } else {
-      for (let i = 0; i < duration; ++i) {
-        const adjustedI = i + timeOffset
-        const utcTimeNum = utcStartTime + adjustedI
-        const localTimeNum = utcTimeToLocalTime(utcTimeNum, timezoneOffset.value)
-        split[0].push({
-          hoursOffset: adjustedI,
+          hoursOffset: Temporal.Duration.from({ hours: adjustedI }),
           text: timeNumToTimeText(
             localTimeNum,
             timeType.value === timeTypes.HOUR12
           ),
         })
-        split[0].push(...getExtraTimes(adjustedI))
+        split[1].push(
+          ...getExtraTimes(Temporal.Duration.from({ hours: adjustedI }))
+        )
       }
-      if (timeOffset !== 0) {
-        const localTimeNum = utcTimeToLocalTime(
-          utcStartTime + duration - 0.5,
+    } else {
+      // Convert duration to number of hours for iteration
+      const durationHoursNum = durationHours.total("hours")
+      const utcStartTimeNum = utcStartTime.hour + utcStartTime.minute / 60
+
+      for (let i = 0; i < durationHoursNum; ++i) {
+        const adjustedI = i + timeOffset.total("hours")
+        const utcTimeNum = utcStartTimeNum + adjustedI
+        const localTimeNum = utcTimeToLocalTimeNum(
+          utcTimeNum,
           timezoneOffset.value
         )
         split[0].push({
-          hoursOffset: duration - 0.5,
+          hoursOffset: Temporal.Duration.from({ hours: adjustedI }),
           text: timeNumToTimeText(
             localTimeNum,
             timeType.value === timeTypes.HOUR12
           ),
         })
-        split[0].push(...getExtraTimes(duration - 0.5))
+        split[0].push(
+          ...getExtraTimes(Temporal.Duration.from({ hours: adjustedI }))
+        )
+      }
+      if (timeOffset.total("hours") !== 0) {
+        const localTimeNum = utcTimeToLocalTimeNum(
+          utcStartTimeNum + durationHoursNum - 0.5,
+          timezoneOffset.value
+        )
+        split[0].push({
+          hoursOffset: Temporal.Duration.from({
+            hours: durationHoursNum - 0.5,
+          }),
+          text: timeNumToTimeText(
+            localTimeNum,
+            timeType.value === timeTypes.HOUR12
+          ),
+        })
+        split[0].push(
+          ...getExtraTimes(
+            Temporal.Duration.from({ hours: durationHoursNum - 0.5 })
+          )
+        )
       }
       split[1] = []
     }
@@ -239,43 +302,46 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
 
   const allDays = computed<DayItem[]>(() => {
     const days: DayItem[] = []
-    const datesSoFar = new Set<number>()
+    const datesSoFar = new Set<Temporal.ZonedDateTime>()
 
-    const getDateString = (date: Date) => {
+    const getDateString = (date: Temporal.ZonedDateTime) => {
       let dateString = ""
       let dayString = ""
-      const offsetDate = new Date(date)
+      let offsetZDT: Temporal.ZonedDateTime
       if (isSpecificTimes.value) {
-        offsetDate.setTime(
-          offsetDate.getTime() - timezoneOffset.value * 60 * 1000
-        )
+        // Apply timezone offset
+        offsetZDT = date.subtract(timezoneOffset.value)
       } else {
-        offsetDate.setDate(offsetDate.getDate() + dayOffset.value)
+        offsetZDT = date.add(dayOffset.value)
       }
       if (isSpecificDates.value) {
-        dateString = `${months[offsetDate.getUTCMonth()]} ${String(offsetDate.getUTCDate())}`
-        dayString = daysOfWeek.value[offsetDate.getUTCDay()]
+        dateString = `${months[offsetZDT.month - 1]} ${String(offsetZDT.day)}`
+        dayString = daysOfWeek.value[offsetZDT.dayOfWeek % 7] // Convert 1-7 (Mon-Sun) to 0-6 (Sun-Sat)
       } else if (isGroup.value || isWeekly.value) {
         const tmpDate = dateToDowDate(
-          (event.value.dates ?? []),
-          offsetDate,
+          event.value.dates ?? [],
+          offsetZDT,
           weekOffset.value,
           true
         )
-        dateString = `${months[tmpDate.getUTCMonth()]} ${String(tmpDate.getUTCDate())}`
-        dayString = daysOfWeek.value[tmpDate.getUTCDay()]
+        dateString = `${months[tmpDate.month - 1]} ${String(tmpDate.day)}`
+        dayString = daysOfWeek.value[tmpDate.dayOfWeek % 7]
       }
       return { dateString, dayString }
     }
 
-    const eventDates = (event.value.dates ?? []).map((d) => new Date(d))
-    const eventTimes = (event.value as { times?: (string | Date)[] }).times
+    const eventDates = event.value.dates ?? []
+    const eventTimes = (event.value as { times?: Temporal.ZonedDateTime[] })
+      .times
 
     if (
       isSpecificTimes.value &&
       (state.value === states.SET_SPECIFIC_TIMES || eventTimes?.length === 0)
     ) {
-      for (const day of getSpecificTimesDayStarts(eventDates, curTimezone.value)) {
+      for (const day of getSpecificTimesDayStarts(
+        eventDates,
+        curTimezone.value
+      )) {
         const { dayString, dateString } = getDateString(day.dateObject)
         days.push({
           dayText: dayString,
@@ -287,39 +353,34 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       return days
     }
 
-    for (const dateStr of eventDates) {
-      const date = new Date(dateStr)
-      datesSoFar.add(date.getTime())
-      const { dayString, dateString } = getDateString(date)
-      days.push({ dayText: dayString, dateString, dateObject: date })
+    for (const date of eventDates) {
+      const zdt = date
+      datesSoFar.add(date)
+      const { dayString, dateString } = getDateString(zdt)
+      days.push({ dayText: dayString, dateString, dateObject: zdt })
     }
 
     let dayIndex = 0
-    for (const dateStr of eventDates) {
-      const date = new Date(dateStr)
-      const localStart = new Date(
-        date.getTime() - timezoneOffset.value * 60 * 1000
-      )
-      const localEnd = new Date(
-        date.getTime() +
-          (event.value.duration ?? 0) * 60 * 60 * 1000 -
-          timezoneOffset.value * 60 * 1000
-      )
-      const localEndIsMidnight =
-        localEnd.getUTCHours() === 0 && localEnd.getUTCMinutes() === 0
-      if (
-        localStart.getUTCDate() !== localEnd.getUTCDate() &&
-        !localEndIsMidnight
-      ) {
-        const nextDate = new Date(date)
-        nextDate.setUTCDate(nextDate.getUTCDate() + 1)
-        if (!datesSoFar.has(nextDate.getTime())) {
-          datesSoFar.add(nextDate.getTime())
-          const { dayString, dateString } = getDateString(nextDate)
+    for (const date of eventDates) {
+      const zdt = date
+      // Convert Duration to minutes for subtraction
+      const offsetMinutes = timezoneOffset.value.total("minutes")
+      const localStart = zdt.subtract({ minutes: offsetMinutes })
+      const localEnd = localStart.add(event.value.duration ?? durations.ZERO)
+      const localEndIsMidnight = localEnd.hour === 0 && localEnd.minute === 0
+      if (localStart.day !== localEnd.day && !localEndIsMidnight) {
+        // Convert to ZonedDateTime to add days, then back to Instant
+        const nextDate = date
+          .add({ days: 1 })
+          
+        if (!datesSoFar.has(nextDate)) {
+          datesSoFar.add(nextDate)
+          const nextZDT = nextDate
+          const { dayString, dateString } = getDateString(nextZDT)
           days.splice(dayIndex + 1, 0, {
             dayText: dayString,
             dateString,
-            dateObject: nextDate,
+            dateObject: nextZDT,
             excludeTimes: true,
           })
           dayIndex++
@@ -328,21 +389,27 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       dayIndex++
     }
 
-    let prevDate: Date | null = null
+    let prevDate: Temporal.ZonedDateTime | null = null
     for (const day of days) {
       let isConsecutive = true
       if (prevDate) {
+        const prevInstant = prevDate
+        const dayInstant = day.dateObject
+        const oneDayMs = 24 * 60 * 60 * 1000
         isConsecutive =
-          prevDate.getTime() === day.dateObject.getTime() - 24 * 60 * 60 * 1000
+          prevInstant.epochMilliseconds ===
+          dayInstant.epochMilliseconds - oneDayMs
       }
       day.isConsecutive = isConsecutive
-      prevDate = new Date(day.dateObject)
+      prevDate = day.dateObject
     }
 
     return days
   })
 
-  const maxDaysPerPage = computed(() => (isPhone.value ? mobileNumDays.value : 7))
+  const maxDaysPerPage = computed(() =>
+    isPhone.value ? mobileNumDays.value : 7
+  )
 
   const days = computed<DayItem[]>(() => {
     const slice = allDays.value.slice(
@@ -357,77 +424,102 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
 
   const monthDays = computed<MonthDayItem[]>(() => {
     const monthDays: MonthDayItem[] = []
-    const allDaysSet = new Set(
-      allDays.value.map((d) => d.dateObject.getTime())
+    const allDaysSet = new Set<Temporal.ZonedDateTime>(
+      allDays.value.map((d) => d.dateObject)
     )
-    const eventDates = (event.value.dates ?? []).map((d) => new Date(d))
+    const eventDates = event.value.dates ?? []
     if (eventDates.length === 0) return monthDays
 
-    const date = new Date(eventDates[0])
-    const monthIndex = date.getUTCMonth() + page.value
-    const year = date.getUTCFullYear()
-    const lastDayOfPrevMonth = new Date(Date.UTC(year, monthIndex, 0))
-    const lastDayOfCurMonth = new Date(Date.UTC(year, monthIndex + 1, 0))
+    const date = eventDates[0]
+    const monthIndex = date.month + page.value - 1
+    const year = date.year
 
-    const curDate = new Date(lastDayOfPrevMonth)
+    // Use Temporal to get last day of months
+    const lastDayOfPrevMonth = Temporal.PlainDate.from({
+      year,
+      month: monthIndex,
+    }).add({ days: -1 })
+    const lastDayOfCurMonthPlain = Temporal.PlainDate.from({
+      year,
+      month: monthIndex + 1,
+    }).add({ days: -1 })
+
+    let curDate = lastDayOfPrevMonth.add({ days: 1 })
     let numDaysFromPrevMonth = 0
-    const numDaysInCurMonth = lastDayOfCurMonth.getUTCDate()
-    const numDaysFromNextMonth = 6 - lastDayOfCurMonth.getUTCDay()
+    const numDaysInCurMonth = lastDayOfCurMonthPlain.day
+    const numDaysFromNextMonth =
+      6 -
+      (lastDayOfCurMonthPlain.toZonedDateTime({ timeZone: UTC }).dayOfWeek % 7)
     const hasDaysFromPrevMonth = !startCalendarOnMonday.value
-      ? lastDayOfPrevMonth.getUTCDay() < 6
-      : lastDayOfPrevMonth.getUTCDay() != 0
+      ? lastDayOfPrevMonth.toZonedDateTime({ timeZone: UTC }).dayOfWeek % 7 < 6
+      : lastDayOfPrevMonth.toZonedDateTime({ timeZone: UTC }).dayOfWeek % 7 != 0
+
     if (hasDaysFromPrevMonth) {
-      curDate.setUTCDate(
-        curDate.getUTCDate() -
-          (lastDayOfPrevMonth.getUTCDay() -
-            (startCalendarOnMonday.value ? 1 : 0))
-      )
-      numDaysFromPrevMonth = lastDayOfPrevMonth.getUTCDay() + 1
+      const prevMonthEndDow =
+        lastDayOfPrevMonth.toZonedDateTime({ timeZone: UTC }).dayOfWeek % 7
+      const daysToSubtract =
+        prevMonthEndDow - (startCalendarOnMonday.value ? 1 : 0)
+      curDate = curDate.subtract({ days: daysToSubtract })
+      numDaysFromPrevMonth = prevMonthEndDow + 1
     } else {
-      curDate.setUTCDate(curDate.getUTCDate() + 1)
+      curDate = curDate.add({ days: 1 })
     }
-    curDate.setUTCHours(event.value.startTime ?? 0)
+
+    // Add start time to curDate
+    const startTime = event.value.startTime ?? hoursPlainTime.ZERO
+    let curZDT = curDate.toZonedDateTime({
+      timeZone: UTC,
+      plainTime: `${String(startTime.hour).padStart(2, "0")}:${String(
+        startTime.minute
+      ).padStart(2, "0")}:00`,
+    })
 
     const totalDays =
       numDaysFromPrevMonth + numDaysInCurMonth + numDaysFromNextMonth
     for (let i = 0; i < totalDays; ++i) {
-      if (curDate.getUTCMonth() === lastDayOfCurMonth.getUTCMonth()) {
+      const curPlainDate = curZDT.toPlainDate()
+      if (curPlainDate.month === lastDayOfCurMonthPlain.month) {
         monthDays.push({
-          date: curDate.getUTCDate(),
-          time: curDate.getTime(),
-          dateObject: new Date(curDate),
-          included: allDaysSet.has(curDate.getTime()),
+          date: curPlainDate.day,
+          time: curZDT,
+          dateObject: curZDT,
+          included: allDaysSet.has(curZDT),
         })
       } else {
         monthDays.push({
           date: "",
-          time: curDate.getTime(),
-          dateObject: new Date(curDate),
+          time: curZDT,
+          dateObject: curZDT,
           included: false,
         })
       }
-      curDate.setUTCDate(curDate.getUTCDate() + 1)
+      curZDT = curZDT.add({ days: 1 })
     }
     return monthDays
   })
 
-  const monthDayIncluded = computed<Map<number, boolean>>(() => {
-    const map = new Map<number, boolean>()
-    for (const md of monthDays.value) {
-      map.set(md.dateObject.getTime(), md.included)
+  const monthDayIncluded = computed<Map<Temporal.ZonedDateTime, boolean>>(
+    () => {
+      const map = new Map<Temporal.ZonedDateTime, boolean>()
+      for (const md of monthDays.value) {
+        map.set(md.dateObject, md.included)
+      }
+      return map
     }
-    return map
-  })
+  )
 
   const curMonthText = computed(() => {
-    const eventDates = (event.value.dates ?? []).map((d) => new Date(d))
+    const eventDates = event.value.dates ?? []
     if (eventDates.length === 0) return ""
-    const date = new Date(eventDates[0])
-    const monthIndex = date.getUTCMonth() + page.value
-    const year = date.getUTCFullYear()
-    const lastDayOfCurMonth = new Date(Date.UTC(year, monthIndex + 1, 0))
-    const monthText = months[lastDayOfCurMonth.getUTCMonth()]
-    const yearText = lastDayOfCurMonth.getUTCFullYear()
+    const date = eventDates[0]
+    const monthIndex = date.month + page.value
+    const year = date.year
+    const lastDayOfCurMonthPlain = Temporal.PlainDate.from({
+      year,
+      month: monthIndex + 1,
+    }).add({ days: -1 })
+    const monthText = months[lastDayOfCurMonthPlain.month - 1]
+    const yearText = lastDayOfCurMonthPlain.year
     return `${monthText} ${String(yearText)}`
   })
 
@@ -449,14 +541,21 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
 
   const hasNextPage = computed(() => {
     if (event.value.daysOnly) {
-      const eventDates = (event.value.dates ?? []).map((d) => new Date(d))
+      const eventDates = event.value.dates ?? []
       if (eventDates.length === 0) return false
-      const lastDay = new Date(eventDates[eventDates.length - 1])
-      const curDate = new Date(eventDates[0])
-      const monthIndex = curDate.getUTCMonth() + page.value
-      const year = curDate.getUTCFullYear()
-      const lastDayOfCurMonth = new Date(Date.UTC(year, monthIndex + 1, 0))
-      return lastDayOfCurMonth.getTime() < lastDay.getTime()
+      const lastDay = eventDates[eventDates.length - 1]
+      const curDate = eventDates[0]
+      const monthIndex = curDate.month + page.value
+      const year = curDate.year
+      const lastDayOfCurMonthPlain = Temporal.PlainDate.from({
+        year,
+        month: monthIndex + 1,
+      }).add({ days: -1 })
+      const lastDayOfCurMonth = lastDayOfCurMonthPlain
+        .toZonedDateTime({ timeZone: UTC })
+      return (
+        Temporal.ZonedDateTime.compare(lastDayOfCurMonth, lastDay) < 0
+      )
     }
     return (
       allDays.value.length - (page.value + 1) * maxDaysPerPage.value > 0 ||
@@ -473,22 +572,24 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
 
   const getDateFromDayHoursOffset = (
     dayIndex: number,
-    hoursOffset: number
-  ): Date | null => {
-    const day = (days.value as (DayItem | undefined)[])[dayIndex]
-    if (!day) return null
+    hoursOffset: Temporal.Duration
+  ): Temporal.ZonedDateTime | null => {
+    const day = days.value[dayIndex]
+    // Convert number to Duration for getDateHoursOffset
     return getDateHoursOffset(day.dateObject, hoursOffset)
   }
 
   const getDateFromDayTimeIndex = (
     dayIndex: number,
     timeIndex: number
-  ): Date | null => {
+  ): Temporal.ZonedDateTime | null => {
     const hasSecondSplit = splitTimes.value[1].length > 0
     const isFirstSplit = timeIndex < splitTimes.value[0].length
     const time = isFirstSplit
       ? (splitTimes.value[0] as (TimeItem | undefined)[])[timeIndex]
-      : (splitTimes.value[1] as (TimeItem | undefined)[])[timeIndex - splitTimes.value[0].length]
+      : (splitTimes.value[1] as (TimeItem | undefined)[])[
+          timeIndex - splitTimes.value[0].length
+        ]
     let adjustedDayIndex = dayIndex
     if (hasSecondSplit) {
       if (isFirstSplit) adjustedDayIndex = dayIndex - 1
@@ -500,28 +601,35 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
 
     const date = getDateHoursOffset(day.dateObject, time.hoursOffset)
     if (isSpecificTimes.value) {
-      const eventTimes = (event.value as { times?: (string | Date)[] }).times
+      const eventTimes = (event.value as { times?: Temporal.ZonedDateTime[] })
+        .times
       if (
         state.value !== states.SET_SPECIFIC_TIMES &&
         (eventTimes?.length ?? 0) > 0
       ) {
-        if (!specificTimesSet.value.has(date.getTime())) return null
+        if (!specificTimesSet.value.has(date)) return null
       }
     } else {
+      const durationHours = event.value.duration?.total("hours") ?? 0
       if (
-        time.hoursOffset < 0 ||
-        time.hoursOffset >= (event.value.duration ?? 0)
+        time.hoursOffset.total("hours") < 0 ||
+        time.hoursOffset.total("hours") >= durationHours
       )
         return null
     }
     return date
   }
 
-  const getDateFromRowCol = (row: number, col: number): Date | null => {
+  const getDateFromRowCol = (
+    row: number,
+    col: number
+  ): Temporal.ZonedDateTime | null => {
     if (event.value.daysOnly) {
-      const monthDay = (monthDays.value as (MonthDayItem | undefined)[])[row * 7 + col]
+      const monthDay = (monthDays.value as (MonthDayItem | undefined)[])[
+        row * 7 + col
+      ]
       if (!monthDay) return null
-      return new Date(monthDay.dateObject)
+      return monthDay.dateObject
     }
     return getDateFromDayTimeIndex(maxDaysPerPage.value * page.value + col, row)
   }
@@ -534,7 +642,9 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     }
   }
 
-  const onResize = () => { setTimeslotSize(); }
+  const onResize = () => {
+    setTimeslotSize()
+  }
 
   const onCalendarScroll = (e: Event) => {
     const target = e.target as HTMLElement
@@ -542,12 +652,13 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     calendarScrollLeft.value = target.scrollLeft
   }
 
-  const nextPage = (e: globalThis.Event, onWeekOffsetChange?: (n: number) => void) => {
+  const nextPage = (
+    e: globalThis.Event,
+    onWeekOffsetChange?: (n: number) => void
+  ) => {
     e.stopImmediatePropagation()
     if (event.value.type === eventTypes.GROUP) {
-      if (
-        (page.value + 1) * maxDaysPerPage.value < allDays.value.length
-      ) {
+      if ((page.value + 1) * maxDaysPerPage.value < allDays.value.length) {
         page.value++
       } else {
         page.value = 0
@@ -559,7 +670,10 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     pageHasChanged.value = true
   }
 
-  const prevPage = (e: globalThis.Event, onWeekOffsetChange?: (n: number) => void) => {
+  const prevPage = (
+    e: globalThis.Event,
+    onWeekOffsetChange?: (n: number) => void
+  ) => {
     e.stopImmediatePropagation()
     if (event.value.type === eventTypes.GROUP) {
       if (page.value > 0) {
@@ -575,25 +689,20 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
   }
 
   const getLocalTimezone = (): string => {
-    const eventDates = (event.value.dates ?? []).map((d) => new Date(d))
+    const eventDates = event.value.dates ?? []
     if (eventDates.length === 0) return ""
-    const split = new Date(eventDates[0])
-      .toLocaleTimeString("en-us", { timeZoneName: "short" })
-      .split(" ")
-    return split[split.length - 1]
+    // Use Temporal to get timezone information
+    return eventDates[0].timeZoneId
   }
 
   const getMinMaxHoursFromTimes = (
-    timesArr: (string | Date)[]
-  ): { minHours: number; maxHours: number } => {
-    let minHours = 24
-    let maxHours = 0
+    timesArr: Temporal.ZonedDateTime[]
+    // TODO
+  ): { minHours: Temporal.PlainTime; maxHours: Temporal.PlainTime } => {
+    let minHours = Temporal.PlainTime.from({ hour: 24 })
+    let maxHours = Temporal.PlainTime.from({ hour: 0 })
     for (const time of timesArr) {
-      const timeDate = new Date(time)
-      const date = new Date(
-        timeDate.getTime() - timezoneOffset.value * 60 * 1000
-      )
-      const localHours = date.getUTCHours()
+      const localHours = time.toPlainTime()
       if (localHours < minHours) minHours = localHours
       else if (localHours > maxHours) maxHours = localHours
     }

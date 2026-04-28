@@ -1,4 +1,5 @@
 import { computed, ref, type ComputedRef, type Ref } from "vue"
+import { Temporal } from "temporal-polyfill"
 import { dateToDowDate, put } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
@@ -13,9 +14,11 @@ import {
   type TimeItem,
   type Timezone,
 } from "./types"
+import { UTC } from "@/constants"
 
 export interface UseEventSchedulingOptions {
   event: Ref<EventLike>
+  // TODO
   weekOffset: Ref<number>
   curTimezone: Ref<Timezone>
   state: Ref<ScheduleOverlapState>
@@ -23,16 +26,17 @@ export interface UseEventSchedulingOptions {
 
   // grid
   splitTimes: ComputedRef<TimeItem[][]>
-  timeslotDuration: ComputedRef<number>
+  timeslotDuration: ComputedRef<Temporal.Duration>
   timeslotHeight: ComputedRef<number>
-  timezoneOffset: ComputedRef<number>
+  timezoneOffset: ComputedRef<Temporal.Duration>
   isWeekly: ComputedRef<boolean>
   isGroup: ComputedRef<boolean>
   isSpecificTimes: ComputedRef<boolean>
-  getDateFromRowCol: (row: number, col: number) => Date | null
-  getMinMaxHoursFromTimes: (
-    times: (string | Date)[]
-  ) => { minHours: number; maxHours: number }
+  getDateFromRowCol: (row: number, col: number) => Temporal.ZonedDateTime | null
+  getMinMaxHoursFromTimes: (times: Temporal.ZonedDateTime[]) => {
+    minHours: Temporal.PlainTime
+    maxHours: Temporal.PlainTime
+  }
 
   // drag
   dragging: Ref<boolean>
@@ -40,7 +44,7 @@ export interface UseEventSchedulingOptions {
   dragCur: Ref<RowCol | null>
 
   // availability
-  tempTimes: Ref<Set<number>>
+  tempTimes: Ref<Set<Temporal.ZonedDateTime>>
   respondents: ComputedRef<{ email?: string; firstName?: string }[]>
 }
 
@@ -58,21 +62,29 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
     if (opts.dragging.value && opts.dragStart.value && opts.dragCur.value) {
       top = opts.dragStart.value.row
       height = opts.dragCur.value.row - opts.dragStart.value.row + 1
-      isSecondSplit = opts.dragStart.value.row >= opts.splitTimes.value[0].length
+      isSecondSplit =
+        opts.dragStart.value.row >= opts.splitTimes.value[0].length
     } else if (curScheduledEvent.value) {
       top = curScheduledEvent.value.row
       height = curScheduledEvent.value.numRows
-      isSecondSplit = curScheduledEvent.value.row >= opts.splitTimes.value[0].length
+      isSecondSplit =
+        curScheduledEvent.value.row >= opts.splitTimes.value[0].length
     } else {
       return style
     }
 
     if (isSecondSplit) {
-      style.top = `calc(${String(top)} * ${String(opts.timeslotHeight.value)}px + ${String(SPLIT_GAP_HEIGHT)}px)`
+      style.top = `calc(${String(top)} * ${String(
+        opts.timeslotHeight.value
+      )}px + ${String(SPLIT_GAP_HEIGHT)}px)`
     } else {
-      style.top = `calc(${String(top)} * ${String(opts.timeslotHeight.value)}px)`
+      style.top = `calc(${String(top)} * ${String(
+        opts.timeslotHeight.value
+      )}px)`
     }
-    style.height = `calc(${String(height)} * ${String(opts.timeslotHeight.value)}px)`
+    style.height = `calc(${String(height)} * ${String(
+      opts.timeslotHeight.value
+    )}px)`
     return style
   })
 
@@ -105,21 +117,31 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
     const { col, row, numRows } = curScheduledEvent.value
     let startDate = opts.getDateFromRowCol(row, col)
     if (!startDate) return
-    let endDate = new Date(startDate)
-    endDate.setMinutes(
-      startDate.getMinutes() + opts.timeslotDuration.value * numRows
-    )
+    let endDate = startDate.add({
+      minutes: opts.timeslotDuration.value.total("minutes") * numRows,
+    })
 
     if (opts.isWeekly.value || opts.isGroup.value) {
       let offset = 0
       if (opts.isGroup.value) {
         offset = opts.weekOffset.value
       } else if (opts.isWeekly.value) {
-        if (new Date().getDay() > startDate.getDay()) offset = 1
+        const nowZDT = Temporal.Now.zonedDateTimeISO(UTC)
+        if (nowZDT.dayOfWeek % 7 > startDate.dayOfWeek % 7) offset = 1
       }
-      const eventDates = (opts.event.value.dates ?? []).map((d) => new Date(d))
-      startDate = dateToDowDate(eventDates, startDate, offset, true)
-      endDate = dateToDowDate(eventDates, endDate, offset, true)
+      const eventDates = opts.event.value.dates ?? []
+      startDate = dateToDowDate(
+        eventDates,
+        startDate,
+        offset,
+        true
+      )
+      endDate = dateToDowDate(
+        eventDates,
+        endDate,
+        offset,
+        true
+      )
     }
 
     const emails = opts.respondents.value.map((r) =>
@@ -134,8 +156,14 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
 
     let url: string
     if (googleCalendar) {
-      const start = startDate.toISOString().replace(/([-:]|\.000)/g, "")
-      const end = endDate.toISOString().replace(/([-:]|\.000)/g, "")
+      const start = startDate
+        .toInstant()
+        .toString()
+        .replace(/([-:]|\.000)/g, "")
+      const end = endDate
+        .toInstant()
+        .toString()
+        .replace(/([-:]|\.000)/g, "")
       url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
         opts.event.value.name ?? ""
       )}&dates=${start}/${end}&details=${encodeURIComponent(
@@ -147,8 +175,10 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
       )}&body=${encodeURIComponent(
         "\n\nThis event was scheduled with Timeful: https://timeful.app/e/" +
           eventId
-      )}&startdt=${startDate.toISOString()}&enddt=${endDate.toISOString()}&location=${encodeURIComponent(
-        ((opts.event.value as { location?: string }).location ?? "")
+      )}&startdt=${startDate.toInstant().toString()}&enddt=${endDate
+        .toInstant()
+        .toString()}&location=${encodeURIComponent(
+        (opts.event.value as { location?: string }).location ?? ""
       )}&path=/calendar/action/compose&timezone=${opts.curTimezone.value.value}`
     }
 
@@ -159,38 +189,41 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
   const saveTempTimes = () => {
     interface EventWithTimes {
       _id?: string
-      dates?: (string | Date | number)[]
-      times?: number[]
-      duration?: number
+      dates?: Temporal.ZonedDateTime[]
+      times?: Temporal.ZonedDateTime[]
+      duration?: Temporal.Duration
       remindees?: (string | { email?: string })[]
     }
-    
-    const eventValue = opts.event.value as unknown as EventWithTimes
-    
-    eventValue.times = [...opts.tempTimes.value]
-      .map((t) => new Date(t).getTime())
-      .sort((a, b) => a - b)
 
-    const { minHours, maxHours } = opts.getMinMaxHoursFromTimes(
-      eventValue.times.map((t) => new Date(t))
+    const eventValue = opts.event.value as unknown as EventWithTimes
+
+    eventValue.times = [...opts.tempTimes.value].sort((a, b) =>
+      Temporal.ZonedDateTime.compare(a, b)
     )
 
-    const eventDateStrings = (opts.event.value.dates ?? []).map((d) => {
-      const date = new Date(d)
-      date.setTime(date.getTime() - opts.timezoneOffset.value * 60 * 1000)
-      date.setUTCHours(minHours, 0, 0, 0)
-      date.setTime(date.getTime() + opts.timezoneOffset.value * 60 * 1000)
-      return date.toISOString()
-    })
-    eventValue.dates = eventDateStrings.map((d) => new Date(d).getTime())
+    const { minHours, maxHours } = opts.getMinMaxHoursFromTimes(
+      eventValue.times
+    )
 
-    eventValue.duration = maxHours - minHours + 1
+    const eventDateInstants = (opts.event.value.dates ?? []).map((d) => {
+      const zdt = d
+      // Convert Duration to minutes for subtraction
+      const offsetMinutes = opts.timezoneOffset.value.total("minutes")
+      const adjustedZDT = zdt.subtract({ minutes: offsetMinutes })
+      const plainDate = adjustedZDT.toPlainDate()
+      const withTime = plainDate.toZonedDateTime({
+        timeZone: UTC,
+        plainTime: `${String(minHours).padStart(2, "0")}:00:00`,
+      })
+      return withTime
+    })
+    eventValue.dates = eventDateInstants
+
+    eventValue.duration = maxHours.since(minHours).add({ hours: 1 })
 
     if (eventValue.remindees) {
       eventValue.remindees = eventValue.remindees
-        .map((r) =>
-          typeof r === "string" ? r : r.email ?? ""
-        )
+        .map((r) => (typeof r === "string" ? r : r.email ?? ""))
         .filter((s) => s.length > 0)
     }
 

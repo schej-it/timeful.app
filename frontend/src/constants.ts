@@ -1,6 +1,9 @@
+import { Temporal } from "temporal-polyfill"
+
 // Urls
-export const serverURL =
-  import.meta.env.DEV ? "http://localhost:3002/api" : "/api"
+export const serverURL = import.meta.env.DEV
+  ? "http://localhost:3002/api"
+  : "/api"
 
 // Errors enum
 export const errors = {
@@ -37,6 +40,13 @@ export const eventTypes = {
 } as const
 export type EventTypeValue = (typeof eventTypes)[keyof typeof eventTypes]
 
+export const dateOptions = {
+  SPECIFIC: "Specific dates",
+  DOW: "Days of the week",
+} as const
+
+export type DateOptionType = typeof dateOptions[keyof typeof dateOptions]
+
 export const availabilityTypes = {
   AVAILABLE: "available",
   IF_NEEDED: "if_needed",
@@ -67,13 +77,23 @@ export const upgradeDialogTypes = {
 export type UpgradeDialogType =
   (typeof upgradeDialogTypes)[keyof typeof upgradeDialogTypes]
 
-export const timeslotDurations = {
-  FIFTEEN_MINUTES: 15,
-  THIRTY_MINUTES: 30,
-  ONE_HOUR: 60,
+export const durations = {
+  ZERO: Temporal.Duration.from({ minutes: 0 }),
+  FIFTEEN_MINUTES: Temporal.Duration.from({ minutes: 15 }),
+  THIRTY_MINUTES: Temporal.Duration.from({ minutes: 30 }),
+  FORTY_FIVE_MINUTES: Temporal.Duration.from({ minutes: 45 }),
+  ONE_HOUR: Temporal.Duration.from({ minutes: 60 }),
 } as const
-export type TimeslotDuration =
-  (typeof timeslotDurations)[keyof typeof timeslotDurations]
+export type TimeslotDuration = (typeof durations)[keyof typeof durations]
+
+export const hoursPlainTime = {
+  ZERO: Temporal.PlainTime.from({ hour: 0 }),
+  NINE: Temporal.PlainTime.from({ hour: 9 }),
+  SEVENTEEN: Temporal.PlainTime.from({ hour: 17 }),
+  TWENTY_FOUR: Temporal.PlainTime.from({ hour: 24 }),
+} as const
+
+export const UTC = "UTC"
 
 export const calendarOptionsDefaults = {
   bufferTime: {
@@ -133,7 +153,7 @@ export const allTimezones = {
   "America/Los_Angeles": "Pacific Time",
   "Atlantic/Azores": "Azores",
   "Atlantic/Cape_Verde": "Cape Verde Islands",
-  GMT: "UTC",
+  GMT: UTC,
   "Europe/London": "Edinburgh, London",
   "Europe/Dublin": "Dublin",
   "Europe/Lisbon": "Lisbon",

@@ -7,6 +7,7 @@ import { get, post, getEventsCreated, deleteEventsCreated } from "@/utils"
 import { authTypes, calendarTypes } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
+import { Temporal } from "temporal-polyfill"
 import type { User } from "@/types"
 
 defineOptions({ name: 'AppAuth' })
@@ -60,7 +61,7 @@ void (async () => {
         code,
         scope: scope ?? state?.scope,
         calendarType: state?.calendarType,
-        timezoneOffset: new Date().getTimezoneOffset(),
+        timezoneOffset: Temporal.Now.zonedDateTimeISO().offsetNanoseconds / (1000 * 1000 * 1000) / 60 * -1,
         eventsToLink: getEventsCreated(),
       })
       deleteEventsCreated()

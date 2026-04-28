@@ -51,7 +51,7 @@
                   >
                     <div
                       v-for="(day, i) in monthDays"
-                      :key="day.time"
+                      :key="day.time.epochMilliseconds"
                       class="timeslot tw-aspect-square tw-flex tw-items-center tw-justify-center tw-text-sm sm:tw-text-base"
                       :class="dayTimeslotClassStyle[i].class"
                       :style="dayTimeslotClassStyle[i].style"
@@ -998,12 +998,10 @@ import {
   ref, computed, watch, nextTick, shallowRef, onMounted, onBeforeUnmount,
 } from "vue"
 import { useDisplay } from "vuetify"
-import dayjs from "dayjs"
-import utcPlugin from "dayjs/plugin/utc"
-import timezonePlugin from "dayjs/plugin/timezone"
+import type { Temporal } from "temporal-polyfill"
 import { post, lightOrDark, removeTransparencyFromHex, isTouchEnabled } from "@/utils"
 import {
-  availabilityTypes, calendarOptionsDefaults, eventTypes, guestUserId, timeTypes,
+  availabilityTypes, calendarOptionsDefaults, eventTypes, guestUserId, timeTypes, durations
 } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
@@ -1038,11 +1036,8 @@ import {
 } from "@/composables/schedule_overlap/types"
 import type {
   RowCol, Timezone, ScheduleOverlapState, EventLike, CalendarEventLite, CalendarEventsByDay,
-  CalendarOptions, ScheduledEvent, SignUpBlockLite,
+  CalendarOptions, ScheduledEvent, SignUpBlockLite, TimeItem,
 } from "@/composables/schedule_overlap/types"
-
-dayjs.extend(utcPlugin)
-dayjs.extend(timezonePlugin)
 
 // ── Props / Emits ──────────────────────────────────────────────────────
 const props = withDefaults(
@@ -1154,7 +1149,7 @@ const bufferTimeShared = shallowRef<{ enabled: boolean; time: number }>({ ...cal
 const workingHoursShared = shallowRef<{ enabled: boolean; startTime: number; endTime: number }>({ ...calendarOptionsDefaults.workingHours })
 const getAvailFromCalEventsProxy = (
   ...args: Parameters<UseCalendarEventsReturn["getAvailabilityFromCalendarEvents"]>
-): Set<number> => calEventsResolved?.getAvailabilityFromCalendarEvents(...args) ?? new Set()
+): Set<Temporal.ZonedDateTime> => calEventsResolved?.getAvailabilityFromCalendarEvents(...args) ?? new Set<Temporal.ZonedDateTime>()
 
 let uiResolved: UseScheduleOverlapUIReturn | null = null
 const defaultStateProxy = computed(() => uiResolved?.defaultState.value ?? states.HEATMAP)
@@ -1479,7 +1474,7 @@ watch(
   () => {
     if (props.fromEditEvent && isSpecificTimes.value) {
       tempTimes.value = new Set(
-        (props.event.times ?? []).map((t) => new Date(t).getTime())
+        (props.event.times ?? [])
       )
       state.value = states.SET_SPECIFIC_TIMES
     }
@@ -1528,11 +1523,11 @@ const formattedAttendees = computed(() =>
 )
 
 const overlaidAvailability = computed(() => {
-  const result: { hoursOffset: number; hoursLength: number; type: string }[][] = []
+  const result: { hoursOffset: Temporal.Duration; hoursLength: Temporal.Duration; type: string }[][] = []
   days.value.forEach((_day, d) => {
     result.push([])
     let idx = 0
-    const addBlock = (time: { hoursOffset: number }, t: number) => {
+    const addBlock = (time: TimeItem, t: number) => {
       const date = getDateFromRowCol(t, d)
       if (!date) return
       const dAdd =
@@ -1542,22 +1537,22 @@ const overlaidAvailability = computed(() => {
       if (
         dAdd ||
         (!dRemove &&
-          (availability.value.has(date.getTime()) || ifNeeded.value.has(date.getTime())))
+          (availability.value.has(date) || ifNeeded.value.has(date)))
       ) {
         const type = dAdd
           ? availabilityType.value
-          : availability.value.has(date.getTime())
+          : availability.value.has(date)
             ? availabilityTypes.AVAILABLE
             : availabilityTypes.IF_NEEDED
         if (idx in result[d]) {
           if (result[d][idx].type === type) {
-            result[d][idx].hoursLength += 0.25
+            result[d][idx].hoursLength.add(durations.FIFTEEN_MINUTES)
           } else {
-            result[d].push({ hoursOffset: time.hoursOffset, hoursLength: 0.25, type })
+            result[d].push({ hoursOffset: time.hoursOffset, hoursLength: durations.FIFTEEN_MINUTES, type })
             idx++
           }
         } else {
-          result[d].push({ hoursOffset: time.hoursOffset, hoursLength: 0.25, type })
+          result[d].push({ hoursOffset: time.hoursOffset, hoursLength: durations.FIFTEEN_MINUTES, type })
         }
       } else if (idx in result[d]) {
         idx++
@@ -1606,7 +1601,7 @@ const dayTimeslotVon = computed(() =>
 
 // ── Local helper functions ──────────────────────────────────────────────
 function getTimeslotClassStyle(
-  date: Date | null,
+  date: Temporal.ZonedDateTime | null,
   row: number,
   col: number
 ): { class: string; style: Record<string, string> } {
@@ -1615,7 +1610,7 @@ function getTimeslotClassStyle(
   if (!date) return { class: c, style: s }
 
   const timeslotRespondents =
-    responsesFormatted.value.get(date.getTime()) ?? new Set<string>()
+    responsesFormatted.value.get(date) ?? new Set<string>()
 
   if (isSignUp.value) {
     c += "tw-bg-light-gray "
@@ -1642,10 +1637,10 @@ function getTimeslotClassStyle(
       }
     } else {
       if (state.value === states.SET_SPECIFIC_TIMES) {
-        c += tempTimes.value.has(date.getTime()) ? "tw-bg-white " : "tw-bg-gray "
+        c += tempTimes.value.has(date) ? "tw-bg-white " : "tw-bg-gray "
       } else {
-        if (availability.value.has(date.getTime())) s.backgroundColor = "#00994C77"
-        else if (ifNeeded.value.has(date.getTime())) c += "tw-bg-yellow "
+        if (availability.value.has(date)) s.backgroundColor = "#00994C77"
+        else if (ifNeeded.value.has(date)) c += "tw-bg-yellow "
       }
     }
   }
@@ -1653,7 +1648,7 @@ function getTimeslotClassStyle(
   if (state.value === states.SINGLE_AVAILABILITY) {
     const respondent = curRespondent.value
     if (timeslotRespondents.has(respondent)) {
-      if (parsedResponses.value[respondent].ifNeeded?.has(date.getTime())) {
+      if (parsedResponses.value[respondent].ifNeeded?.has(date)) {
         c += "tw-bg-yellow "
       } else {
         s.backgroundColor = "#00994C77"
@@ -1717,7 +1712,8 @@ function getTimeslotClassStyle(
             state.value === states.SUBSET_AVAILABILITY
               ? curRespondents.value[0]
               : respondents.value[0]._id
-          if (rid && parsedResponses.value[rid].ifNeeded?.has(date.getTime())) {
+          if (rid && parsedResponses.value[rid].ifNeeded?.has(date)) {
+
             c += "tw-bg-yellow "
           } else {
             s.backgroundColor = "#00994C88"
@@ -1759,7 +1755,7 @@ function getTimeslotClassStyle(
 
 function getTimeTimeslotClassStyle(
   _day: Record<string, unknown>,
-  _time: { hoursOffset: number },
+  _time: TimeItem,
   d: number,
   t: number
 ): { class: string; style: Record<string, string> } {
@@ -1786,8 +1782,10 @@ function getTimeTimeslotClassStyle(
     cs.class += "tw-border tw-border-dashed tw-border-black tw-z-10 "
   } else {
     if (date) {
-      const localDate = new Date(date.getTime() - timezoneOffset.value * 60 * 1000)
-      const frac = localDate.getMinutes()
+      // Convert Duration to minutes for subtraction
+      const offsetMinutes = timezoneOffset.value.total("minutes")
+      const localDate = date.subtract({ minutes: offsetMinutes })
+      const frac = localDate.minute
       if (frac === 0) cs.class += "tw-border-t "
       else if (frac === 30) {
         cs.class += "tw-border-t "
@@ -1830,14 +1828,14 @@ function getTimeTimeslotClassStyle(
 }
 
 function getDayTimeslotClassStyle(
-  date: Date,
+  date: Temporal.ZonedDateTime,
   i: number
 ): { class: string; style: Record<string, string> } {
   const row = Math.floor(i / 7)
   const col = i % 7
   let cs: { class: string; style: Record<string, string> }
 
-  if (monthDayIncluded.value.get(date.getTime())) {
+  if (monthDayIncluded.value.get(date)) {
     cs = getTimeslotClassStyle(date, row, col)
     if (state.value === states.EDIT_AVAILABILITY) cs.class += "tw-cursor-pointer "
     const bg = cs.style.backgroundColor
@@ -1854,7 +1852,7 @@ function getDayTimeslotClassStyle(
     (respondents.value.length > 0 || state.value === states.EDIT_AVAILABILITY) &&
     curTimeslot.value.row === row &&
     curTimeslot.value.col === col &&
-    monthDayIncluded.value.get(date.getTime())
+    monthDayIncluded.value.get(date)
   ) {
     cs.class += "tw-outline-2 tw-outline-dashed tw-outline-black tw-z-10 "
   } else {
@@ -1901,14 +1899,25 @@ function getTimeslotVon(row: number, col: number): Record<string, () => void> {
         if (!props.event.daysOnly) {
           const date = getDateFromRowCol(row, col)
           if (date) {
-            date.setTime(date.getTime() - timezoneOffset.value * 60 * 1000)
-            const start = dayjs(date).utc()
-            const end = dayjs(date)
-              .utc()
-              .add(timeslotDuration.value, "minutes")
-            const tf = timeType.value === timeTypes.HOUR12 ? "h:mm A" : "HH:mm"
-            const df = grid.isSpecificDates.value ? "ddd, MMM D, YYYY" : "ddd"
-            tooltipContent.value = `${start.format(df)} ${start.format(tf)} to ${end.format(tf)}`
+            const localDate = date.subtract(timezoneOffset.value)
+            const start = localDate
+            const end = start.add(timeslotDuration.value)
+            // TODO check
+            
+            // Format using Temporal's toLocaleString for locale-aware formatting            
+            const timeFormat: Intl.DateTimeFormatOptions = timeType.value === timeTypes.HOUR12 
+              ? { hour: "numeric", minute: "2-digit" }
+              : { hour: "2-digit", minute: "2-digit", hour12: false }
+            
+            const dateFormat: Intl.DateTimeFormatOptions = grid.isSpecificDates.value
+              ? { weekday: "short", month: "short", day: "numeric", year: "numeric" }
+              : { weekday: "short" }
+            
+            const startDateStr = start.toLocaleString("en-US", dateFormat)
+            const startTimeStr = start.toLocaleString("en-US", timeFormat)
+            const endTimeStr = end.toLocaleString("en-US", timeFormat)
+            
+            tooltipContent.value = `${startDateStr} ${startTimeStr} to ${endTimeStr}`
           }
         }
       }
@@ -1919,7 +1928,7 @@ function getTimeslotVon(row: number, col: number): Record<string, () => void> {
   }
 }
 
-function getIsTimeBlockInFirstSplit(timeBlock: { hoursOffset: number }): boolean {
+function getIsTimeBlockInFirstSplit(timeBlock: { hoursOffset: Temporal.Duration }): boolean {
   const s0 = splitTimes.value[0]
   return (
     s0.length > 0 &&
@@ -1929,20 +1938,20 @@ function getIsTimeBlockInFirstSplit(timeBlock: { hoursOffset: number }): boolean
 }
 
 function getTimeBlockStyle(
-  timeBlock: { hoursOffset?: number; hoursLength?: number } & Record<string, unknown>
+  timeBlock: { hoursOffset?: Temporal.Duration; hoursLength?: Temporal.Duration } & Record<string, unknown>
 ): Record<string, string> {
   const style: Record<string, string> = {}
   const s0 = splitTimes.value[0]
   const hasSecondSplit = splitTimes.value[1].length > 0
-  const hoursOffset = timeBlock.hoursOffset ?? 0
-  const hoursLength = timeBlock.hoursLength ?? 0
-  if (!hasSecondSplit || getIsTimeBlockInFirstSplit(timeBlock as { hoursOffset: number; hoursLength: number })) {
-    style.top = `calc(${String(hoursOffset - (s0[0]?.hoursOffset ?? 0))} * ${String(HOUR_HEIGHT)}px)`
+  const hoursOffset = timeBlock.hoursOffset ?? durations.ZERO
+  const hoursLength = timeBlock.hoursLength ?? durations.ZERO
+  if (!hasSecondSplit || getIsTimeBlockInFirstSplit(timeBlock as { hoursOffset: Temporal.Duration; hoursLength: Temporal.Duration })) {
+    style.top = `calc(${String(hoursOffset.subtract(s0[0]?.hoursOffset ?? durations.ZERO).total('hours'))} * ${String(HOUR_HEIGHT)}px)`
     style.height = `calc(${String(hoursLength)} * ${String(HOUR_HEIGHT)}px)`
   } else {
     const s1 = splitTimes.value[1]
     style.top = `calc(${String(s0.length)} * ${String(timeslotHeight.value)}px + ${String(SPLIT_GAP_HEIGHT)}px + ${String(
-      hoursOffset - (s1[0]?.hoursOffset ?? 0)
+      hoursOffset.subtract(s1[0]?.hoursOffset ?? durations.ZERO).total('hours')
     )} * ${String(HOUR_HEIGHT)}px)`
     style.height = `calc(${String(hoursLength)} * ${String(HOUR_HEIGHT)}px)`
   }

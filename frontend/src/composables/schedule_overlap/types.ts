@@ -1,3 +1,4 @@
+import type { Temporal } from "temporal-polyfill"
 import type { Event } from "@/types"
 
 export const states = {
@@ -22,25 +23,29 @@ export const SPLIT_GAP_HEIGHT = 40
 export const SPLIT_GAP_WIDTH = 20
 export const HOUR_HEIGHT = 60
 
-export interface RowCol { row: number; col: number }
+export interface RowCol {
+  row: number
+  col: number
+}
 
 export interface DayItem {
   dayText: string
   dateString: string
-  dateObject: Date
+  dateObject: Temporal.ZonedDateTime
   isConsecutive?: boolean
   excludeTimes?: boolean
 }
 
+// TODO
 export interface MonthDayItem {
   date: number | ""
-  time: number
-  dateObject: Date
+  time: Temporal.ZonedDateTime
+  dateObject: Temporal.ZonedDateTime
   included: boolean
 }
 
 export interface TimeItem {
-  hoursOffset: number
+  hoursOffset: Temporal.Duration
   text?: string
   id?: string
 }
@@ -51,44 +56,51 @@ export interface ScheduledEvent {
   numRows: number
 }
 
+// TODO rename to SignUpBlockLike?
 export interface SignUpBlockLite {
   _id: string
   capacity: number
   name: string
-  startDate: Date | string
-  endDate: Date | string
-  hoursOffset: number
-  hoursLength: number
+  startDate: Temporal.ZonedDateTime
+  endDate: Temporal.ZonedDateTime
+  hoursOffset: Temporal.Duration
+  hoursLength: Temporal.Duration
   responses?: { userId?: string; signUpBlockIds?: string[] }[]
   [key: string]: unknown
 }
 
-export interface Timezone { value: string; label: string; gmtString: string; offset: number }
+export interface Timezone {
+  value: string
+  offset: Temporal.Duration
+  label: string
+  gmtString: string
+}
 
 export type EventLike = Event & Record<string, unknown>
 
+// TODO
 export interface CalendarOptions {
   bufferTime: { enabled: boolean; time: number }
   workingHours: { enabled: boolean; startTime: number; endTime: number }
 }
 
+// TODO rename to CalendarEventLike
+
 export interface CalendarEventLite {
-  // Loader emits ISO strings; `processTimeBlocks` (called by `splitTimeBlocksByDay`)
-  // converts to `Date` before consumers access `.getTime()`.
-  // After processing, these are always Date objects at runtime.
-  startDate: Date | string
-  endDate: Date | string
+  startDate: Temporal.ZonedDateTime
+  endDate: Temporal.ZonedDateTime
   free?: boolean
   calendarId?: string
-  hoursOffset?: number
-  hoursLength?: number
+  hoursOffset?: Temporal.Duration
+  hoursLength?: Temporal.Duration
   [k: string]: unknown
 }
 
-// Type for processed calendar events where dates are guaranteed to be Date objects
-export interface ProcessedCalendarEvent extends Omit<CalendarEventLite, 'startDate' | 'endDate'> {
-  startDate: Date
-  endDate: Date
+// Type for processed calendar events where dates are guaranteed to be ZonedDateTime objects
+export interface ProcessedCalendarEvent
+  extends Omit<CalendarEventLite, "startDate" | "endDate"> {
+  startDate: Temporal.ZonedDateTime
+  endDate: Temporal.ZonedDateTime
 }
 
 export type CalendarEventsByDay = CalendarEventLite[][]
@@ -109,12 +121,13 @@ export interface ParsedResponse {
     string,
     unknown
   >
-  availability: Set<number>
-  ifNeeded?: Set<number>
+  availability: Set<Temporal.ZonedDateTime>
+  ifNeeded?: Set<Temporal.ZonedDateTime>
   enabledCalendars?: Record<string, string[]>
   calendarOptions?: CalendarOptions
 }
 
 export type ParsedResponses = Record<string, ParsedResponse>
 
-export type ResponsesFormatted = Map<number, Set<string>>
+/** Map of Temporal.ZonedDateTime to set of user IDs who are available at that time */
+export type ResponsesFormatted = Map<Temporal.ZonedDateTime, Set<string>>

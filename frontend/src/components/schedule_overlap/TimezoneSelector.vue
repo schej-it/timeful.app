@@ -41,20 +41,16 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue"
+import { Temporal } from "temporal-polyfill"
 import { allTimezones } from "@/constants"
 import type { Timezone } from "@/composables/schedule_overlap/types"
-import dayjs from "dayjs"
-import utcPlugin from "dayjs/plugin/utc"
-import timezonePlugin from "dayjs/plugin/timezone"
-dayjs.extend(utcPlugin)
-dayjs.extend(timezonePlugin)
 
 const props = withDefaults(
   defineProps<{
     modelValue: Timezone
     label?: string
     labelColor?: string
-    referenceDate?: Date | null
+    referenceDate?: Temporal.ZonedDateTime | null
   }>(),
   {
     label: "Shown in",
@@ -69,25 +65,30 @@ const emit = defineEmits<{
 
 const timezoneModified = ref(false)
 
-const effectiveReferenceDate = computed(() => props.referenceDate ?? new Date())
+const effectiveReferenceDate = computed(() => {
+  const refDate = props.referenceDate ?? Temporal.Now.zonedDateTimeISO()
+  return refDate
+})
 
 const timezones = computed<Timezone[]>(() => {
   const t = Object.entries(allTimezones)
     .map((zone): Timezone | null => {
       try {
-        const min = dayjs(effectiveReferenceDate.value).tz(zone[0]).utcOffset()
+        // Use Temporal to get the UTC offset for the timezone at the reference date
+        const zdt = effectiveReferenceDate.value.withTimeZone(zone[0])
+        const min = Math.round(zdt.offsetNanoseconds / (1000 * 1000 * 1000 * 60))
         const hr = `${String((min / 60) ^ 0)}:${
           min % 60 === 0 ? "00" : String(Math.abs(min % 60))
         }`
         const gmtString = `(GMT${hr.includes("-") ? hr : `+${hr}`})`
-        return { value: zone[0], label: zone[1], gmtString, offset: min }
+        return { value: zone[0], label: zone[1], gmtString, offset: Temporal.Duration.from({ minutes: min }) }
       } catch (e: unknown) {
         console.error(e)
         return null
       }
     })
     .filter((z): z is Timezone => z !== null)
-    .sort((a, b) => a.offset - b.offset)
+    .sort((a, b) => a.offset.total("minutes") - b.offset.total("minutes"))
   return t
 })
 
@@ -101,21 +102,32 @@ function getLocalTimezone(): Timezone | undefined {
     // Step 2: Match by offsets at two reference dates (Jan + Jul)
     // Distinguishes DST-observing zones from non-DST zones that share
     // the same current offset (e.g. Europe/Belgrade vs Africa/Casablanca)
-    const janOffset = dayjs.tz("2024-01-15 12:00", localTimezone).utcOffset()
-    const julOffset = dayjs.tz("2024-07-15 12:00", localTimezone).utcOffset()
+    const janDate = Temporal.ZonedDateTime.from("2024-01-15T12:00:00[America/New_York]")
+      .withTimeZone(localTimezone)
+    const julDate = Temporal.ZonedDateTime.from("2024-07-15T12:00:00[America/New_York]")
+      .withTimeZone(localTimezone)
+    
+    const janOffset = Math.round(janDate.offsetNanoseconds / (1000 * 1000 * 1000 * 60))
+    const julOffset = Math.round(julDate.offsetNanoseconds / (1000 * 1000 * 1000 * 60))
+    
     match = timezones.value.find((t) => {
-      const tJan = dayjs.tz("2024-01-15 12:00", t.value).utcOffset()
-      const tJul = dayjs.tz("2024-07-15 12:00", t.value).utcOffset()
-      return tJan === janOffset && tJul === julOffset
+      const tJan = Temporal.ZonedDateTime.from("2024-01-15T12:00:00[America/New_York]")
+        .withTimeZone(t.value)
+      const tJul = Temporal.ZonedDateTime.from("2024-07-15T12:00:00[America/New_York]")
+        .withTimeZone(t.value)
+      
+      const tJanOffset = Math.round(tJan.offsetNanoseconds / (1000 * 1000 * 1000 * 60))
+      const tJulOffset = Math.round(tJul.offsetNanoseconds / (1000 * 1000 * 1000 * 60))
+      
+      return tJanOffset === janOffset && tJulOffset === julOffset
     })
   }
 
   if (!match) {
     // Step 3: Final fallback — current offset only
-    const offset = dayjs(effectiveReferenceDate.value)
-      .tz(localTimezone)
-      .utcOffset()
-    match = timezones.value.find((t) => t.offset === offset)
+    const zdt = effectiveReferenceDate.value.withTimeZone(localTimezone)
+    const offsetMinutes = Math.round(zdt.offsetNanoseconds / (1000 * 1000 * 1000 * 60))
+    match = timezones.value.find((t) => t.offset.total("minutes") === offsetMinutes)
   }
 
   return match

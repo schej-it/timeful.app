@@ -1,5 +1,7 @@
 // Cookie consent utilities
+import { Temporal } from "temporal-polyfill"
 import type { DataLayerObject } from "@gtm-support/core"
+import { UTC } from "@/constants"
 
 export const COOKIE_CONSENT_KEY = "cookieConsent"
 
@@ -37,7 +39,13 @@ export function setCookieConsent(preferences: {
   advertising?: unknown
 }): CookieConsent {
   const consentData: CookieConsent = {
-    timestamp: new Date().toISOString(),
+    timestamp: Temporal.Now.plainDateISO()
+      .toZonedDateTime({
+        timeZone: UTC,
+        plainTime: "00:00:00",
+      })
+      .toInstant()
+      .toString(),
     preferences: {
       necessary: true, // Always true
       analytics: Boolean(preferences.analytics),

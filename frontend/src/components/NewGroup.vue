@@ -107,7 +107,7 @@
         <EmailInput
           ref="emailInput"
           :added-emails="addedEmails"
-          @update:emails="(newEmails) => { emails = newEmails as string[] }"
+          @update:emails="(newEmails) => { emails = newEmails }"
           @request-contacts-access="requestContactsAccess"
         >
           <template #header>
@@ -169,25 +169,20 @@ import { storeToRefs } from "pinia"
 import {
   post,
   put,
-  timeNumToTimeString,
   dateToTimeNum,
   signInGoogle,
   getDateWithTimezone,
 } from "@/utils"
 import { useMainStore } from "@/stores/main"
-import { eventTypes, dayIndexToDayString, authTypes } from "@/constants"
+import { eventTypes, authTypes, durations, hoursPlainTime } from "@/constants"
 import { posthog } from "@/plugins/posthog"
 import HelpDialog from "./HelpDialog.vue"
 import TimezoneSelector from "./schedule_overlap/TimezoneSelector.vue"
 import EmailInput from "./event/EmailInput.vue"
 import type { Event } from "@/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
-
-import dayjs from "dayjs"
-import utcPlugin from "dayjs/plugin/utc"
-import timezonePlugin from "dayjs/plugin/timezone"
-dayjs.extend(utcPlugin)
-dayjs.extend(timezonePlugin)
+import { Temporal } from "temporal-polyfill"
+import type { ContactsPayload } from "@/composables/event/types"
 
 interface FormRef {
   validate: () => Promise<{ valid: boolean }> | boolean
@@ -196,14 +191,6 @@ interface FormRef {
 
 interface EmailInputRef { reset: () => void }
 interface NameFieldRef { blur: () => void }
-interface ContactsPayload {
-  emails?: string[]
-  name?: string
-  startTime?: number
-  endTime?: number
-  selectedDaysOfWeek?: number[]
-  startOnMonday?: boolean
-}
 
 const props = withDefaults(
   defineProps<{
@@ -239,27 +226,27 @@ const emailInput = ref<EmailInputRef | null>(null)
 
 const formValid = ref(true)
 const name = ref("")
-const startTime = ref(9)
-const endTime = ref(17)
+const startTime = ref(hoursPlainTime.NINE)
+const endTime = ref(hoursPlainTime.SEVENTEEN)
 const loading = ref(false)
 const selectedDaysOfWeek = ref<number[]>([])
 const startOnMonday = ref(false)
 const emails = ref<string[]>([])
 
 const showAdvancedOptions = ref(false)
-const timezone = ref<Timezone>({ value: "", label: "", gmtString: "", offset: 0 })
+const timezone = ref<Timezone>({ value: "", label: "", gmtString: "", offset: durations.ZERO })
 
 const helpDialog = ref(false)
 const initialEventData = ref<{
   name: string
-  startTime: number
-  endTime: number
+  startTime: Temporal.PlainTime
+  endTime: Temporal.PlainTime
   selectedDaysOfWeek: number[]
   emails: string[]
 }>({
   name: "",
-  startTime: 9,
-  endTime: 17,
+  startTime: hoursPlainTime.NINE,
+  endTime: hoursPlainTime.SEVENTEEN,
   selectedDaysOfWeek: [],
   emails: [],
 })
@@ -301,8 +288,8 @@ const addedEmails = computed(() => {
 onMounted(() => {
   if (Object.keys(props.contactsPayload).length > 0) {
     name.value = props.contactsPayload.name ?? ""
-    startTime.value = props.contactsPayload.startTime ?? 9
-    endTime.value = props.contactsPayload.endTime ?? 17
+    startTime.value = props.contactsPayload.startTime ?? hoursPlainTime.NINE
+    endTime.value = props.contactsPayload.endTime ?? hoursPlainTime.SEVENTEEN
     selectedDaysOfWeek.value = props.contactsPayload.selectedDaysOfWeek ?? []
     startOnMonday.value = props.contactsPayload.startOnMonday ?? false
 
@@ -315,8 +302,8 @@ const blurNameField = () => {
 }
 const reset = () => {
   name.value = ""
-  startTime.value = 9
-  endTime.value = 17
+  startTime.value = hoursPlainTime.NINE
+  endTime.value = hoursPlainTime.SEVENTEEN
   selectedDaysOfWeek.value = []
 
   formRef.value?.resetValidation()
@@ -327,21 +314,32 @@ const submit = async () => {
   const valid = typeof result === "boolean" ? result : result?.valid
   if (!valid) return
 
-  let duration = endTime.value - startTime.value
-  if (duration < 0) duration += 24
+  let duration = endTime.value.since(startTime.value)
+  if (duration.total('hours') < 0) duration.add({ hours: 24 })
 
-  const dates: Date[] = []
-  const startTimeString = timeNumToTimeString(startTime.value)
+  const dates: Temporal.ZonedDateTime[] = []
   selectedDaysOfWeek.value.sort((a, b) => a - b)
   selectedDaysOfWeek.value = selectedDaysOfWeek.value.filter((dayIndex) => {
     return startOnMonday.value ? dayIndex !== 0 : dayIndex !== 7
   })
   for (const dayIndex of selectedDaysOfWeek.value) {
-    const day = dayIndexToDayString[dayIndex]
-    const date = dayjs.tz(`${day} ${startTimeString}`, timezone.value.value)
-    const refOffset = date.utcOffset()
-    const currentOffset = dayjs().tz(timezone.value.value).utcOffset()
-    dates.push(date.subtract(currentOffset - refOffset, "minutes").toDate())
+    // For group events, we need to find the next occurrence of this day
+    
+    // Get current date in the specified timezone
+    const now = Temporal.Now.zonedDateTimeISO(timezone.value.value)
+    const currentDayOfWeek = now.dayOfWeek // 1-7 (Mon-Sun)
+    const targetDayOfWeek = dayIndex === 7 ? 7 : dayIndex // Convert from Sunday-based to Monday-based
+    
+    // Calculate days until next occurrence
+    let daysUntil = targetDayOfWeek - currentDayOfWeek
+    if (daysUntil < 0) daysUntil += 7
+    
+    const targetDate = now.add({ days: daysUntil }).toPlainDate()
+    const targetZDT = targetDate.toZonedDateTime({ 
+      timeZone: timezone.value.value,
+      plainTime: startTime.value
+    })
+    dates.push(targetZDT)
   }
 
   loading.value = true
@@ -450,19 +448,19 @@ const updateFieldsFromEvent = () => {
   if (props.event) {
     name.value = props.event.name ?? ""
 
-    startTime.value = Math.floor(
+    startTime.value =
+      // TODO Math.floor?
       dateToTimeNum(getDateWithTimezone((props.event.dates ?? [])[0]), true)
-    )
-    startTime.value %= 24
 
-    endTime.value = (startTime.value + (props.event.duration ?? 0)) % 24
+    const durationHours = props.event.duration ?? durations.ZERO
+    endTime.value = startTime.value.add(durationHours)
     startOnMonday.value = props.event.startOnMonday ?? false
 
     const days: number[] = []
     for (let date of props.event.dates ?? []) {
       const d = getDateWithTimezone(date)
-      if (startOnMonday.value && d.getUTCDay() === 0) days.push(7)
-      else days.push(d.getUTCDay())
+      // Temporal dayOfWeek returns 1-7 (Mon-Sun), which is what we need
+      days.push(d.dayOfWeek)
     }
     selectedDaysOfWeek.value = days
 

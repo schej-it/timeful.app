@@ -427,6 +427,7 @@ import { posthog } from "@/plugins/posthog"
 import UserAvatarContent from "../UserAvatarContent.vue"
 import EventOptions from "./EventOptions.vue"
 import OverflowGradient from "@/components/OverflowGradient.vue"
+import { Temporal } from "temporal-polyfill"
 import type { EventLike, ParsedResponses, Timezone } from "@/composables/schedule_overlap/types"
 import type { User } from "@/types"
 
@@ -442,7 +443,7 @@ const props = defineProps<{
   event: EventLike
   days: unknown[]
   times: unknown[]
-  curDate?: Date
+  curDate?: Temporal.ZonedDateTime
   curRespondent: string
   curRespondents: string[]
   curTimeslot: { dayIndex: number; timeIndex: number }
@@ -454,7 +455,7 @@ const props = defineProps<{
   isGroup: boolean
   attendees?: { email: string; declined?: boolean }[]
   showCalendarEvents: boolean
-  responsesFormatted: Map<number, Set<string>>
+  responsesFormatted: Map<Temporal.ZonedDateTime, Set<string>>
   timezone: Timezone
   showBestTimes: boolean
   hideIfNeeded: boolean
@@ -502,7 +503,7 @@ const userToDelete = ref<User | null>(null)
 const desktopMaxHeight = ref(0)
 const respondentsListMinHeight = 400
 let oldCurRespondents: string[] = []
-const curRespondentsAddedTime = reactive<Record<string, number>>({})
+const curRespondentsAddedTime = reactive<Record<string, Temporal.ZonedDateTime>>({})
 const hasMounted = ref(false)
 
 const allowExportCsv = computed(() => {
@@ -567,7 +568,7 @@ const orderedRespondents = computed(() => {
     const aId = a._id ?? ""
     const bId = b._id ?? ""
     if (curRespondentsSet.value.has(aId) && curRespondentsSet.value.has(bId)) {
-      return curRespondentsAddedTime[aId] - curRespondentsAddedTime[bId]
+      return Temporal.ZonedDateTime.compare(curRespondentsAddedTime[aId], curRespondentsAddedTime[bId])
     } else if (curRespondentsSet.value.has(aId) && !curRespondentsSet.value.has(bId)) {
       return -1
     } else if (!curRespondentsSet.value.has(aId) && curRespondentsSet.value.has(bId)) {
@@ -611,7 +612,7 @@ function respondentClass(id: string) {
 
 function respondentIfNeeded(id: string) {
   if (!props.curDate || props.hideIfNeeded) return false
-  return Boolean(props.parsedResponses[id].ifNeeded?.has(props.curDate.getTime()))
+  return Boolean(props.parsedResponses[id].ifNeeded?.has(props.curDate))
 }
 
 function respondentSelected(id: string) {
@@ -648,22 +649,28 @@ async function deleteAvailability(user: User | null) {
   }
 }
 
-function getDateString(date: Date) {
+function getDateString(date: Temporal.ZonedDateTime | Temporal.PlainDate) {
   const locale = getLocale()
   if (props.event.daysOnly) {
-    return date.toISOString().substring(0, 10)
+    // For days-only events, return the plain date string
+    if (date instanceof Temporal.PlainDate) {
+      return date.toString()
+    }
+    return date.toPlainDate().toString()
   }
+  // For time-specific events, return localized datetime string
   return (
-    '"' + date.toLocaleString(locale, { timeZone: props.timezone.value }) + '"'
+    '"' + date.toLocaleString(locale) + '"'
   )
 }
 
 function exportCsv() {
   const csv: string[][] = []
   const increment = 15
+  const durationHours = props.event.duration?.total("hours") ?? 0
   const numIterations = props.event.daysOnly
     ? 1
-    : ((props.event.duration ?? 0) * 60) / increment
+    : (durationHours * 60) / increment
 
   const responses = Object.values(props.parsedResponses).sort((a, b) =>
     ((a.user as RespondentUser).firstName ?? "").localeCompare(
@@ -682,20 +689,20 @@ function exportCsv() {
     csv.push(header)
 
     for (const date of props.event.dates as unknown as string[]) {
-      const curDate = new Date(date)
+      let curDate = Temporal.ZonedDateTime.from(date)
       for (let i = 0; i < numIterations; ++i) {
         const row = [getDateString(curDate)]
         for (const response of responses) {
-          if (response.availability.has(curDate.getTime())) {
+          if (response.availability.has(curDate)) {
             row.push("Available")
-          } else if (response.ifNeeded?.has(curDate.getTime())) {
+          } else if (response.ifNeeded?.has(curDate)) {
             row.push("If needed")
           } else {
             row.push("")
           }
         }
         csv.push(row)
-        curDate.setMinutes(curDate.getMinutes() + increment)
+        curDate = curDate.add({ minutes: increment })
       }
     }
   } else if (exportCsvDialog.type === "nameToDates") {
@@ -706,17 +713,17 @@ function exportCsv() {
       const row = [`${u.firstName ?? ""} ${u.lastName ?? ""}`]
 
       for (const date of props.event.dates as unknown as string[]) {
-        const curDate = new Date(date)
+        let curDate = Temporal.ZonedDateTime.from(date)
         for (let i = 0; i < numIterations; ++i) {
           if (
-            response.availability.has(curDate.getTime()) ||
-            response.ifNeeded?.has(curDate.getTime())
+            response.availability.has(curDate) ||
+            response.ifNeeded?.has(curDate)
           ) {
             row.push(getDateString(curDate))
           } else {
             row.push("")
           }
-          curDate.setMinutes(curDate.getMinutes() + increment)
+          curDate = curDate.add({ minutes: increment })
         }
       }
       csv.push(row)
@@ -787,7 +794,7 @@ watch(
     const removedRespondents = oldCurRespondents.filter((id) => !newSet.has(id))
 
     for (const id of addedRespondents) {
-      curRespondentsAddedTime[id] = Date.now()
+      curRespondentsAddedTime[id] = Temporal.Now.zonedDateTimeISO()
     }
     for (const id of removedRespondents) {
       Reflect.deleteProperty(curRespondentsAddedTime, id)

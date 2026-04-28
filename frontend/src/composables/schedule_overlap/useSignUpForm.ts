@@ -2,6 +2,7 @@ import { computed, ref, type ComputedRef, type Ref } from "vue"
 import ObjectID from "bson-objectid"
 import { getTimeBlock, put, splitTimeBlocksByDay } from "@/utils"
 import { useMainStore } from "@/stores/main"
+import type { Temporal } from "temporal-polyfill"
 import {
   type DayItem,
   type EventLike,
@@ -41,8 +42,11 @@ export function useSignUpForm(opts: UseSignUpFormOptions) {
 
     let maxSize = Infinity
     for (const block of [...selectedDay, ...selectedDayToAdd]) {
-      if (block.hoursOffset * 4 > ds.row) {
-        maxSize = Math.min(maxSize, block.hoursOffset * 4 - ds.row)
+      // Convert Duration to hours using .total() method
+      const blockOffsetHours = block.hoursOffset.total("hours")
+      const blockOffsetRows = blockOffsetHours * 4
+      if (blockOffsetRows > ds.row) {
+        maxSize = Math.min(maxSize, blockOffsetRows - ds.row)
       }
     }
     return Number.isFinite(maxSize) ? maxSize : null
@@ -62,8 +66,8 @@ export function useSignUpForm(opts: UseSignUpFormOptions) {
 
   const createSignUpBlock = (
     dayIndex: number,
-    hoursOffset: number,
-    hoursLength: number
+    hoursOffset: Temporal.Duration,
+    hoursLength: Temporal.Duration
   ): SignUpBlockLite => {
     const dayItem = opts.days.value[dayIndex]
     const timeBlock = getTimeBlock(
@@ -77,8 +81,8 @@ export function useSignUpForm(opts: UseSignUpFormOptions) {
       name: newSignUpBlockName.value,
       startDate: timeBlock.startDate,
       endDate: timeBlock.endDate,
-      hoursOffset,
-      hoursLength,
+      hoursOffset: hoursOffset,
+      hoursLength: hoursLength,
     }
   }
 

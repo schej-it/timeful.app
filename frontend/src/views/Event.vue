@@ -483,6 +483,7 @@ import {
 } from "vue"
 import { useRouter, useRoute } from "vue-router"
 import { storeToRefs } from "pinia"
+import { Temporal } from "temporal-polyfill"
 import {
   get,
   post,
@@ -498,11 +499,6 @@ import {
   timezoneObservesDST,
 } from "@/utils"
 import { validateEmail } from "@/utils"
-import dayjs from "dayjs"
-import utcPlugin from "dayjs/plugin/utc"
-import timezonePlugin from "dayjs/plugin/timezone"
-dayjs.extend(utcPlugin)
-dayjs.extend(timezonePlugin)
 
 import NewDialog from "@/components/NewDialog.vue"
 import ScheduleOverlap from "@/components/schedule_overlap/ScheduleOverlap.vue"
@@ -809,7 +805,7 @@ function _interceptPluginResponses(e: MessageEvent<PluginMessageData>) {
         console.log(`[PLUGIN RESPONSE - SUCCESS] ${command ?? ""}`, {
           requestId,
           payload,
-          timestamp: new Date().toISOString(),
+          timestamp: Temporal.Now.instant().toString(),
         })
       }
     } else {
@@ -819,7 +815,7 @@ function _interceptPluginResponses(e: MessageEvent<PluginMessageData>) {
       console.error(`[PLUGIN RESPONSE - ERROR] ${command ?? ""}`, {
         requestId,
         error: errMsg,
-        timestamp: new Date().toISOString(),
+        timestamp: Temporal.Now.instant().toString(),
       })
     }
   }
@@ -910,12 +906,17 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
   }
   if (ev.type === eventTypes.DOW && slots.length > 0) {
     slots = slots.map((slot: SlotEntry) => {
-      const startDate = dayjs(slot.start)
-      const endDate = dayjs(slot.end)
+      // Parse the ISO string and add 1 hour using Temporal
+      const startZDT = Temporal.ZonedDateTime.from(slot.start, { overflow: "constrain" })
+      const endZDT = Temporal.ZonedDateTime.from(slot.end, { overflow: "constrain" })
+      
+      const newStart = startZDT.add({ hours: 1 })
+      const newEnd = endZDT.add({ hours: 1 })
+      
       return {
         ...slot,
-        start: startDate.add(1, "hour").format("YYYY-MM-DDTHH:mm:ss"),
-        end: endDate.add(1, "hour").format("YYYY-MM-DDTHH:mm:ss"),
+        start: newStart.toString({ calendarName: "never", timeZoneName: "never" }),
+        end: newEnd.toString({ calendarName: "never", timeZoneName: "never" }),
       }
     })
   }
@@ -969,7 +970,7 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
   }
   for (let i = 0; i < slots.length; i++) {
     const slot = slots[i]
-    let startTime: Date, endTime: Date
+    let startTime: Temporal.ZonedDateTime, endTime: Temporal.ZonedDateTime
     try {
       startTime = convertToUTC(slot.start, timezoneValue)
       endTime = convertToUTC(slot.end, timezoneValue)
@@ -978,33 +979,27 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
       sendPluginError(requestId, command, `Failed to parse time at index ${String(i)}: ${msg}`)
       return
     }
-    if (isNaN(startTime.getTime())) {
-      sendPluginError(requestId, command, `Invalid start time at index ${String(i)}: ${slot.start}`)
-      return
-    }
-    if (isNaN(endTime.getTime())) {
-      sendPluginError(requestId, command, `Invalid end time at index ${String(i)}: ${slot.end}`)
-      return
-    }
-    if (endTime <= startTime) {
+    if (endTime.epochMilliseconds <= startTime.epochMilliseconds) {
       sendPluginError(requestId, command, `End time must be after start time at index ${String(i)}`)
       return
     }
   }
-  const allAvailabilityTimestamps: Date[] = []
-  const allIfNeededTimestamps: Date[] = []
+  const allAvailabilityTimestamps: number[] = []
+  const allIfNeededTimestamps: number[] = []
   const timestampStatusMap = new Map<number, string>()
   let isBrokenBounds = false
   slots.forEach((slot: SlotEntry, i: number) => {
-    const userStartDate = dayjs.tz(slot.start, timezoneValue)
-    const userEndDate = dayjs.tz(slot.end, timezoneValue)
-    const userStartMs = userStartDate.valueOf()
-    const userEndMs = userEndDate.valueOf()
+    const userStartZdt = Temporal.ZonedDateTime.from(slot.start, { overflow: 'constrain' }).withTimeZone(timezoneValue)
+    const userEndZdt = Temporal.ZonedDateTime.from(slot.end, { overflow: 'constrain' }).withTimeZone(timezoneValue)
+    
+    const userStartMs = userStartZdt.epochMilliseconds
+    const userEndMs = userEndZdt.epochMilliseconds
+    
     const intWidth = userEndMs - userStartMs
     let coveredWidth = 0
-    timeSlotToRowCol.forEach((value: { startTime: Date; endTime: Date }, _key: number) => {
-      const slotStartMs = value.startTime.valueOf()
-      const slotEndMs = value.endTime.valueOf()
+    timeSlotToRowCol.forEach((value: { startTime: Temporal.ZonedDateTime; endTime: Temporal.ZonedDateTime }, _key: number) => {
+      const slotStartMs = value.startTime.epochMilliseconds
+      const slotEndMs = value.endTime.epochMilliseconds
       if (userStartMs <= slotEndMs && userEndMs >= slotStartMs) {
         const intersectionStartMs = Math.max(userStartMs, slotStartMs)
         const intersectionEndMs = Math.min(userEndMs, slotEndMs)
@@ -1012,8 +1007,7 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
         const incrementMs = timeIncrement * 60 * 1000
         let currentTimeMs = intersectionStartMs
         while (currentTimeMs < intersectionEndMs) {
-          const timestamp = new Date(currentTimeMs)
-          const timestampKey = timestamp.getTime()
+          const timestampKey = currentTimeMs
           if (timestampStatusMap.has(timestampKey)) {
             const existingStatus = timestampStatusMap.get(timestampKey)
             if (existingStatus !== slot.status) {
@@ -1024,9 +1018,9 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
             timestampStatusMap.set(timestampKey, slot.status ?? "")
           }
           if (slot.status === "available") {
-            allAvailabilityTimestamps.push(timestamp)
+            allAvailabilityTimestamps.push(currentTimeMs)
           } else {
-            allIfNeededTimestamps.push(timestamp)
+            allIfNeededTimestamps.push(currentTimeMs)
           }
           currentTimeMs += incrementMs
           if (currentTimeMs > intersectionEndMs) break
@@ -1074,7 +1068,10 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
     return
   }
   const ev = event.value as EventWithExtras
-  let timezoneValue: string | null = null
+  // Convert string dates to Temporal.ZonedDateTime if needed
+  const eventDates = ev.dates?.map(s => typeof s === 'string' ? Temporal.ZonedDateTime.from(s) : s) ?? []
+  
+  let timezoneValue: string | undefined = undefined
   if (e.data.payload?.timezone) {
     const providedTimezone = e.data.payload.timezone
     if (!(providedTimezone in allTimezones)) {
@@ -1100,20 +1097,22 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
     }
   }
   const sanitizedId = props.eventId.replaceAll(".", "")
-  let timeMin: Date | undefined, timeMax: Date | undefined
+  let timeMin: Temporal.ZonedDateTime | undefined, timeMax: Temporal.ZonedDateTime | undefined
   if (ev.type === eventTypes.GROUP) {
-    if (ev.dates && ev.dates.length > 0) {
-      timeMin = new Date(ev.dates[0])
-      timeMax = new Date(ev.dates[ev.dates.length - 1])
-      timeMax.setDate(timeMax.getDate() + 1)
-      timeMin = dateToDowDate(ev.dates, timeMin, weekOffset.value, true)
-      timeMax = dateToDowDate(ev.dates, timeMax, weekOffset.value, true)
+    if (eventDates.length > 0) {
+      timeMin = eventDates[0]
+      timeMax = eventDates[eventDates.length - 1]
+      // Convert to ZonedDateTime to add days, then back to Instant
+      timeMax = timeMax.add({ days: 1 })
+      timeMin = dateToDowDate(eventDates, timeMin, weekOffset.value, true)
+      timeMax = dateToDowDate(eventDates, timeMax, weekOffset.value, true)
     }
   } else {
-    if (ev.dates && ev.dates.length > 0) {
-      timeMin = new Date(ev.dates[0])
-      timeMax = new Date(ev.dates[ev.dates.length - 1])
-      timeMax.setDate(timeMax.getDate() + 1)
+    if (eventDates.length > 0) {
+      timeMin = eventDates[0]
+      timeMax = eventDates[eventDates.length - 1]
+      // Convert to ZonedDateTime to add days, then back to Instant
+      timeMax = timeMax.add({ days: 1 })
     }
   }
   if (!timeMin || !timeMax) {
@@ -1126,7 +1125,7 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
       const guestNameKey = `${ev._id}.guestName`
       guestName = localStorage[guestNameKey] as string | null
     }
-    let url = `/events/${sanitizedId}/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+    let url = `/events/${sanitizedId}/responses?timeMin=${timeMin.toString()}&timeMax=${timeMax.toString()}`
     if (guestName && guestName.length > 0) {
       url += `&guestName=${encodeURIComponent(guestName)}`
     }
@@ -1150,15 +1149,22 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
           email = ""
         }
       }
-      let availability = convertUTCSlotsToLocalISO(response.availability, timezoneValue)
-      let ifNeeded = convertUTCSlotsToLocalISO(response.ifNeeded, timezoneValue)
+      let availability: Temporal.ZonedDateTime[] = convertUTCSlotsToLocalISO(
+        response.availability?.map(s => Temporal.ZonedDateTime.from(s)) ?? [],
+        timezoneValue
+      )
+      let ifNeeded: Temporal.ZonedDateTime[] = convertUTCSlotsToLocalISO(
+        response.ifNeeded?.map(s => Temporal.ZonedDateTime.from(s)) ?? [],
+        timezoneValue
+      )
       if (ev.type === eventTypes.DOW && timezoneObservesDST(timezoneValue)) {
-        const subtractOneHour = (s: string) =>
-          dayjs.tz(s, timezoneValue).subtract(1, "hour").format("YYYY-MM-DDTHH:mm:ss")
+        const subtractOneHour = (s: Temporal.ZonedDateTime) => {
+          return s.withTimeZone(timezoneValue).subtract({ hours: 1  })
+        }
         availability = availability.map(subtractOneHour)
         ifNeeded = ifNeeded.map(subtractOneHour)
       }
-      allSlots[userId] = { name, email, availability, ifNeeded }
+      allSlots[userId] = { name, email, availability, ifNeeded: ifNeeded }
     }
     const timeIncrement = ev.timeIncrement ?? 15
     sendPluginSuccess(requestId, command, { slots: allSlots, timeIncrement, timezone: timezoneValue })

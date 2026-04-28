@@ -255,6 +255,7 @@ import { authTypes, calendarTypes } from "@/constants"
 import { post, signInGoogle, signInOutlook } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
+import { Temporal } from "temporal-polyfill"
 import type { User } from "@/types"
 
 const props = defineProps<{
@@ -388,7 +389,7 @@ async function verifyOtp() {
     const body: Record<string, unknown> = {
       email: email.value,
       code: otpCode.value,
-      timezoneOffset: new Date().getTimezoneOffset(),
+      timezoneOffset: Temporal.Now.zonedDateTimeISO().offsetNanoseconds / (1000 * 1000 * 1000) / 60 * -1,
     }
     if (isNewUser.value) {
       body.firstName = firstName.value.trim()

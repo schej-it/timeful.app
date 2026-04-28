@@ -1,9 +1,6 @@
 import { computed, ref, type ComputedRef, type Ref } from "vue"
-import dayjs from "dayjs"
-import utcPlugin from "dayjs/plugin/utc"
-import timezonePlugin from "dayjs/plugin/timezone"
+import { Temporal } from "temporal-polyfill"
 import {
-  dateCompare,
   dateToDowDate,
   get,
   getCalendarAccountKey,
@@ -13,11 +10,10 @@ import {
   splitTimeBlocksByDay,
   timeNumToTimeString,
 } from "@/utils"
-import {
-  calendarOptionsDefaults,
-  eventTypes,
-} from "@/constants"
+import { calendarOptionsDefaults, eventTypes } from "@/constants"
 import { useMainStore } from "@/stores/main"
+import type { RawResponse } from "@/types"
+import { fromRawResponse } from "@/types"
 import {
   type CalendarEventLite,
   type CalendarEventsByDay,
@@ -29,9 +25,6 @@ import {
   type ProcessedCalendarEvent,
 } from "./types"
 
-dayjs.extend(utcPlugin)
-dayjs.extend(timezonePlugin)
-
 type SharedCalendarAccount = {
   enabled: boolean
   subCalendars?: Record<string, { enabled: boolean }>
@@ -39,10 +32,7 @@ type SharedCalendarAccount = {
 
 type SharedCalendarAccounts = Record<string, SharedCalendarAccount>
 
-type CalendarEventsMap = Record<
-  string,
-  { calendarEvents: CalendarEventLite[] }
->
+type CalendarEventsMap = Record<string, { calendarEvents: CalendarEventLite[] }>
 
 export interface UseCalendarEventsOptions {
   event: Ref<EventLike>
@@ -57,18 +47,21 @@ export interface UseCalendarEventsOptions {
   // grid
   allDays: ComputedRef<DayItem[]>
   times: ComputedRef<TimeItem[]>
-  timeslotDuration: ComputedRef<number>
-  timezoneOffset: ComputedRef<number>
+  timeslotDuration: ComputedRef<Temporal.Duration>
+  timezoneOffset: ComputedRef<Temporal.Duration>
   isGroup: ComputedRef<boolean>
   guestName: ComputedRef<string | undefined>
   getDateFromDayTimeIndex: (
     dayIndex: number,
     timeIndex: number
-  ) => Date | null
+  ) => Temporal.ZonedDateTime | null
 
   // mutable from useAvailabilityData
   fetchedResponses: Ref<Record<string, unknown>>
-  loadingResponses: Ref<{ loading: boolean; lastFetched: number }>
+  loadingResponses: Ref<{
+    loading: boolean
+    lastFetched: Temporal.ZonedDateTime
+  }>
 
   // hook called after fetchResponses completes (e.g. to recompute responsesFormatted)
   onResponsesFetched?: () => void
@@ -109,8 +102,14 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
       }
     }
 
-    const responses = (opts.event.value as { responses?: Record<string, { enabledCalendars?: Record<string, string[]> } | undefined> })
-      .responses
+    const responses = (
+      opts.event.value as {
+        responses?: Record<
+          string,
+          { enabledCalendars?: Record<string, string[]> } | undefined
+        >
+      }
+    ).responses
     if (authUser._id && responses && authUser._id in responses) {
       const userResponse = responses[authUser._id]
       const enabledCalendars = userResponse?.enabledCalendars ?? {}
@@ -119,7 +118,7 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
           sharedCalendarAccounts.value[id].enabled = true
           const subs = sharedCalendarAccounts.value[id].subCalendars
           if (subs) {
-            ;(enabledCalendars[id]).forEach((subId) => {
+            enabledCalendars[id].forEach((subId) => {
               if (subId in subs) subs[subId].enabled = true
             })
           }
@@ -148,7 +147,12 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
     enabled: boolean
   }) => {
     const key = getCalendarAccountKey(payload.email, payload.calendarType)
-    const account = (sharedCalendarAccounts.value as Record<string, SharedCalendarAccount | undefined>)[key]
+    const account = (
+      sharedCalendarAccounts.value as Record<
+        string,
+        SharedCalendarAccount | undefined
+      >
+    )[key]
     if (!account?.subCalendars) return
     if (!(payload.subCalendarId in account.subCalendars)) return
     account.subCalendars[payload.subCalendarId].enabled = payload.enabled
@@ -212,8 +216,9 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
 
     const authUser = mainStore.authUser
     const out: Record<string, CalendarEventsByDay> = {}
-    const responses = (opts.event.value as { responses?: Record<string, unknown> })
-      .responses
+    const responses = (
+      opts.event.value as { responses?: Record<string, unknown> }
+    ).responses
     if (!responses) return out
 
     for (const userId in responses) {
@@ -235,10 +240,10 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
   const getAvailabilityFromCalendarEvents = (input: {
     calendarEventsByDay?: CalendarEventsByDay
     includeTouchedAvailability?: boolean
-    fetchedManualAvailability?: Record<string, number[] | Date[]>
-    curManualAvailability?: Record<string, Set<number> | number[]>
+    fetchedManualAvailability?: Record<string, Set<Temporal.ZonedDateTime>>
+    curManualAvailability?: Record<string, Set<Temporal.ZonedDateTime>>
     calendarOptions?: CalendarOptions
-  }): Set<number> => {
+  }): Set<Temporal.ZonedDateTime> => {
     const {
       calendarEventsByDay = [],
       includeTouchedAvailability = false,
@@ -247,27 +252,32 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
       calendarOptions = calendarOptionsDefaults,
     } = input
 
-    const availability = new Set<number>()
+    const availability = new Set<Temporal.ZonedDateTime>()
 
     for (let i = 0; i < opts.allDays.value.length; ++i) {
       const day = opts.allDays.value[i]
       const date = day.dateObject
 
       if (includeTouchedAvailability) {
+        const durationInHours =
+          opts.times.value.length * opts.timeslotDuration.value.total("hours")
         const endDate = getDateHoursOffset(
           date,
-          opts.times.value.length * (opts.timeslotDuration.value / 60)
+          Temporal.Duration.from({ hours: durationInHours })
         )
 
         let manualAvailabilityAdded = false
 
         for (const time in curManualAvailability) {
-          const timeNum = parseInt(time)
-          if (date.getTime() <= timeNum && timeNum <= endDate.getTime()) {
+          const timeInstant = Temporal.Instant.from(time)
+          if (
+            date.toInstant() <= timeInstant &&
+            timeInstant <= endDate.toInstant()
+          ) {
             const slot = curManualAvailability[time]
-            const arr = Array.from(slot as Iterable<number | Date>)
+            const arr = Array.from(slot as Iterable<Temporal.ZonedDateTime>)
             arr.forEach((a) => {
-              availability.add(new Date(a).getTime())
+              availability.add(a)
             })
             // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
             delete curManualAvailability[time]
@@ -279,11 +289,14 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
         if (manualAvailabilityAdded) continue
 
         for (const time in fetchedManualAvailability) {
-          const timeNum = parseInt(time)
-          if (date.getTime() <= timeNum && timeNum <= endDate.getTime()) {
+          const timeInstant = Temporal.Instant.from(time)
+          if (
+            date.toInstant() <= timeInstant &&
+            timeInstant <= endDate.toInstant()
+          ) {
             const slot = fetchedManualAvailability[time]
-            ;(slot as (number | Date)[]).forEach((a) => {
-              availability.add(new Date(a).getTime())
+            slot.forEach((a) => {
+              availability.add(a)
             })
             // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
             delete fetchedManualAvailability[time]
@@ -299,20 +312,22 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
         ? calendarOptions.bufferTime.time * 1000 * 60
         : 0
 
+      // TODO rewrite without timeNumToTimeString
       const startTimeString = timeNumToTimeString(
         calendarOptions.workingHours.startTime
       )
       const isoDateString = getISODateString(getDateWithTimezone(date), true)
-      const workingHoursStartDate = dayjs
-        .tz(`${isoDateString} ${startTimeString}`, opts.curTimezone.value.value)
-        .toDate()
+      // Create working hours start date using Temporal
+      const workingHoursStart = Temporal.ZonedDateTime.from(
+        `${isoDateString}T${startTimeString}[UTC]`
+      )
       let duration =
         calendarOptions.workingHours.endTime -
         calendarOptions.workingHours.startTime
       if (duration <= 0) duration += 24
-      const workingHoursEndDate = getDateHoursOffset(
-        workingHoursStartDate,
-        duration
+      const workingHoursEnd = getDateHoursOffset(
+        workingHoursStart,
+        Temporal.Duration.from({ hours: duration })
       )
 
       for (let j = 0; j < opts.times.value.length; ++j) {
@@ -320,33 +335,35 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
         if (!startDate) continue
         const endDate = getDateHoursOffset(
           startDate,
-          opts.timeslotDuration.value / 60
+          Temporal.Duration.from({
+            hours: opts.timeslotDuration.value.total("hours"),
+          })
         )
 
         if (calendarOptions.workingHours.enabled) {
           if (
-            endDate.getTime() <= workingHoursStartDate.getTime() ||
-            startDate.getTime() >= workingHoursEndDate.getTime()
+            endDate <= workingHoursStart ||
+            startDate >= workingHoursEnd
           ) {
             continue
           }
         }
 
-        const dayEvents = (calendarEventsByDay as (ProcessedCalendarEvent[] | undefined)[])[i]
+        const dayEvents = (
+          calendarEventsByDay as (ProcessedCalendarEvent[] | undefined)[]
+        )[i]
         const index = dayEvents?.findIndex((e) => {
-          const startDateBuffered = new Date(
-            e.startDate.getTime() - bufferTimeInMS
-          )
-          const endDateBuffered = new Date(
-            e.endDate.getTime() + bufferTimeInMS
-          )
+          const startDateBuffered = e.startDate
+            .subtract({ milliseconds: bufferTimeInMS })
+          const endDateBuffered = e.endDate
+            .add({ milliseconds: bufferTimeInMS })
           const notIntersect =
-            dateCompare(endDate, startDateBuffered) <= 0 ||
-            dateCompare(startDate, endDateBuffered) >= 0
+            endDate <= startDateBuffered ||
+            startDate >= endDateBuffered
           return !notIntersect && !e.free
         })
         if (index === undefined || index === -1) {
-          availability.add(startDate.getTime())
+          availability.add(startDate)
         }
       }
     }
@@ -355,43 +372,63 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
 
   const fetchResponses = () => {
     if (opts.calendarOnly.value) {
-      const responses = (opts.event.value as { responses?: Record<string, unknown> })
-        .responses
+      const responses = (
+        opts.event.value as { responses?: Record<string, unknown> }
+      ).responses
       if (responses) opts.fetchedResponses.value = responses
       return
     }
 
-    let timeMin: Date | undefined
-    let timeMax: Date | undefined
-    const eventDates = (opts.event.value.dates ?? [])
+    let timeMin: Temporal.ZonedDateTime | undefined
+    let timeMax: Temporal.ZonedDateTime | undefined
+    const eventDates = opts.event.value.dates ?? []
     if (opts.event.value.type === eventTypes.GROUP) {
       if (eventDates.length > 0) {
-        timeMin = new Date(eventDates[0])
-        timeMax = new Date(eventDates[eventDates.length - 1])
-        timeMax.setDate(timeMax.getDate() + 1)
-        timeMin = dateToDowDate(eventDates, timeMin, opts.weekOffset.value, true)
-        timeMax = dateToDowDate(eventDates, timeMax, opts.weekOffset.value, true)
+        timeMin = eventDates[0]
+        timeMax = eventDates[eventDates.length - 1].add({ days: 1 })
+        // Convert to ZonedDateTime to add days, then back to Instant
+        timeMin = dateToDowDate(
+          eventDates,
+          timeMin,
+          opts.weekOffset.value,
+          true
+        )
+        timeMax = dateToDowDate(
+          eventDates,
+          timeMax,
+          opts.weekOffset.value,
+          true
+        )
       }
     } else {
       if (opts.allDays.value.length > 0) {
-        timeMin = new Date(opts.allDays.value[0].dateObject)
-        timeMax = new Date(
-          opts.allDays.value[opts.allDays.value.length - 1].dateObject
-        )
-        timeMax.setDate(timeMax.getDate() + 1)
+        timeMin = opts.allDays.value[0].dateObject
+        timeMax =
+          opts.allDays.value[
+            opts.allDays.value.length - 1
+          ].dateObject
+        // Convert to ZonedDateTime to add days, then back to Instant
+        timeMax = timeMax.add({ days: 1 })
       }
     }
 
     if (!timeMin || !timeMax) return
 
-    let url = `/events/${opts.event.value._id ?? ""}/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+    let url = `/events/${
+      opts.event.value._id ?? ""
+    }/responses?timeMin=${timeMin.toString()}&timeMax=${timeMax.toString()}`
     if (opts.guestName.value && opts.guestName.value.length > 0) {
       url += `&guestName=${encodeURIComponent(opts.guestName.value)}`
     }
 
-    get<Record<string, unknown>>(url)
-      .then((responses) => {
-        opts.fetchedResponses.value = responses
+    get<Record<string, RawResponse>>(url)
+      .then((rawResponses) => {
+        // Convert raw responses to Temporal-based responses
+        const convertedResponses: Record<string, unknown> = {}
+        for (const [userId, rawResponse] of Object.entries(rawResponses)) {
+          convertedResponses[userId] = fromRawResponse(rawResponse)
+        }
+        opts.fetchedResponses.value = convertedResponses
         opts.onResponsesFetched?.()
       })
       .catch(() => {

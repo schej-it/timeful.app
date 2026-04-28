@@ -201,6 +201,7 @@
 import { onBeforeUnmount, ref } from "vue"
 import { calendarTypes, type CalendarType } from "@/constants"
 import { post } from "@/utils"
+import { Temporal } from "temporal-polyfill"
 import type { User } from "@/types"
 
 defineProps<{ modelValue: boolean }>()
@@ -315,7 +316,7 @@ const verifyOtp = async () => {
     const body: Record<string, unknown> = {
       email: email.value,
       code: otpCode.value,
-      timezoneOffset: new Date().getTimezoneOffset(),
+      timezoneOffset: Temporal.Now.zonedDateTimeISO().offsetNanoseconds / (1000 * 1000 * 1000) / 60 * -1,
     }
     if (isNewUser.value) {
       body.firstName = firstName.value.trim()

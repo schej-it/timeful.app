@@ -1,5 +1,4 @@
 import { computed, nextTick, ref, type ComputedRef, type Ref } from "vue"
-import dayjs from "dayjs"
 import {
   _delete,
   dateToDowDate,
@@ -9,9 +8,10 @@ import {
   generateEnabledCalendarsPayload,
   type CalendarAccountsMap,
 } from "@/utils"
-import { eventTypes } from "@/constants"
+import { eventTypes, durations, UTC } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
+import { Temporal } from "temporal-polyfill"
 import {
   states,
   type CalendarEventsByDay,
@@ -28,17 +28,20 @@ import {
 
 interface FetchedResponse {
   user?: Record<string, unknown>
-  availability?: (string | Date)[]
-  ifNeeded?: (string | Date)[]
+  availability?: Temporal.ZonedDateTime[]
+  ifNeeded?: Temporal.ZonedDateTime[]
   enabledCalendars?: Record<string, string[]>
   calendarOptions?: CalendarOptions
-  manualAvailability?: Record<string | number, Set<number> | number[]>
+  manualAvailability?: Record<string, Temporal.ZonedDateTime[]>
 }
 
 declare global {
   interface Window {
     __scheduleOverlapWorker?: {
-      run: (fn: (...args: unknown[]) => unknown, args: unknown[]) => Promise<ResponsesFormatted>
+      run: (
+        fn: (...args: unknown[]) => unknown,
+        args: unknown[]
+      ) => Promise<ResponsesFormatted>
     }
   }
 }
@@ -58,14 +61,15 @@ export interface UseAvailabilityDataOptions {
   days: ComputedRef<DayItem[]>
   times: ComputedRef<TimeItem[]>
   splitTimes: ComputedRef<TimeItem[][]>
-  timeslotDuration: ComputedRef<number>
+  timeslotDuration: ComputedRef<Temporal.Duration>
   page: Ref<number>
   maxDaysPerPage: ComputedRef<number>
   isGroup: ComputedRef<boolean>
   isOwner: ComputedRef<boolean>
   guestNameKey: ComputedRef<string>
   guestName: ComputedRef<string | undefined>
-  getDateFromRowCol: (row: number, col: number) => Date | null
+  // TODO
+  getDateFromRowCol: (row: number, col: number) => Temporal.ZonedDateTime | null
 
   // from useCalendarEvents
   calendarEventsByDay: ComputedRef<CalendarEventsByDay>
@@ -75,10 +79,10 @@ export interface UseAvailabilityDataOptions {
   getAvailabilityFromCalendarEvents: (input: {
     calendarEventsByDay?: CalendarEventsByDay
     includeTouchedAvailability?: boolean
-    fetchedManualAvailability?: Record<string, number[] | Date[]>
-    curManualAvailability?: Record<string, Set<number> | number[]>
+    fetchedManualAvailability?: Record<string, Set<Temporal.ZonedDateTime>>
+    curManualAvailability?: Record<string, Set<Temporal.ZonedDateTime>>
     calendarOptions?: CalendarOptions
-  }) => Set<number>
+  }) => Set<Temporal.ZonedDateTime>
 
   // emits / external
   refreshEvent: () => void
@@ -87,44 +91,58 @@ export interface UseAvailabilityDataOptions {
 export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   const mainStore = useMainStore()
 
-  const availability = ref<Set<number>>(new Set())
-  const ifNeeded = ref<Set<number>>(new Set())
-  const tempTimes = ref<Set<number>>(new Set())
+  const availability = ref<Set<Temporal.ZonedDateTime>>(new Set())
+  const ifNeeded = ref<Set<Temporal.ZonedDateTime>>(new Set())
+  const tempTimes = ref<Set<Temporal.ZonedDateTime>>(new Set())
   const availabilityAnimTimeouts = ref<ReturnType<typeof setTimeout>[]>([])
   const availabilityAnimEnabled = ref(false)
   const maxAnimTime = 1200
   const unsavedChanges = ref(false)
   const hideIfNeeded = ref(false)
-  const manualAvailability = ref<Record<number, Set<number>>>({})
+  const manualAvailability = ref<
+    Map<Temporal.ZonedDateTime, Set<Temporal.ZonedDateTime>>
+  >(new Map())
   const fetchedResponses = ref<Record<string, FetchedResponse | undefined>>({})
-  const loadingResponses = ref<{ loading: boolean; lastFetched: number }>({
+  const loadingResponses = ref<{
+    loading: boolean
+    lastFetched: Temporal.ZonedDateTime
+  }>({
     loading: false,
-    lastFetched: new Date().getTime(),
+    lastFetched: Temporal.Now.instant().toZonedDateTimeISO(UTC),
   })
   const responsesFormatted = ref<ResponsesFormatted>(new Map())
   const curTimeslot = ref<RowCol>({ row: -1, col: -1 })
   const curTimeslotAvailability = ref<Record<string, boolean>>({})
   const timeslotSelected = ref(false)
 
-  const availabilityArray = computed<Date[]>(() =>
-    [...availability.value].map((item) => new Date(item))
-  )
-  const ifNeededArray = computed<Date[]>(() =>
-    [...ifNeeded.value].map((item) => new Date(item))
-  )
+  const availabilityArray = computed<Temporal.ZonedDateTime[]>(() => [
+    ...availability.value,
+  ])
+  const ifNeededArray = computed<Temporal.ZonedDateTime[]>(() => [
+    ...ifNeeded.value,
+  ])
 
-  type ResponseEntry = { user?: ParsedResponse["user"] } & Record<string, unknown>
+  type ResponseEntry = { user?: ParsedResponse["user"] } & Record<
+    string,
+    unknown
+  >
 
   const parsedResponses = computed<ParsedResponses>(() => {
     const parsed: ParsedResponses = {}
     const authUser = mainStore.authUser
-    const responses = (opts.event.value as { responses?: Record<string, ResponseEntry> })
-      .responses
+    const responses = (
+      opts.event.value as { responses?: Record<string, ResponseEntry> }
+    ).responses
     if (!responses) return parsed
 
     if (opts.event.value.type === eventTypes.GROUP) {
       for (const userId in responses) {
-        const calendarEventsByDay = (opts.groupCalendarEventsByDay.value as Record<string, CalendarEventsByDay | undefined>)[userId]
+        const calendarEventsByDay = (
+          opts.groupCalendarEventsByDay.value as Record<
+            string,
+            CalendarEventsByDay | undefined
+          >
+        )[userId]
         if (calendarEventsByDay) {
           const fetchedManualAvailability = getManualAvailabilityDow(
             fetchedResponses.value[userId]?.manualAvailability
@@ -134,32 +152,41 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
               ? getManualAvailabilityDow(manualAvailability.value)
               : {}
 
-          const computedAvailability =
-            opts.getAvailabilityFromCalendarEvents({
-              calendarEventsByDay,
-              includeTouchedAvailability: true,
-              fetchedManualAvailability,
-              curManualAvailability,
-              calendarOptions:
-                userId === authUser?._id
-                  ? {
-                      bufferTime: opts.bufferTime.value,
-                      workingHours: opts.workingHours.value,
-                    }
-                  : fetchedResponses.value[userId]?.calendarOptions ?? {
-                      bufferTime: opts.bufferTime.value,
-                      workingHours: opts.workingHours.value,
-                    },
-            })
+          const computedAvailability = opts.getAvailabilityFromCalendarEvents({
+            calendarEventsByDay,
+            includeTouchedAvailability: true,
+            fetchedManualAvailability,
+            curManualAvailability,
+            calendarOptions:
+              userId === authUser?._id
+                ? {
+                    bufferTime: opts.bufferTime.value,
+                    workingHours: opts.workingHours.value,
+                  }
+                : fetchedResponses.value[userId]?.calendarOptions ?? {
+                    bufferTime: opts.bufferTime.value,
+                    workingHours: opts.workingHours.value,
+                  },
+          })
 
           parsed[userId] = {
             user: responses[userId].user ?? { _id: userId },
             availability: computedAvailability,
-            ifNeeded: responses[userId].ifNeeded && Array.isArray(responses[userId].ifNeeded) 
-              ? new Set((responses[userId].ifNeeded as (string | Date)[]).map((a) => new Date(a).getTime())) 
-              : undefined,
-            enabledCalendars: responses[userId].enabledCalendars as (Record<string, string[]> | undefined),
-            calendarOptions: responses[userId].calendarOptions as (CalendarOptions | undefined),
+            ifNeeded:
+              responses[userId].ifNeeded &&
+              Array.isArray(responses[userId].ifNeeded)
+                ? new Set(
+                    (responses[userId].ifNeeded as number[]).map((ms) =>
+                      Temporal.ZonedDateTime.from({millisecond: ms})
+                    )
+                  )
+                : undefined,
+            enabledCalendars: responses[userId].enabledCalendars as
+              | Record<string, string[]>
+              | undefined,
+            calendarOptions: responses[userId].calendarOptions as
+              | CalendarOptions
+              | undefined,
           }
         } else {
           parsed[userId] = {
@@ -186,13 +213,15 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
         parsed[userId] = {
           user,
           availability: new Set(
-            (fetchedResponses.value[userId]?.availability ?? []).map((a) => new Date(a).getTime())
+            fetchedResponses.value[userId]?.availability ?? []
           ),
-          ifNeeded: new Set(
-            (fetchedResponses.value[userId]?.ifNeeded ?? []).map((a) => new Date(a).getTime())
-          ),
-          enabledCalendars: responses[userId].enabledCalendars as (Record<string, string[]> | undefined),
-          calendarOptions: responses[userId].calendarOptions as (CalendarOptions | undefined),
+          ifNeeded: new Set(fetchedResponses.value[userId]?.ifNeeded ?? []),
+          enabledCalendars: responses[userId].enabledCalendars as
+            | Record<string, string[]>
+            | undefined,
+          calendarOptions: responses[userId].calendarOptions as
+            | CalendarOptions
+            | undefined,
         }
       }
       return parsed
@@ -205,14 +234,14 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       }
       parsed[k] = {
         user: newUser,
-        availability: new Set(
-          (fetchedResponses.value[k]?.availability ?? []).map((a) => new Date(a).getTime())
-        ),
-        ifNeeded: new Set(
-          (fetchedResponses.value[k]?.ifNeeded ?? []).map((a) => new Date(a).getTime())
-        ),
-        enabledCalendars: responses[k].enabledCalendars as (Record<string, string[]> | undefined),
-        calendarOptions: responses[k].calendarOptions as (CalendarOptions | undefined),
+        availability: new Set(fetchedResponses.value[k]?.availability ?? []),
+        ifNeeded: new Set(fetchedResponses.value[k]?.ifNeeded ?? []),
+        enabledCalendars: responses[k].enabledCalendars as
+          | Record<string, string[]>
+          | undefined,
+        calendarOptions: responses[k].calendarOptions as
+          | CalendarOptions
+          | undefined,
       }
     }
     return parsed
@@ -238,15 +267,15 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   })
 
   const getRespondentsForHoursOffset = (
-    date: Date,
-    hoursOffset: number
+    date: Temporal.ZonedDateTime,
+    hoursOffset: Temporal.Duration
   ): Set<string> => {
-    const d = getDateHoursOffset(date, hoursOffset)
-    return responsesFormatted.value.get(d.getTime()) ?? new Set()
+    const d = date.add(hoursOffset)
+    return responsesFormatted.value.get(d) ?? new Set()
   }
 
   const getResponsesFormatted = () => {
-    const lastFetched = new Date().getTime()
+    const lastFetched = Temporal.Now.instant().toZonedDateTimeISO(UTC)
     loadingResponses.value.loading = true
     loadingResponses.value.lastFetched = lastFetched
 
@@ -257,26 +286,13 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       daysOnly: boolean,
       hideIfNeededFlag: boolean
     ) => {
-      const splitTimeNum = (timeNum: number) => {
-        const hours = Math.floor(timeNum)
-        const minutes = Math.floor((timeNum - hours) * 60)
-        return { hours, minutes }
-      }
-      const getDateHoursOffsetLocal = (date: Date, hoursOffset: number) => {
-        const { hours, minutes } = splitTimeNum(hoursOffset)
-        const newDate = new Date(date)
-        newDate.setHours(newDate.getHours() + hours)
-        newDate.setMinutes(newDate.getMinutes() + minutes)
-        return newDate
-      }
-
-      const dates: Date[] = []
+      const dates: Temporal.ZonedDateTime[] = []
       if (daysOnly) {
         for (const day of days) dates.push(day.dateObject)
       } else {
         for (const day of days) {
           for (const time of times) {
-            dates.push(getDateHoursOffsetLocal(day.dateObject, time.hoursOffset))
+            dates.push(day.dateObject.add(time.hoursOffset))
           }
         }
       }
@@ -284,11 +300,11 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       const formatted: ResponsesFormatted = new Map()
       for (const date of dates) {
         const bucket = new Set<string>()
-        formatted.set(date.getTime(), bucket)
+        formatted.set(date, bucket)
         for (const response of Object.values(pr)) {
           if (
-            response.availability.has(date.getTime()) ||
-            (response.ifNeeded?.has(date.getTime()) && !hideIfNeededFlag)
+            response.availability.has(date) ||
+            (response.ifNeeded?.has(date) && !hideIfNeededFlag)
           ) {
             bucket.add(response.user._id)
             continue
@@ -306,16 +322,20 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       hideIfNeeded.value
     )
 
-    if (lastFetched >= loadingResponses.value.lastFetched) {
+    if (
+      lastFetched >= loadingResponses.value.lastFetched
+    ) {
       responsesFormatted.value = formatted
     }
-    if (loadingResponses.value.lastFetched === lastFetched) {
+    if (lastFetched.equals(loadingResponses.value.lastFetched)) {
       loadingResponses.value.loading = false
     }
   }
 
   const populateUserAvailability = (id: string) => {
-    const resp = (parsedResponses.value as Record<string, ParsedResponse | undefined>)[id]
+    const resp = (
+      parsedResponses.value as Record<string, ParsedResponse | undefined>
+    )[id]
     availability.value = new Set(resp?.availability ?? [])
     ifNeeded.value = new Set(resp?.ifNeeded ?? [])
     void nextTick(() => (unsavedChanges.value = false))
@@ -326,7 +346,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   ) => {
     if (opts.event.value.type === eventTypes.GROUP) {
       initSharedCalendarAccounts?.()
-      manualAvailability.value = {}
+      manualAvailability.value = new Map()
     }
     availability.value = new Set()
     ifNeeded.value = new Set()
@@ -341,9 +361,9 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   }
 
   const animateAvailability = (
-    incoming: Set<number>,
-    startDate: Date,
-    endDate: Date
+    incoming: Set<Temporal.ZonedDateTime>,
+    startDate: Temporal.ZonedDateTime,
+    endDate: Temporal.ZonedDateTime
   ) => {
     availabilityAnimEnabled.value = true
     availabilityAnimTimeouts.value = []
@@ -355,7 +375,8 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     }
     let availabilityArray = [...incoming]
     availabilityArray = availabilityArray.filter(
-      (a) => a >= startDate.getTime() && a <= endDate.getTime()
+      (a) =>
+        a >= startDate && a <= endDate
     )
 
     for (let i = 0; i < availabilityArray.length / blocksPerGroup + 1; ++i) {
@@ -402,20 +423,24 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       },
     })
 
-    const eventDates = (opts.event.value.dates ?? []).map((d) => new Date(d))
+    const eventDates = opts.event.value.dates ?? []
     if (eventDates.length === 0) return
     const pageStartDate = getDateDayOffset(
-      new Date(eventDates[0]),
+      eventDates[0],
       opts.page.value * opts.maxDaysPerPage.value
     )
-    const pageEndDate = getDateDayOffset(pageStartDate, opts.maxDaysPerPage.value)
+    const pageEndDate = getDateDayOffset(
+      pageStartDate,
+      opts.maxDaysPerPage.value
+    )
     animateAvailability(tmpAvailability, pageStartDate, pageEndDate)
   }
 
   const reanimateAvailability = () => {
     const authUser = mainStore.authUser
-    const responses = (opts.event.value as { responses?: Record<string, unknown> })
-      .responses
+    const responses = (
+      opts.event.value as { responses?: Record<string, unknown> }
+    ).responses
     if (
       opts.state.value === states.EDIT_AVAILABILITY &&
       authUser?._id &&
@@ -423,21 +448,24 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       !opts.loadingCalendarEvents.value &&
       (!unsavedChanges.value || availabilityAnimEnabled.value)
     ) {
-      for (const timeout of availabilityAnimTimeouts.value) clearTimeout(timeout)
+      for (const timeout of availabilityAnimTimeouts.value)
+        clearTimeout(timeout)
       setAvailabilityAutomatically()
     }
   }
 
   const isTouched = (
-    date: Date,
-    fromAvailability: number[] = [...availability.value]
+    date: Temporal.ZonedDateTime,
+    fromAvailability: Temporal.ZonedDateTime[] = [...availability.value]
   ): boolean => {
-    const start = new Date(date)
-    const end = new Date(date)
-    end.setHours(end.getHours() + (opts.event.value.duration ?? 0))
+    const start = date
+    // Convert Duration or default to Duration
+    const duration = opts.event.value.duration ?? durations.ZERO
+    const end = getDateHoursOffset(date, duration)
     for (const a of fromAvailability) {
-      const availableTime = new Date(a).getTime()
-      if (start.getTime() <= availableTime && availableTime <= end.getTime()) {
+      if (
+        start <= a && a <= end
+      ) {
         return true
       }
     }
@@ -446,35 +474,61 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
 
   const getAvailabilityForColumn = (
     column: number,
-    fromAvailability: number[] = [...availability.value]
-  ): Set<number> => {
-    const subset = new Set<number>()
+    fromAvailability: Temporal.ZonedDateTime[] = [...availability.value]
+  ): Set<Temporal.ZonedDateTime> => {
+    const subset = new Set<Temporal.ZonedDateTime>()
     const set = new Set(fromAvailability)
     const totalRows =
       opts.splitTimes.value[0].length + opts.splitTimes.value[1].length
     for (let r = 0; r < totalRows; ++r) {
       const date = opts.getDateFromRowCol(r, column)
       if (!date) continue
-      if (set.has(date.getTime())) subset.add(date.getTime())
+      if (set.has(date)) subset.add(date)
     }
     return subset
   }
 
   function getManualAvailabilityDow(
-    fromManualAvailability: Record<number | string, Set<number> | number[]> = manualAvailability.value
-  ): Record<string, number[]> {
-    const eventDates = (opts.event.value.dates ?? []).map((d) => new Date(d))
-    const out: Record<string, number[]> = {}
-    for (const time in fromManualAvailability) {
-      const dowTime = dateToDowDate(
-        eventDates,
-        new Date(parseInt(time)),
-        opts.weekOffset.value
-      ).getTime()
-      const slot = fromManualAvailability[time]
-      out[String(dowTime)] = Array.from(slot as Iterable<number>).map((a) =>
-        dateToDowDate(eventDates, new Date(a), opts.weekOffset.value).getTime()
-      )
+    fromManualAvailability:
+      | Map<Temporal.ZonedDateTime, Set<Temporal.ZonedDateTime>>
+      | Record<
+          string,
+          Set<Temporal.ZonedDateTime> | Temporal.ZonedDateTime[]
+        > = manualAvailability.value
+  ): Record<string, Set<Temporal.ZonedDateTime>> {
+    const eventDates = opts.event.value.dates ?? []
+    const out: Record<string, Set<Temporal.ZonedDateTime>> = {}
+
+    // Handle both Map and Record types for backward compatibility
+    if (fromManualAvailability instanceof Map) {
+      for (const [timeInstant, slot] of fromManualAvailability.entries()) {
+        const dowTime = dateToDowDate(
+          eventDates,
+          timeInstant,
+          opts.weekOffset.value
+        )
+        out[String(dowTime.epochMilliseconds)] = new Set(
+          Array.from(slot).map((a) =>
+            dateToDowDate(eventDates, a, opts.weekOffset.value)
+          )
+        )
+      }
+    } else {
+      // Legacy Record format
+      for (const time in fromManualAvailability) {
+        const timeInstant = Temporal.ZonedDateTime.from(time)
+        const dowTime = dateToDowDate(
+          eventDates,
+          timeInstant,
+          opts.weekOffset.value
+        )
+        const slot = fromManualAvailability[time]
+        out[String(dowTime.epochMilliseconds)] = new Set(
+          Array.from(slot as Iterable<Temporal.ZonedDateTime>).map((a) =>
+            dateToDowDate(eventDates, a, opts.weekOffset.value)
+          )
+        )
+      }
     }
     return out
   }
@@ -487,13 +541,12 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     if (opts.event.value.daysOnly) {
       for (const day of allDays) {
         const num = [
-          ...(responsesFormatted.value.get(day.dateObject.getTime()) ??
-            new Set<string>()),
+          ...(responsesFormatted.value.get(day.dateObject) ?? new Set<string>()),
         ].filter((r) => curRespondentsSet.has(r)).length
         if (num > maxLocal) maxLocal = num
       }
     } else {
-      const eventDates = (opts.event.value.dates ?? []).map((d) => new Date(d))
+      const eventDates = opts.event.value.dates ?? []
       for (const date of eventDates) {
         for (const time of opts.times.value) {
           const num = [
@@ -515,7 +568,8 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     curTimeslot.value = { row, col }
     const date = opts.getDateFromRowCol(row, col)
     if (!date) return
-    const available = responsesFormatted.value.get(date.getTime()) ?? new Set()
+    const available =
+      responsesFormatted.value.get(date) ?? new Set()
     for (const respondent of respondents.value) {
       if (respondent._id) {
         curTimeslotAvailability.value[respondent._id] = available.has(
@@ -535,11 +589,13 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
 
     if (opts.isGroup.value) {
       type = "group availability and calendars"
-      payload = generateEnabledCalendarsPayload((sharedCalendarAccounts ?? {}) as CalendarAccountsMap)
-      const md: Record<number, Date[]> = {}
-      for (const day of Object.keys(manualAvailability.value)) {
-        md[parseInt(day)] = [...manualAvailability.value[parseInt(day)]].map(
-          (a) => new Date(a)
+      payload = generateEnabledCalendarsPayload(
+        (sharedCalendarAccounts ?? {}) as CalendarAccountsMap
+      )
+      const md: Record<string, number[]> = {}
+      for (const [day, instants] of manualAvailability.value.entries()) {
+        md[day.toString()] = [...instants].map(
+          (instant) => instant.epochMilliseconds
         )
       }
       payload.manualAvailability = md
@@ -626,12 +682,22 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   }
 
   const getAllValidTimeRanges = (): Map<
-    number,
-    { row: number; col: number; startTime: Date; endTime: Date }
+    Temporal.ZonedDateTime,
+    {
+      row: number
+      col: number
+      startTime: Temporal.ZonedDateTime
+      endTime: Temporal.ZonedDateTime
+    }
   > => {
     const out = new Map<
-      number,
-      { row: number; col: number; startTime: Date; endTime: Date }
+      Temporal.ZonedDateTime,
+      {
+        row: number
+        col: number
+        startTime: Temporal.ZonedDateTime
+        endTime: Temporal.ZonedDateTime
+      }
     >()
     if (opts.event.value.daysOnly) return out
 
@@ -639,11 +705,9 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       for (let row = 0; row < opts.times.value.length; row++) {
         const date = opts.getDateFromRowCol(row, col)
         if (!date) continue
-        const startDayjs = dayjs(date).utc()
-        const endDayjs = dayjs(date).utc().add(opts.timeslotDuration.value, "minutes")
-        const startTime = new Date(startDayjs.valueOf())
-        const endTime = new Date(endDayjs.valueOf())
-        out.set(startTime.getTime(), { row, col, startTime, endTime })
+        const startTime = date
+        const endTime = startTime.add(opts.timeslotDuration.value)
+        out.set(startTime, { row, col, startTime, endTime })
       }
     }
     return out

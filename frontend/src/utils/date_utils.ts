@@ -1,56 +1,85 @@
-import { eventTypes, timeTypes, dayIndexToDayString } from "@/constants"
+/**
+ * Date utilities - Using Temporal API exclusively
+ *
+ * This file uses Temporal API for all date/time operations.
+ * The Temporal API provides better timezone support, immutability, and clearer APIs.
+ *
+ * Key principles:
+ * - All internal operations use Temporal.ZonedDateTime or Temporal.ZonedDateTime
+ * - No Date | string | number unions - strict Temporal typing throughout
+ * - Conversion at boundaries handled by adapter functions from types/index.ts
+ */
+
+import {
+  eventTypes,
+  timeTypes,
+  dayIndexToDayString,
+  durations,
+  UTC,
+  hoursPlainTime,
+} from "@/constants"
 import { get } from "./fetch_utils"
-import { isBetween } from "./general_utils"
-import dayjs from "dayjs"
-import utcPlugin from "dayjs/plugin/utc"
-import timezonePlugin from "dayjs/plugin/timezone"
-dayjs.extend(utcPlugin)
-dayjs.extend(timezonePlugin)
+import { Temporal } from "temporal-polyfill"
+import type { Event } from "@/types"
+import type { Timezone } from "@/composables/schedule_overlap/types"
+
 /*
   Date utils
 */
 
-export type DateLike = Date | string | number
-type Timezone = { value?: string; offset?: number } | Record<string, never>
-interface StoredTimezone { value?: string; offset?: number }
-
-export interface EventLike {
-  type?: string
-  dates?: number[]
-  daysOnly?: boolean
-  startOnMonday?: boolean
-  duration?: number
+interface RawTimezone {
+  value?: string
+  offset: Temporal.Duration
 }
 
+// Use the application Event type which already has Temporal.ZonedDateTime[] dates
+export type EventLike = Pick<
+  Event,
+  "type" | "dates" | "daysOnly" | "startOnMonday" | "duration"
+>
+
+/** Type alias for Temporal date types used throughout the codebase */
+export type ZonedDateTime = Temporal.ZonedDateTime
+export type PlainDate = Temporal.PlainDate
+export type PlainTime = Temporal.PlainTime
+
 export interface TimeBlock {
-  startDate: Date | string | number
-  endDate: Date | string | number
+  startDate: Temporal.ZonedDateTime
+  endDate: Temporal.ZonedDateTime
   id?: string
   [key: string]: unknown
 }
 
+/** Helper: Convert Temporal.ZonedDateTime or ZonedDateTime to ZonedDateTime in specified timezone */
+export const toZDT = (
+  date: ZonedDateTime,
+  timezone = UTC
+): Temporal.ZonedDateTime => {
+  return date.withTimeZone(timezone)
+}
+
 /** Returns a string representation of the given date, i.e. May 14th is "5/14" */
-export const getDateString = (date: DateLike, utc = false): string => {
-  date = new Date(date)
-  if (utc) {
-    return `${String(date.getUTCMonth() + 1)}/${String(date.getUTCDate())}`
-  }
-  return `${String(date.getMonth() + 1)}/${String(date.getDate())}`
+export const getDateString = (date: ZonedDateTime, utc = false): string => {
+  const zdt = utc ? toZDT(date, UTC) : toZDT(date)
+  return `${String(zdt.month)}/${String(zdt.day)}`
 }
 
 /** Returns a string in the format "Mon, 9/23, 10 AM - 12 PM PDT" given a start date and end date */
 export const getStartEndDateString = (
-  startDate: Date,
-  endDate: Date
+  startDate: ZonedDateTime,
+  endDate: ZonedDateTime
 ): string => {
-  const startDay = startDate.toLocaleString("en-US", { weekday: "short" })
-  const startMonth = startDate.toLocaleString("en-US", { month: "short" })
-  const startDayOfMonth = startDate.toLocaleString("en-US", { day: "numeric" })
-  const startTime = startDate.toLocaleString("en-US", {
+  const start = toZDT(startDate)
+  const end = toZDT(endDate)
+
+  const startDay = start.toLocaleString("en-US", { weekday: "short" })
+  const startMonth = start.toLocaleString("en-US", { month: "short" })
+  const startDayOfMonth = start.toLocaleString("en-US", { day: "numeric" })
+  const startTime = start.toLocaleString("en-US", {
     hour: "numeric",
     minute: "numeric",
   })
-  const endTime = endDate.toLocaleString("en-US", {
+  const endTime = end.toLocaleString("en-US", {
     hour: "numeric",
     minute: "numeric",
     timeZoneName: "short",
@@ -60,47 +89,39 @@ export const getStartEndDateString = (
 }
 
 /** Returns an ISO formatted date string */
-export const getISODateString = (date: DateLike, utc = false): string => {
-  date = new Date(date)
-  if (utc) {
-    return date.toISOString().substring(0, 10)
-  }
-
-  const year = String(date.getFullYear())
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
+export const getISODateString = (date: ZonedDateTime, utc = false): string => {
+  const zdt = utc ? toZDT(date, UTC) : toZDT(date)
+  const plainDate = zdt.toPlainDate()
+  return plainDate.toString()
 }
 
 /** Returns a string representing date range from date1 to date2, i.e. "5/14 - 5/27" */
 export const getDateRangeString = (
-  date1: DateLike,
-  date2: DateLike,
+  date1: ZonedDateTime,
+  date2: ZonedDateTime,
   utc = false
 ): string => {
-  date1 = new Date(date1)
-  date2 = new Date(date2)
+  const d1 = toZDT(date1, utc ? UTC : undefined)
+  let d2 = toZDT(date2, utc ? UTC : undefined)
 
-  // Correct date2 if time is 12am (because ending at 12am doesn't begin the next day)
-  if ((utc && date2.getUTCHours() == 0) || (!utc && date2.getHours() == 0)) {
-    date2 = getDateDayOffset(date2, -1)
+  // Correct date2 if time is midnight (because ending at midnight doesn't begin the next day)
+  if (d2.hour === 0 && d2.minute === 0 && d2.second === 0) {
+    d2 = d2.subtract({ days: 1 })
   }
 
-  return getDateString(date1, utc) + " - " + getDateString(date2, utc)
+  return getDateString(d1, utc) + " - " + getDateString(d2, utc)
 }
 
 /** Returns a string representing the date range for the provided event */
 export const getDateRangeStringForEvent = (event: EventLike): string => {
   if (!event.dates || event.dates.length === 0) return ""
-  
+
   if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
     let s = ""
 
     const dayAbbreviations = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-    for (const dateNum of event.dates) {
-      const date = getDateWithTimezone(dateNum)
-
-      const abbr = dayAbbreviations[date.getUTCDay()]
+    for (const zdt of event.dates) {
+      const abbr = dayAbbreviations[zdt.dayOfWeek % 7] // dayOfWeek is 1-7 (Mon-Sun), convert to 0-6 (Sun-Sat)
       s += abbr + ", "
     }
     s = s.substring(0, s.length - 2)
@@ -112,90 +133,64 @@ export const getDateRangeStringForEvent = (event: EventLike): string => {
       getDateString(event.dates[event.dates.length - 1], true)
     )
   } else if (event.type === eventTypes.SPECIFIC_DATES) {
-    const startDate = getDateWithTimezone(new Date(event.dates[0]))
-    const endDate = getDateWithTimezone(
-      new Date(event.dates[event.dates.length - 1])
-    )
+    const startDate = event.dates[0]
+    const endDate = event.dates[event.dates.length - 1]
     return getDateRangeString(startDate, endDate, true)
   }
 
   return ""
 }
 
-/** Returns a a new date, offset by the timezone in local storage if it exists, offset by local timezone if not */
-export const getDateWithTimezone = (date: DateLike): Date => {
-  date = new Date(date)
+/** Returns a a new ZonedDateTime,
+ * offset by the timezone in local storage if it exists,
+ * offset by local timezone if not
+ */
+export const getDateWithTimezone = (
+  date: ZonedDateTime
+): Temporal.ZonedDateTime => {
+  const zdt = toZDT(date)
 
   const rawTz = localStorage.getItem("timezone")
-  const timezone: StoredTimezone | null = rawTz
-    ? (JSON.parse(rawTz) as StoredTimezone)
-    : null
+  const timezone: RawTimezone | undefined = rawTz
+    ? (JSON.parse(rawTz) as RawTimezone)
+    : undefined
 
-  if (timezone) {
-    date.setTime(date.getTime() + (timezone.offset ?? 0) * 60 * 1000)
+  let adjustedZDT: Temporal.ZonedDateTime
+  if (timezone?.offset) {
+    // Offset is in minutes
+    const offsetMinutes = timezone.offset
+    adjustedZDT = zdt.add({ minutes: offsetMinutes.total("minutes") })
   } else {
-    date.setTime(date.getTime() - new Date().getTimezoneOffset() * 60 * 1000)
+    // Get local timezone offset using Temporal
+    const localTz = Temporal.Now.timeZoneId()
+    const now = Temporal.Now.zonedDateTimeISO(localTz)
+    const localOffset = now.offsetNanoseconds
+    adjustedZDT = zdt.add({ nanoseconds: localOffset })
   }
 
-  return date
+  return adjustedZDT
 }
 
-/** Returns a new date object with the given date (e.g. 5/2/2022) and the specified time (e.g. "11:30") */
-export const getDateWithTime = (date: DateLike, timeString: string): Date => {
-  date = new Date(date)
-
-  const { hours, minutes } = splitTime(timeString)
-  return new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    hours,
-    minutes
-  )
-}
-
-/** Returns a new date object with the given date (e.g. 5/2/2022) and the specified timeNum (e.g. 11.5) */
+/** Returns a new ZonedDateTime with the given date and the specified timeNum (e.g. 11.5) */
 export const getDateWithTimeNum = (
-  date: DateLike,
+  date: ZonedDateTime,
   timeNum: number,
   utc = false
-): Date => {
-  date = new Date(date)
+): Temporal.ZonedDateTime => {
+  const zdt = utc ? toZDT(date, UTC) : toZDT(date)
 
   const hours = Math.floor(timeNum)
-  const minutes = (timeNum - hours) * 60
-  if (!utc) {
-    return new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      hours,
-      minutes
-    )
-  } else {
-    return new Date(
-      Date.UTC(
-        date.getUTCFullYear(),
-        date.getUTCMonth(),
-        date.getUTCDate(),
-        hours,
-        minutes
-      )
-    )
-  }
+  const minutes = Math.floor((timeNum - hours) * 60)
+
+  return zdt.with({ hour: hours, minute: minutes })
 }
 
-/** Returns a date object from the given mongodb objectId */
-export const dateFromObjectId = function (objectId: string): Date {
-  return new Date(parseInt(objectId.substring(0, 8), 16) * 1000)
-}
-
-/** Takes a time string (e.g. 13:30) and splits it into hours and minutes, returning an object of the form { hours, minutes } */
-export const splitTime = (
-  timeString: string
-): { hours: number; minutes: number } => {
-  const [hours, minutes] = timeString.split(":")
-  return { hours: parseInt(hours), minutes: parseInt(minutes) }
+/** Returns a Temporal.ZonedDateTime from the given mongodb objectId */
+export const dateFromObjectId = function (
+  objectId: string
+): Temporal.ZonedDateTime {
+  const timestamp = parseInt(objectId.substring(0, 8), 16) * 1000
+  return Temporal.ZonedDateTime.from({ millisecond: timestamp })
 }
 
 /** Takes a timeNum (e.g. 9.5) and splits it into hours and minutes, returning an object of the form { hours, minutes } */
@@ -207,57 +202,78 @@ export const splitTimeNum = (
   return { hours, minutes }
 }
 
-/** Returns the specified date offset by the given number of days (can be positive or negative) */
-export const getDateDayOffset = (date: DateLike, offset: number): Date => {
-  date = new Date(date)
-  return new Date(date.getTime() + offset * 24 * 60 * 60 * 1000)
+/** Converts a Temporal.PlainTime to a timeNum (e.g. 9.5) */
+export const plainTimeToTimeNum = (time: Temporal.PlainTime): number => {
+  return time.hour + time.minute / 60
 }
 
-/** Returns the specified date offset by the given number of hours */
+/** Converts a timeNum (e.g. 9.5) to a Temporal.PlainTime */
+export const timeNumToPlainTime = (timeNum: number): Temporal.PlainTime => {
+  const hours = Math.floor(timeNum)
+  const minutes = Math.floor((timeNum - hours) * 60)
+  return Temporal.PlainTime.from({ hour: hours, minute: minutes })
+}
+
+// TODO
+/** Returns the specified date offset by the given number of days (can be positive or negative) */
+export const getDateDayOffset = (
+  date: ZonedDateTime,
+  offset: number
+): Temporal.ZonedDateTime => {
+  const zdt = toZDT(date)
+  return zdt.add({ days: offset })
+}
+
+/** Returns the specified date offset by the given number of hours or duration */
 export const getDateHoursOffset = (
-  date: DateLike,
-  hoursOffset: number
-): Date => {
-  const { hours, minutes } = splitTimeNum(hoursOffset)
-  const newDate = new Date(date)
-  newDate.setHours(newDate.getHours() + hours)
-  newDate.setMinutes(newDate.getMinutes() + minutes)
-  return newDate
+  date: ZonedDateTime,
+  hoursOffset: Temporal.Duration
+): Temporal.ZonedDateTime => {
+  const zdt = toZDT(date)
+  return zdt.add(hoursOffset)
 }
 
 /** Returns the date used to derive timezone offsets for the current event view */
 export const getTimezoneReferenceDateForEvent = (
   event: EventLike,
   weekOffset = 0
-): Date => {
+): Temporal.ZonedDateTime => {
   if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
-    const referenceDate = new Date()
-    referenceDate.setDate(referenceDate.getDate() + weekOffset * 7)
-    referenceDate.setHours(12, 0, 0, 0)
+    // Get current date in local timezone
+    const now = Temporal.Now.plainDateISO()
+    const nowWithTime = now.toZonedDateTime({
+      timeZone: Temporal.Now.timeZoneId(),
+      plainTime: "12:00:00",
+    })
+    const referenceDate = nowWithTime.add({ weeks: weekOffset })
     return referenceDate
   }
 
   if (event.dates && event.dates.length > 0) {
-    return new Date(event.dates[0])
+    return event.dates[0]
   }
 
-  return new Date()
+  return Temporal.Now.zonedDateTimeISO(UTC)
 }
 
 /** Returns the timezone offset for a timezone at a specific date */
 export const getTimezoneOffsetForDate = (
   curTimezone: Timezone,
-  referenceDate: DateLike
-): number => {
+  referenceDate: ZonedDateTime
+): Temporal.Duration => {
   if (!("offset" in curTimezone)) {
-    return new Date(referenceDate).getTimezoneOffset()
+    const zdt = toZDT(referenceDate)
+    // Convert nanoseconds to Duration
+    return Temporal.Duration.from({ nanoseconds: zdt.offsetNanoseconds * -1 })
   }
-
   if (!curTimezone.value) {
-    return (curTimezone.offset ?? 0) * -1
+    // curTimezone.offset is already a Duration
+    return curTimezone.offset.negated()
   }
 
-  return dayjs(referenceDate).tz(curTimezone.value).utcOffset() * -1
+  // Use Temporal to get accurate offset for the specific date in the timezone
+  const zdt = toZDT(referenceDate, curTimezone.value)
+  return Temporal.Duration.from({ nanoseconds: zdt.offsetNanoseconds * -1 })
 }
 
 /** Returns the timezone offset used by ScheduleOverlap for the current event view */
@@ -265,54 +281,79 @@ export const getScheduleTimezoneOffset = (
   event: EventLike,
   curTimezone: Timezone,
   weekOffset = 0
-): number => {
+): Temporal.Duration => {
   return getTimezoneOffsetForDate(
     curTimezone,
     getTimezoneReferenceDateForEvent(event, weekOffset)
   )
 }
-const getDateInTimezone = (date: DateLike, curTimezone: Timezone) => {
+
+const getDateInTimezone = (
+  date: ZonedDateTime,
+  curTimezone: Timezone
+): Temporal.ZonedDateTime => {
   if (curTimezone.value) {
-    return dayjs(date).tz(curTimezone.value)
+    return toZDT(date, curTimezone.value)
   }
 
   if ("offset" in curTimezone) {
-    return dayjs(date).utcOffset(curTimezone.offset ?? 0)
+    const zdt = toZDT(date, UTC)
+
+    // Convert Duration to minutes using total()
+    const offsetMinutes = curTimezone.offset.total("minutes")
+    // Create a fixed-offset timezone string like +05:30 or -08:00
+    const sign = offsetMinutes >= 0 ? "+" : "-"
+    const absMinutes = Math.abs(offsetMinutes)
+    const hours = Math.floor(absMinutes / 60)
+    const minutes = absMinutes % 60
+    const tzString = `${sign}${String(hours).padStart(2, "0")}:${String(
+      minutes
+    ).padStart(2, "0")}`
+    return zdt.withTimeZone(tzString)
   }
 
-  return dayjs(date)
+  // Fall back to browser's local timezone
+  const localTz = Temporal.Now.timeZoneId()
+  return toZDT(date, localTz)
 }
 
 /** Returns the unique day-start datetimes for specific-times events */
 export const getSpecificTimesDayStarts = (
-  eventDates: DateLike[],
+  eventDates: ZonedDateTime[],
   curTimezone: Timezone
-): { dateObject: Date; isConsecutive: boolean }[] => {
-  const days: { dateObject: Date; isConsecutive: boolean }[] = []
-  const datesSoFar = new Set<number>()
-  let prevDay: dayjs.Dayjs | null = null
+): { dateObject: Temporal.ZonedDateTime; isConsecutive: boolean }[] => {
+  const days: { dateObject: Temporal.ZonedDateTime; isConsecutive: boolean }[] =
+    []
+  const datesSoFar = new Set<Temporal.ZonedDateTime>()
+  let prevDay: Temporal.ZonedDateTime | undefined = undefined
 
   for (const eventDate of eventDates) {
-    const localDate = getDateInTimezone(eventDate, curTimezone)
-      .startOf("day")
-      .toDate()
+    const localZDT = getDateInTimezone(eventDate, curTimezone)
+    // Get start of day in the local timezone
+    const startOfDayZDT = localZDT.with({
+      hour: 0,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+      microsecond: 0,
+      nanosecond: 0,
+    })
 
-    if (!datesSoFar.has(localDate.getTime())) {
-      datesSoFar.add(localDate.getTime())
+    if (!datesSoFar.has(startOfDayZDT)) {
+      datesSoFar.add(startOfDayZDT)
 
       let isConsecutive = true
       if (prevDay) {
-        isConsecutive = prevDay
-          .add(1, "day")
-          .isSame(getDateInTimezone(localDate, curTimezone), "day")
+        const expectedNext = prevDay.add({ days: 1 })
+        isConsecutive = expectedNext.equals(startOfDayZDT)
       }
 
       days.push({
-        dateObject: localDate,
+        dateObject: startOfDayZDT,
         isConsecutive,
       })
 
-      prevDay = getDateInTimezone(localDate, curTimezone)
+      prevDay = startOfDayZDT
     }
   }
 
@@ -324,41 +365,51 @@ export const getSpecificTimesDayStarts = (
  * `reverse` determines whether to do the opposite calculation (dow date to date)
  */
 export const dateToDowDate = (
-  dows: DateLike[],
-  date: DateLike,
+  dows: ZonedDateTime[],
+  date: ZonedDateTime,
   weekOffset: number,
   reverse = false,
   startOnMonday = false
-): Date => {
+): Temporal.ZonedDateTime => {
   // Sort dows to make sure first date is not Saturday when there are multiple dates
-  // (as such is the case when an event is created in Tokyo and you're answering in Mountain View)
-  // This fixes the dayOffset calculation so that events are displayed in the correct week
   dows = [...dows].sort((date1, date2) => {
-    let day1 = new Date(date1).getUTCDay()
-    let day2 = new Date(date2).getUTCDay()
+    const zdt1 = toZDT(date1, UTC)
+    const zdt2 = toZDT(date2, UTC)
+    let day1 = zdt1.dayOfWeek // 1-7 (Mon-Sun)
+    let day2 = zdt2.dayOfWeek
     if (startOnMonday) {
-      if (day1 === 0) day1 = 7
-      if (day2 === 0) day2 = 7
+      // Already Monday-based in Temporal
+    } else {
+      // Convert to Sunday-based (0-6)
+      day1 = day1 % 7
+      day2 = day2 % 7
     }
     return day1 - day2
   })
 
-  // Get Sunday of the week containing the dows
-  const dowSunday = new Date(dows[0])
-  dowSunday.setUTCDate(dowSunday.getUTCDate() - dowSunday.getUTCDay())
+  // Get Sunday/Monday of the week containing the dows
+  const dowZDT = toZDT(dows[0], UTC)
+  const dowWeekStart = dowZDT.subtract({
+    days: startOnMonday ? dowZDT.dayOfWeek - 1 : dowZDT.dayOfWeek % 7,
+  })
 
-  // Get Sunday of the current week offset by weekOffset
-  const curSunday = new Date()
-  curSunday.setUTCDate(curSunday.getUTCDate() - curSunday.getUTCDay())
-  curSunday.setUTCDate(curSunday.getUTCDate() + 7 * weekOffset)
-  curSunday.setUTCHours(dowSunday.getUTCHours())
-  curSunday.setUTCMinutes(dowSunday.getUTCMinutes())
-  curSunday.setUTCSeconds(dowSunday.getUTCSeconds())
-  curSunday.setUTCMilliseconds(dowSunday.getUTCMilliseconds())
+  // Get Sunday/Monday of the current week offset by weekOffset
+  const now = Temporal.Now.zonedDateTimeISO(UTC)
+  const curWeekStart = now.subtract({
+    days: startOnMonday ? now.dayOfWeek - 1 : now.dayOfWeek % 7,
+  })
+  const adjustedCurWeekStart = curWeekStart.add({ weeks: weekOffset })
 
-  // Get the amount of days between both of the sundays
+  const alignedWeekStart = adjustedCurWeekStart.with({
+    hour: dowWeekStart.hour,
+    minute: dowWeekStart.minute,
+    second: dowWeekStart.second,
+    millisecond: dowWeekStart.millisecond,
+  })
+
+  // Get the amount of days between both week starts
   let dayOffset = Math.round(
-    (curSunday.getTime() - dowSunday.getTime()) / (1000 * 60 * 60 * 24)
+    alignedWeekStart.since(dowWeekStart, { largestUnit: "days" }).total("days")
   )
 
   // Reverse calculation if necessary
@@ -366,11 +417,11 @@ export const dateToDowDate = (
     dayOffset *= -1
   }
 
-  // Offset date by the amount of days between the two sundays
-  date = new Date(date)
-  date.setUTCDate(date.getUTCDate() - dayOffset)
+  // Offset date by the amount of days between the two week starts
+  const dateZDT = toZDT(date, UTC)
+  const adjusted = dateZDT.subtract({ days: dayOffset })
 
-  return date
+  return adjusted
 }
 
 /** Converts a timeNum (e.g. 13) to a timeText (e.g. "1 pm") */
@@ -392,6 +443,7 @@ export const timeNumToTimeText = (timeNum: number, hour12 = true): string => {
   return `${String(hours)}:${minutesString.length > 0 ? minutesString : "00"}`
 }
 
+// TODO
 /** Converts a timeNum (e.g. 9.5) to a timeString (e.g. 09:30:00) */
 export const timeNumToTimeString = (timeNum: number): string => {
   const hours = Math.floor(timeNum)
@@ -402,66 +454,50 @@ export const timeNumToTimeString = (timeNum: number): string => {
   return `${paddedHours}:${paddedMinutes}:00`
 }
 
-/** Converts a date to a timeNum (e.g. 9.5) */
-export const dateToTimeNum = (date: DateLike, utc = false): number => {
-  date = new Date(date)
-  if (utc) {
-    return date.getUTCHours() + date.getUTCMinutes() / 60
-  }
-  return date.getHours() + date.getMinutes() / 60
-}
-
-/** Clamps the date to the given time, type can either be "upper" or "lower" */
-export const clampDateToTimeNum = (
-  date: Date,
-  timeNum: number,
-  type: "upper" | "lower"
-): Date => {
-  const diff = dateToTimeNum(date) - timeNum
-  if (type === "upper" && diff < 0) {
-    return getDateWithTimeNum(date, timeNum)
-  } else if (type === "lower" && diff > 0) {
-    return getDateWithTimeNum(date, timeNum)
-  }
-
-  // Return original date
-  return date
+export const dateToTimeNum = (
+  date: ZonedDateTime,
+  utc = false
+): Temporal.PlainTime => {
+  const zdt = utc ? date.withTimeZone(UTC) : date
+  return zdt.toPlainTime()
 }
 
 /** Returns negative if date1 < date2, positive if date2 > date1, and 0 if date1 == date2 */
-export const dateCompare = (date1: DateLike, date2: DateLike): number => {
-  date1 = new Date(date1)
-  date2 = new Date(date2)
-  return date1.getTime() - date2.getTime()
+export const dateCompare = (
+  date1: ZonedDateTime,
+  date2: ZonedDateTime
+): number => {
+  return Temporal.ZonedDateTime.compare(date1, date2)
 }
 
 /** Returns whether the given date is between startDate and endDate */
 export const isDateBetween = (
-  date: DateLike,
-  startDate: DateLike,
-  endDate: DateLike
+  date: ZonedDateTime,
+  startDate: ZonedDateTime,
+  endDate: ZonedDateTime
 ): boolean => {
-  const d = new Date(date).getTime()
-  const start = new Date(startDate).getTime()
-  const end = new Date(endDate).getTime()
-  return d >= start && d <= end
+  return startDate <= date && date <= endDate
 }
 
 /** Returns the number of days in the given month */
 export const getDaysInMonth = (month: number, year: number): number => {
-  return new Date(year, month, 0).getDate()
+  // Create a PlainYearMonth and get days in month
+  const yearMonth = Temporal.PlainYearMonth.from({ year, month })
+  return yearMonth.daysInMonth
 }
 
+// TODO
 /** returns -1 if a is before b, 1 if a is after b, 0 otherwise */
-export const compareDateDay = (a: DateLike, b: DateLike): number => {
-  a = new Date(a)
-  b = new Date(b)
-  if (a.getFullYear() !== b.getFullYear()) {
-    return a.getFullYear() - b.getFullYear()
-  } else if (a.getMonth() !== b.getMonth()) {
-    return a.getMonth() - b.getMonth()
+export const compareDateDay = (a: ZonedDateTime, b: ZonedDateTime): number => {
+  const zdtA = toZDT(a, UTC)
+  const zdtB = toZDT(b, UTC)
+
+  if (zdtA.year !== zdtB.year) {
+    return zdtA.year - zdtB.year
+  } else if (zdtA.month !== zdtB.month) {
+    return zdtA.month - zdtB.month
   } else {
-    return a.getDate() - b.getDate()
+    return zdtA.day - zdtB.day
   }
 }
 
@@ -471,59 +507,84 @@ such that date1.getHour() <= timeNum <= date2.getHour(), accounting
 for the possibility that date1 and date2 might be on separate days
 */
 export const isTimeNumBetweenDates = (
-  timeNum: number,
-  date1: Date,
-  date2: Date
+  time: Temporal.PlainTime,
+  date1: ZonedDateTime,
+  date2: ZonedDateTime
 ): boolean => {
-  const hour1 = date1.getHours()
-  const hour2 = date2.getHours()
+  const zdt1 = toZDT(date1)
+  const zdt2 = toZDT(date2)
 
+  const hour1 = zdt1.toPlainTime()
+  const hour2 = zdt2.toPlainTime()
+
+  // TODO use true comparison
   if (hour1 <= hour2) {
-    return hour1 <= timeNum && timeNum <= hour2
+    return hour1 <= time && time <= hour2
   } else {
     return (
-      (hour1 <= timeNum && timeNum < 24) || (0 <= timeNum && timeNum <= hour2)
+      (hour1 <= time && time < hoursPlainTime.TWENTY_FOUR) ||
+      (hoursPlainTime.ZERO <= time && time <= hour2)
     )
   }
 }
 
-/** Returns whether date is in between startDate and startDate + duration (in hours) */
+/** Returns whether date is in between startDate and startDate + duration */
 export const isDateInRange = (
-  date: Date,
-  startDate: Date,
-  duration: number
+  date: ZonedDateTime,
+  startDate: ZonedDateTime,
+  // TODO
+  duration: Temporal.Duration
 ): boolean => {
-  const endDate = new Date(startDate)
-  endDate.setHours(endDate.getHours() + duration)
-  return startDate <= date && date <= endDate
+  const startZDT = toZDT(startDate)
+  const endZDT = startZDT.add(duration)
+
+  return startZDT <= date && date <= endZDT
 }
 
 /** Converts a utc time int to a local time int based on the timezoneOffset */
-export const utcTimeToLocalTime = (
+export const utcTimeToLocalTimeNum = (
+  // TODO
   timeNum: number,
-  timezoneOffset: number = new Date().getTimezoneOffset()
+  timezoneOffset: Temporal.Duration = (() => {
+    const localTz = Temporal.Now.timeZoneId()
+    const now = Temporal.Now.zonedDateTimeISO(localTz)
+    return Temporal.Duration.from({ nanoseconds: now.offsetNanoseconds })
+  })()
+  // TODO
 ): number => {
-  let localTimeNum = timeNum - timezoneOffset / 60
+  // Convert Duration to hours
+  const offsetHours = timezoneOffset.total("hours")
+  let localTimeNum = timeNum - offsetHours
   localTimeNum %= 24
   if (localTimeNum < 0) localTimeNum += 24
 
   return localTimeNum
 }
 
-/** Converts a timestamp from a specified timezone to UTC */
+export const utcTimeToLocalTime = (
+  time: Temporal.PlainTime,
+  timezoneOffset: Temporal.Duration = (() => {
+    const localTz = Temporal.Now.timeZoneId()
+    const now = Temporal.Now.zonedDateTimeISO(localTz)
+    return Temporal.Duration.from({ nanoseconds: now.offsetNanoseconds })
+  })()
+): Temporal.PlainTime => {
+  return time.subtract(timezoneOffset)
+}
+
+/** Converts a timestamp from a specified timezone to UTC Instant */
 export const convertToUTC = (
   dateTimeString: string,
   timezoneValue: string
-): Date => {
-  // Parse the date string (assumed to be in ISO format without timezone, e.g., "2026-01-03T09:00:00")
-  // Treat it as being in the determined timezone
+): Temporal.ZonedDateTime => {
   try {
-    const dateInTimezone = dayjs.tz(dateTimeString, timezoneValue)
-    if (!dateInTimezone.isValid()) {
-      throw new Error(`Invalid date string: ${dateTimeString}`)
-    }
-    // Convert to UTC
-    return dateInTimezone.utc().toDate()
+    // Parse the datetime string in the specified timezone
+    const zdt = Temporal.ZonedDateTime.from(
+      `${dateTimeString}[${timezoneValue}]`,
+      { overflow: "constrain" }
+    )
+    // Convert to UTC instant
+    return zdt
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     throw new Error(
@@ -535,29 +596,23 @@ export const convertToUTC = (
 
 /** Checks if a date/time falls within an event's date and time range */
 export const isTimeWithinEventRange = (
-  dateTime: DateLike,
-  eventDates: DateLike[],
+  dateTime: ZonedDateTime,
+  eventDates: ZonedDateTime[],
+  // TODO
   eventStartTime: number,
-  eventDuration: number
+  // TODO
+  eventDuration: Temporal.Duration
 ): boolean => {
-  const slotDate = new Date(dateTime)
-  const slotDateOnly = new Date(
-    slotDate.getUTCFullYear(),
-    slotDate.getUTCMonth(),
-    slotDate.getUTCDate()
-  )
+  const slotZDT = toZDT(dateTime, UTC)
+  const slotPlainDate = slotZDT.toPlainDate()
 
   // Check if slot's date matches any event date
-  let matchingEventDate: Date | null = null
+  let matchingEventDate: Temporal.ZonedDateTime | null = null
   for (const eventDate of eventDates) {
-    const eventDateObj = new Date(eventDate)
-    const eventDateOnly = new Date(
-      eventDateObj.getUTCFullYear(),
-      eventDateObj.getUTCMonth(),
-      eventDateObj.getUTCDate()
-    )
-    if (slotDateOnly.getTime() === eventDateOnly.getTime()) {
-      matchingEventDate = eventDateObj
+    const eventZDT = toZDT(eventDate, UTC)
+    const eventPlainDate = eventZDT.toPlainDate()
+    if (slotPlainDate.equals(eventPlainDate)) {
+      matchingEventDate = eventZDT
       break
     }
   }
@@ -567,57 +622,49 @@ export const isTimeWithinEventRange = (
   }
 
   // Check if slot's time falls within event's time range for this date
-  const eventStartDateTime = new Date(matchingEventDate)
-  eventStartDateTime.setUTCHours(Math.floor(eventStartTime))
-  eventStartDateTime.setUTCMinutes((eventStartTime % 1) * 60)
+  const eventStartZDT = matchingEventDate.with({
+    hour: Math.floor(eventStartTime),
+    minute: Math.floor((eventStartTime % 1) * 60),
+  })
 
-  const eventEndDateTime = new Date(eventStartDateTime)
-  eventEndDateTime.setUTCHours(
-    eventEndDateTime.getUTCHours() + Math.floor(eventDuration)
-  )
-  eventEndDateTime.setUTCMinutes(
-    eventEndDateTime.getUTCMinutes() + (eventDuration % 1) * 60
-  )
+  const eventEndZDT = eventStartZDT.add(eventDuration)
 
+  const slotInstant = slotZDT.toInstant()
   return (
-    slotDate.getTime() >= eventStartDateTime.getTime() &&
-    slotDate.getTime() <= eventEndDateTime.getTime()
+    slotInstant >= eventStartZDT.toInstant() &&
+    slotInstant <= eventEndZDT.toInstant()
   )
 }
 
 /** Converts an array of UTC date slots to ISO string format in a specified timezone */
 export const convertUTCSlotsToLocalISO = (
-  slots: DateLike[] | null | undefined,
-  timezoneValue: string | null = null
-): string[] => {
-  if (!slots || !Array.isArray(slots)) return []
+  slots: ZonedDateTime[] | undefined,
+  timezoneValue?: string
+): Temporal.ZonedDateTime[] => {
+  if (!slots) return []
 
   return slots.map((slot) => {
     try {
-      const date = dayjs.utc(slot)
-      if (!date.isValid()) {
-        throw new Error(`Invalid UTC timestamp: ${String(slot)}`)
-      }
       // If no timezone provided, return UTC (with Z)
       if (!timezoneValue) {
-        return date.format("YYYY-MM-DDTHH:mm:ss[Z]")
+        return slot
       }
-      // Convert to specified timezone and return without timezone suffix
-      return date.tz(timezoneValue).format("YYYY-MM-DDTHH:mm:ss")
+
+      // Convert to specified timezone and return ISO string
+      return slot.with({ timeZone: timezoneValue })
     } catch {
-      if (slot instanceof Date) {
-        return slot.toISOString()
-      }
-      return new Date(slot).toISOString()
+      // Fallback: shouldn't happen with proper Temporal usage
+      throw new Error(
+        "Invalid temporal date provided to convertUTCSlotsToLocalISO"
+      )
     }
   })
 }
 
 /** Returns a string representing the current timezone */
 export const getCurrentTimezone = (): string => {
-  return new Date()
-    .toLocaleTimeString("en-us", { timeZoneName: "short" })
-    .split(" ")[2]
+  const now = Temporal.Now.zonedDateTimeISO()
+  return now.timeZoneId
 }
 
 /** Returns the preferred locale of the user
@@ -638,6 +685,7 @@ export const userPrefers12h = (): boolean => {
 /** Returns an array of time options based on whether user prefers 12h or 24h */
 export const getTimeOptions = (): {
   text: string
+  // TODO
   time: number
   value: number
 }[] => {
@@ -652,7 +700,11 @@ export const getTimeOptions = (): {
       times.push({ text: `${String(h)} am`, time: h, value: h })
     }
     for (let h = 0; h < 12; ++h) {
-      times.push({ text: `${String(h == 0 ? 12 : h)} pm`, time: h + 12, value: h + 12 })
+      times.push({
+        text: `${String(h == 0 ? 12 : h)} pm`,
+        time: h + 12,
+        value: h + 12,
+      })
     }
     times.push({ text: "12 am", time: 0, value: 24 })
 
@@ -676,23 +728,18 @@ export const getCalendarEventsMap = async (
   event: EventLike,
   { weekOffset = 0, eventId = "" }: { weekOffset?: number; eventId?: string }
 ): Promise<unknown> => {
-  let timeMin: string | undefined
-  let timeMax: string | undefined
+  let timeMin: Temporal.ZonedDateTime | undefined
+  let timeMax: Temporal.ZonedDateTime | undefined
+
   if (!event.dates || event.dates.length === 0) {
     return Promise.resolve([])
   }
-  
+
   if (event.type === eventTypes.SPECIFIC_DATES) {
     // Get all calendar events between the first date and the last date in dates
-    timeMin = new Date(event.dates[0]).toISOString()
-    timeMax = getDateDayOffset(
-      new Date(event.dates[event.dates.length - 1]),
-      2
-    ).toISOString()
-  } else if (
-    event.type === eventTypes.DOW ||
-    event.type === eventTypes.GROUP
-  ) {
+    timeMin = event.dates[0]
+    timeMax = event.dates[event.dates.length - 1].add({ days: 2 })
+  } else if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
     // Get all calendar events for the current week offsetted by weekOffset
     const firstDate = dateToDowDate(
       event.dates,
@@ -708,19 +755,23 @@ export const getCalendarEventsMap = async (
       true,
       event.startOnMonday
     )
-    timeMin = getDateDayOffset(firstDate, -2).toISOString()
-    timeMax = getDateDayOffset(lastDate, 2).toISOString()
+    timeMin = firstDate.subtract({ days: 2 })
+    timeMax = lastDate.add({ days: 2 })
   }
 
   // Fetch calendar events from Google Calendar
   let calendarEventsMap
   if (eventId.length === 0) {
     calendarEventsMap = await get(
-      `/user/calendars?timeMin=${timeMin ?? ""}&timeMax=${timeMax ?? ""}`
+      `/user/calendars?timeMin=${timeMin?.toString() ?? ""}&timeMax=${
+        timeMax?.toString() ?? ""
+      }`
     )
   } else {
     calendarEventsMap = await get(
-      `/events/${eventId}/calendar-availabilities?timeMin=${timeMin ?? ""}&timeMax=${timeMax ?? ""}`
+      `/events/${eventId}/calendar-availabilities?timeMin=${
+        timeMin?.toString() ?? ""
+      }&timeMax=${timeMax?.toString() ?? ""}`
     )
   }
 
@@ -731,30 +782,38 @@ export const getCalendarEventsMap = async (
  * Returns a time block object based on the date object and the hours offset and length
  */
 export const getTimeBlock = (
-  date: Date,
-  hoursOffset: number,
-  hoursLength: number
-): { startDate: Date; endDate: Date } => {
-  const startDate = new Date(date.getTime() + hoursOffset * 60 * 60 * 1000)
-  const endDate = new Date(startDate.getTime() + hoursLength * 60 * 60 * 1000)
+  date: ZonedDateTime,
+  hoursOffset: Temporal.Duration,
+  hoursLength: Temporal.Duration
+): { startDate: Temporal.ZonedDateTime; endDate: Temporal.ZonedDateTime } => {
+  const zdt = toZDT(date)
+  const startZDT = zdt.add(hoursOffset)
+  const endZDT = startZDT.add(hoursLength)
+
   return {
-    startDate: startDate,
-    endDate: endDate,
+    startDate: startZDT,
+    endDate: endZDT,
   }
 }
 
 /**
   Returns an array of a user's calendar events split by date for a given event
 */
-export const splitTimeBlocksByDay = <T extends { startDate: Date | string | number; endDate: Date | string | number; [key: string]: unknown }>(
+export const splitTimeBlocksByDay = <
+  T extends {
+    startDate: Temporal.ZonedDateTime
+    endDate: Temporal.ZonedDateTime
+    [key: string]: unknown
+  }
+>(
   event: EventLike,
   timeBlocks: T[],
   weekOffset = 0,
-  timezoneOffset: number | null = null
+  timezoneOffset?: Temporal.Duration
 ): T[][] => {
   return processTimeBlocks(
     event.dates ?? [],
-    event.duration ?? 0,
+    event.duration ?? durations.ZERO,
     timeBlocks,
     event.type,
     weekOffset,
@@ -764,51 +823,55 @@ export const splitTimeBlocksByDay = <T extends { startDate: Date | string | numb
 }
 
 /** Takes an array of time blocks and returns a new array separated by day and with hoursOffset and hoursLength properties */
-export const processTimeBlocks = <T extends { startDate: Date | string | number; endDate: Date | string | number; [key: string]: unknown }>(
-  dates: DateLike[],
-  duration: number,
+export const processTimeBlocks = <
+  T extends {
+    startDate: Temporal.ZonedDateTime
+    endDate: Temporal.ZonedDateTime
+    [key: string]: unknown
+  }
+>(
+  dates: ZonedDateTime[],
+  duration: Temporal.Duration,
   timeBlocks: T[],
   eventType: string = eventTypes.SPECIFIC_DATES,
   weekOffset = 0,
   startOnMonday = false,
-  timezoneOffset: number | null = 0
+  timezoneOffset: Temporal.Duration = durations.ZERO
 ): T[][] => {
-  const tzOffset = timezoneOffset ?? 0
+  const tzOffset = timezoneOffset
+  // Convert duration to Temporal.Duration if it's a number
+
   // Put timeBlocks into the correct format
   let blocks: T[] = JSON.parse(JSON.stringify(timeBlocks)) as T[] // Make a copy so we don't mutate original array
   blocks = blocks.map((e) => {
     if (eventType === eventTypes.DOW || eventType === eventTypes.GROUP) {
-      e.startDate = dateToDowDate(
+      const startDate = dateToDowDate(
         dates,
         e.startDate,
         weekOffset,
         false,
         startOnMonday
       )
-      e.endDate = dateToDowDate(
+      const endDate = dateToDowDate(
         dates,
         e.endDate,
         weekOffset,
         false,
         startOnMonday
       )
-    } else {
-      e.startDate = new Date(e.startDate)
-      e.endDate = new Date(e.endDate)
+      e.startDate = startDate
+      e.endDate = endDate
     }
     return e
   })
-  blocks.sort((a, b) =>
-    dateCompare(a.startDate, b.startDate)
-  )
+  blocks.sort((a, b) => dateCompare(a.startDate, b.startDate))
 
   // Format array of calendar events by day
-  const datesSoFar = new Set<number>()
+  const datesSoFar = new Set<Temporal.ZonedDateTime>()
   const timeBlocksByDay: T[][] = []
   for (let i = 0; i < dates.length; ++i) {
     timeBlocksByDay[i] = []
-    const date = new Date(dates[i])
-    datesSoFar.add(date.getTime())
+    datesSoFar.add(dates[i])
   }
 
   // Iterate through all dates and add calendar events to array
@@ -816,78 +879,69 @@ export const processTimeBlocks = <T extends { startDate: Date | string | number;
   for (const date of dates) {
     if (blocks.length == 0) break
 
-    const start = new Date(date)
-    const end = new Date(start)
-    end.setHours(start.getHours() + duration)
+    const start = toZDT(date)
+    const end = start.add(duration)
 
-    const localDayStart = new Date(start.getTime() - tzOffset * 60 * 1000)
-    const localDayEnd = new Date(end.getTime() - tzOffset * 60 * 1000)
+    const localDayStart = start.subtract(tzOffset)
+    const localDayEnd = end.subtract(tzOffset)
 
     // Keep iterating through calendar events until it's empty or there are no more events for the current date
-    while (blocks.length > 0 && end > (blocks[0].startDate as Date)) {
+    while (blocks.length > 0 && end > blocks[0].startDate) {
       let [calendarEvent] = blocks.splice(0, 1)
 
       // Check if calendar event overlaps with event time ranges
-      const startDateWithinRange = isBetween(
-        calendarEvent.startDate as Date,
-        start,
-        end
-      )
-      const endDateWithinRange = isBetween(
-        calendarEvent.endDate as Date,
-        start,
-        end
-      )
+      const calStart = calendarEvent.startDate
+      const calEnd = calendarEvent.endDate
+
+      const startDateWithinRange = calStart >= start && calStart <= end
+      const endDateWithinRange = calEnd >= start && calEnd <= end
       const rangeWithinCalendarEvent =
-        isBetween(
-          start,
-          calendarEvent.startDate as Date,
-          calendarEvent.endDate as Date
-        ) &&
-        isBetween(
-          end,
-          calendarEvent.startDate as Date,
-          calendarEvent.endDate as Date
-        )
+        start >= calStart && start <= calEnd && end >= calStart && end <= calEnd
+
       if (
         startDateWithinRange ||
         endDateWithinRange ||
         rangeWithinCalendarEvent
       ) {
-        const rangeStartWithinCalendarEvent = isBetween(
-          start,
-          calendarEvent.startDate as Date,
-          calendarEvent.endDate as Date
-        )
-        const rangeEndWithinCalendarEvent = isBetween(
-          end,
-          calendarEvent.startDate as Date,
-          calendarEvent.endDate as Date
-        )
+        const rangeStartWithinCalendarEvent =
+          start >= calStart && start <= calEnd
+        const rangeEndWithinCalendarEvent = end >= calStart && end <= calEnd
+
         if (rangeStartWithinCalendarEvent) {
           // Clamp calendarEvent start
-          calendarEvent = { ...calendarEvent, startDate: start }
+          calendarEvent = {
+            ...calendarEvent,
+            startDate: start,
+          }
         }
         if (rangeEndWithinCalendarEvent) {
-          // If the calendar event potentially goes to the next day, we need to add a new time block for it (this is mostly for all day events spanning multiple days)
-          const calendarEventToAdd = { ...calendarEvent, startDate: end }
+          // If the calendar event potentially goes to the next day, we need to add a new time block for it
+          const calendarEventToAdd = {
+            ...calendarEvent,
+            startDate: end,
+          }
           blocks.splice(0, 0, calendarEventToAdd)
-          blocks.sort((a, b) =>
-            dateCompare(a.startDate, b.startDate)
-          )
+          blocks.sort((a, b) => dateCompare(a.startDate, b.startDate))
           // Clamp calendarEvent end
-          calendarEvent = { ...calendarEvent, endDate: end }
+          calendarEvent = {
+            ...calendarEvent,
+            endDate: end,
+          }
         }
+
+        // Recalculate after clamping
+        const updatedCalStartInstant = calendarEvent.startDate
+        const updatedCalEndInstant = calendarEvent.endDate
 
         // The number of hours since start time
         const hoursOffset =
-          ((calendarEvent.startDate as Date).getTime() - start.getTime()) /
+          (updatedCalStartInstant.epochMilliseconds - start.epochMilliseconds) /
           (1000 * 60 * 60)
 
         // The length of the event in hours
         const hoursLength =
-          ((calendarEvent.endDate as Date).getTime() -
-            (calendarEvent.startDate as Date).getTime()) /
+          (updatedCalEndInstant.epochMilliseconds -
+            updatedCalStartInstant.epochMilliseconds) /
           (1000 * 60 * 60)
 
         // Don't display event if the event is 0 hours long
@@ -895,39 +949,57 @@ export const processTimeBlocks = <T extends { startDate: Date | string | number;
 
         // Check if the event goes into the next day
         // Format the UTC date to be in the selected timezone
-        const localStart = new Date(
-          (calendarEvent.startDate as Date).getTime() - tzOffset * 60 * 1000
-        )
-        const localEnd = new Date(
-          (calendarEvent.endDate as Date).getTime() - tzOffset * 60 * 1000
-        )
-        if (localStart.getUTCDate() !== localEnd.getUTCDate()) {
+        const localStartZDT = updatedCalStartInstant
+          .with({ timeZone: UTC })
+          .subtract(tzOffset)
+        const localEndZDT = updatedCalEndInstant
+          .with({ timeZone: UTC })
+          .subtract(tzOffset)
+
+        const localStartDate = localStartZDT.toPlainDate()
+        const localEndDate = localEndZDT.toPlainDate()
+
+        if (
+          localStartDate.day !== localEndDate.day ||
+          localStartDate.month !== localEndDate.month ||
+          localStartDate.year !== localEndDate.year
+        ) {
           // The event goes into the next day. Split the event into two time blocks
-          const splitDate = new Date(localStart)
-          splitDate.setUTCDate(splitDate.getUTCDate() + 1)
-          splitDate.setUTCHours(0, 0, 0, 0)
-          splitDate.setTime(splitDate.getTime() + tzOffset * 60 * 1000)
+          const splitZDT = localStartZDT
+            .with({
+              hour: 0,
+              minute: 0,
+              second: 0,
+              millisecond: 0,
+            })
+            .add({ days: 1 })
+          const splitInstant = splitZDT
+
           const firstTimeBlock = {
             ...calendarEvent,
-            id: (typeof calendarEvent.id === 'string' ? calendarEvent.id : "") + "-1",
-            endDate: splitDate,
+            id:
+              (typeof calendarEvent.id === "string" ? calendarEvent.id : "") +
+              "-1",
+            endDate: splitInstant,
             hoursOffset: hoursOffset,
             hoursLength: hoursLength,
           }
           const firstHoursLength =
-            ((firstTimeBlock.endDate).getTime() -
-              (firstTimeBlock.startDate as Date).getTime()) /
+            (splitInstant.epochMilliseconds -
+              updatedCalStartInstant.epochMilliseconds) /
             (1000 * 60 * 60)
           const secondTimeBlock = {
             ...calendarEvent,
-            id: (typeof calendarEvent.id === 'string' ? calendarEvent.id : "") + "-2",
-            startDate: splitDate,
+            id:
+              (typeof calendarEvent.id === "string" ? calendarEvent.id : "") +
+              "-2",
+            startDate: splitInstant,
             hoursOffset: hoursOffset + firstHoursLength,
             hoursLength: hoursLength - firstHoursLength,
           }
           const secondHoursLength =
-            ((secondTimeBlock.endDate as Date).getTime() -
-              (secondTimeBlock.startDate).getTime()) /
+            (updatedCalEndInstant.epochMilliseconds -
+              splitInstant.epochMilliseconds) /
             (1000 * 60 * 60)
           timeBlocksByDay[i].push({
             ...firstTimeBlock,
@@ -943,17 +1015,24 @@ export const processTimeBlocks = <T extends { startDate: Date | string | number;
             hoursLength: secondHoursLength,
           })
           continue
-        } else if (localDayStart.getUTCDate() !== localStart.getUTCDate()) {
-          // The event starts on the next day. move the event to the next day
-          if (i + 1 >= timeBlocksByDay.length) {
-            timeBlocksByDay.push([])
+        } else {
+          const localStartPlain = localStartZDT.toPlainDate()
+          if (
+            localDayStart.day !== localStartPlain.day ||
+            localDayStart.month !== localStartPlain.month ||
+            localDayStart.year !== localStartPlain.year
+          ) {
+            // The event starts on the next day. move the event to the next day
+            if (i + 1 >= timeBlocksByDay.length) {
+              timeBlocksByDay.push([])
+            }
+            timeBlocksByDay[i + 1].push({
+              ...calendarEvent,
+              hoursOffset,
+              hoursLength,
+            })
+            continue
           }
-          timeBlocksByDay[i + 1].push({
-            ...calendarEvent,
-            hoursOffset,
-            hoursLength,
-          })
-          continue
         }
 
         timeBlocksByDay[i].push({
@@ -965,13 +1044,18 @@ export const processTimeBlocks = <T extends { startDate: Date | string | number;
     }
 
     // Check if the start and end of the current day are on different days in this timezone
-    if (localDayStart.getUTCDate() !== localDayEnd.getUTCDate()) {
-      const nextDate = new Date(start)
-      nextDate.setUTCDate(nextDate.getUTCDate() + 1)
-      if (!datesSoFar.has(nextDate.getTime())) {
+    const localDayStartUTCPlain = localDayStart
+      .with({ timeZone: UTC })
+      .toPlainDate()
+    const localDayEndUTCPlain = localDayEnd
+      .with({ timeZone: UTC })
+      .toPlainDate()
+    if (localDayStartUTCPlain !== localDayEndUTCPlain) {
+      const nextDate = start.add({ days: 1 })
+      if (!datesSoFar.has(nextDate)) {
         // The start and end of the current day are on different days in this timezone, append a new index to the timeBlocksByDay array
         timeBlocksByDay.push([])
-        i += 1
+        i++
       }
     }
     i++
@@ -987,26 +1071,67 @@ export const getCalendarAccountKey = (
   return `${email}_${calendarType}`
 }
 
-export const stdTimezoneOffset = (date: Date): number => {
-  const jan = new Date(date.getFullYear(), 0, 1)
-  const jul = new Date(date.getFullYear(), 6, 1)
-  return Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset())
+export const getTimezoneOffset = (
+  time: Temporal.ZonedDateTime
+): Temporal.Duration => {
+  return Temporal.Duration.from({
+    nanoseconds: time.offsetNanoseconds,
+  }).negated()
 }
 
-export const doesDstExist = (date: Date): boolean => {
-  return date.getTimezoneOffset() !== stdTimezoneOffset(date)
+export const stdTimezoneOffset = (date: ZonedDateTime): Temporal.Duration => {
+  const zdt = toZDT(date)
+  const jan = Temporal.ZonedDateTime.from({
+    year: zdt.year,
+    month: 1,
+    day: 1,
+    hour: 12,
+    timeZoneId: zdt.timeZoneId,
+  })
+  const jul = Temporal.ZonedDateTime.from({
+    year: zdt.year,
+    month: 7,
+    day: 1,
+    hour: 12,
+    timeZoneId: zdt.timeZoneId,
+  })
+  return Temporal.Duration.from({
+    nanoseconds: Math.max(
+      jan.offsetNanoseconds * -1,
+      jul.offsetNanoseconds * -1
+    ),
+  })
 }
 
-export const isDstObserved = (date: Date): boolean => {
-  return date.getTimezoneOffset() < stdTimezoneOffset(date)
+export const doesDstExist = (date: ZonedDateTime): boolean => {
+  const zdt = toZDT(date)
+  return getTimezoneOffset(zdt) !== stdTimezoneOffset(zdt)
+}
+
+export const isDstObserved = (date: ZonedDateTime): boolean => {
+  const zdt = toZDT(date)
+  return getTimezoneOffset(zdt) < stdTimezoneOffset(zdt)
 }
 
 /** Returns true if the given IANA timezone observes daylight saving time */
 export const timezoneObservesDST = (ianaTimezone: string): boolean => {
   if (!ianaTimezone) return false
-  const jan = dayjs.tz("2024-01-15 12:00", ianaTimezone)
-  const jul = dayjs.tz("2024-07-15 12:00", ianaTimezone)
-  return jan.utcOffset() !== jul.utcOffset()
+
+  const jan = Temporal.ZonedDateTime.from({
+    year: 2024,
+    month: 1,
+    day: 15,
+    hour: 12,
+    timeZone: ianaTimezone,
+  })
+  const jul = Temporal.ZonedDateTime.from({
+    year: 2024,
+    month: 7,
+    day: 15,
+    hour: 12,
+    timeZone: ianaTimezone,
+  })
+  return jan.offsetNanoseconds !== jul.offsetNanoseconds
 }
 
 interface DOWSlot {
@@ -1122,12 +1247,7 @@ export const validateDOWPayload = (
         }
       }
     } else {
-      if (
-        endMinute < 0 ||
-        endMinute > 59 ||
-        endSecond < 0 ||
-        endSecond > 59
-      ) {
+      if (endMinute < 0 || endMinute > 59 || endSecond < 0 || endSecond > 59) {
         return {
           valid: false,
           error: `Slot at index ${iStr} has invalid end time: minutes and seconds must be 0-59`,
@@ -1136,21 +1256,31 @@ export const validateDOWPayload = (
     }
 
     // Format date part (YYYY-MM-DD) for validation
-    const startDateStr = `${String(startYear)}-${String(startMonth).padStart(2, "0")}-${String(startDay).padStart(2, "0")}`
-    const endDateStr = `${String(endYear)}-${String(endMonth).padStart(2, "0")}-${String(endDay).padStart(2, "0")}`
+    const startDateStr = `${String(startYear)}-${String(startMonth).padStart(
+      2,
+      "0"
+    )}-${String(startDay).padStart(2, "0")}`
+    const endDateStr = `${String(endYear)}-${String(endMonth).padStart(
+      2,
+      "0"
+    )}-${String(endDay).padStart(2, "0")}`
 
     // Validate dates belong to hardcoded DOW dates
     if (!validDOWDates.has(startDateStr)) {
       return {
         valid: false,
-        error: `Slot at index ${iStr} has invalid start date: ${startDateStr}. Must be one of the hardcoded DOW dates: ${Array.from(validDOWDates).join(", ")}`,
+        error: `Slot at index ${iStr} has invalid start date: ${startDateStr}. Must be one of the hardcoded DOW dates: ${Array.from(
+          validDOWDates
+        ).join(", ")}`,
       }
     }
 
     if (!validDOWDates.has(endDateStr)) {
       return {
         valid: false,
-        error: `Slot at index ${iStr} has invalid end date: ${endDateStr}. Must be one of the hardcoded DOW dates: ${Array.from(validDOWDates).join(", ")}`,
+        error: `Slot at index ${iStr} has invalid end date: ${endDateStr}. Must be one of the hardcoded DOW dates: ${Array.from(
+          validDOWDates
+        ).join(", ")}`,
       }
     }
 
@@ -1168,24 +1298,19 @@ export const validateDOWPayload = (
     let endTimeString = slot.end
     if (endHour === 24) {
       // Convert 24:00:00 to next day 00:00:00 for proper comparison
-      const endDate = dayjs(slot.end.substring(0, 10)) // Get just the date part
-      endTimeString = endDate.add(1, "day").format("YYYY-MM-DDTHH:mm:ss")
+      const endDate = Temporal.PlainDate.from({
+        year: endYear,
+        month: endMonth,
+        day: endDay,
+      })
+      const nextDay = endDate.add({ days: 1 })
+      endTimeString = `${nextDay.toString()}T00:00:00`
     }
 
-    const startDateTime = dayjs(slot.start)
-    const endDateTime = dayjs(endTimeString)
+    const startZDT = Temporal.ZonedDateTime.from(`${slot.start}[UTC]`)
+    const endZDT = Temporal.ZonedDateTime.from(`${endTimeString}[UTC]`)
 
-    if (!startDateTime.isValid() || !endDateTime.isValid()) {
-      return {
-        valid: false,
-        error: `Slot at index ${iStr} has invalid date/time values that cannot be parsed`,
-      }
-    }
-
-    if (
-      endDateTime.isBefore(startDateTime) ||
-      endDateTime.isSame(startDateTime)
-    ) {
+    if (endZDT.toInstant() <= startZDT.toInstant()) {
       return {
         valid: false,
         error: `Slot at index ${iStr} has end time that is before or equal to start time`,

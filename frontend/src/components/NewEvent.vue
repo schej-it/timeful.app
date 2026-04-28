@@ -78,21 +78,21 @@
                     class="tw-mb-2 tw-flex tw-items-baseline tw-justify-center tw-space-x-2"
                   >
                     <v-select
-                      :model-value="startTime"
+                      :model-value="startTimeNum"
                       :items="times"
                       return-object
                       hide-details
                       solo
-                      @update:model-value="(t: any) => (startTime = t.time ?? t)"
+                      @update:model-value="(t: any) => (startTimeNum = t.time ?? t)"
                     ></v-select>
                     <div>to</div>
                     <v-select
-                      :model-value="endTime"
+                      :model-value="endTimeNum"
                       :items="times"
                       return-object
                       hide-details
                       solo
-                      @update:model-value="(t: any) => (endTime = t.time ?? t)"
+                      @update:model-value="(t: any) => (endTimeNum = t.time ?? t)"
                     ></v-select>
                   </div>
                 </div>
@@ -155,7 +155,7 @@
                 :rules="selectedDaysRules"
               >
                 <DatePicker
-                  v-model="selectedDays"
+                  v-model="selectedDaysStr"
                   :min-calendar-date="minCalendarDate"
                   :start-calendar-on-monday="startOnMonday"
                 />
@@ -444,26 +444,30 @@ import { useRouter } from "vue-router"
 import { storeToRefs } from "pinia"
 import {
   eventTypes,
-  dayIndexToDayString,
   authTypes,
   guestUserId,
+  durations,
+  hoursPlainTime,
+  UTC,
+  dateOptions,
+  type DateOptionType
 } from "@/constants"
 import {
   post,
   put,
-  timeNumToTimeString,
-  dateToTimeNum,
-  getISODateString,
   signInGoogle,
   getDateWithTimezone,
   getTimeOptions,
   addEventToCreatedList,
   prefersStartOnMonday,
+  plainTimeToTimeNum,
+  timeNumToPlainTime,
 } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import TimezoneSelector from "./schedule_overlap/TimezoneSelector.vue"
 import HelpDialog from "./HelpDialog.vue"
+import { Temporal } from "temporal-polyfill"
 import EmailInput from "./event/EmailInput.vue"
 import DatePicker from "@/components/DatePicker.vue"
 import SlideToggle from "./SlideToggle.vue"
@@ -472,12 +476,7 @@ import OverflowGradient from "@/components/OverflowGradient.vue"
 import ExpandableSection from "./ExpandableSection.vue"
 import type { Event as EventModel } from "@/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
-
-import dayjs from "dayjs"
-import utcPlugin from "dayjs/plugin/utc"
-import timezonePlugin from "dayjs/plugin/timezone"
-dayjs.extend(utcPlugin)
-dayjs.extend(timezonePlugin)
+import type { ContactsPayload } from "@/composables/event/types"
 
 interface FormRef {
   validate: () => Promise<{ valid: boolean }> | boolean
@@ -485,20 +484,6 @@ interface FormRef {
 }
 interface NameFieldRef { blur: () => void }
 interface EmailInputRef { reset: () => void }
-export interface ContactsPayload {
-  emails?: string[]
-  name?: string
-  startTime?: number
-  endTime?: number
-  daysOnly?: boolean
-  selectedDateOption?: string
-  selectedDaysOfWeek?: number[]
-  selectedDays?: string[]
-  notificationsEnabled?: boolean
-  timezone?: { value?: string; [k: string]: unknown }
-  specificTimesEnabled?: boolean
-  startOnMonday?: boolean
-}
 
 const props = withDefaults(
   defineProps<{
@@ -530,15 +515,10 @@ const router = useRouter()
 const mainStore = useMainStore()
 const { authUser, daysOnlyEnabled } = storeToRefs(mainStore)
 
-const dateOptions = Object.freeze({
-  SPECIFIC: "Specific dates",
-  DOW: "Days of the week",
-} as const)
-
-const daysOnlyOptions = Object.freeze([
+const daysOnlyOptions = [
   { text: "Dates and times", value: false },
   { text: "Dates only", value: true },
-])
+] as const
 
 const formRef = ref<FormRef | null>(null)
 const nameField = ref<NameFieldRef | null>(null)
@@ -547,16 +527,18 @@ const cardText = ref<HTMLElement | null>(null)
 
 const formValid = ref(true)
 const name = ref("")
-const startTime = ref(9)
-const endTime = ref(17)
+const startTime = ref<Temporal.PlainTime>(hoursPlainTime.NINE)
+const endTime = ref<Temporal.PlainTime>(hoursPlainTime.SEVENTEEN)
 const specificTimesEnabled = ref(false)
 const loading = ref(false)
-const selectedDays = ref<string[]>([])
+const selectedDays = ref<Temporal.ZonedDateTime[]>([])
+const selectedDaysStr = computed(() => {
+  return selectedDays.value.map(x => x.toPlainDate().toString())
+})
 const selectedDaysOfWeek = ref<number[]>([])
 const startOnMonday = ref(prefersStartOnMonday())
 const notificationsEnabled = ref(true)
 
-type DateOptionType = typeof dateOptions[keyof typeof dateOptions]
 const daysOnly = ref(false)
 const selectedDateOption = ref<DateOptionType>(dateOptions.SPECIFIC)
 
@@ -567,7 +549,7 @@ const showAdvancedOptions = ref(false)
 const timeIncrement = ref(15)
 const collectEmails = ref(false)
 const blindAvailabilityEnabled = ref(false)
-const timezone = ref<Timezone>({ value: "", label: "", gmtString: "", offset: 0 })
+const timezone = ref<Timezone>({ value: "", label: "", gmtString: "", offset: durations.ZERO })
 const sendEmailAfterXResponsesEnabled = ref(false)
 const sendEmailAfterXResponses = ref(3)
 
@@ -591,13 +573,20 @@ const addedEmails = computed(() => {
     : []
 })
 const times = computed(() => getTimeOptions())
+// Computed properties to convert Temporal.PlainTime to/from number for UI compatibility
+const startTimeNum = computed({
+  get: () => plainTimeToTimeNum(startTime.value),
+  set: (num: number) => { startTime.value = timeNumToPlainTime(num) }
+})
+const endTimeNum = computed({
+  get: () => plainTimeToTimeNum(endTime.value),
+  set: (num: number) => { endTime.value = timeNumToPlainTime(num) }
+})
 const minCalendarDate = computed(() => {
   if (props.edit) return ""
-  const today = new Date()
-  const dd = String(today.getDate()).padStart(2, "0")
-  const mm = String(today.getMonth() + 1).padStart(2, "0")
-  const yyyy = today.getFullYear()
-  return `${String(yyyy)}-${mm}-${dd}`
+  // Use Temporal to get today's date in ISO format
+  const today = Temporal.Now.plainDateISO()
+  return today.toString()
 })
 const guestEvent = computed(
   () => props.event?.ownerId === guestUserId
@@ -613,14 +602,14 @@ onMounted(() => {
     toggleEmailReminders(true)
 
     name.value = props.contactsPayload.name ?? ""
-    startTime.value = props.contactsPayload.startTime ?? 9
-    endTime.value = props.contactsPayload.endTime ?? 17
+    startTime.value = props.contactsPayload.startTime ?? hoursPlainTime.NINE
+    endTime.value = props.contactsPayload.endTime ?? hoursPlainTime.SEVENTEEN
     daysOnly.value = props.contactsPayload.daysOnly ?? false
     selectedDateOption.value = (props.contactsPayload.selectedDateOption ?? dateOptions.SPECIFIC) as DateOptionType
     selectedDaysOfWeek.value = props.contactsPayload.selectedDaysOfWeek ?? []
-    selectedDays.value = props.contactsPayload.selectedDays ?? []
+    selectedDays.value = (props.contactsPayload.selectedDays ?? []).map(x => Temporal.ZonedDateTime.from(x))
     notificationsEnabled.value = props.contactsPayload.notificationsEnabled ?? true
-    timezone.value = (props.contactsPayload.timezone as Timezone | undefined) ?? { value: "", label: "", gmtString: "", offset: 0 }
+    timezone.value = (props.contactsPayload.timezone as Timezone | undefined) ?? { value: "", label: "", gmtString: "", offset: durations.ZERO }
     specificTimesEnabled.value = props.contactsPayload.specificTimesEnabled ?? false
 
     formRef.value?.resetValidation()
@@ -637,8 +626,8 @@ const blurNameField = () => {
 
 const reset = () => {
   name.value = ""
-  startTime.value = 9
-  endTime.value = 17
+  startTime.value = hoursPlainTime.NINE
+  endTime.value = hoursPlainTime.SEVENTEEN
   specificTimesEnabled.value = false
   selectedDays.value = []
   selectedDaysOfWeek.value = []
@@ -663,26 +652,37 @@ const submit = async () => {
 
   selectedDays.value.sort()
 
-  let duration = endTime.value - startTime.value
-  if (duration <= 0) duration += 24
+  // Calculate duration using Temporal.Duration
+  let duration = endTime.value.since(startTime.value, { largestUnit: "hours" })
+  // Handle case where endTime is before startTime (crosses midnight)
+  if (duration.total("hours") <= 0) {
+    duration = duration.add({ hours: 24 })
+  }
+  const durationHoursNum = duration.total("hours")
 
-  const dates: Date[] = []
+  const dates: Temporal.ZonedDateTime[] = []
   let type: string
   if (daysOnly.value) {
-    duration = 0
+    duration = durations.ZERO
     type = eventTypes.SPECIFIC_DATES
 
     for (const day of selectedDays.value) {
-      dates.push(new Date(`${day} 00:00:00Z`))
+      const zdt = day.withTimeZone(UTC).withPlainTime("00:00")
+      dates.push(zdt)
     }
     specificTimesEnabled.value = false
   } else {
-    const startTimeString = timeNumToTimeString(startTime.value)
     if (selectedDateOption.value === dateOptions.SPECIFIC) {
       type = eventTypes.SPECIFIC_DATES
       for (const day of selectedDays.value) {
-        const date = dayjs.tz(`${day} ${startTimeString}`, timezone.value.value)
-        dates.push(date.toDate())
+        // Parse the date string and create a ZonedDateTime in the specified timezone
+        const plainDate = Temporal.PlainDate.from(day)
+        const plainTime = startTime.value
+        const zdt = plainDate.toZonedDateTime({ 
+          timeZone: timezone.value.value,
+          plainTime
+        })
+        dates.push(zdt)
       }
     } else {
       type = eventTypes.DOW
@@ -692,12 +692,24 @@ const submit = async () => {
         startOnMonday.value ? dayIndex !== 0 : dayIndex !== 7
       )
       for (const dayIndex of selectedDaysOfWeek.value) {
-        const day = dayIndexToDayString[dayIndex]
-        const date = dayjs.tz(`${day} ${startTimeString}`, timezone.value.value)
-
-        const refOffset = date.utcOffset()
-        const currentOffset = dayjs().tz(timezone.value.value).utcOffset()
-        dates.push(date.subtract(currentOffset - refOffset, "minutes").toDate())
+        // For DOW events, we need to find the next occurrence of this day
+        const plainTime = startTime.value
+        
+        // Get current date in the specified timezone
+        const now = Temporal.Now.zonedDateTimeISO(timezone.value.value)
+        const currentDayOfWeek = now.dayOfWeek // 1-7 (Mon-Sun)
+        const targetDayOfWeek = dayIndex === 7 ? 7 : dayIndex // Convert from Sunday-based to Monday-based
+        
+        // Calculate days until next occurrence
+        let daysUntil = targetDayOfWeek - currentDayOfWeek
+        if (daysUntil < 0) daysUntil += 7
+        
+        const targetDate = now.add({ days: daysUntil }).toPlainDate()
+        const zdt = targetDate.toZonedDateTime({ 
+          timeZone: timezone.value.value,
+          plainTime
+        })
+        dates.push(zdt)
       }
     }
   }
@@ -706,7 +718,7 @@ const submit = async () => {
 
   const payload = {
     name: name.value,
-    duration,
+    duration: durationHoursNum,
     dates,
     hasSpecificTimes: specificTimesEnabled.value,
     notificationsEnabled: !authUser.value ? false : notificationsEnabled.value,
@@ -811,8 +823,8 @@ const requestContactsAccess = ({ emails: requestEmails }: { emails: (string | { 
   const payload = {
     emails: emailStrings,
     name: name.value,
-    startTime: startTime.value,
-    endTime: endTime.value,
+    startTime: plainTimeToTimeNum(startTime.value),
+    endTime: plainTimeToTimeNum(endTime.value),
     daysOnly: daysOnly.value,
     selectedDays: selectedDays.value,
     selectedDaysOfWeek: selectedDaysOfWeek.value,
@@ -835,12 +847,23 @@ const updateFieldsFromEvent = () => {
   if (props.event) {
     name.value = props.event.name ?? ""
 
-    startTime.value = Math.floor(
-      dateToTimeNum(getDateWithTimezone((props.event.dates ?? [])[0]), true)
-    )
-    startTime.value %= 24
+    // TODO fix throws if the array is empty?
+    
+    // Convert event date to PlainTime using Temporal API
+    const eventDate = (props.event.dates ?? [])[0]
+    const zdt = getDateWithTimezone(eventDate)
+    startTime.value = zdt.toPlainTime()
 
-    endTime.value = (startTime.value + (props.event.duration ?? 0)) % 24
+    // Calculate endTime by adding duration to startTime using Temporal Duration
+    const duration = props.event.duration ?? durations.ZERO
+    const endTimePlainTime = startTime.value.add(duration)
+    // Handle wrap-around midnight
+    if (endTimePlainTime.hour >= 24) {
+      endTime.value = endTimePlainTime.subtract({ hours: 24 })
+    } else {
+      endTime.value = endTimePlainTime
+    }
+    
     notificationsEnabled.value = props.event.notificationsEnabled ?? false
     blindAvailabilityEnabled.value =
       props.event.blindAvailabilityEnabled ?? false
@@ -860,18 +883,14 @@ const updateFieldsFromEvent = () => {
 
     if (props.event.daysOnly) {
       selectedDateOption.value = dateOptions.SPECIFIC
-      const days: string[] = []
-      for (const date of props.event.dates ?? []) {
-        days.push(getISODateString(date, true))
-      }
-      selectedDays.value = days
+      selectedDays.value = props.event.dates ?? []
     } else {
       if (props.event.type === eventTypes.SPECIFIC_DATES) {
         selectedDateOption.value = dateOptions.SPECIFIC
-        const days: string[] = []
+        const days: Temporal.ZonedDateTime[] = []
         for (let date of props.event.dates ?? []) {
           const d = getDateWithTimezone(date)
-          days.push(getISODateString(d, true))
+          days.push(d.with({ timeZone: UTC }))
         }
         selectedDays.value = days
       } else if (props.event.type === eventTypes.DOW) {
@@ -879,8 +898,9 @@ const updateFieldsFromEvent = () => {
         const dows: number[] = []
         for (let date of props.event.dates ?? []) {
           const d = getDateWithTimezone(date)
-          if (props.event.startOnMonday && d.getUTCDay() === 0) dows.push(7)
-          else dows.push(d.getUTCDay())
+          // Temporal dayOfWeek returns 1-7 (Mon-Sun), convert to 1-7 where Sunday is 7
+          const dayOfWeek = d.dayOfWeek // Already 1-7 (Mon-Sun) in Temporal
+          dows.push(dayOfWeek)
         }
         selectedDaysOfWeek.value = dows
         if (props.event.startOnMonday) startOnMonday.value = true
@@ -930,7 +950,7 @@ const hasEventBeenEdited = () => {
     sendEmailAfterXResponses.value !== i.sendEmailAfterXResponses
   )
 }
-const trackTimezoneChange = (newTimezone: { value?: string; label?: string; gmtString?: string; offset?: number }) => {
+const trackTimezoneChange = (newTimezone: Timezone) => {
   posthog.capture("timezone_selected_in_new_event_dialog", {
     timezone: newTimezone.value,
   })

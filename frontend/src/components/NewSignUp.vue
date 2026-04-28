@@ -111,7 +111,7 @@
                 :rules="selectedDaysRules"
               >
                 <DatePicker
-                  v-model="selectedDays"
+                  v-model="selectedDaysStr"
                   :min-calendar-date="minCalendarDate"
                 />
               </v-input>
@@ -258,13 +258,12 @@
 import { computed, nextTick, onMounted, ref, watch } from "vue"
 import { useRouter } from "vue-router"
 import { storeToRefs } from "pinia"
-import { eventTypes, dayIndexToDayString } from "@/constants"
+import { eventTypes, durations, UTC, hoursPlainTime, dateOptions, type DateOptionType } from "@/constants"
+import { Temporal } from "temporal-polyfill"
 import {
   post,
   put,
-  timeNumToTimeString,
   dateToTimeNum,
-  getISODateString,
   getDateWithTimezone,
   getTimeOptions,
 } from "@/utils"
@@ -277,12 +276,7 @@ import OverflowGradient from "@/components/OverflowGradient.vue"
 import ExpandableSection from "./ExpandableSection.vue"
 import type { Event } from "@/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
-
-import dayjs from "dayjs"
-import utcPlugin from "dayjs/plugin/utc"
-import timezonePlugin from "dayjs/plugin/timezone"
-dayjs.extend(utcPlugin)
-dayjs.extend(timezonePlugin)
+import type { ContactsPayload } from "@/composables/event/types"
 
 interface FormRef {
   validate: () => Promise<{ valid: boolean }> | boolean
@@ -290,18 +284,6 @@ interface FormRef {
 }
 
 interface NameFieldRef { blur: () => void }
-interface ContactsPayload {
-  emails?: string[]
-  name?: string
-  startTime?: number
-  endTime?: number
-  daysOnly?: boolean
-  selectedDateOption?: string
-  selectedDaysOfWeek?: number[]
-  selectedDays?: string[]
-  notificationsEnabled?: boolean
-  timezone?: { value?: string; [k: string]: unknown }
-}
 
 const props = withDefaults(
   defineProps<{
@@ -329,28 +311,25 @@ const router = useRouter()
 const mainStore = useMainStore()
 const { authUser } = storeToRefs(mainStore)
 
-const dateOptions = Object.freeze({
-  SPECIFIC: "Specific dates",
-  DOW: "Days of the week",
-} as const)
-
 const formRef = ref<FormRef | null>(null)
 const nameField = ref<NameFieldRef | null>(null)
 const cardText = ref<HTMLElement | null>(null)
 
 const formValid = ref(true)
 const name = ref("")
-const startTime = ref(9)
-const endTime = ref(17)
+const startTime = ref(hoursPlainTime.NINE)
+const endTime = ref(hoursPlainTime.SEVENTEEN)
 const loading = ref(false)
-const selectedDays = ref<string[]>([])
+const selectedDays = ref<Temporal.PlainDate[]>([])
+const selectedDaysStr = computed(() =>
+  selectedDays.value.map(x => x.toString())
+)
 const selectedDaysOfWeek = ref<number[]>([])
 const startOnMonday = ref(false)
 const notificationsEnabled = ref(false)
 
 const daysOnly = ref(false)
 
-type DateOptionType = typeof dateOptions[keyof typeof dateOptions]
 const selectedDateOption = ref<DateOptionType>(dateOptions.SPECIFIC)
 
 const showEmailReminders = ref(false)
@@ -359,7 +338,7 @@ const emails = ref<string[]>([])
 const showAdvancedOptions = ref(false)
 const collectEmails = ref(false)
 const blindAvailabilityEnabled = ref(false)
-const timezone = ref<Timezone>({ value: "", label: "", gmtString: "", offset: 0 })
+const timezone = ref<Timezone>({ value: "", label: "", gmtString: "", offset: durations.ZERO })
 const sendEmailAfterXResponsesEnabled = ref(false)
 const sendEmailAfterXResponses = ref(3)
 
@@ -378,26 +357,24 @@ const selectedDaysRules = computed(() => [
 const times = computed(() => getTimeOptions())
 const minCalendarDate = computed(() => {
   if (props.edit) return ""
-  const today = new Date()
-  const dd = String(today.getDate()).padStart(2, "0")
-  const mm = String(today.getMonth() + 1).padStart(2, "0")
-  const yyyy = today.getFullYear()
-  return `${String(yyyy)}-${mm}-${dd}`
+  const today = Temporal.Now.plainDateISO()
+  return `${String(today.year)}-${String(today.month).padStart(2, "0")}-${String(today.day).padStart(2, "0")}`
 })
 
 onMounted(() => {
   if (Object.keys(props.contactsPayload).length > 0) {
     toggleEmailReminders(true)
     name.value = props.contactsPayload.name ?? ""
-    startTime.value = props.contactsPayload.startTime ?? 9
-    endTime.value = props.contactsPayload.endTime ?? 17
+    startTime.value = props.contactsPayload.startTime ?? hoursPlainTime.NINE
+    endTime.value = props.contactsPayload.endTime ?? hoursPlainTime.SEVENTEEN
     daysOnly.value = props.contactsPayload.daysOnly ?? false
     type DateOptionType = typeof dateOptions[keyof typeof dateOptions]
     selectedDateOption.value = (props.contactsPayload.selectedDateOption ?? dateOptions.SPECIFIC) as DateOptionType
     selectedDaysOfWeek.value = props.contactsPayload.selectedDaysOfWeek ?? []
+    // TODO convert to plain dates
     selectedDays.value = props.contactsPayload.selectedDays ?? []
     notificationsEnabled.value = props.contactsPayload.notificationsEnabled ?? false
-    timezone.value = (props.contactsPayload.timezone as Timezone | undefined) ?? { value: "", label: "", gmtString: "", offset: 0 }
+    timezone.value = (props.contactsPayload.timezone as Timezone | undefined) ?? { value: "", label: "", gmtString: "", offset: durations.ZERO }
 
     formRef.value?.resetValidation()
   }
@@ -413,8 +390,8 @@ const blurNameField = () => {
 
 const reset = () => {
   name.value = ""
-  startTime.value = 9
-  endTime.value = 17
+  startTime.value = hoursPlainTime.NINE
+  endTime.value = hoursPlainTime.SEVENTEEN
   selectedDays.value = []
   selectedDaysOfWeek.value = []
   notificationsEnabled.value = false
@@ -437,25 +414,32 @@ const submit = async () => {
 
   selectedDays.value.sort()
 
-  let duration = endTime.value - startTime.value
-  if (duration <= 0) duration += 24
+  let duration = endTime.value.until(startTime.value)
+  if (duration.total("hours") <= 0) duration.add({ hours: 24 })
 
-  const dates: Date[] = []
+  const dates: Temporal.ZonedDateTime[] = []
   let type: string
   if (daysOnly.value) {
-    duration = 0
-    type = (eventTypes as Record<string, string>).SIGNUP
+    duration = durations.ZERO
+    type = (eventTypes as Record<string, string>).SIGNUP 
 
     for (const day of selectedDays.value) {
-      dates.push(new Date(`${day} 00:00:00Z`))
+      const date = Temporal.PlainDate.from(day)
+      const zdt = date.toZonedDateTime({ timeZone: UTC, plainTime: "00:00" })
+      dates.push(zdt)
     }
   } else {
-    const startTimeString = timeNumToTimeString(startTime.value)
     if (selectedDateOption.value === dateOptions.SPECIFIC) {
       type = eventTypes.SPECIFIC_DATES
       for (const day of selectedDays.value) {
-        const date = dayjs.tz(`${day} ${startTimeString}`, timezone.value.value)
-        dates.push(date.toDate())
+        // Parse the date string and create a ZonedDateTime in the specified timezone
+        const plainDate = Temporal.PlainDate.from(day)
+        const plainTime = Temporal.PlainTime.from(startTime.value)
+        const zdt = plainDate.toZonedDateTime({ 
+          timeZone: timezone.value.value,
+          plainTime
+        })
+        dates.push(zdt)
       }
     } else {
       type = eventTypes.DOW
@@ -465,9 +449,22 @@ const submit = async () => {
         startOnMonday.value ? dayIndex !== 0 : dayIndex !== 7
       )
       for (const dayIndex of selectedDaysOfWeek.value) {
-        const day = dayIndexToDayString[dayIndex]
-        const date = dayjs.tz(`${day} ${startTimeString}`, timezone.value.value)
-        dates.push(date.toDate())
+        
+        // Get current date in the specified timezone
+        const now = Temporal.Now.zonedDateTimeISO(timezone.value.value)
+        const currentDayOfWeek = now.dayOfWeek // 1-7 (Mon-Sun)
+        const targetDayOfWeek = dayIndex === 7 ? 7 : dayIndex // Convert from Sunday-based to Monday-based
+        
+        // Calculate days until next occurrence
+        let daysUntil = targetDayOfWeek - currentDayOfWeek
+        if (daysUntil < 0) daysUntil += 7
+        
+        const targetDate = 
+          now.add({ days: daysUntil })
+          .withTimeZone(timezone.value.value)
+          .withPlainTime(startTime.value)
+
+        dates.push(targetDate)
       }
     }
   }
@@ -568,13 +565,13 @@ const toggleEmailReminders = (delayed = false) => {
 const updateFieldsFromEvent = () => {
   if (props.event) {
     name.value = props.event.name ?? ""
-
-    startTime.value = Math.floor(
+    
+    startTime.value =
+      // TODO Math.floor?
       dateToTimeNum(getDateWithTimezone((props.event.dates ?? [])[0]), true)
-    )
-    startTime.value %= 24
 
-    endTime.value = (startTime.value + (props.event.duration ?? 0)) % 24
+    const durationHours = props.event.duration ?? durations.ZERO
+    endTime.value = startTime.value.add(durationHours)
     notificationsEnabled.value = props.event.notificationsEnabled ?? false
     blindAvailabilityEnabled.value =
       props.event.blindAvailabilityEnabled ?? false
@@ -590,18 +587,18 @@ const updateFieldsFromEvent = () => {
 
     if (props.event.daysOnly) {
       selectedDateOption.value = dateOptions.SPECIFIC
-      const days: string[] = []
+      const days: Temporal.PlainDate[] = []
       for (const date of props.event.dates ?? []) {
-        days.push(getISODateString(date, true))
+        days.push(date.toPlainDate())
       }
       selectedDays.value = days
     } else {
       if (props.event.type === eventTypes.SPECIFIC_DATES) {
         selectedDateOption.value = dateOptions.SPECIFIC
-        const days: string[] = []
+        const days: Temporal.PlainDate[] = []
         for (let date of props.event.dates ?? []) {
           const d = getDateWithTimezone(date)
-          days.push(getISODateString(d, true))
+          days.push(d.toPlainDate())
         }
         selectedDays.value = days
       } else if (props.event.type === eventTypes.DOW) {
@@ -609,11 +606,8 @@ const updateFieldsFromEvent = () => {
         const dows: number[] = []
         for (let date of props.event.dates ?? []) {
           const d = getDateWithTimezone(date)
-          if (props.event.startOnMonday && d.getUTCDay() === 0) {
-            dows.push(7)
-          } else {
-            dows.push(d.getUTCDay())
-          }
+          // Temporal dayOfWeek returns 1-7 (Mon-Sun), which is what we need
+          dows.push(d.dayOfWeek)
         }
         selectedDaysOfWeek.value = dows
         if (props.event.startOnMonday) startOnMonday.value = true

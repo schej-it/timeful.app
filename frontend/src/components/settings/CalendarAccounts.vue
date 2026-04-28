@@ -99,6 +99,7 @@
 import { onMounted, ref, watch } from "vue"
 import { storeToRefs } from "pinia"
 import { authTypes, calendarTypes } from "@/constants"
+import { Temporal } from "temporal-polyfill"
 import {
   get,
   _delete,
@@ -252,11 +253,11 @@ watch(
   () => props.calendarEventsMap,
   async () => {
     if (Object.keys(props.calendarEventsMap).length === 0) {
-      const timeMin = new Date()
-      const timeMax = new Date()
+      const timeMin = Temporal.Now.instant()
+      const timeMax = Temporal.Now.instant()
       try {
         calendarEventsMapCopy.value = await get(
-          `/user/calendars?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+          `/user/calendars?timeMin=${timeMin.toString()}&timeMax=${timeMax.toString()}`
         )
       } catch (err) {
         console.error(err)

@@ -164,6 +164,7 @@
 <script setup lang="ts">
 import { computed } from "vue"
 import { storeToRefs } from "pinia"
+import type { Temporal } from "temporal-polyfill"
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import TimezoneSelector from "./TimezoneSelector.vue"
@@ -184,7 +185,7 @@ const props = withDefaults(
     isWeekly: boolean
     calendarPermissionGranted: boolean
     weekOffset: number
-    timezoneReferenceDate?: Date | null
+    timezoneReferenceDate?: Temporal.ZonedDateTime | null
     numResponses: number
     mobileNumDays?: number
     allowScheduleEvent: boolean
