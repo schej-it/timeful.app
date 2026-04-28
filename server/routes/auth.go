@@ -220,9 +220,15 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 			}
 		}
 
-		// Set calendar account
-		userData.CalendarAccounts = user.CalendarAccounts
-		userData.CalendarAccounts[calendarAccountKey] = calendarAccount
+		// Set calendar account (nil map if user predates calendarAccounts or field missing)
+		if user.CalendarAccounts == nil {
+			userData.CalendarAccounts = map[string]models.CalendarAccount{
+				calendarAccountKey: calendarAccount,
+			}
+		} else {
+			userData.CalendarAccounts = user.CalendarAccounts
+			userData.CalendarAccounts[calendarAccountKey] = calendarAccount
+		}
 
 		// Update user if exists
 		_, err := db.UsersCollection.UpdateByID(
