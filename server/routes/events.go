@@ -576,7 +576,7 @@ func getEvent(c *gin.Context) {
 		stripSensitiveUserFields(response.User)
 		if !showEmails {
 			response.Email = ""
-			if response.User != nil {
+			if response.User != nil && !shouldKeepGroupResponseUserEmails(event, userSesh, isOwner) {
 				response.User.Email = ""
 			}
 		}
@@ -586,7 +586,7 @@ func getEvent(c *gin.Context) {
 		stripSensitiveUserFields(response.User)
 		if !showEmails {
 			response.Email = ""
-			if response.User != nil {
+			if response.User != nil && !shouldKeepGroupResponseUserEmails(event, userSesh, isOwner) {
 				response.User.Email = ""
 			}
 		}
@@ -732,7 +732,7 @@ func getResponses(c *gin.Context) {
 		stripSensitiveUserFields(response.User)
 		if !showEmails {
 			response.Email = ""
-			if response.User != nil {
+			if response.User != nil && !shouldKeepGroupResponseUserEmails(event, userSesh, isOwner) {
 				response.User.Email = ""
 			}
 		}
@@ -1856,6 +1856,37 @@ func findResponse(responses []models.EventResponse, userId string) (int, *models
 		}
 	}
 	return -1, nil
+}
+
+// shouldKeepGroupResponseUserEmails is true for signed-in group owners and invitees
+// so clients can match pending attendees to respondents when collectEmails is off.
+func shouldKeepGroupResponseUserEmails(event *models.Event, userSesh string, isOwner bool) bool {
+	if event.Type != models.GROUP || userSesh == "" {
+		return false
+	}
+	if isOwner {
+		return true
+	}
+	user := db.GetUserById(userSesh)
+	if user == nil {
+		return false
+	}
+	viewerEmail := strings.ToLower(strings.TrimSpace(user.Email))
+	if viewerEmail == "" {
+		return false
+	}
+	var attendees []models.Attendee
+	if event.Attendees != nil {
+		attendees = *event.Attendees
+	} else {
+		attendees = db.GetAttendees(event.Id.Hex())
+	}
+	for _, a := range attendees {
+		if strings.ToLower(strings.TrimSpace(a.Email)) == viewerEmail {
+			return true
+		}
+	}
+	return false
 }
 
 // stripSensitiveUserFields removes fields from a User that should never be
