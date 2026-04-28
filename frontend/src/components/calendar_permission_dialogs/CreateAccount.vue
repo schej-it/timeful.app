@@ -16,8 +16,8 @@
     </div>
     <div v-if="!authUser">
       <SignInGoogleBtn
-        @click="$emit('signInLinkApple')"
         class="tw-mb-3 tw-w-full"
+        @click="emit('signInLinkApple')"
       />
       <div class="tw-text-center tw-text-xs tw-text-dark-gray">
         By continuing, you agree to our
@@ -40,31 +40,29 @@
       </div>
     </div>
     <div class="tw-flex tw-items-center tw-gap-2">
-      <v-btn text class="tw-grow" @click="$emit('back')">Back</v-btn>
+      <v-btn text class="tw-grow" @click="emit('back')">Back</v-btn>
       <v-btn
         color="primary"
         class="tw-grow"
         :disabled="!authUser"
-        @click="$emit('continue')"
+        @click="emit('continue')"
         >Continue</v-btn
       >
     </div>
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { storeToRefs } from "pinia"
 import SignInGoogleBtn from "../SignInGoogleBtn.vue"
-import { mapState } from "vuex"
+import { useMainStore } from "@/stores/main"
 
-export default {
-  name: "CreateAccount",
+const emit = defineEmits<{
+  back: []
+  continue: []
+  signInLinkApple: []
+}>()
 
-  components: {
-    SignInGoogleBtn,
-  },
-
-  computed: {
-    ...mapState(["authUser"]),
-  },
-}
+const mainStore = useMainStore()
+const { authUser } = storeToRefs(mainStore)
 </script>

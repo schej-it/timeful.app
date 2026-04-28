@@ -2,11 +2,7 @@
   <div>
     <v-date-picker
       ref="datePicker"
-      :pickerDate.sync="pickerDate"
-      :value="value"
-      @touchstart:date="touchstart"
-      @mousedown:date="mousedown"
-      @mouseover:date="mouseover"
+      v-model="dateValue"
       readonly
       no-title
       multiple
@@ -17,131 +13,161 @@
       full-width
       :scrollable="false"
       :first-day-of-week="startCalendarOnMonday ? 1 : 0"
+      @update:month="onMonthChange"
+      @update:year="onYearChange"
+      @touchstart:date="touchstart"
+      @mousedown:date="mousedown"
+      @mouseover:date="mouseover"
     ></v-date-picker>
-    <!-- <div class="tw-mt-2 tw-text-xs tw-text-very-dark-gray">
-      Drag to select multiple dates
-    </div> -->
   </div>
 </template>
 
-<script>
-export default {
-  name: "DatePicker",
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 
-  props: {
-    value: { type: Array, required: true },
-    minCalendarDate: { type: String, default: "" },
-    startCalendarOnMonday: { type: Boolean, default: false },
-  },
+const props = withDefaults(
+  defineProps<{
+    modelValue: string[]
+    minCalendarDate?: string
+    startCalendarOnMonday?: boolean
+  }>(),
+  {
+    minCalendarDate: "",
+    startCalendarOnMonday: false,
+  }
+)
 
-  data() {
-    return {
-      datePickerEl: null,
-      dragging: false,
-      dragState: "add",
-      dragStates: { ADD: "add", REMOVE: "remove" },
-      pickerDate: "",
-    }
-  },
+const emit = defineEmits<{
+  "update:modelValue": [value: string[]]
+}>()
 
-  methods: {
-    /** Start drag */
-    mousedown(date) {
-      this.dragging = true
-      this.setDragState(date)
-      this.addRemoveDate(date)
-    },
-    touchstart(date) {
-      this.dragging = true
-      this.setDragState(date)
-      this.addRemoveDate(date)
-    },
+const datePicker = ref<{ $el: HTMLElement } | null>(null)
+let datePickerEl: HTMLElement | null = null
 
-    /** Dragging */
-    mouseover(date) {
-      if (!this.dragging) return
+const dragStates = { ADD: "add", REMOVE: "remove" } as const
+type DragState = (typeof dragStates)[keyof typeof dragStates]
 
-      this.addRemoveDate(date)
-    },
-    touchmove(e) {
-      if (!this.dragging) return
+const dragging = ref(false)
+const dragState = ref<DragState>(dragStates.ADD)
 
-      e.preventDefault()
-
-      // Get the target that we are touching
-      var target = document.elementFromPoint(
-        e.changedTouches[0].clientX,
-        e.changedTouches[0].clientY
-      )
-
-      // Only care about targets that are within the date picker and are buttons
-      if (
-        target &&
-        this.datePickerEl.contains(target) &&
-        target.classList.contains("v-btn__content")
-      ) {
-        // Get date num from target
-        const dateNum = parseInt(target.innerHTML)
-        if (dateNum != NaN) {
-          const dateNumString = `${dateNum}`
-          const date = `${this.pickerDate}-${dateNumString.padStart(2, "0")}`
-          this.addRemoveDate(date)
-        }
-      }
-    },
-
-    /** End drag */
-    mouseup(e) {
-      if (!this.dragging) return
-
-      // Prevent month switching when tap and drag to left / right
-      e.preventDefault()
-      e.stopPropagation()
-
-      this.dragging = false
-    },
-
-    /** Sets the drag state based on the date */
-    setDragState(date) {
-      const set = new Set(this.value)
-      if (set.has(date)) {
-        this.dragState = this.dragStates.REMOVE
-      } else {
-        this.dragState = this.dragStates.ADD
-      }
-    },
-    addRemoveDate(date) {
-      if (this.dragState === this.dragStates.ADD) {
-        this.addDate(date)
-      } else if (this.dragState === this.dragStates.REMOVE) {
-        this.removeDate(date)
-      }
-    },
-    addDate(date) {
-      const set = new Set(this.value)
-      set.add(date)
-      this.$emit("input", [...set])
-    },
-    removeDate(date) {
-      const set = new Set(this.value)
-      set.delete(date)
-      this.$emit("input", [...set])
-    },
-  },
-
-  mounted() {
-    this.datePickerEl = this.$refs.datePicker.$el
-    this.datePickerEl.addEventListener("mouseup", this.mouseup)
-    this.datePickerEl.addEventListener("touchmove", this.touchmove)
-    this.datePickerEl.addEventListener("touchend", this.mouseup, {
-      capture: true,
-    })
-  },
-
-  beforeDestroy() {
-    this.datePickerEl.removeEventListener("mouseup", this.mouseup)
-    this.datePickerEl.removeEventListener("touchmove", this.touchmove)
-    this.datePickerEl.removeEventListener("touchend", this.mouseup)
-  },
+function pad2(n: number): string {
+  return String(n).padStart(2, "0")
 }
+
+function toIsoDate(d: Date): string {
+  return `${String(d.getFullYear())}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+
+const dateValue = computed<Date[]>({
+  get: () => props.modelValue.map((s) => new Date(s)),
+  set: (val) => {
+    const arr = Array.isArray(val) ? val : [val]
+    emit(
+      "update:modelValue",
+      arr.map((d) => toIsoDate(d))
+    )
+  },
+})
+
+const today = new Date()
+const pickerDate = ref(`${String(today.getFullYear())}-${pad2(today.getMonth() + 1)}`)
+
+function onMonthChange(month: number) {
+  const [year] = pickerDate.value.split("-")
+  pickerDate.value = `${year}-${pad2(month + 1)}`
+}
+
+function onYearChange(year: number) {
+  const parts = pickerDate.value.split("-")
+  const month = parts[1] ?? pad2(today.getMonth() + 1)
+  pickerDate.value = `${String(year)}-${month}`
+}
+
+function mousedown(date: string) {
+  dragging.value = true
+  setDragState(date)
+  addRemoveDate(date)
+}
+
+function touchstart(date: string) {
+  dragging.value = true
+  setDragState(date)
+  addRemoveDate(date)
+}
+
+function mouseover(date: string) {
+  if (!dragging.value) return
+  addRemoveDate(date)
+}
+
+function touchmove(e: TouchEvent) {
+  if (!dragging.value) return
+
+  e.preventDefault()
+
+  const touch = e.changedTouches[0]
+  const target = document.elementFromPoint(touch.clientX, touch.clientY)
+
+  if (
+    target &&
+    datePickerEl &&
+    datePickerEl.contains(target) &&
+    target.classList.contains("v-btn__content")
+  ) {
+    const dateNum = parseInt(target.innerHTML)
+    if (!isNaN(dateNum)) {
+      const date = `${pickerDate.value}-${pad2(dateNum)}`
+      addRemoveDate(date)
+    }
+  }
+}
+
+function mouseup(e: Event) {
+  if (!dragging.value) return
+
+  e.preventDefault()
+  e.stopPropagation()
+
+  dragging.value = false
+}
+
+function setDragState(date: string) {
+  const set = new Set(props.modelValue)
+  dragState.value = set.has(date) ? dragStates.REMOVE : dragStates.ADD
+}
+
+function addRemoveDate(date: string) {
+  if (dragState.value === dragStates.ADD) {
+    addDate(date)
+  } else {
+    removeDate(date)
+  }
+}
+
+function addDate(date: string) {
+  const set = new Set(props.modelValue)
+  set.add(date)
+  emit("update:modelValue", [...set])
+}
+
+function removeDate(date: string) {
+  const set = new Set(props.modelValue)
+  set.delete(date)
+  emit("update:modelValue", [...set])
+}
+
+onMounted(() => {
+  if (!datePicker.value) return
+  datePickerEl = datePicker.value.$el
+  datePickerEl.addEventListener("mouseup", mouseup)
+  datePickerEl.addEventListener("touchmove", touchmove)
+  datePickerEl.addEventListener("touchend", mouseup, { capture: true })
+})
+
+onBeforeUnmount(() => {
+  if (!datePickerEl) return
+  datePickerEl.removeEventListener("mouseup", mouseup)
+  datePickerEl.removeEventListener("touchmove", touchmove)
+  datePickerEl.removeEventListener("touchend", mouseup)
+})
 </script>

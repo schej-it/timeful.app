@@ -15,21 +15,16 @@
       </h1>
       <div class="tw-text-center tw-text-dark-gray">
         Ask the group owner to share this group with your email: <br />
-        <span class="tw-font-medium tw-text-green">{{ authUser.email }}</span>
+        <span class="tw-font-medium tw-text-green">{{ authUser?.email }}</span>
       </div>
     </div>
     <v-btn href="/home" color="primary">Back to home</v-btn>
   </div>
 </template>
 
-<script>
-import { mapState } from "vuex"
+<script setup lang="ts">
+import { storeToRefs } from "pinia"
+import { useMainStore } from "@/stores/main"
 
-export default {
-  name: "AccessDenied",
-
-  computed: {
-    ...mapState(["authUser"]),
-  },
-}
+const { authUser } = storeToRefs(useMainStore())
 </script>

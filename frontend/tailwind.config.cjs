@@ -51,6 +51,9 @@ module.exports = {
       "publift-xl": "1475px",
     },
   },
+  corePlugins: {
+    preflight: false,
+  },
   plugins: [],
   prefix: "tw-",
   safelist: [],

@@ -35,16 +35,16 @@
       </div>
     </div>
     <div class="tw-flex tw-flex-col tw-gap-3">
-      <v-text-field solo placeholder="Apple ID" hide-details v-model="email" />
+      <v-text-field v-model="email" solo placeholder="Apple ID" hide-details />
       <v-text-field
+        v-model="password"
         solo
         placeholder="App password"
         hide-details
-        v-model="password"
         type="password"
       />
       <div class="tw-flex tw-items-center tw-gap-2">
-        <v-btn text class="tw-grow" @click="$emit('back')">Back</v-btn>
+        <v-btn text class="tw-grow" @click="emit('back')">Back</v-btn>
         <v-btn
           :disabled="!enableSubmit"
           color="primary"
@@ -58,55 +58,49 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { computed, ref } from "vue"
 import { post } from "@/utils"
-import { mapActions } from "vuex"
 import { errors } from "@/constants"
+import { useMainStore } from "@/stores/main"
+import { posthog } from "@/plugins/posthog"
 
-export default {
-  name: "AppleCredentials",
+const emit = defineEmits<{
+  back: []
+  addedCalendar: []
+}>()
 
-  data() {
-    return {
-      email: "",
-      password: "",
-      loading: false,
-    }
-  },
+const mainStore = useMainStore()
 
-  computed: {
-    enableSubmit() {
-      return this.email && this.password
-    },
-  },
+const email = ref("")
+const password = ref("")
+const loading = ref(false)
 
-  methods: {
-    ...mapActions(["showError", "refreshAuthUser"]),
-    submit() {
-      this.loading = true
-      post(`/user/add-apple-calendar-account`, {
-        email: this.email,
-        password: this.password,
-      })
-        .then(async () => {
-          await this.refreshAuthUser()
-          this.$emit("addedCalendar")
+const enableSubmit = computed(() => email.value && password.value)
 
-          this.$posthog.capture("Apple Calendar Added")
-        })
-        .catch((err) => {
-          if (err.error === errors.InvalidCredentials) {
-            this.showError("Your Apple ID or app password is incorrect.")
-          } else {
-            this.showError(
-              "An error occurred while adding your Apple Calendar! Please try again later."
-            )
-          }
-        })
-        .finally(() => {
-          this.loading = false
-        })
-    },
-  },
+const submit = () => {
+  loading.value = true
+  post(`/user/add-apple-calendar-account`, {
+    email: email.value,
+    password: password.value,
+  })
+    .then(async () => {
+      await mainStore.refreshAuthUser()
+      emit("addedCalendar")
+      posthog.capture("Apple Calendar Added")
+    })
+    .catch((err: unknown) => {
+      const e = err as { error?: string }
+      if (e.error === errors.InvalidCredentials) {
+        mainStore.showError("Your Apple ID or app password is incorrect.")
+      } else {
+        mainStore.showError(
+          "An error occurred while adding your Apple Calendar! Please try again later."
+        )
+      }
+    })
+    .finally(() => {
+      loading.value = false
+    })
 }
 </script>

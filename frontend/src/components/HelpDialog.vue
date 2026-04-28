@@ -1,27 +1,27 @@
 <template>
   <v-dialog
-    :value="value"
-    @input="(e) => $emit('input', e)"
+    :model-value="modelValue"
     width="425"
     content-class="tw-m-0"
+    @update:model-value="(v: boolean) => emit('update:modelValue', v)"
   >
     <v-card>
       <v-card-title><slot name="header">Help</slot></v-card-title>
       <v-card-text><slot></slot></v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn text @click="$emit('input', false)">Ok</v-btn>
+        <v-btn text @click="emit('update:modelValue', false)">Ok</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 
-<script>
-export default {
-  name: "HelpDialog",
+<script setup lang="ts">
+defineProps<{
+  modelValue: boolean
+}>()
 
-  props: {
-    value: { type: Boolean, required: true },
-  },
-}
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+}>()
 </script>

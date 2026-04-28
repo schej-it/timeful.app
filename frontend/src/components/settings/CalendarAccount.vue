@@ -8,21 +8,18 @@
         class="tw-flex tw-w-full tw-flex-row tw-items-center"
       >
         <div v-if="toggleState" class="tw-flex tw-items-center">
+          <!-- eslint-disable vue/no-mutating-props -->
           <v-checkbox
             v-model="account.enabled"
-            @change="(enabled) => toggleCalendarAccount(enabled)"
             hide-details
+            @update:model-value="(enabled: boolean | null) => toggleCalendarAccount(!!enabled)"
           />
+          <!-- eslint-enable vue/no-mutating-props -->
           <div
             v-if="hasSubCalendars"
             class="-tw-ml-2 tw-h-fit tw-w-fit tw-cursor-pointer"
-            @click="
-              () => {
-                showSubCalendars = !showSubCalendars
-              }
-            "
+            @click="showSubCalendars = !showSubCalendars"
           >
-            <!-- Make sure tailwind classes are compiled -->
             <div class="tw-rotate-0 tw-rotate-90"></div>
 
             <v-icon
@@ -39,12 +36,11 @@
         >
           {{ account.email }}
         </div>
-        <v-tooltip top v-if="accountHasError">
-          <template v-slot:activator="{ on, attrs }">
+        <v-tooltip v-if="accountHasError" top>
+          <template #activator="{ props: tooltipProps }">
             <v-btn
               icon
-              v-bind="attrs"
-              v-on="on"
+              v-bind="tooltipProps"
               @click="reauthenticateCalendarAccount"
             >
               <v-icon>mdi-alert-circle</v-icon>
@@ -53,10 +49,8 @@
           <span>{{ reauthenticateBtnText }}</span>
         </v-tooltip>
       </div>
-      <!-- Needed to make sure tailwind classes compile -->
       <span class="tw-hidden tw-opacity-0 tw-opacity-100"></span>
 
-      <!-- Delete account button -->
       <v-btn
         icon
         :class="`tw-opacity-${
@@ -68,10 +62,11 @@
       >
     </div>
 
-    <!-- Sub-calendar accounts -->
-
     <v-expand-transition>
-      <div v-if="hasSubCalendars && showSubCalendars" class="tw-space-y-2 tw-bg-[#EBF7EF] tw-py-2">
+      <div
+        v-if="hasSubCalendars && showSubCalendars"
+        class="tw-space-y-2 tw-bg-[#EBF7EF] tw-py-2"
+      >
         <div
           v-for="(subCalendar, id) in account.subCalendars"
           :key="id"
@@ -79,9 +74,9 @@
         >
           <v-checkbox
             v-model="subCalendar.enabled"
-            @change="(enabled) => toggleSubCalendarAccount(enabled, id)"
             class="-tw-mt-px"
             hide-details
+            @update:model-value="(enabled: any) => toggleSubCalendarAccount(!!enabled, id)"
           />
           <div
             :class="!fillSpace ? 'tw-w-40' : ''"
@@ -95,155 +90,170 @@
   </div>
 </template>
 
-<script>
-import { mapState, mapActions } from "vuex"
+<script setup lang="ts">
+import { computed, ref } from "vue"
+import { storeToRefs } from "pinia"
 import { authTypes, calendarTypes } from "@/constants"
-import {
-  post,
-  _delete,
-  signInGoogle,
-  getCalendarAccountKey,
-} from "@/utils"
+import { post, signInGoogle, getCalendarAccountKey } from "@/utils"
+import { useMainStore } from "@/stores/main"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
 
-export default {
-  name: "CalendarAccount",
+interface SubCalendar {
+  name?: string
+  enabled?: boolean
+}
 
-  props: {
-    toggleState: { type: Boolean, default: false },
-    account: { type: Object, default: () => {} },
-    eventId: { type: String, default: "" },
-    calendarEventsMap: { type: Object, default: () => {} }, // Object of different users' calendar events
-    removeDialog: { type: Boolean, default: false },
-    selectedRemoveEmail: { type: String, default: "" },
-    syncWithBackend: { type: Boolean, default: true },
-    fillSpace: { type: Boolean, default: false },
-  },
+interface CalendarAccountProp {
+  calendarType?: string
+  email?: string
+  enabled?: boolean
+  subCalendars?: Record<string, SubCalendar>
+}
 
-  components: {
-    UserAvatarContent,
-  },
+interface CalendarEventsEntry {
+  error?: boolean
+  calendarEvents?: unknown[]
+}
 
-  data: () => ({
-    showSubCalendars: false,
-  }),
+const props = withDefaults(
+  defineProps<{
+    toggleState?: boolean
+    account?: CalendarAccountProp
+    eventId?: string
+    calendarEventsMap?: Record<string, CalendarEventsEntry | undefined>
+    removeDialog?: boolean
+    selectedRemoveEmail?: string
+    syncWithBackend?: boolean
+    fillSpace?: boolean
+  }>(),
+  {
+    toggleState: false,
+    account: () => ({}),
+    eventId: "",
+    calendarEventsMap: () => ({}),
+    removeDialog: false,
+    selectedRemoveEmail: "",
+    syncWithBackend: true,
+    fillSpace: false,
+  }
+)
 
-  computed: {
-    ...mapState(["authUser"]),
-    allowDelete() {
-      return !(
-        (this.account.calendarType == calendarTypes.GOOGLE &&
-          this.account.email == this.authUser.email) ||
-        this.toggleState
+const emit = defineEmits<{
+  toggleCalendarAccount: [
+    payload: { email: string; calendarType: string; enabled: boolean },
+  ]
+  toggleSubCalendarAccount: [
+    payload: {
+      email: string
+      calendarType: string
+      enabled: boolean
+      subCalendarId: string | number
+    },
+  ]
+  openRemoveDialog: [payload: { email: string; calendarType: string }]
+}>()
+
+const mainStore = useMainStore()
+const { authUser } = storeToRefs(mainStore)
+
+const showSubCalendars = ref(false)
+
+const allowDelete = computed(
+  () =>
+    !(
+      (props.account.calendarType == calendarTypes.GOOGLE &&
+        props.account.email == authUser.value?.email) ||
+      props.toggleState
+    )
+)
+const hasSubCalendars = computed(
+  () => props.account.calendarType !== calendarTypes.ICS
+)
+const accountHasError = computed(() => {
+  const a =
+    props.calendarEventsMap[
+      getCalendarAccountKey(props.account.email ?? "", props.account.calendarType ?? "")
+    ]
+  return a?.error && a.calendarEvents?.length === 0
+})
+const showAccount = computed(() => !(props.toggleState && accountHasError.value))
+const reauthenticateBtnText = computed(() => {
+  if (props.account.calendarType == calendarTypes.GOOGLE) {
+    return "Calendar access not granted, click to reauthenticate"
+  } else if (props.account.calendarType == calendarTypes.APPLE) {
+    return "Error with Apple Calendar account, click to remove"
+  } else if (props.account.calendarType == calendarTypes.OUTLOOK) {
+    return "Error with Outlook Calendar account, click to remove"
+  }
+  return ""
+})
+
+const reauthenticateCalendarAccount = () => {
+  if (props.account.calendarType == calendarTypes.GOOGLE) {
+    signInGoogle({
+      state: {
+        type: props.toggleState
+          ? authTypes.ADD_CALENDAR_ACCOUNT_FROM_EDIT
+          : authTypes.ADD_CALENDAR_ACCOUNT,
+        eventId: props.eventId,
+      },
+      requestCalendarPermission: true,
+      selectAccount: false,
+      loginHint: props.account.email,
+    })
+  } else if (
+    props.account.calendarType == calendarTypes.APPLE ||
+    props.account.calendarType == calendarTypes.OUTLOOK
+  ) {
+    openRemoveDialog()
+  }
+}
+const toggleSubCalendarAccount = (enabled: boolean, subCalendarId: string | number) => {
+  if (props.syncWithBackend) {
+    post(`/user/toggle-sub-calendar`, {
+      email: props.account.email ?? "",
+      calendarType: props.account.calendarType ?? "",
+      enabled,
+      subCalendarId,
+    }).catch(() => {
+      mainStore.showError(
+        "There was a problem with toggling your calendar account! Please try again later."
       )
-    },
-    hasSubCalendars() {
-      return this.account.calendarType !== calendarTypes.ICS
-    },
-    accountHasError() {
-      const account =
-        this.calendarEventsMap?.[
-          getCalendarAccountKey(this.account.email, this.account.calendarType)
-        ]
-      return account?.error && account?.calendarEvents?.length === 0
-    },
-    /** don't show account if in toggle state and account has an error */
-    showAccount() {
-      return !(this.toggleState && this.accountHasError)
-    },
-    reauthenticateBtnText() {
-      if (this.account.calendarType == calendarTypes.GOOGLE) {
-        return "Calendar access not granted, click to reauthenticate"
-      } else if (this.account.calendarType == calendarTypes.APPLE) {
-        return "Error with Apple Calendar account, click to remove"
-      } else if (this.account.calendarType == calendarTypes.OUTLOOK) {
-        return "Error with Outlook Calendar account, click to remove"
-      }
-    },
-  },
+    })
+  } else {
+    emit("toggleSubCalendarAccount", {
+      email: props.account.email ?? "",
+      calendarType: props.account.calendarType ?? "",
+      enabled,
+      subCalendarId,
+    })
+  }
+}
+const toggleCalendarAccount = (enabled: boolean) => {
+  if (!enabled) showSubCalendars.value = false
 
-  methods: {
-    ...mapActions(["showError"]),
-    addCalendarAccount() {
-      signInGoogle({
-        state: {
-          type: this.toggleState
-            ? authTypes.ADD_CALENDAR_ACCOUNT_FROM_EDIT
-            : authTypes.ADD_CALENDAR_ACCOUNT,
-          eventId: this.eventId,
-        },
-        requestCalendarPermission: true,
-        selectAccount: true,
-      })
-    },
-    reauthenticateCalendarAccount() {
-      if (this.account.calendarType == calendarTypes.GOOGLE) {
-        signInGoogle({
-          state: {
-            type: this.toggleState
-              ? authTypes.ADD_CALENDAR_ACCOUNT_FROM_EDIT
-              : authTypes.ADD_CALENDAR_ACCOUNT,
-            eventId: this.eventId,
-          },
-          requestCalendarPermission: true,
-          selectAccount: false,
-          loginHint: this.account.email,
-        })
-      } else if (this.account.calendarType == calendarTypes.APPLE) {
-        this.openRemoveDialog()
-      } else if (this.account.calendarType == calendarTypes.OUTLOOK) {
-        this.openRemoveDialog()
-      }
-    },
-    toggleSubCalendarAccount(enabled, subCalendarId) {
-      if (this.syncWithBackend) {
-        post(`/user/toggle-sub-calendar`, {
-          email: this.account.email,
-          calendarType: this.account.calendarType,
-          enabled,
-          subCalendarId,
-        }).catch((err) => {
-          this.showError(
-            "There was a problem with toggling your calendar account! Please try again later."
-          )
-        })
-      } else {
-        this.$emit("toggleSubCalendarAccount", {
-          email: this.account.email,
-          calendarType: this.account.calendarType,
-          enabled,
-          subCalendarId,
-        })
-      }
-    },
-    toggleCalendarAccount(enabled) {
-
-      if (!enabled) this.showSubCalendars = false
-
-      if (this.syncWithBackend) {
-        post(`/user/toggle-calendar`, {
-          email: this.account.email,
-          calendarType: this.account.calendarType,
-          enabled,
-        }).catch((err) => {
-          this.showError(
-            "There was a problem with toggling your calendar account! Please try again later."
-          )
-        })
-      } else {
-        this.$emit("toggleCalendarAccount", {
-          email: this.account.email,
-          calendarType: this.account.calendarType,
-          enabled,
-        })
-      }
-    },
-    openRemoveDialog() {
-      this.$emit("openRemoveDialog", {
-        email: this.account.email,
-        calendarType: this.account.calendarType,
-      })
-    },
-  },
+  if (props.syncWithBackend) {
+    post(`/user/toggle-calendar`, {
+      email: props.account.email ?? "",
+      calendarType: props.account.calendarType ?? "",
+      enabled,
+    }).catch(() => {
+      mainStore.showError(
+        "There was a problem with toggling your calendar account! Please try again later."
+      )
+    })
+  } else {
+    emit("toggleCalendarAccount", {
+      email: props.account.email ?? "",
+      calendarType: props.account.calendarType ?? "",
+      enabled,
+    })
+  }
+}
+const openRemoveDialog = () => {
+  emit("openRemoveDialog", {
+    email: props.account.email ?? "",
+    calendarType: props.account.calendarType ?? "",
+  })
 }
 </script>

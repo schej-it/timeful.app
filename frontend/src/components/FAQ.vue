@@ -5,7 +5,7 @@
       'tw-border-green': toggled,
       'tw-border-light-gray-stroke': !toggled,
     }"
-    @click="() => (toggled = !toggled)"
+    @click="toggled = !toggled"
   >
     <div
       class="tw-flex tw-flex-row tw-content-center tw-justify-between tw-text-base"
@@ -27,6 +27,7 @@
           <div class="tw-flex tw-flex-col tw-gap-2">
             <div
               v-for="(point, index) in points"
+              :key="index"
               class="tw-flex tw-items-center"
             >
               <div
@@ -42,7 +43,7 @@
             class="tw-mt-6 tw-text-sm tw-font-medium tw-text-dark-gray"
           >
             *
-            <a @click.stop="$emit('signIn')" class="tw-text-green tw-underline"
+            <a class="tw-text-green tw-underline" @click.stop="emit('signIn')"
               >Sign in</a
             >
             to use this feature
@@ -53,23 +54,26 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "FAQ",
+<script setup lang="ts">
+import { ref } from "vue"
 
-  props: {
-    question: { type: String, required: true },
-    answer: { type: String },
-    points: { type: Array },
-    authRequired: { type: Boolean, default: false },
-  },
+withDefaults(
+  defineProps<{
+    question: string
+    answer?: string
+    points?: string[]
+    authRequired?: boolean
+  }>(),
+  { 
+    answer: "",
+    points: () => [],
+    authRequired: false 
+  }
+)
 
-  data: () => ({
-    toggled: false,
-  }),
+const emit = defineEmits<{
+  signIn: []
+}>()
 
-  computed: {},
-
-  methods: {},
-}
+const toggled = ref(false)
 </script>

@@ -21,37 +21,34 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref } from "vue"
+import { useRoute } from "vue-router"
 import { post } from "@/utils"
 
-export default {
-  name: "Responded",
+defineOptions({ name: 'AppResponded' })
 
-  props: {
-    eventId: { type: String, required: true },
-  },
+const props = defineProps<{
+  eventId: string
+}>()
 
-  data() {
-    return {
-      state: "confirming",
-      states: {
-        CONFIRMING: "confirming",
-        CONFIRMED: "confirmed",
-        ERROR: "error",
-      },
-    }
-  },
+const route = useRoute()
 
-  created() {
-    let { email } = this.$route.query
-    post(`/events/${this.eventId}/responded`, { email })
-      .then(() => {
-        this.state = this.states.CONFIRMED
-      })
-      .catch((err) => {
-        console.error(err)
-        this.state = this.states.ERROR
-      })
-  },
-}
+const states = {
+  CONFIRMING: "confirming",
+  CONFIRMED: "confirmed",
+  ERROR: "error",
+} as const
+
+const state = ref<string>(states.CONFIRMING)
+
+const { email } = route.query
+post(`/events/${props.eventId}/responded`, { email })
+  .then(() => {
+    state.value = states.CONFIRMED
+  })
+  .catch((err: unknown) => {
+    console.error(err)
+    state.value = states.ERROR
+  })
 </script>

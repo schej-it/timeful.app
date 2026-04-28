@@ -4,7 +4,7 @@
     <div class="tw-mb-5 tw-flex tw-flex-col tw-gap-6">
       <div class="tw-rounded-lg tw-border tw-bg-white tw-p-5">
         <v-checkbox v-model="preferences.necessary" disabled>
-          <template v-slot:label>
+          <template #label>
             <div>
               <strong class="tw-text-gray-800 tw-text-base tw-font-semibold">
                 Necessary Cookies
@@ -25,7 +25,7 @@
 
       <div class="tw-rounded-lg tw-border tw-bg-white tw-p-5">
         <v-checkbox v-model="preferences.analytics">
-          <template v-slot:label>
+          <template #label>
             <div>
               <strong class="tw-text-gray-800 tw-text-base tw-font-semibold">
                 Analytics Cookies
@@ -51,7 +51,7 @@
       <div class="tw-rounded-lg tw-border tw-bg-white tw-p-5">
         <div>
           <v-checkbox v-model="preferences.advertising">
-            <template v-slot:label>
+            <template #label>
               <div>
                 <strong class="tw-text-gray-800 tw-text-base tw-font-semibold">
                   Advertising Cookies
@@ -76,20 +76,20 @@
 
     <div class="tw-flex tw-flex-wrap tw-gap-2">
       <button
-        @click="savePreferences"
         class="tw-rounded-md tw-bg-blue tw-px-4 tw-py-2 tw-text-sm tw-font-medium tw-text-white hover:tw-bg-light-blue"
+        @click="savePreferences"
       >
         Save Preferences
       </button>
       <button
-        @click="acceptAll"
         class="tw-rounded-md tw-bg-green tw-px-4 tw-py-2 tw-text-sm tw-font-medium tw-text-white hover:tw-bg-dark-green"
+        @click="acceptAll"
       >
         Accept All
       </button>
       <button
-        @click="rejectAll"
         class="tw-rounded-md tw-px-4 tw-py-2 tw-text-sm tw-font-medium tw-text-white tw-bg-very-dark-gray"
+        @click="rejectAll"
       >
         Reject All (except necessary)
       </button>
@@ -97,56 +97,55 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { onMounted, ref } from "vue"
 import { getCookieConsent, setCookieConsent } from "@/utils/cookie_utils"
 
-export default {
-  name: "CookieSettings",
-  data() {
-    return {
-      preferences: {
-        necessary: true,
-        analytics: true,
-        advertising: true,
-      },
-    }
-  },
-  mounted() {
-    this.loadCurrentSettings()
-  },
-  methods: {
-    loadCurrentSettings() {
-      const consent = getCookieConsent()
-      if (consent) {
-        this.preferences = { ...consent.preferences }
-      }
-    },
-
-    savePreferences() {
-      this.saveConsent()
-    },
-
-    acceptAll() {
-      this.preferences = {
-        necessary: true,
-        analytics: true,
-        advertising: true,
-      }
-      this.saveConsent()
-    },
-
-    rejectAll() {
-      this.preferences = {
-        necessary: true,
-        analytics: false,
-        advertising: false,
-      }
-      this.saveConsent()
-    },
-    saveConsent() {
-      setCookieConsent(this.preferences)
-      window.location.reload()
-    },
-  },
+interface Preferences {
+  necessary: boolean
+  analytics: boolean
+  advertising: boolean
 }
+
+const preferences = ref<Preferences>({
+  necessary: true,
+  analytics: true,
+  advertising: true,
+})
+
+const loadCurrentSettings = () => {
+  const consent = getCookieConsent()
+  if (consent) {
+    preferences.value = { ...consent.preferences }
+  }
+}
+
+const saveConsent = () => {
+  setCookieConsent(preferences.value)
+  window.location.reload()
+}
+
+const savePreferences = () => {
+  saveConsent()
+}
+
+const acceptAll = () => {
+  preferences.value = {
+    necessary: true,
+    analytics: true,
+    advertising: true,
+  }
+  saveConsent()
+}
+
+const rejectAll = () => {
+  preferences.value = {
+    necessary: true,
+    analytics: false,
+    advertising: false,
+  }
+  saveConsent()
+}
+
+onMounted(loadCurrentSettings)
 </script>

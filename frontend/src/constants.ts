@@ -1,9 +1,9 @@
 // Urls
 export const serverURL =
-  process.env.NODE_ENV === "development" ? "http://localhost:3002/api" : "/api"
+  import.meta.env.DEV ? "http://localhost:3002/api" : "/api"
 
 // Errors enum
-export const errors = Object.freeze({
+export const errors = {
   JsonError: "json-error",
   NotSignedIn: "not-signed-in",
   UserDoesNotExist: "user-does-not-exist",
@@ -12,10 +12,11 @@ export const errors = Object.freeze({
   OtpExpired: "otp-expired",
   OtpInvalidCode: "otp-invalid-code",
   OtpTooManyAttempts: "otp-too-many-attempts",
-})
+} as const
+export type ErrorCode = (typeof errors)[keyof typeof errors]
 
 // Auth types
-export const authTypes = Object.freeze({
+export const authTypes = {
   EVENT_ADD_AVAILABILITY: "event-add-availability", // Autofill with google calendar
   EVENT_SIGN_IN_LINK_APPLE: "event-sign-in-link-apple", // Sign in to link apple calendar
   EVENT_SIGN_IN: "event-sign-in", // Top right sign in button on event page
@@ -26,45 +27,55 @@ export const authTypes = Object.freeze({
   ADD_CALENDAR_ACCOUNT: "add-calendar-account",
   ADD_CALENDAR_ACCOUNT_FROM_EDIT: "add-calendar-account-from-edit",
   UPGRADE: "upgrade",
-})
+} as const
+export type AuthType = (typeof authTypes)[keyof typeof authTypes]
 
-export const eventTypes = Object.freeze({
+export const eventTypes = {
   SPECIFIC_DATES: "specific_dates",
   DOW: "dow",
   GROUP: "group",
-})
+} as const
+export type EventTypeValue = (typeof eventTypes)[keyof typeof eventTypes]
 
-export const availabilityTypes = Object.freeze({
+export const availabilityTypes = {
   AVAILABLE: "available",
   IF_NEEDED: "if_needed",
-})
+} as const
+export type AvailabilityType =
+  (typeof availabilityTypes)[keyof typeof availabilityTypes]
 
-export const timeTypes = Object.freeze({
+export const timeTypes = {
   HOUR12: "12-hour",
   HOUR24: "24-hour",
-})
+} as const
+export type TimeType = (typeof timeTypes)[keyof typeof timeTypes]
 
-export const calendarTypes = Object.freeze({
+export const calendarTypes = {
   GOOGLE: "google",
   APPLE: "apple",
   OUTLOOK: "outlook",
-  ICS: "ics"
-})
+  ICS: "ics",
+} as const
+export type CalendarType = (typeof calendarTypes)[keyof typeof calendarTypes]
 
-export const upgradeDialogTypes = Object.freeze({
+export const upgradeDialogTypes = {
   CREATE_EVENT: "create-event",
   SCHEDULE_EVENT: "schedule-event",
   UPGRADE_MANUALLY: "upgrade-manually",
   REMOVE_ADS: "remove-ads",
-})
+} as const
+export type UpgradeDialogType =
+  (typeof upgradeDialogTypes)[keyof typeof upgradeDialogTypes]
 
-export const timeslotDurations = Object.freeze({
+export const timeslotDurations = {
   FIFTEEN_MINUTES: 15,
   THIRTY_MINUTES: 30,
   ONE_HOUR: 60,
-})
+} as const
+export type TimeslotDuration =
+  (typeof timeslotDurations)[keyof typeof timeslotDurations]
 
-export const calendarOptionsDefaults = Object.freeze({
+export const calendarOptionsDefaults = {
   bufferTime: {
     enabled: false,
     time: 15,
@@ -74,9 +85,9 @@ export const calendarOptionsDefaults = Object.freeze({
     startTime: 9,
     endTime: 17,
   },
-})
+} as const
 
-export const dayIndexToDayString = Object.freeze([
+export const dayIndexToDayString = [
   "2018-06-17", // Sunday
   "2018-06-18", // Monday
   "2018-06-19", // Tuesday
@@ -85,9 +96,9 @@ export const dayIndexToDayString = Object.freeze([
   "2018-06-22", // Friday
   "2018-06-23", // Saturday
   "2018-06-24", // Sunday
-])
+] as const
 
-export const folderColors = Object.freeze([
+export const folderColors = [
   "#FFB3B3", // Pastel Red
   "#FFCCB3", // Pastel Orange
   "#FFFFB3", // Pastel Yellow
@@ -95,9 +106,9 @@ export const folderColors = Object.freeze([
   "#B3B3FF", // Pastel Blue
   "#D1B3FF", // Pastel Purple
   "#D3D3D3", // Pastel Gray
-])
+] as const
 
-export const allTimezones = Object.freeze({
+export const allTimezones = {
   "Pacific/Midway": "Midway Island, Samoa",
   "Pacific/Honolulu": "Hawaii",
   "America/Juneau": "Alaska",
@@ -177,10 +188,12 @@ export const allTimezones = Object.freeze({
   "Pacific/Fiji": "Fiji Islands",
   "Pacific/Auckland": "Auckland, Wellington",
   "Pacific/Tongatapu": "Nuku'alofa",
-})
+} as const
+export type Timezone = keyof typeof allTimezones
 
 export const guestUserId = "000000000000000000000000"
 
 export const numFreeEvents = 3
 
-export const urlRegex = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/
+export const urlRegex =
+  /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/

@@ -1,11 +1,12 @@
-import Vue from "vue"
-import VueRouter from "vue-router"
-import Landing from "@/views/Landing"
+import {
+  createRouter,
+  createWebHistory,
+  type RouteRecordRaw,
+} from "vue-router"
+import Landing from "@/views/Landing.vue"
 import { get } from "@/utils"
 
-Vue.use(VueRouter)
-
-const routes = [
+const routes: RouteRecordRaw[] = [
   {
     path: "/",
     name: "landing",
@@ -83,42 +84,40 @@ const routes = [
     component: () => import("@/views/Test.vue"),
   },
   {
-    path: "*",
+    path: "/:pathMatch(.*)*",
     name: "404",
     component: () => import("@/views/PageNotFound.vue"),
   },
 ]
 
-const router = new VueRouter({
-  mode: "history",
-  base: process.env.BASE_URL,
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
 })
 
-router.beforeEach(async (to, from, next) => {
-  const authRoutes = ["home", "settings"]
-  const noAuthRoutes = ["sign-in", "sign-up"]
-  try {
-    await get("/auth/status")
-
-    if (noAuthRoutes.includes(to.name)) {
-      next({ name: "home" })
-    } else {
-      next()
-    }
-  } catch (err) {
-    if (authRoutes.includes(to.name)) {
-      next({ name: "landing" })
-    } else {
-      next()
-    }
+router.beforeEach(async (to) => {
+  if (to.name !== "event" && to.name !== "group") {
+    const fusetag = window.fusetag ?? (window.fusetag = { que: [] })
+    fusetag.que.push(function () {
+      fusetag.destroySticky?.()
+    })
   }
 
-  if (to.name !== "event" && to.name !== "group") {
-    const fusetag = window.fusetag || (window.fusetag = { que: [] })
-    fusetag.que.push(function () {
-      fusetag.destroySticky()
-    })
+  const authRoutes = ["home", "settings"]
+  const noAuthRoutes = ["sign-in", "sign-up"]
+  const name = typeof to.name === "string" ? to.name : ""
+
+  try {
+    await get("/auth/status")
+    if (noAuthRoutes.includes(name)) {
+      return { name: "home" }
+    }
+    return true
+  } catch {
+    if (authRoutes.includes(name)) {
+      return { name: "landing" }
+    }
+    return true
   }
 })
 

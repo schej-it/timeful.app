@@ -34,8 +34,8 @@
       </v-fade-transition>
 
       <div
-        class="tw-rounded-md tw-px-6 tw-py-4 sm:tw-mx-4 sm:tw-bg-[#f3f3f366]"
         v-if="!loading || eventsNotEmpty"
+        class="tw-rounded-md tw-px-6 tw-py-4 sm:tw-mx-4 sm:tw-bg-[#f3f3f366]"
       >
         <div
           class="tw-mb-3 tw-text-xl tw-font-medium tw-text-dark-green sm:tw-text-2xl"
@@ -44,14 +44,14 @@
         </div>
         <div class="tw-flex tw-flex-row tw-items-center tw-gap-2">
           <div
-            @click="convertW2M"
             class="tw-cursor-pointer tw-text-sm tw-font-normal tw-text-dark-gray tw-underline"
+            @click="convertW2M"
           >
             Convert When2meet to Timeful
           </div>
           <div
-            @click="importTimeful"
             class="tw-cursor-pointer tw-text-sm tw-font-normal tw-text-dark-gray tw-underline"
+            @click="importTimeful"
           >
             Import Timeful Event
           </div>
@@ -91,102 +91,93 @@
   </span>
 </template>
 
-<script>
-import EventType from "@/components/EventType.vue"
+<script setup lang="ts">
+import { ref, computed, onMounted } from "vue"
+import { storeToRefs } from "pinia"
+import { useHead } from "@unhead/vue"
 import BottomFab from "@/components/BottomFab.vue"
-import CreateSpeedDial from "@/components/CreateSpeedDial.vue"
 import When2meetImportDialog from "@/components/When2meetImportDialog.vue"
 import TimefulImportDialog from "@/components/TimefulImportDialog.vue"
 import Dashboard from "@/components/home/Dashboard.vue"
-import { mapState, mapActions, mapMutations } from "vuex"
-import { eventTypes } from "@/constants"
-import { isPhone, get } from "@/utils"
+import { get } from "@/utils"
+import { useMainStore } from "@/stores/main"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import { posthog } from "@/plugins/posthog"
 import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
+import type { User } from "@/types"
 
-export default {
-  name: "Home",
+defineOptions({ name: 'AppHome' })
 
-  metaInfo: {
-    title: "Home - Timeful",
-  },
+useHead({ title: "Home - Timeful" })
 
-  components: {
-    EventType,
-    BottomFab,
-    CreateSpeedDial,
-    When2meetImportDialog,
-    TimefulImportDialog,
-    Dashboard,
-    FormerlyKnownAs,
-  },
+const props = withDefaults(
+  defineProps<{
+    contactsPayload?: Record<string, unknown>
+    openNewGroup?: boolean | string
+  }>(),
+  { contactsPayload: () => ({}), openNewGroup: false }
+)
 
-  props: {
-    contactsPayload: {
-      type: Object,
-      default: () => ({}),
-    },
-    openNewGroup: { type: Boolean, default: false },
-  },
+// Convert string route param to boolean if needed
+const openNewGroupBool = computed(() => {
+  if (typeof props.openNewGroup === 'string') {
+    return props.openNewGroup === 'true'
+  }
+  // At this point openNewGroup is boolean | undefined
+  return props.openNewGroup || false
+})
 
-  data: () => ({
-    loading: true,
-    showW2MDialog: false,
-    showImportDialog: false,
-  }),
+const mainStore = useMainStore()
+const { events } = storeToRefs(mainStore)
+const { isPhone } = useDisplayHelpers()
 
-  mounted() {
-    // If coming from enabling contacts, show the dialog. Checks if contactsPayload is not an Observer.
-    this.setNewDialogOptions({
-      show: Object.keys(this.contactsPayload).length > 0 || this.openNewGroup,
-      contactsPayload: this.contactsPayload,
-      openNewGroup: this.openNewGroup,
-      eventOnly: false,
-    })
-  },
+const loading = ref(true)
+const showW2MDialog = ref(false)
+const showImportDialog = ref(false)
 
-  computed: {
-    ...mapState(["events", "authUser", "groupsEnabled"]),
-    eventsNotEmpty() {
-      return this.events.length > 0
-    },
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-  },
+const eventsNotEmpty = computed(() => events.value.length > 0)
 
-  methods: {
-    ...mapMutations(["setAuthUser", "setNewDialogOptions"]),
-    ...mapActions(["getEvents", "createNew"]),
-    userRespondedToEvent(event) {
-      return event.hasResponded ?? false
-    },
-    _createNew() {
-      this.createNew({ eventOnly: false })
-    },
-    createFolder() {},
-    convertW2M() {
-      this.showW2MDialog = true
-      this.$posthog?.capture("convert_when2meet_to_timeful_clicked")
-    },
-    importTimeful() {
-      this.showImportDialog = true
-      this.$posthog?.capture("import_timeful_event_clicked")
-    },
-  },
+onMounted(() => {
+  mainStore.setNewDialogOptions({
+    show:
+      Object.keys(props.contactsPayload).length > 0 ||
+      openNewGroupBool.value,
+    contactsPayload: props.contactsPayload,
+    openNewGroup: openNewGroupBool.value,
+    eventOnly: false,
+  })
+})
 
-  created() {
-    this.getEvents().then(() => {
-      this.loading = false
-    })
-    get("/user/profile")
-      .then((authUser) => {
-        this.setAuthUser(authUser)
-      })
-      .catch(() => {
-        this.setAuthUser(null)
-      })
-  },
+function _createNew() {
+  mainStore.createNew({ eventOnly: false })
 }
+
+function convertW2M() {
+  showW2MDialog.value = true
+  posthog.capture("convert_when2meet_to_timeful_clicked")
+}
+
+function importTimeful() {
+  showImportDialog.value = true
+  posthog.capture("import_timeful_event_clicked")
+}
+
+// created
+const eventsPromise = mainStore.getEvents()
+if (eventsPromise) {
+  void eventsPromise.then(() => {
+    loading.value = false
+  })
+} else {
+  loading.value = false
+}
+get<User>("/user/profile")
+  .then((user) => {
+    mainStore.setAuthUser(user)
+  })
+  .catch(() => {
+    mainStore.setAuthUser(null)
+  })
 </script>
 
 <style>

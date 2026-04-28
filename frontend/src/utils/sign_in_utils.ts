@@ -1,5 +1,19 @@
 import { calendarTypes } from "@/constants"
-import store from "@/store"
+import { useMainStore } from "@/stores/main"
+
+interface SignInGoogleOptions {
+  state?: Record<string, unknown> | null
+  selectAccount?: boolean
+  requestCalendarPermission?: boolean
+  requestContactsPermission?: boolean
+  loginHint?: string
+}
+
+interface SignInOutlookOptions {
+  state?: Record<string, unknown> | null
+  selectAccount?: boolean
+  requestCalendarPermission?: boolean
+}
 
 /** Redirects user to the correct google sign in page */
 export const signInGoogle = ({
@@ -8,8 +22,8 @@ export const signInGoogle = ({
   requestCalendarPermission = false,
   requestContactsPermission = false,
   loginHint = "",
-}) => {
-  const clientId = process.env.VUE_APP_GOOGLE_CLIENT_ID
+}: SignInGoogleOptions): void => {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
   const redirectUri = `${window.location.origin}/auth`
 
   let scope = "openid email profile "
@@ -23,21 +37,22 @@ export const signInGoogle = ({
   }
   scope = encodeURIComponent(scope)
 
-  let stateString = ""
-  if (!state) state = {}
-  state.calendarType = calendarTypes.GOOGLE
-  state = encodeURIComponent(JSON.stringify(state))
-  stateString = `&state=${state}`
+  const stateObj = state ?? {}
+  stateObj.calendarType = calendarTypes.GOOGLE
+  const stateEncoded = encodeURIComponent(JSON.stringify(stateObj))
+  const stateString = `&state=${stateEncoded}`
 
-  let promptString = ""
+  let promptString = "&prompt=consent"
   if (selectAccount) {
     promptString = "&prompt=select_account+consent"
   } else {
-    promptString = "&prompt=consent"
-    if (loginHint.length > 0) {
+    if (loginHint && loginHint.length > 0) {
       promptString += `&login_hint=${loginHint}`
-    } else if (store.state.authUser) {
-      promptString += `&login_hint=${store.state.authUser.email}`
+    } else {
+      const authUserEmail = useMainStore().authUser?.email
+      if (authUserEmail) {
+        promptString += `&login_hint=${authUserEmail}`
+      }
     }
   }
 
@@ -48,9 +63,8 @@ export const signInGoogle = ({
 export const signInOutlook = ({
   state = {},
   requestCalendarPermission = false,
-}) => {
-  const clientId = process.env.VUE_APP_MICROSOFT_CLIENT_ID
-  const tenant = "common"
+}: SignInOutlookOptions): void => {
+  const clientId = import.meta.env.VITE_MICROSOFT_CLIENT_ID
   const redirectUri = encodeURIComponent(`${window.location.origin}/auth`)
 
   let scope = "offline_access User.Read"
@@ -59,12 +73,11 @@ export const signInOutlook = ({
   }
   scope = encodeURIComponent(scope)
 
-  let stateString = ""
-  if (!state) state = {}
-  state.calendarType = calendarTypes.OUTLOOK
-  state.scope = scope
-  state = encodeURIComponent(JSON.stringify(state))
-  stateString = `&state=${state}`
+  const stateObj = state ?? {}
+  stateObj.calendarType = calendarTypes.OUTLOOK
+  stateObj.scope = scope
+  const stateEncoded = encodeURIComponent(JSON.stringify(stateObj))
+  const stateString = `&state=${stateEncoded}`
 
   const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=${scope}${stateString}`
   window.location.href = url

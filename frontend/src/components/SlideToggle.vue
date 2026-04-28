@@ -4,21 +4,21 @@
   >
     <div
       class="tw-absolute tw-h-full tw-rounded-md tw-border tw-transition-all"
-      :class="options[index].borderClass ?? defaultBorderClass"
+      :class="options[index]?.borderClass ?? defaultBorderClass"
       :style="{
-        ...(options[index].borderStyle ?? defaultBorderStyle),
+        ...(options[index]?.borderStyle ?? defaultBorderStyle),
         transform: `translateX(${index * 100}%)`,
         width: `${100 / options.length}%`,
       }"
     ></div>
-    <template v-for="(tab, i) in options">
+    <template v-for="(tab, i) in options" :key="tab.value">
       <div
         class="tw-flex tw-flex-1 tw-cursor-pointer tw-items-center tw-justify-center tw-gap-1.5 tw-overflow-hidden tw-px-4 tw-py-2.5 tw-text-center tw-text-sm tw-font-medium tw-transition-all"
         :class="
           i === index ? tab.activeClass ?? defaultActiveClass : inactiveClass
         "
         :style="tab.style || {}"
-        @click="$emit('input', tab.value)"
+        @click="emit('update:modelValue', tab.value)"
       >
         <slot :name="'option-' + tab.value" :option="tab" :active="i === index">
           <span class="tw-line-clamp-1">{{ tab.text }}</span>
@@ -28,43 +28,40 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "AvailabilityTypeToggle",
+<script setup lang="ts" generic="T">
+import { ref, watch } from "vue"
 
-  props: {
-    value: { required: true },
-
-    // Array of objects of the following structure:
-    // {
-    //   text: String,
-    //   activeClass?: String,
-    //   borderClass?: String,
-    //   borderStyle?: Object,
-    //   value: String,
-    // }
-    options: { type: Array, required: true },
-  },
-
-  data() {
-    return {
-      index: 0,
-
-      defaultActiveClass: "tw-text-green tw-bg-green/5",
-      defaultBorderClass: "tw-border-green",
-      defaultBorderStyle: { boxShadow: "0px 2px 8px 0px #00994C40" },
-      inactiveClass: "tw-text-dark-gray tw-bg-off-white",
-    }
-  },
-
-  watch: {
-    value: {
-      immediate: true,
-      handler() {
-        this.index = this.options.findIndex((tab) => tab.value === this.value)
-        if (this.index === -1) this.index = 0
-      },
-    },
-  },
+export interface SlideToggleOption<T = string> {
+  text: string
+  value: T
+  activeClass?: string
+  borderClass?: string
+  borderStyle?: Record<string, string>
+  style?: Record<string, string>
 }
+
+const props = defineProps<{
+  modelValue: T
+  options: SlideToggleOption<T>[]
+}>()
+
+const emit = defineEmits<{
+  "update:modelValue": [value: T]
+}>()
+
+const index = ref(0)
+
+const defaultActiveClass = "tw-text-green tw-bg-green/5"
+const defaultBorderClass = "tw-border-green"
+const defaultBorderStyle = { boxShadow: "0px 2px 8px 0px #00994C40" }
+const inactiveClass = "tw-text-dark-gray tw-bg-off-white"
+
+watch(
+  () => props.modelValue,
+  () => {
+    const i = props.options.findIndex((tab) => tab.value === props.modelValue)
+    index.value = i === -1 ? 0 : i
+  },
+  { immediate: true }
+)
 </script>

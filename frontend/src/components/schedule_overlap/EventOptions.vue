@@ -2,19 +2,19 @@
   <ExpandableSection
     v-if="event.daysOnly || numResponses >= 1"
     label="Options"
-    :value="showEventOptions"
-    @input="$emit('toggleShowEventOptions')"
+    :model-value="showEventOptions"
+    @update:model-value="$emit('toggleShowEventOptions')"
   >
     <div class="tw-flex tw-flex-col tw-gap-4 tw-pt-2">
       <v-switch
         v-if="numResponses > 1 && isPhone"
-        inset
         id="show-best-times-toggle"
+        inset
         :input-value="showBestTimes"
-        @change="(val) => $emit('update:showBestTimes', !!val)"
         hide-details
+        @change="(val: boolean) => $emit('update:showBestTimes', !!val)"
       >
-        <template v-slot:label>
+        <template #label>
           <div class="tw-text-sm tw-text-black">
             Show best {{ event.daysOnly ? "days" : "times" }}
           </div>
@@ -22,13 +22,13 @@
       </v-switch>
       <v-switch
         v-if="numResponses >= 1 && !isGroup"
-        inset
         id="hide-if-needed-toggle"
+        inset
         :input-value="hideIfNeeded"
-        @change="(val) => $emit('update:hideIfNeeded', !!val)"
         hide-details
+        @change="(val: boolean) => $emit('update:hideIfNeeded', !!val)"
       >
-        <template v-slot:label>
+        <template #label>
           <div class="tw-text-sm tw-text-black">
             Hide if needed {{ event.daysOnly ? "days" : "times" }}
           </div>
@@ -38,10 +38,10 @@
         v-if="showCalendarEvents !== undefined && isGroup && !isPhone"
         inset
         :input-value="showCalendarEvents"
-        @change="(val) => $emit('update:showCalendarEvents', Boolean(val))"
         hide-details
+        @change="(val: boolean) => $emit('update:showCalendarEvents', Boolean(val))"
       >
-        <template v-slot:label>
+        <template #label>
           <div class="tw-text-sm tw-text-black">Overlay calendar events</div>
         </template>
       </v-switch>
@@ -49,13 +49,13 @@
       <!-- Start on monday -->
       <v-switch
         v-if="event.daysOnly"
-        inset
         id="start-calendar-on-monday-toggle"
+        inset
         :input-value="startCalendarOnMonday"
-        @change="(val) => $emit('update:startCalendarOnMonday', !!val)"
         hide-details
+        @change="(val: boolean) => $emit('update:startCalendarOnMonday', !!val)"
       >
-        <template v-slot:label>
+        <template #label>
           <div class="tw-text-sm tw-text-black">Start on Monday</div>
         </template>
       </v-switch>
@@ -63,35 +63,38 @@
   </ExpandableSection>
 </template>
 
-<script>
-import { isPhone } from "@/utils"
+<script setup lang="ts">
+import { computed } from "vue"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { eventTypes } from "@/constants"
 import ExpandableSection from "@/components/ExpandableSection.vue"
+import type { EventLike } from "@/composables/schedule_overlap/types"
 
-export default {
-  name: "EventOptions",
+const props = withDefaults(
+  defineProps<{
+    event: EventLike
+    showBestTimes: boolean
+    hideIfNeeded: boolean
+    numResponses: number
+    showEventOptions: boolean
+    showCalendarEvents?: boolean
+    startCalendarOnMonday?: boolean
+  }>(),
+  {
+    showCalendarEvents: false,
+    startCalendarOnMonday: false,
+  }
+)
 
-  components: {
-    ExpandableSection,
-  },
+defineEmits<{
+  toggleShowEventOptions: []
+  "update:showBestTimes": [value: boolean]
+  "update:hideIfNeeded": [value: boolean]
+  "update:showCalendarEvents": [value: boolean]
+  "update:startCalendarOnMonday": [value: boolean]
+}>()
 
-  props: {
-    event: { type: Object, required: true },
-    showBestTimes: { type: Boolean, required: true },
-    hideIfNeeded: { type: Boolean, required: true },
-    numResponses: { type: Number, required: true },
-    showEventOptions: { type: Boolean, required: true },
-    showCalendarEvents: { type: Boolean, default: false },
-    startCalendarOnMonday: { type: Boolean, default: false },
-  },
+const { isPhone } = useDisplayHelpers()
 
-  computed: {
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-    isGroup() {
-      return this.event.type === eventTypes.GROUP
-    },
-  },
-}
+const isGroup = computed(() => props.event.type === eventTypes.GROUP)
 </script>

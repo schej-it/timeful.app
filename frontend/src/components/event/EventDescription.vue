@@ -6,9 +6,9 @@
     >
       <div class="tw-grow tw-space-y-1">
         <div
-          class="tw-min-h-6 tw-leading-6"
-          v-for="(line, i) in event.description.split('\n')"
+          v-for="(line, i) in (event.description ?? '').split('\n')"
           :key="i"
+          class="tw-min-h-6 tw-leading-6"
         >
           {{ line }}
         </div>
@@ -55,10 +55,7 @@
         <v-btn
           icon
           :small="isPhone"
-          @click="
-            newDescription = event.description
-            isEditing = false
-          "
+          @click="cancelEditing"
         >
           <v-icon>mdi-close</v-icon>
         </v-btn>
@@ -70,69 +67,57 @@
   </div>
 </template>
 
-<script>
-import { mapActions } from "vuex"
-import { isPhone, put } from "@/utils"
+<script setup lang="ts">
+import { computed, ref } from "vue"
+import { put } from "@/utils"
+import { useMainStore } from "@/stores/main"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import type { Event } from "@/types"
 
-export default {
-  name: "EventDescription",
+const props = defineProps<{
+  event: Event
+  canEdit: boolean
+}>()
 
-  props: {
-    event: {
-      type: Object,
-      required: true,
-    },
-    canEdit: {
-      type: Boolean,
-      required: true,
-    },
-  },
+const emit = defineEmits<{
+  "update:event": [event: Event]
+}>()
 
-  data() {
-    return {
-      isEditing: false,
-      newDescription: this.event.description ?? "",
-      lineHeight: 28,
-    }
-  },
+const mainStore = useMainStore()
+const { isPhone } = useDisplayHelpers()
 
-  computed: {
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-    showDescription() {
-      return this.event.description && !this.isEditing
-    },
-  },
+const isEditing = ref(false)
+const newDescription = ref(props.event.description ?? "")
 
-  methods: {
-    ...mapActions(["showError"]),
-    saveDescription() {
-      const oldEvent = { ...this.event }
+const showDescription = computed(
+  () => props.event.description && !isEditing.value
+)
 
-      const newEvent = {
-        ...this.event,
-        description: this.newDescription,
-      }
+const saveDescription = () => {
+  const oldEvent = { ...props.event }
+  const newEvent = { ...props.event, description: newDescription.value }
 
-      const eventPayload = {
-        name: this.event.name,
-        duration: this.event.duration,
-        dates: this.event.dates,
-        type: this.event.type,
-        description: this.newDescription,
-      }
-      
-      this.$emit("update:event", newEvent)
-      this.isEditing = false
-      put(`/events/${this.event._id}`, eventPayload).catch((err) => {
-        console.error(err)
-        this.showError("Failed to save description! Please try again later.")
-        this.$emit("update:event", {
-          ...oldEvent,
-        })
-      })
-    },
-  },
+  const eventPayload = {
+    name: props.event.name,
+    duration: props.event.duration,
+    dates: props.event.dates,
+    type: props.event.type,
+    description: newDescription.value,
+  }
+
+  emit("update:event", newEvent)
+  isEditing.value = false
+  put(`/events/${props.event._id ?? ""}`, eventPayload).catch((err: unknown) => {
+    console.error(err)
+    mainStore.showError(
+      "Failed to save description! Please try again later."
+    )
+    emit("update:event", { ...oldEvent })
+  })
+}
+
+const cancelEditing = () => {
+  newDescription.value = props.event.description ?? ""
+  isEditing.value = false
 }
 </script>

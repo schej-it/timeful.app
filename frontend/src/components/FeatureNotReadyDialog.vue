@@ -6,9 +6,9 @@
         <v-spacer />
         <v-btn
           absolute
-          @click="dialog = false"
           icon
           class="tw-right-0 tw-mr-2 tw-self-center"
+          @click="dialog = false"
         >
           <v-icon>mdi-close</v-icon>
         </v-btn>
@@ -34,46 +34,38 @@
   </v-dialog>
 </template>
 
-<script>
-import { mapActions } from "vuex"
+<script setup lang="ts">
+import { computed, ref } from "vue"
+import { useMainStore } from "@/stores/main"
+import { posthog } from "@/plugins/posthog"
 
-export default {
-  name: "FeatureNotReadyDialog",
-  props: {
-    value: Boolean,
-  },
-  data() {
-    return {
-      folderUsageFeedback: "",
-    }
-  },
-  computed: {
-    dialog: {
-      get() {
-        return this.value
-      },
-      set(val) {
-        this.$emit("input", val)
-      },
-    },
-  },
-  methods: {
-    ...mapActions(["showInfo"]),
-    submitFeedback() {
-      if (this.folderUsageFeedback.trim() !== "") {
-        this.$posthog?.capture("folder_usage_feedback_submitted", {
-          feedback: this.folderUsageFeedback,
-        })
-        // Optionally, you can clear the textarea and close the dialog
-        this.folderUsageFeedback = ""
-        this.dialog = false
-        this.showInfo("Thanks for your input!")
-      } else {
-        // Optionally, handle empty feedback (e.g., show a message)
-        console.log("Feedback is empty")
-      }
-    },
-  },
+const props = defineProps<{
+  modelValue: boolean
+}>()
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+}>()
+
+const mainStore = useMainStore()
+const folderUsageFeedback = ref("")
+
+const dialog = computed({
+  get: () => props.modelValue,
+  set: (val: boolean) => { emit("update:modelValue", val); },
+})
+
+const submitFeedback = () => {
+  if (folderUsageFeedback.value.trim() !== "") {
+    posthog.capture("folder_usage_feedback_submitted", {
+      feedback: folderUsageFeedback.value,
+    })
+    folderUsageFeedback.value = ""
+    dialog.value = false
+    mainStore.showInfo("Thanks for your input!")
+  } else {
+    console.log("Feedback is empty")
+  }
 }
 </script>
 

@@ -84,11 +84,10 @@
           </div>
           <div>
             <v-menu :nudge-bottom="10" offset-y :close-on-content-click="false">
-              <template v-slot:activator="{ on, attrs }">
+              <template #activator="{ props }">
                 <span
                   class="tw-cursor-pointer tw-text-sm tw-text-white/80 hover:tw-text-white"
-                  v-bind="attrs"
-                  v-on="on"
+                  v-bind="props"
                 >
                   Support
                 </span>
@@ -164,6 +163,35 @@
   </footer>
 </template>
 
+<script setup lang="ts">
+import { computed } from "vue"
+import { useMainStore } from "@/stores/main"
+
+defineOptions({ name: "AppFooter" })
+
+const mainStore = useMainStore()
+
+const contractAddress = "2uHvhSasjzHm4PPAWaVpuU7yKtd4yUGYx6WK2oxutQnm"
+
+const contractAddressTruncated = computed(
+  () => contractAddress.slice(0, 6) + "..." + contractAddress.slice(-4)
+)
+
+const copyContractAddress = () => {
+  navigator.clipboard
+    .writeText(contractAddress)
+    .then(() => {
+      mainStore.showInfo("Contract address copied to clipboard!")
+    })
+    .catch((err: unknown) => {
+      console.error("Failed to copy contract address: ", err)
+    })
+}
+
+void contractAddressTruncated.value
+void copyContractAddress
+</script>
+
 <style scoped>
 div:has(a) {
   @apply tw-leading-none;
@@ -175,39 +203,3 @@ a:hover {
   @apply tw-text-white !important;
 }
 </style>
-
-<script>
-import { mapActions } from "vuex"
-
-export default {
-  name: "Footer",
-  data() {
-    return {
-      contractAddress: "2uHvhSasjzHm4PPAWaVpuU7yKtd4yUGYx6WK2oxutQnm",
-    }
-  },
-  computed: {
-    contractAddressTruncated() {
-      return (
-        this.contractAddress.slice(0, 6) +
-        "..." +
-        this.contractAddress.slice(-4)
-      )
-    },
-  },
-  methods: {
-    ...mapActions(["showInfo"]),
-    copyContractAddress() {
-      navigator.clipboard
-        .writeText(this.contractAddress)
-        .then(() => {
-          this.showInfo("Contract address copied to clipboard!")
-        })
-        .catch((err) => {
-          console.error("Failed to copy contract address: ", err)
-          // Optionally, show an error message to the user
-        })
-    },
-  },
-}
-</script>

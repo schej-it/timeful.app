@@ -15,20 +15,19 @@
         <div v-if="!event.daysOnly" class="tw-flex tw-items-center tw-gap-2">
           <TimezoneSelector
             class="tw-w-full sm:tw-w-[unset]"
-            :value="curTimezone"
+            :model-value="curTimezone"
             :reference-date="timezoneReferenceDate"
-            @input="(val) => $emit('update:curTimezone', val)"
+            @update:model-value="(val) => $emit('update:curTimezone', val)"
           />
           <v-select
             :value="timeType"
-            @input="$emit('update:timeType', $event)"
             :items="timeTypeOptions"
-            :menu-props="{ auto: true }"
             item-text="label"
             item-value="value"
             class="tw-z-20 -tw-mt-px tw-w-16 tw-text-sm"
             dense
             hide-details
+            @input="$emit('update:timeType', $event)"
           />
         </div>
         <div
@@ -38,14 +37,13 @@
           Show
           <v-select
             :value="mobileNumDays"
-            @input="$emit('update:mobileNumDays', $event)"
             :items="mobileNumDaysOptions"
-            :menu-props="{ auto: true }"
             item-text="label"
             item-value="value"
             class="-tw-mt-px tw-flex-none tw-shrink tw-basis-24 tw-text-sm"
             dense
             hide-details
+            @input="$emit('update:mobileNumDays', $event)"
           />
           at a time
         </div>
@@ -54,17 +52,17 @@
           <EventOptions
             class="tw-mt-2 tw-w-full"
             :event="event"
-            :showBestTimes="showBestTimes"
-            @update:showBestTimes="(val) => $emit('update:showBestTimes', val)"
-            :hideIfNeeded="hideIfNeeded"
-            @update:hideIfNeeded="(val) => $emit('update:hideIfNeeded', val)"
-            :showEventOptions="showEventOptions"
-            @toggleShowEventOptions="$emit('toggleShowEventOptions')"
-            :startCalendarOnMonday="startCalendarOnMonday"
-            @update:startCalendarOnMonday="
+            :show-best-times="showBestTimes"
+            :hide-if-needed="hideIfNeeded"
+            :show-event-options="showEventOptions"
+            :start-calendar-on-monday="startCalendarOnMonday"
+            :num-responses="numResponses"
+            @update:show-best-times="(val) => $emit('update:showBestTimes', val)"
+            @update:hide-if-needed="(val) => $emit('update:hideIfNeeded', val)"
+            @toggle-show-event-options="$emit('toggleShowEventOptions')"
+            @update:start-calendar-on-monday="
               (val) => $emit('update:startCalendarOnMonday', val)
             "
-            :numResponses="numResponses"
           />
         </template>
         <template
@@ -76,8 +74,8 @@
               v-if="calendarPermissionGranted"
               :week-offset="weekOffset"
               :event="event"
-              @update:weekOffset="(val) => $emit('update:weekOffset', val)"
               :start-on-monday="event.startOnMonday"
+              @update:week-offset="(val) => $emit('update:weekOffset', val)"
             />
           </div>
         </template>
@@ -92,7 +90,7 @@
           <v-btn
             outlined
             class="tw-w-full tw-text-blue"
-            @click="(e) => $emit('scheduleEvent', e)"
+            @click="(e: MouseEvent) => $emit('scheduleEvent', e)"
           >
             <v-icon small>mdi-calendar-check</v-icon>
             <span class="tw-ml-2">Schedule event</span>
@@ -102,17 +100,16 @@
           <v-btn
             outlined
             class="tw-mr-1 tw-text-red"
-            @click="(e) => $emit('cancelScheduleEvent', e)"
+            @click="(e: MouseEvent) => $emit('cancelScheduleEvent', e)"
           >
             Cancel
           </v-btn>
           <v-menu offset-y class="tw-z-20">
-            <template v-slot:activator="{ on, attrs }">
+            <template #activator="{ props: activatorProps }">
               <v-btn
                 :disabled="!allowScheduleEvent"
                 class="tw-bg-blue tw-text-white"
-                v-bind="attrs"
-                v-on="on"
+                v-bind="activatorProps"
               >
                 Schedule
               </v-btn>
@@ -164,96 +161,78 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { computed } from "vue"
+import { storeToRefs } from "pinia"
+import { useMainStore } from "@/stores/main"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import TimezoneSelector from "./TimezoneSelector.vue"
 import GCalWeekSelector from "./GCalWeekSelector.vue"
-import { isPhone } from "@/utils"
-import Advertisement from "../event/Advertisement.vue"
-import ExpandableSection from "../ExpandableSection.vue"
 import EventOptions from "./EventOptions.vue"
 import { timeTypes, guestUserId } from "@/constants"
-import { mapState, mapGetters } from "vuex"
+import type { EventLike, Timezone } from "@/composables/schedule_overlap/types"
 
-export default {
-  name: "ToolRow",
+const props = withDefaults(
+  defineProps<{
+    event: EventLike
+    state: string
+    states: Record<string, string>
+    curTimezone: Timezone
+    startCalendarOnMonday?: boolean
+    showBestTimes: boolean
+    hideIfNeeded: boolean
+    isWeekly: boolean
+    calendarPermissionGranted: boolean
+    weekOffset: number
+    timezoneReferenceDate?: Date | null
+    numResponses: number
+    mobileNumDays?: number
+    allowScheduleEvent: boolean
+    showEventOptions: boolean
+    timeType: string
+  }>(),
+  {
+    startCalendarOnMonday: false,
+    timezoneReferenceDate: null,
+    mobileNumDays: 3,
+  }
+)
 
-  props: {
-    event: { type: Object, required: true },
-    state: { type: String, required: true },
-    states: { type: Object, required: true },
-    curTimezone: { type: Object, required: true },
-    startCalendarOnMonday: { type: Boolean, default: false },
-    showBestTimes: { type: Boolean, required: true },
-    hideIfNeeded: { type: Boolean, required: true },
-    isWeekly: { type: Boolean, required: true },
-    calendarPermissionGranted: { type: Boolean, required: true },
-    weekOffset: { type: Number, required: true },
-    timezoneReferenceDate: { type: Date, required: false, default: null },
-    numResponses: { type: Number, required: true },
-    mobileNumDays: { type: Number, default: 3 }, // The number of days to show at a time on mobile
-    allowScheduleEvent: { type: Boolean, required: true },
-    showEventOptions: { type: Boolean, required: true },
-    timeType: { type: String, required: true },
-  },
+defineEmits<{
+  "update:curTimezone": [value: Timezone]
+  "update:timeType": [value: string]
+  "update:mobileNumDays": [value: number]
+  "update:showBestTimes": [value: boolean]
+  "update:hideIfNeeded": [value: boolean]
+  "update:startCalendarOnMonday": [value: boolean]
+  "update:weekOffset": [value: number]
+  toggleShowEventOptions: []
+  scheduleEvent: [e: MouseEvent]
+  cancelScheduleEvent: [e: MouseEvent]
+  confirmScheduleEvent: [useGcal: boolean]
+}>()
 
-  components: {
-    TimezoneSelector,
-    GCalWeekSelector,
-    Advertisement,
-    ExpandableSection,
-    EventOptions,
-  },
+const mainStore = useMainStore()
+const { authUser } = storeToRefs(mainStore)
 
-  data: () => ({
-    mobileNumDaysOptions: [
-      { label: "3 days", value: 3 },
-      { label: "7 days", value: 7 },
-    ],
-    timeTypeOptions: [
-      { label: "12h", value: timeTypes.HOUR12 },
-      { label: "24h", value: timeTypes.HOUR24 },
-    ],
-  }),
+const { isPhone } = useDisplayHelpers()
 
-  mounted() {
-    // Initialize Google Ads only for non-premium users
-    // if (!this.isPremiumUser) {
-    //   this.$nextTick(() => {
-    //     this.initializeAd()
-    //  })
-    // }
-  },
+const mobileNumDaysOptions = [
+  { label: "3 days", value: 3 },
+  { label: "7 days", value: 7 },
+]
+const timeTypeOptions = [
+  { label: "12h", value: timeTypes.HOUR12 },
+  { label: "24h", value: timeTypes.HOUR24 },
+]
 
-  methods: {
-    initializeAd() {
-      try {
-        (window.adsbygoogle = window.adsbygoogle || []).push({})
-      } catch (e) {
-        console.error('AdSense error:', e)
-      }
-    }
-  },
-
-  computed: {
-    ...mapState(["authUser"]),
-    ...mapGetters(["isPremiumUser"]),
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-    guestEvent() {
-      return this.event.ownerId == guestUserId
-    },
-    isOwner() {
-      return this.event.ownerId == this.authUser?._id
-    },
-    showScheduleEventButton() {
-      return (
-        !this.event.daysOnly &&
-        this.numResponses > 0 &&
-        this.state !== this.states.EDIT_AVAILABILITY &&
-        (this.guestEvent || this.isOwner)
-      )
-    },
-  },
-}
+const guestEvent = computed(() => props.event.ownerId == guestUserId)
+const isOwner = computed(() => props.event.ownerId == authUser.value?._id)
+const showScheduleEventButton = computed(
+  () =>
+    !props.event.daysOnly &&
+    props.numResponses > 0 &&
+    props.state !== props.states.EDIT_AVAILABILITY &&
+    (guestEvent.value || isOwner.value)
+)
 </script>

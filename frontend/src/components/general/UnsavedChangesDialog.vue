@@ -1,9 +1,9 @@
 <template>
   <v-dialog
-    :value="value"
-    @input="(e) => $emit('input', e)"
+    :model-value="modelValue"
     width="400"
     content-class="tw-m-0"
+    @update:model-value="(v: boolean) => emit('update:modelValue', v)"
   >
     <v-card>
       <v-card-title>Unsaved changes</v-card-title>
@@ -13,21 +13,22 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn text @click="$emit('input', false)" class="tw-text-green"
+        <v-btn text class="tw-text-green" @click="emit('update:modelValue', false)"
           >Cancel</v-btn
         >
-        <v-btn text @click="$emit('leave')">Leave page</v-btn>
+        <v-btn text @click="emit('leave')">Leave page</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 
-<script>
-export default {
-  name: "UnsavedChangesDialog",
+<script setup lang="ts">
+defineProps<{
+  modelValue: boolean
+}>()
 
-  props: {
-    value: { type: Boolean, required: true },
-  },
-}
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+  leave: []
+}>()
 </script>

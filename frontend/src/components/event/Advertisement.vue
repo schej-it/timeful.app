@@ -2,11 +2,7 @@
   <div v-if="showAd" class="tw-flex tw-cursor-pointer" @click="navigateToAd">
     <v-img
       alt="tomotime ad"
-      :src="
-        isPhone
-          ? require('@/assets/ads/tomotime_mobile.png')
-          : require('@/assets/ads/tomotime.png')
-      "
+      :src="adImageUrl"
       width="0"
       transition="fade-transition"
       class="tw-relative tw-shadow-md sm:tw-shadow-none"
@@ -19,68 +15,66 @@
   </div>
 </template>
 
-<script>
-import { mapState } from "vuex"
-import { isPhone } from "@/utils"
+<script setup lang="ts">
+import { ref, computed, onMounted } from "vue"
+import { storeToRefs } from "pinia"
+import { useMainStore } from "@/stores/main"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { get } from "@/utils"
 import { guestUserId } from "@/constants"
+import { posthog } from "@/plugins/posthog"
+import type { User } from "@/types"
 
-export default {
-  name: "Advertisement",
+defineOptions({ name: 'EventAdvertisement' })
 
-  props: {
-    ownerId: { type: String, default: "" },
-  },
+const props = defineProps<{
+  ownerId?: string
+}>()
 
-  data: () => ({
-    link: "https://tomotime.app",
-    eduOnly: true,
-    owner: null,
-  }),
+const mainStore = useMainStore()
+const { authUser } = storeToRefs(mainStore)
+const { isPhone } = useDisplayHelpers()
 
-  async mounted() {
-    if (this.ownerId !== guestUserId)
-      this.owner = await get(`/users/${this.ownerId}`)
-  },
+const link = ref("https://tomotime.app")
+const eduOnly = ref(true)
+const owner = ref<User | null>(null)
 
-  computed: {
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-  },
+const adImageUrl = computed(() => {
+  return isPhone.value
+    ? new URL('@/assets/ads/tomotime_mobile.png', import.meta.url).href
+    : new URL('@/assets/ads/tomotime.png', import.meta.url).href
+})
 
-  methods: {
-    navigateToAd() {
-      this.$posthog?.capture("Clicked ad", {
-        link: this.link,
-      })
-      window.open(this.link, "_blank")
-    },
-    isEduEmail(email) {
-      const split = email.split(".")
-      return split[split.length - 1] === "edu"
-    },
-  },
-
-  watch: {},
-
-  computed: {
-    ...mapState(["authUser"]),
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-    showAd() {
-      if (this.eduOnly) {
-        return (
-          (this.authUser && this.isEduEmail(this.authUser.email)) ||
-          (this.owner && this.isEduEmail(this.owner.email))
-        )
-      } else {
-        return true
-      }
-    },
-  },
-
-  components: {},
+async function loadOwner() {
+  if (props.ownerId && props.ownerId !== guestUserId) {
+    owner.value = await get<User>(`/users/${props.ownerId}`)
+  }
 }
+
+function navigateToAd() {
+  posthog.capture("Clicked ad", {
+    link: link.value,
+  })
+  window.open(link.value, "_blank")
+}
+
+function isEduEmail(email: string): boolean {
+  const split = email.split(".")
+  return split[split.length - 1] === "edu"
+}
+
+const showAd = computed(() => {
+  if (eduOnly.value) {
+    return (
+      (authUser.value?.email && isEduEmail(authUser.value.email)) ??
+      (owner.value?.email && isEduEmail(owner.value.email))
+    )
+  } else {
+    return true
+  }
+})
+
+onMounted(() => {
+  void loadOwner()
+})
 </script>

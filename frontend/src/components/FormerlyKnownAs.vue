@@ -15,8 +15,5 @@
     </div>
   </div>
 </template>
-<script>
-export default {
-  name: "FormerlyKnownAs",
-}
-</script>
+
+<script setup lang="ts"></script>

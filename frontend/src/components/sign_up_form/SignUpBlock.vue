@@ -46,18 +46,17 @@
       <div class="tw-flex tw-h-4 tw-items-center">
         <div v-if="isEditing" class="-tw-mt-2 tw-w-20">
           <v-select
-            :value="signUpBlock.capacity"
-            @input="
-              $emit('update:signUpBlock', {
-                ...signUpBlock,
-                capacity: $event,
-              })
-            "
+            :model-value="signUpBlock.capacity"
             class="tw-text-xs"
-            menu-props="auto"
             :items="capacityOptions"
             hide-details
             dense
+            @update:model-value="
+              (v: number) => emit('update:signUpBlock', {
+                ...signUpBlock,
+                capacity: v,
+              })
+            "
           ></v-select>
         </div>
         <div v-else class="tw-text-xs">{{ signUpBlock.capacity }}</div>
@@ -71,9 +70,9 @@
         class="tw-relative tw-flex tw-items-center"
       >
         <div class="tw-ml-1 tw-mr-2">
-          <v-avatar v-if="response.user.picture != '' && (!anonymize || response.user._id == authUser._id)" :size="16">
+          <v-avatar v-if="response.user?.picture != '' && (!anonymize || response.user?._id == authUser?._id)" :size="16">
             <img
-              v-if="response.user.picture"
+              v-if="response.user?.picture"
               :src="response.user.picture"
               referrerpolicy="no-referrer"
             />
@@ -82,8 +81,8 @@
             <v-icon small>mdi-account</v-icon>
           </v-avatar>
         </div>
-        <div v-if="!anonymize || response.user._id == authUser._id" class="tw-transition-all tw-text-sm">
-          {{ response.user.firstName + " " + response.user.lastName }}
+        <div v-if="!anonymize || response.user?._id == authUser?._id" class="tw-transition-all tw-text-sm">
+          {{ response.user?.firstName + " " + response.user?.lastName }}
         </div>
         <div v-else class="tw-transition-all tw-text-sm tw-italic">Attendee</div>
       </div>
@@ -92,8 +91,7 @@
     <div v-if="isEditing" class="tw-mt-2">
       <a
         class="tw-text-xs tw-text-red"
-        text
-        @click="$emit('delete:signUpBlock', signUpBlock._id)"
+        @click="emit('delete:signUpBlock', signUpBlock._id ?? '')"
         >Delete slot</a
       >
     </div>
@@ -101,7 +99,6 @@
     <div v-if="!isOwner && hasCapacity && !infoOnly" class="tw-mt-2">
       <a
         class="tw-text-xs tw-text-green"
-        text
         @click="joinSlot"
         >+ Join this slot</a
       >
@@ -109,74 +106,102 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { computed, ref, watch } from "vue"
+import { storeToRefs } from "pinia"
 import { getStartEndDateString } from "@/utils"
-import { mapState } from "vuex"
+import { useMainStore } from "@/stores/main"
+import type { SignUpBlock } from "@/types"
 
-export default {
-  name: "SignUpBlock",
-
-  props: {
-    signUpBlock: { type: Object, required: true },
-    isEditing: { type: Boolean, default: false },
-    isOwner: { type: Boolean, default: false },
-    unsaved: { type: Boolean, default: false },
-    infoOnly: { type: Boolean, default: false },
-    anonymous: { type: Boolean, default: false },
-  },
-
-  data: () => ({
-    capacityOptions: [...Array(100).keys()].map((i) => i + 1),
-    isEditingName: false,
-    newName: "",
-  }),
-
-  computed: {
-    ...mapState(["authUser"]),
-    timeRangeString() {
-      return getStartEndDateString(
-        this.signUpBlock.startDate,
-        this.signUpBlock.endDate
-      )
-    },
-    hasCapacity() {
-      return (
-        !this.signUpBlock.responses ||
-        this.signUpBlock.capacity > this.signUpBlock.responses.length
-      )
-    },
-    numberResponses() {
-      return this.signUpBlock.responses ? this.signUpBlock.responses.length : 0
-    },
-    anonymize() {
-      return this.anonymous && !this.isOwner
+type SignUpBlockWithResponses = SignUpBlock & { 
+  responses?: {
+    user?: {
+      _id?: string
+      firstName?: string
+      lastName?: string
+      picture?: string
     }
-  },
-
-  methods: {
-    saveName() {
-      this.$emit("update:signUpBlock", {
-        ...this.signUpBlock,
-        name: this.newName,
-      })
-      this.isEditingName = false
-    },
-    cancelEditName() {
-      this.newName = this.signUpBlock.name
-      this.isEditingName = false
-    },
-    joinSlot() {
-      if (!this.isOwner) this.$emit('signUpForBlock', this.signUpBlock)
-    }
-  },
-
-  watch: {
-    signUpBlock: {
-      immediate: true,
-      handler(newVal) {
-        this.newName = newVal.name
-      },
-    },
-  },
+  }[]
 }
+
+const props = withDefaults(
+  defineProps<{
+    signUpBlock: SignUpBlockWithResponses
+    isEditing?: boolean
+    isOwner?: boolean
+    unsaved?: boolean
+    infoOnly?: boolean
+    anonymous?: boolean
+  }>(),
+  {
+    isEditing: false,
+    isOwner: false,
+    unsaved: false,
+    infoOnly: false,
+    anonymous: false,
+  }
+)
+
+const emit = defineEmits<{
+  "update:signUpBlock": [block: SignUpBlock]
+  "delete:signUpBlock": [id: string]
+  signUpForBlock: [block: SignUpBlock]
+}>()
+
+const { authUser } = storeToRefs(useMainStore())
+
+const capacityOptions = [...Array(100).keys()].map((i) => i + 1)
+const isEditingName = ref(false)
+const newName = ref("")
+
+const timeRangeString = computed(() => {
+  if (!props.signUpBlock.startDate || !props.signUpBlock.endDate) return ""
+  return getStartEndDateString(
+    new Date(props.signUpBlock.startDate),
+    new Date(props.signUpBlock.endDate)
+  )
+})
+
+const blockWithResponses = computed(
+  () => props.signUpBlock
+)
+
+const hasCapacity = computed(
+  () =>
+    !blockWithResponses.value.responses ||
+    (props.signUpBlock.capacity ?? 0) > blockWithResponses.value.responses.length
+)
+
+const numberResponses = computed(() =>
+  blockWithResponses.value.responses
+    ? blockWithResponses.value.responses.length
+    : 0
+)
+
+const anonymize = computed(() => props.anonymous && !props.isOwner)
+
+const saveName = () => {
+  emit("update:signUpBlock", {
+    ...props.signUpBlock,
+    name: newName.value,
+  })
+  isEditingName.value = false
+}
+
+const cancelEditName = () => {
+  newName.value = props.signUpBlock.name ?? ""
+  isEditingName.value = false
+}
+
+const joinSlot = () => {
+  if (!props.isOwner) emit("signUpForBlock", props.signUpBlock)
+}
+
+watch(
+  () => props.signUpBlock,
+  (newVal) => {
+    newName.value = newVal.name ?? ""
+  },
+  { immediate: true }
+)
 </script>

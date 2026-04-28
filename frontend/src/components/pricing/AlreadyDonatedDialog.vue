@@ -1,9 +1,9 @@
 <template>
   <v-dialog
-    :value="value"
-    @input="(e) => $emit('input', e)"
+    :model-value="modelValue"
     width="400"
     content-class="tw-m-0"
+    @update:model-value="(e) => emit('update:modelValue', e)"
   >
     <v-card class="tw-rounded-lg tw-p-6 tw-pb-4 sm:tw-p-8 sm:tw-pb-4">
       <h2 class="tw-mb-4 tw-text-lg tw-font-medium">Already Donated?</h2>
@@ -16,16 +16,17 @@
         from the email address associated with your donation. We'll upgrade your
         account manually.
       </p>
-      <v-btn text block @click="$emit('input', false)"> Close </v-btn>
+      <v-btn text block @click="emit('update:modelValue', false)"> Close </v-btn>
     </v-card>
   </v-dialog>
 </template>
 
-<script>
-export default {
-  name: "AlreadyDonatedDialog",
-  props: {
-    value: { type: Boolean, required: true },
-  },
-}
+<script setup lang="ts">
+defineProps<{
+  modelValue: boolean
+}>()
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+}>()
 </script>

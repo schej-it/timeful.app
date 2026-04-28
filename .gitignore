@@ -5,3 +5,5 @@ server/server
 deploy_scripts/reboot_log.txt
 .keys
 *.log
+.eslintcache
+.claude

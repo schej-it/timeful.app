@@ -37,24 +37,32 @@
     </div>
 
     <div class="tw-flex">
-      <!-- <v-spacer /> -->
-      <v-btn v-if="cancelLabel != ''" @click="$emit('cancel')" text class="tw-mr-2 tw-flex-1">
+      <v-btn
+        v-if="cancelLabel != ''"
+        text
+        class="tw-mr-2 tw-flex-1"
+        @click="emit('cancel')"
+      >
         {{ cancelLabel }}
       </v-btn>
-      <v-btn @click="$emit('allow')" class="tw-flex-1 tw-bg-green" dark>
+      <v-btn class="tw-flex-1 tw-bg-green" dark @click="emit('allow')">
         {{ allowLabel }}
       </v-btn>
     </div>
   </div>
 </template>
 
-<script>
-export default {
-  name: "CalendarPermissionsCard",
+<script setup lang="ts">
+withDefaults(
+  defineProps<{
+    cancelLabel?: string
+    allowLabel?: string
+  }>(),
+  { cancelLabel: "Cancel", allowLabel: "Allow" }
+)
 
-  props: {
-    cancelLabel: { type: String, default: "Cancel" },
-    allowLabel: { type: String, default: "Allow" },
-  },
-}
+const emit = defineEmits<{
+  cancel: []
+  allow: []
+}>()
 </script>

@@ -7,7 +7,7 @@
         >
         <v-card-text class="tw-p-0">
           <div class="tw-flex tw-flex-col tw-gap-2">
-            <v-btn block @click="$emit('addGoogleCalendar')">
+            <v-btn block @click="emit('addGoogleCalendar')">
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
                   class="tw-flex-initial"
@@ -33,7 +33,7 @@
                 <v-spacer />
               </div>
             </v-btn>
-            <v-btn block @click="$emit('addOutlookCalendar')">
+            <v-btn block @click="emit('addOutlookCalendar')">
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
                   class="tw-flex-initial"
@@ -67,55 +67,53 @@
       <AppleCredentials
         v-if="state === states.APPLE_CREDENTIALS"
         @back="state = states.PICK_CALENDAR"
-        @addedCalendar="$emit('addedCalendar')"
+        @added-calendar="emit('addedCalendar')"
       />
     </v-expand-transition>
     <v-expand-transition>
       <ICSCredentials
         v-if="state === states.ICS_CREDENTIALS"
         @back="state = states.PICK_CALENDAR"
-        @addedCalendar="$emit('addedCalendar')"
+        @added-calendar="emit('addedCalendar')"
       />
     </v-expand-transition>
   </v-card>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref, watch } from "vue"
 import AppleCredentials from "@/components/calendar_permission_dialogs/AppleCredentials.vue"
-import ICSCredentials from "@/components/calendar_permission_dialogs/ICSCredentials.vue";
+import ICSCredentials from "@/components/calendar_permission_dialogs/ICSCredentials.vue"
 
-export default {
-  name: "CalendarTypeSelector",
+const props = withDefaults(
+  defineProps<{
+    visible?: boolean
+  }>(),
+  { visible: true }
+)
 
-  components: {
-    AppleCredentials,
-    ICSCredentials
-  },
+const emit = defineEmits<{
+  addGoogleCalendar: []
+  addOutlookCalendar: []
+  addedCalendar: []
+}>()
 
-  props: {
-    visible: {
-      type: Boolean,
-      default: true,
-    },
-  },
+const states = {
+  PICK_CALENDAR: "pick-calendar",
+  APPLE_CREDENTIALS: "apple-credentials",
+  ICS_CREDENTIALS: "ics-credentials",
+} as const
 
-  data() {
-    return {
-      states: {
-        PICK_CALENDAR: "pick-calendar",
-        APPLE_CREDENTIALS: "apple-credentials",
-        ICS_CREDENTIALS: "ics-credentials",
-      },
-      state: "pick-calendar",
+type State = (typeof states)[keyof typeof states]
+
+const state = ref<State>(states.PICK_CALENDAR)
+
+watch(
+  () => props.visible,
+  (val) => {
+    if (!val) {
+      state.value = states.PICK_CALENDAR
     }
-  },
-
-  watch: {
-    visible(val) {
-      if (!val) {
-        this.state = this.states.PICK_CALENDAR
-      }
-    },
-  },
-}
+  }
+)
 </script>

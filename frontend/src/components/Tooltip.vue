@@ -1,5 +1,5 @@
 <template>
-  <div class="tw-relative" ref="tooltipTrigger">
+  <div ref="tooltipTrigger" class="tw-relative">
     <slot></slot>
     <div
       v-if="isVisible && content"
@@ -15,93 +15,70 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "Tooltip",
-  props: {
-    content: {
-      type: String,
-      default: "",
-    },
-  },
-  data() {
-    return {
-      position: { x: 0, y: 0 },
-      isVisible: false,
-      showTimeout: null,
-    }
-  },
-  watch: {
-    content: {
-      handler(newContent) {
-        // Clear any existing timeout
-        if (this.showTimeout) {
-          clearTimeout(this.showTimeout)
-        }
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref, watch } from "vue"
 
-        // Hide tooltip immediately when content changes
-        this.isVisible = false
+defineOptions({ name: "AppTooltip" })
 
-        // If there's new content, set a timeout to show it
-        if (newContent) {
-          this.showTimeout = setTimeout(() => {
-            this.isVisible = true
-          }, 700)
-        }
-      },
-      immediate: true,
-    },
-  },
-  methods: {
-    handleMouseMove(e) {
-      this.position = {
-        x: e.clientX,
-        y: e.clientY - 30,
-      }
-    },
-    handleMouseEnter() {
-      if (this.content) {
-        this.isVisible = true
-      }
-    },
-    handleMouseLeave() {
-      this.isVisible = false
-    },
-  },
-  mounted() {
-    if (this.$refs.tooltipTrigger) {
-      this.$refs.tooltipTrigger.addEventListener(
-        "mousemove",
-        this.handleMouseMove
-      )
-      this.$refs.tooltipTrigger.addEventListener(
-        "mouseenter",
-        this.handleMouseEnter
-      )
-      this.$refs.tooltipTrigger.addEventListener(
-        "mouseleave",
-        this.handleMouseLeave
-      )
+const props = withDefaults(
+  defineProps<{
+    content?: string
+  }>(),
+  { content: "" }
+)
+
+const tooltipTrigger = ref<HTMLElement | null>(null)
+const position = ref({ x: 0, y: 0 })
+const isVisible = ref(false)
+const showTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
+
+watch(
+  () => props.content,
+  (newContent) => {
+    if (showTimeout.value) {
+      clearTimeout(showTimeout.value)
+    }
+    isVisible.value = false
+    if (newContent) {
+      showTimeout.value = setTimeout(() => {
+        isVisible.value = true
+      }, 700)
     }
   },
-  beforeDestroy() {
-    if (this.showTimeout) {
-      clearTimeout(this.showTimeout)
-    }
-    if (this.$refs.tooltipTrigger) {
-      this.$refs.tooltipTrigger.removeEventListener(
-        "mousemove",
-        this.handleMouseMove
-      )
-      this.$refs.tooltipTrigger.removeEventListener(
-        "mouseenter",
-        this.handleMouseEnter
-      )
-      this.$refs.tooltipTrigger.removeEventListener(
-        "mouseleave",
-        this.handleMouseLeave
-      )
-    }
-  },
+  { immediate: true }
+)
+
+const handleMouseMove = (e: MouseEvent) => {
+  position.value = {
+    x: e.clientX,
+    y: e.clientY - 30,
+  }
 }
+const handleMouseEnter = () => {
+  if (props.content) {
+    isVisible.value = true
+  }
+}
+const handleMouseLeave = () => {
+  isVisible.value = false
+}
+
+onMounted(() => {
+  if (tooltipTrigger.value) {
+    tooltipTrigger.value.addEventListener("mousemove", handleMouseMove)
+    tooltipTrigger.value.addEventListener("mouseenter", handleMouseEnter)
+    tooltipTrigger.value.addEventListener("mouseleave", handleMouseLeave)
+  }
+})
+
+onBeforeUnmount(() => {
+  if (showTimeout.value) {
+    clearTimeout(showTimeout.value)
+  }
+  if (tooltipTrigger.value) {
+    tooltipTrigger.value.removeEventListener("mousemove", handleMouseMove)
+    tooltipTrigger.value.removeEventListener("mouseenter", handleMouseEnter)
+    tooltipTrigger.value.removeEventListener("mouseleave", handleMouseLeave)
+  }
+})
 </script>

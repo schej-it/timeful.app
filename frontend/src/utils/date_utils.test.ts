@@ -22,7 +22,7 @@ describe("DST timezone regression", () => {
   it("uses the viewed week as the reference date for weekly events", () => {
     const weeklyEvent = {
       type: eventTypes.DOW,
-      dates: ["2018-06-17T09:00:00.000Z"],
+      dates: [new Date("2018-06-17T09:00:00.000Z").getTime()],
     }
     const referenceDate = getTimezoneReferenceDateForEvent(weeklyEvent, 3)
 
@@ -35,7 +35,10 @@ describe("DST timezone regression", () => {
   it("uses the first event date as the reference date for specific dates", () => {
     const datedEvent = {
       type: eventTypes.SPECIFIC_DATES,
-      dates: ["2026-11-02T09:00:00.000Z", "2026-11-03T09:00:00.000Z"],
+      dates: [
+        new Date("2026-11-02T09:00:00.000Z").getTime(),
+        new Date("2026-11-03T09:00:00.000Z").getTime(),
+      ],
     }
 
     expect(
@@ -61,7 +64,7 @@ describe("DST timezone regression", () => {
     const weeklyEvent = {
       type: eventTypes.DOW,
       startOnMonday: false,
-      dates: ["2018-06-17T09:00:00.000Z"],
+      dates: [new Date("2018-06-17T09:00:00.000Z").getTime()],
     }
     const selectedTimezone = {
       value: "Europe/Vienna",
@@ -90,7 +93,7 @@ describe("DST timezone regression", () => {
     const weeklyEvent = {
       type: eventTypes.DOW,
       startOnMonday: false,
-      dates: ["2018-06-17T09:00:00.000Z"],
+      dates: [new Date("2018-06-17T09:00:00.000Z").getTime()],
     }
     const selectedTimezone = {
       value: "Europe/Vienna",
@@ -108,7 +111,7 @@ describe("DST timezone regression", () => {
     const weeklyEvent = {
       type: eventTypes.DOW,
       startOnMonday: false,
-      dates: ["2018-06-17T09:00:00.000Z"],
+      dates: [new Date("2018-06-17T09:00:00.000Z").getTime()],
     }
     const selectedTimezone = {
       value: "Europe/Vienna",

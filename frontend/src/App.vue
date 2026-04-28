@@ -6,19 +6,19 @@
     <SignInNotSupportedDialog v-model="webviewDialog" />
     <SignInDialog
       v-model="signInDialog"
-      @signIn="_signIn"
-      @emailSignIn="_emailSignIn"
+      @sign-in="_signIn"
+      @email-sign-in="_emailSignIn"
     />
     <NewDialog
       v-model="newDialogOptions.show"
       :type="newDialogOptions.openNewGroup ? 'group' : 'event'"
-      :contactsPayload="newDialogOptions.contactsPayload"
+      :contacts-payload="newDialogOptions.contactsPayload"
       :no-tabs="newDialogOptions.eventOnly"
       :folder-id="newDialogOptions.folderId"
     />
     <UpgradeDialog
-      :value="upgradeDialogVisible"
-      @input="handleUpgradeDialogInput"
+      :model-value="upgradeDialogVisible"
+      @update:model-value="handleUpgradeDialogInput"
     />
     <UpvoteRedditSnackbar />
     <div
@@ -101,6 +101,166 @@
     </v-main>
   </v-app>
 </template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue"
+import { useRoute, useRouter } from "vue-router"
+import { useHead } from "@unhead/vue"
+import { storeToRefs } from "pinia"
+import { get, getLocation, post, signInGoogle, signInOutlook } from "@/utils"
+import { authTypes, calendarTypes } from "@/constants"
+import isWebview from "is-ua-webview"
+import { posthog } from "@/plugins/posthog"
+import { useMainStore } from "@/stores/main"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import type { User } from "@/types"
+
+useHead({ htmlAttrs: { lang: "en-US" } })
+
+const route = useRoute()
+const router = useRouter()
+const mainStore = useMainStore()
+const {
+  authUser, error, info, upgradeDialogVisible, newDialogOptions, isPremiumUser,
+} = storeToRefs(mainStore)
+const { isPhone } = useDisplayHelpers()
+
+const loaded = ref(false)
+const webviewDialog = ref(false)
+const signInDialog = ref(false)
+
+const showHeader = computed(() =>
+  route.name !== "landing" &&
+  route.name !== "auth" &&
+  route.name !== "sign-in" &&
+  route.name !== "sign-up" &&
+  route.name !== "privacy-policy"
+)
+
+const showFeedbackBtn = computed(() => !isPhone.value || route.name === "home")
+
+const routerViewClass = computed(() => {
+  if (!showHeader.value) return ""
+  return isPhone.value ? "tw-pt-12 " : "tw-pt-14 "
+})
+
+function handleScroll() {
+  // scrollY tracked externally if needed; kept for scroll listener lifecycle
+}
+
+function _createNew(eventOnly = false) {
+  posthog.capture("create_new_button_clicked", { eventOnly })
+  mainStore.createNew({ eventOnly })
+}
+
+function signIn() {
+  if (route.name === "event" || route.name === "group" || route.name === "signUp") {
+    if (isWebview(navigator.userAgent)) {
+      webviewDialog.value = true
+      return
+    }
+  }
+  void router.push({ name: "sign-in" })
+}
+
+function _signIn(calendarType: string) {
+  if (route.name === "event" || route.name === "group" || route.name === "signUp") {
+    let state: Record<string, unknown> | undefined
+    if (route.name === "event") {
+      state = { eventId: route.params.eventId, type: authTypes.EVENT_SIGN_IN }
+    } else if (route.name === "group") {
+      state = { groupId: route.params.groupId, type: authTypes.GROUP_SIGN_IN }
+    }
+    if (calendarType === calendarTypes.GOOGLE) {
+      signInGoogle({ state, selectAccount: true })
+    } else if (calendarType === calendarTypes.OUTLOOK) {
+      signInOutlook({ state, selectAccount: true })
+    }
+  }
+}
+
+function _emailSignIn(user: User) {
+  mainStore.setAuthUser(user)
+  posthog.identify(user._id, {
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+  })
+  if (route.name === "landing") {
+    void router.push({ name: "home" })
+  }
+}
+
+function setFeatureFlags() {
+  mainStore.setFeatureFlagsLoaded(true)
+}
+
+function trackFeedbackClick() {
+  posthog.capture("give_feedback_button_clicked")
+}
+
+function handleUpgradeDialogInput(value: boolean) {
+  if (!value) mainStore.hideUpgradeDialog()
+}
+
+// created() equivalent
+void (async () => {
+  await get("/user/profile")
+    .then((user) => {
+      const u = user as User
+      mainStore.setAuthUser(u)
+      posthog.identify(u._id, {
+        email: u.email,
+        firstName: u.firstName,
+        lastName: u.lastName,
+      })
+    })
+    .catch(() => {
+      mainStore.setAuthUser(null)
+    })
+    .finally(() => {
+      loaded.value = true
+    })
+
+  window.addEventListener("scroll", handleScroll)
+  void mainStore.getEvents()
+})()
+
+onMounted(() => {
+  // scrollY initialised in handleScroll
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener("scroll", handleScroll)
+})
+
+watch(
+  () => route.fullPath,
+  async () => {
+    const originalHref = window.location.href
+    if (route.name) posthog.capture("$pageview")
+
+    if (route.query.p) {
+      let location = null
+      try {
+        location = await getLocation()
+      } catch {
+        // user probably has adblocker
+      }
+      void post("/analytics/scanned-poster", { url: originalHref, location })
+    }
+  },
+  { immediate: true }
+)
+
+watch(
+  authUser,
+  () => {
+    setFeatureFlags()
+  },
+  { immediate: true }
+)
+</script>
 
 <style>
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans&display=swap");
@@ -227,278 +387,3 @@ html {
   border-radius: 3px;
 }
 </style>
-
-<script>
-import { mapMutations, mapState, mapActions, mapGetters } from "vuex"
-import {
-  get,
-  getLocation,
-  isPhone,
-  post,
-  signInGoogle,
-  signInOutlook,
-  isPremiumUser,
-} from "@/utils"
-import {
-  authTypes,
-  calendarTypes,
-  eventTypes,
-  numFreeEvents,
-  upgradeDialogTypes,
-} from "@/constants"
-import AutoSnackbar from "@/components/AutoSnackbar"
-import AuthUserMenu from "@/components/AuthUserMenu.vue"
-import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
-import UpvoteRedditSnackbar from "@/components/UpvoteRedditSnackbar.vue"
-import Logo from "@/components/Logo.vue"
-import isWebview from "is-ua-webview"
-import NewDialog from "./components/NewDialog.vue"
-import UpgradeDialog from "@/components/pricing/UpgradeDialog.vue"
-import SignInDialog from "@/components/SignInDialog.vue"
-import DiscordBanner from "@/components/DiscordBanner.vue"
-
-export default {
-  name: "App",
-
-  metaInfo: {
-    htmlAttrs: {
-      lang: "en-US",
-    },
-  },
-
-  components: {
-    AutoSnackbar,
-    AuthUserMenu,
-    SignInNotSupportedDialog,
-    NewDialog,
-    UpvoteRedditSnackbar,
-    Logo,
-    UpgradeDialog,
-    SignInDialog,
-    DiscordBanner,
-  },
-
-  data: () => ({
-    mounted: false,
-    loaded: false,
-    scrollY: 0,
-    webviewDialog: false,
-    signInDialog: false,
-  }),
-
-  computed: {
-    ...mapGetters(["isPremiumUser"]),
-    ...mapState([
-      "authUser",
-      "error",
-      "info",
-      "enablePaywall",
-      "upgradeDialogVisible",
-      "newDialogOptions",
-    ]),
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-    showHeader() {
-      return (
-        this.$route.name !== "landing" &&
-        this.$route.name !== "auth" &&
-        this.$route.name !== "sign-in" &&
-        this.$route.name !== "sign-up" &&
-        this.$route.name !== "privacy-policy"
-      )
-    },
-    showFeedbackBtn() {
-      return !this.isPhone || this.$route.name === "home"
-    },
-    routerViewClass() {
-      let c = ""
-      if (this.showHeader) {
-        if (this.isPhone) {
-          c += "tw-pt-12 "
-        } else {
-          c += "tw-pt-14 "
-        }
-      }
-      return c
-    },
-  },
-
-  methods: {
-    ...mapMutations([
-      "setAuthUser",
-      "setSignUpFormEnabled",
-      "setPricingPageConversion",
-      "setEnablePaywall",
-      "setFeatureFlagsLoaded",
-    ]),
-    ...mapActions([
-      "getEvents",
-      "showUpgradeDialog",
-      "hideUpgradeDialog",
-      "createNew",
-    ]),
-    handleScroll(e) {
-      this.scrollY = window.scrollY
-    },
-    _createNew(eventOnly = false) {
-      this.$posthog.capture("create_new_button_clicked", {
-        eventOnly: eventOnly,
-      })
-      this.createNew({ eventOnly })
-    },
-    signIn() {
-      if (
-        this.$route.name === "event" ||
-        this.$route.name === "group" ||
-        this.$route.name === "signUp"
-      ) {
-        if (isWebview(navigator.userAgent)) {
-          this.webviewDialog = true
-          return
-        }
-        this.$router.push({ name: "sign-in" })
-        // this.signInDialog = true
-      } else {
-        this.$router.push({ name: "sign-in" })
-      }
-    },
-    _signIn(calendarType) {
-      if (
-        this.$route.name === "event" ||
-        this.$route.name === "group" ||
-        this.$route.name === "signUp"
-      ) {
-        let state
-        if (this.$route.name === "event") {
-          state = {
-            eventId: this.$route.params.eventId,
-            type: authTypes.EVENT_SIGN_IN,
-          }
-        } else if (this.$route.name === "group") {
-          state = {
-            groupId: this.$route.params.groupId,
-            type: authTypes.GROUP_SIGN_IN,
-          }
-        }
-        if (calendarType === calendarTypes.GOOGLE) {
-          signInGoogle({
-            state,
-            selectAccount: true,
-          })
-        } else if (calendarType === calendarTypes.OUTLOOK) {
-          signInOutlook({
-            state,
-            selectAccount: true,
-          })
-        }
-      }
-    },
-    _emailSignIn(user) {
-      this.setAuthUser(user)
-      this.$posthog?.identify(user._id, {
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-      })
-      if (this.$route.name === "landing") {
-        this.$router.push({ name: "home" })
-      }
-    },
-    setFeatureFlags() {
-      if (!this.$posthog) return
-
-      // this.setSignUpFormEnabled(this.$posthog.isFeatureEnabled("sign-up-form"))
-      // this.setPricingPageConversion(
-      // this.$posthog.getFeatureFlag("pricing-page-conversion")
-      // )
-      // )
-      // this.setEnablePaywall(this.$posthog.isFeatureEnabled("enable-paywall"))
-      this.setFeatureFlagsLoaded(true)
-    },
-    trackFeedbackClick() {
-      this.$posthog.capture("give_feedback_button_clicked")
-    },
-    handleUpgradeDialogInput(value) {
-      if (!value) {
-        this.hideUpgradeDialog()
-      }
-    },
-  },
-
-  async created() {
-    await get("/user/profile")
-      .then((authUser) => {
-        this.setAuthUser(authUser)
-
-        this.$posthog?.identify(authUser._id, {
-          email: authUser.email,
-          firstName: authUser.firstName,
-          lastName: authUser.lastName,
-        })
-      })
-      .catch(() => {
-        this.setAuthUser(null)
-      })
-      .finally(() => {
-        this.loaded = true
-      })
-
-    // Event listeners
-    window.addEventListener("scroll", this.handleScroll)
-
-    this.getEvents()
-  },
-
-  mounted() {
-    this.mounted = true
-    this.scrollY = window.scrollY
-  },
-
-  beforeDestroy() {
-    window.removeEventListener("scroll", this.handleScroll)
-  },
-
-  watch: {
-    $route: {
-      immediate: true,
-      async handler() {
-        const originalHref = window.location.href
-        if (this.$route.name) {
-          this.$posthog?.capture("$pageview")
-        }
-
-        // Check for poster query parameter
-        if (this.$route.query.p) {
-          let location = null
-          try {
-            location = await getLocation()
-          } catch (e) {
-            // User probably has adblocker
-          }
-
-          post("/analytics/scanned-poster", {
-            url: originalHref,
-            location,
-          })
-        }
-      },
-    },
-    authUser: {
-      immediate: true,
-      handler() {
-        if (this.$posthog) {
-          this.setFeatureFlags()
-          // Check feature flags (only if posthog is enabled)
-          // this.$posthog.setPersonPropertiesForFlags({
-          //   email: this.authUser?.email,
-          // })
-          // this.$posthog.onFeatureFlags(() => {
-          //   this.setFeatureFlags()
-          // })
-        }
-      },
-    },
-  },
-}
-</script>

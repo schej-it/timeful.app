@@ -1,25 +1,25 @@
 <template>
   <v-dialog
-    :value="value"
-    @input="(e) => $emit('input', e)"
+    :model-value="modelValue"
     width="400"
     content-class="tw-m-0"
+    @update:model-value="(e) => emit('update:modelValue', e)"
   >
     <v-card>
       <v-card-title class="tw-flex">
         <div>Join slot <span v-if="!authUser">as</span></div>
         <v-spacer />
-        <v-btn icon @click="$emit('input', false)">
+        <v-btn icon @click="emit('update:modelValue', false)">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
       <v-card-text>
         <div class="mb-2">
-          <SignUpBlock :signUpBlock="signUpBlock" infoOnly></SignUpBlock>
+          <SignUpBlock :sign-up-block="signUpBlock" info-only></SignUpBlock>
         </div>
 
         <v-form
-          ref="form"
+          ref="formRef"
           v-model="formValid"
           lazy-validation
           class="tw-flex tw-flex-col tw-gap-y-4"
@@ -28,23 +28,23 @@
           <div v-if="!authUser" class="tw-flex tw-flex-col tw-gap-y-4">
             <v-text-field
               v-model="name"
-              @keyup.enter="submit"
               :rules="nameRules"
               placeholder="Enter your name..."
               autofocus
               hide-details="auto"
               autocomplete="off"
               solo
+              @keyup.enter="submit"
             ></v-text-field>
             <v-text-field
               v-if="event.collectEmails"
               v-model="email"
-              @keyup.enter="submit"
               :rules="emailRules"
               placeholder="Enter your email..."
               hint="The event creator has requested your email. It will only be visible to them."
               persistent-hint
               solo
+              @keyup.enter="submit"
             ></v-text-field>
           </div>
 
@@ -66,10 +66,10 @@
           <div class="tw-flex">
             <v-spacer />
             <v-btn
-              @click="submit"
               class="tw-bg-green"
               :dark="formValid"
               :disabled="!formValid"
+              @click="submit"
             >
               Join slot
             </v-btn>
@@ -80,85 +80,88 @@
   </v-dialog>
 </template>
 
-<script>
-import { isPhone, validateEmail } from "@/utils"
-import { mapState } from "vuex"
-
+<script setup lang="ts">
+import { nextTick, ref, watch } from "vue"
+import { storeToRefs } from "pinia"
+import { validateEmail } from "@/utils"
+import { useMainStore } from "@/stores/main"
 import SignUpBlock from "./SignUpBlock.vue"
+import type { Event } from "@/types"
 
-export default {
-  name: "SignUpForSlotDialog",
-
-  emits: ["input", "submit"],
-
-  components: { SignUpBlock },
-
-  props: {
-    value: { type: Boolean, required: true },
-    event: { type: Object, required: true },
-    signUpBlock: { type: Object, required: true },
-  },
-
-  data() {
-    return {
-      formValid: false,
-      name: "",
-      email: "",
-      nameRules: [],
-      emailRules: [],
-    }
-  },
-
-  computed: {
-    ...mapState(["authUser"]),
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-  },
-
-  methods: {
-    submit() {
-      console.log(this.signUpBlock)
-      // Set rules only on submit
-      this.nameRules = [
-        (name) => !!name || "Name is required",
-        // (name) =>
-        //   !this.signUpBlock.respondents.includes(name) || "Name already taken",
-      ]
-      this.emailRules = [
-        (email) => !!email || "Email is required",
-        (email) => !!validateEmail(email) || "Invalid email",
-      ]
-
-      this.$nextTick(() => {
-        if (!this.$refs.form.validate()) return
-
-        this.$emit("submit", { name: this.name, email: this.email })
-      })
-    },
-  },
-
-  watch: {
-    value() {
-      if (this.value) {
-        this.name = ""
-        this.email = ""
-        this.nameRules = []
-        this.emailRules = []
-
-        this.$refs.form?.resetValidation()
-      }
-    },
-    name() {
-      // Default rules before submitting
-      this.nameRules = [
-        // (name) => !this.respondents.includes(name) || "Name already taken",
-      ]
-    },
-    email() {
-      // Default rules before submitting
-      this.emailRules = []
-    },
-  },
+type Rule = (val: string) => true | string
+interface FormRef {
+  validate: () => Promise<{ valid: boolean }> | boolean
+  resetValidation: () => void
 }
+
+export interface SignUpBlockProp {
+  _id?: string
+  name?: string
+  capacity?: number
+  startDate?: number
+  endDate?: number
+  responses?: {
+    user?: {
+      _id?: string
+      firstName?: string
+      lastName?: string
+      picture?: string
+    }
+  }[]
+}
+
+const props = defineProps<{
+  modelValue: boolean
+  event: Event
+  signUpBlock: SignUpBlockProp
+}>()
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+  submit: [payload: { name: string; email: string }]
+}>()
+
+const mainStore = useMainStore()
+const { authUser } = storeToRefs(mainStore)
+
+const formRef = ref<FormRef | null>(null)
+const formValid = ref(false)
+const name = ref("")
+const email = ref("")
+const nameRules = ref<Rule[]>([])
+const emailRules = ref<Rule[]>([])
+
+const submit = async () => {
+  console.log(props.signUpBlock)
+  nameRules.value = [(n) => !!n || "Name is required"]
+  emailRules.value = [
+    (e) => !!e || "Email is required",
+    (e) => !!validateEmail(e) || "Invalid email",
+  ]
+
+  await nextTick()
+  const result = await formRef.value?.validate()
+  const valid = typeof result === "boolean" ? result : result?.valid
+  if (!valid) return
+  emit("submit", { name: name.value, email: email.value })
+}
+
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (val) {
+      name.value = ""
+      email.value = ""
+      nameRules.value = []
+      emailRules.value = []
+      formRef.value?.resetValidation()
+    }
+  }
+)
+watch(name, () => {
+  nameRules.value = []
+})
+watch(email, () => {
+  emailRules.value = []
+})
 </script>

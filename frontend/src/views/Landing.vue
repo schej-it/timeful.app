@@ -31,13 +31,12 @@
             class="tw-mb-4 tw-flex tw-select-none tw-items-center tw-rounded-full tw-border tw-border-light-gray-stroke tw-bg-white/70 tw-px-2.5 tw-py-1.5 tw-text-sm tw-text-dark-gray"
           >
             We're open source!
-            <github-button
-              v-once
-              class="-tw-mb-1 tw-ml-2"
+            <a
+              class="github-button -tw-mb-1 tw-ml-2"
               href="https://github.com/schej-it/timeful.app"
               data-show-count="true"
               aria-label="Star timeful.app on GitHub"
-              >Star</github-button
+              >Star</a
             >
           </div>
           <div
@@ -57,11 +56,10 @@
               top
               content-class="tw-bg-very-dark-gray tw-shadow-lg tw-opacity-100"
             >
-              <template v-slot:activator="{ on, attrs }">
+              <template #activator="{ props }">
                 <span
                   class="tw-cursor-pointer tw-border-b tw-border-dashed tw-border-dark-gray"
-                  v-bind="attrs"
-                  v-on="on"
+                  v-bind="props"
                   >calendar</span
                 >
               </template>
@@ -78,9 +76,9 @@
           <v-btn
             class="tw-block tw-self-center tw-rounded-lg tw-bg-green tw-px-10 tw-text-base sm:tw-px-10 lg:tw-px-12"
             dark
-            @click="authUser ? openDashboard() : (newDialog = true)"
             large
-            :x-large="$vuetify.breakpoint.mdAndUp"
+            :x-large="display.mdAndUp"
+            @click="authUser ? openDashboard() : (newDialog = true)"
           >
             {{ authUser ? "Open dashboard" : "Create event" }}
           </v-btn>
@@ -111,20 +109,7 @@
                 transition="fade-transition"
                 contain
               />
-              <vue-vimeo-player
-                video-url="https://player.vimeo.com/video/1083205305?h=d58bef862a"
-                :player-width="800"
-                :player-height="800"
-                :options="{
-                  muted: true,
-                  playsinline: true,
-                  responsive: true,
-                }"
-                :controls="false"
-                :autoplay="true"
-                :loop="true"
-                @play="onPlay"
-              />
+              <div ref="vimeoMount" class="tw-size-full" />
             </div>
           </div>
         </div>
@@ -247,8 +232,8 @@
             <FAQ
               v-for="faq in faqs"
               :key="faq.question"
-              @signIn="signIn"
               v-bind="faq"
+              @sign-in="signIn"
             />
           </div>
         </div>
@@ -260,12 +245,12 @@
     <!-- Sign in dialog -->
     <SignInDialog
       v-model="signInDialog"
-      @signIn="_signIn"
-      @emailSignIn="_emailSignIn"
+      @sign-in="_signIn"
+      @email-sign-in="_emailSignIn"
     />
 
     <!-- New event dialog -->
-    <NewDialog v-model="newDialog" no-tabs @signIn="signIn" />
+    <NewDialog v-model="newDialog" no-tabs @sign-in="signIn" />
 
     <!-- Add the dialog component -->
     <HowItWorksDialog
@@ -274,6 +259,245 @@
     />
   </div>
 </template>
+
+<script setup lang="ts">
+import { ref, watch, onMounted, onBeforeUnmount } from "vue"
+import { storeToRefs } from "pinia"
+import { useHead } from "@unhead/vue"
+import { useRouter } from "vue-router"
+import { useDisplay } from "vuetify"
+import { signInGoogle, signInOutlook } from "@/utils"
+import FAQ from "@/components/FAQ.vue"
+import Header from "@/components/Header.vue"
+import NumberBullet from "@/components/NumberBullet.vue"
+import NewDialog from "@/components/NewDialog.vue"
+import LandingPageHeader from "@/components/landing/LandingPageHeader.vue"
+import Logo from "@/components/Logo.vue"
+import Player from "@vimeo/player"
+import SignInDialog from "@/components/SignInDialog.vue"
+import { calendarTypes } from "@/constants"
+import HowItWorksDialog from "@/components/HowItWorksDialog.vue"
+import Footer from "@/components/Footer.vue"
+import { useMainStore } from "@/stores/main"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import { posthog } from "@/plugins/posthog"
+import AuthUserMenu from "@/components/AuthUserMenu.vue"
+import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
+import type { User } from "@/types"
+
+defineOptions({ name: 'AppLanding' })
+
+useHead({ title: "Timeful (formerly Schej) - Find a time to meet" })
+
+const router = useRouter()
+const display = useDisplay()
+const mainStore = useMainStore()
+const { authUser } = storeToRefs(mainStore)
+const { isPhone } = useDisplayHelpers()
+
+const signInDialog = ref(false)
+const newDialog = ref(false)
+const howItWorksSteps = [
+  "Create a Timeful event",
+  "Share the Timeful link with your group for them to fill out",
+  "See where everybody's availability overlaps!",
+]
+const faqs = [
+  {
+    question: "Does Timeful support timezones?",
+    answer:
+      "Yes! Timeful automatically converts all times to the viewer's local timezone. There's also a timezone selector at the bottom of every meeting poll if you would like to manually change it.",
+  },
+  {
+    question: "How many people can respond to an event?",
+    answer:
+      "Unlimited! We've tested events with over 500+ responses and it works great.",
+  },
+  {
+    question: "What calendars does Timeful integrate with?",
+    answer:
+      "Timeful allows you to autofill your availability from your Google Calendar, Outlook, Apple Calendar, or an ICS feed URL. We are working on adding more calendar types soon!",
+  },
+  {
+    question: "Is calendar access required in order to use Timeful?",
+    answer:
+      "Nope! You can manually input your availability, but we highly recommend allowing calendar access in order to view your calendar events while doing so.",
+  },
+  {
+    question: "Will other people be able to see my calendar events?",
+    answer:
+      "Nope! All other users will be able to see is the availability that you enter for an event.",
+  },
+  {
+    question: "How do I edit my availability?",
+    answer:
+      'If you are signed in, simply click the "Edit availability" button. If you entered your availability as a guest, hover over your name and click the pencil icon next to it.',
+  },
+  {
+    question: "How is Timeful different from Lettucemeet or When2meet?",
+    points: [
+      "Much better UI (web and mobile)",
+      "Seamless and working calendar integration",
+      "A slew of other features that we don't have space to list here",
+    ],
+  },
+  {
+    question: `I want it so that only I can see people's responses.`,
+    answer: `Just check "Only show responses to event creator" under Advanced Options when creating your event! Other respondees will not be able to see each other's names or availability.`,
+    authRequired: true,
+  },
+  {
+    question: `Can I receive emails when someone fills out my event?`,
+    answer: `Absolutely! Check "Email me each time someone joins my event" when creating an event. <br><br>To receive email notifications after a specific number (X) of responses are added, check "Email me after X responses" in Advanced Options.`,
+    authRequired: true,
+  },
+  {
+    question: `How do I send reminders to people to fill out an event?`,
+    answer: `Open the "Email Reminders" section when creating an event and input everybody's email address. Reminder emails will be sent the day of event creation, one day after, and three days after. <br><br>You will also receive an email once everybody has filled out the Timeful.`,
+    authRequired: true,
+  },
+]
+const redditComments = [
+  {
+    text: "Genuinely the <span class='rdt-h'>best lightweight version of this kind of website</span> that I've come across so far, exceptional.",
+    author: "u/voipClock",
+    link: "https://www.reddit.com/r/opensource/comments/1klu471/comment/mt4l2ab",
+    picture:
+      "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_1.png",
+  },
+  {
+    text: "It's almost <span class='rdt-h'>comically easy</span> to schedule meetings with Timeful.",
+    author: "u/stuffingmybrain",
+    link: "https://www.reddit.com/r/schej/comments/1drs26z/comment/lb8rvty",
+    picture:
+      "https://styles.redditmedia.com/t5_qqojf/styles/profileIcon_snooa54a8eae-bc7f-406f-9778-b3b9dfb818e5-headshot.png?width=64&height=64&frame=1&auto=webp&crop=&s=a0a91575ff7cfc3b6698cac69da6c012c7deb8d6",
+  },
+  {
+    text: "Timeful is everything I've ever wanted and more. On top of that, <span class='rdt-h'>community support is the best I've seen</span> of any app or software, ever.",
+    author: "u/DMODD",
+    link: "https://www.reddit.com/r/schej/comments/1drs26z/comment/lb8udud",
+    picture:
+      "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_6.png",
+  },
+  {
+    text: "With Timeful, <span class='rdt-h'>I'm very quickly able to figure out the optimal time</span> to schedule online extra help sessions before an exam.",
+    author: "u/crackwurst",
+    link: "https://www.reddit.com/r/schej/comments/1drs26z/comment/lb9dmbe",
+    picture:
+      "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_3.png",
+  },
+  {
+    text: "Exactly what I was looking for! Clear and clean interface, also on mobile (<span class='rdt-h'>Doodle is a disaster</span>).",
+    author: "u/Willem1976",
+    link: "https://www.reddit.com/r/opensource/comments/1dlol7r/comment/lkn7sle",
+    picture:
+      "https://styles.redditmedia.com/t5_c0qtc/styles/profileIcon_snooa9d429ce-e3d9-458a-be9e-1b6dd157a209-headshot.png?width=64&height=64&frame=1&auto=webp&crop=&s=7eba44ea268928b969bcf73ee8667357412132ca",
+  },
+  // {
+  //   text: "Thank you very much! My workplace cannot seem to pick between when2meet and Doodle and I feel like this brings the best of each into one.\n\nWell done <3",
+  //   author: "u/jadiepants",
+  //   link: "https://www.reddit.com/r/opensource/comments/1dlol7r/comment/m6bf3li",
+  //   picture:
+  //     "https://styles.redditmedia.com/t5_d7myp/styles/profileIcon_snoof50f1128-f439-433b-a6b2-8e987630e506-headshot.png?width=64&height=64&frame=1&auto=webp&crop=&s=94077bf80603c2855747f1bfc0b9dd1539fae75c",
+  // },
+]
+const vimeoMount = ref<HTMLDivElement>()
+let vimeoPlayer: Player | null = null
+const showHowItWorksDialog = ref(false)
+const isVideoPlaying = ref(false)
+
+onMounted(() => {
+  if (vimeoMount.value) {
+    vimeoPlayer = new Player(vimeoMount.value, {
+      url: "https://player.vimeo.com/video/1083205305?h=d58bef862a",
+      width: 800,
+      height: 800,
+      muted: true,
+      playsinline: true,
+      responsive: true,
+      controls: false,
+      autoplay: true,
+      loop: true,
+    })
+    vimeoPlayer.on("play", onPlay)
+  }
+})
+
+function loadRiveAnimation() {
+  // if (!rive.value) {
+  //   rive.value = new Rive({
+  //     src: "/rive/schej.riv",
+  //     canvas: document.querySelector("canvas"),
+  //     autoplay: false,
+  //     stateMachines: "wave",
+  //     onLoad: () => {
+  //       // r.resizeDrawingSurfaceToCanvas()
+  //     },
+  //   })
+  //   setTimeout(() => {
+  //     showSchejy.value = true
+  //     setTimeout(() => {
+  //       rive.value.play("wave")
+  //     }, 1000)
+  //   }, 4000)
+  // } else {
+  //   rive.value.play("wave")
+  // }
+}
+
+function _signIn(calendarType: string) {
+  if (calendarType === calendarTypes.GOOGLE) {
+    signInGoogle({ state: null, selectAccount: true })
+  } else if (calendarType === calendarTypes.OUTLOOK) {
+    signInOutlook({ state: null, selectAccount: true })
+  }
+}
+
+function _emailSignIn(user: User) {
+  mainStore.setAuthUser(user)
+  posthog.identify(user._id, {
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+  })
+  void router.replace({ name: "home" })
+}
+
+function signIn() {
+  void router.push({ name: "sign-in" })
+}
+
+function openHowItWorksDialog() {
+  showHowItWorksDialog.value = true
+  void posthog.capture("how_it_works_clicked")
+}
+
+function onPlay() {
+  setTimeout(() => {
+    isVideoPlaying.value = true
+  }, 1000)
+}
+
+function openDashboard() {
+  void router.push({ name: "home" })
+}
+
+onBeforeUnmount(() => {
+  void vimeoPlayer?.destroy()
+})
+
+watch(
+  display.name,
+  () => {
+    if (display.mdAndUp.value) {
+      setTimeout(() => {
+        loadRiveAnimation()
+      }, 0)
+    }
+  },
+  { immediate: true }
+)
+</script>
 
 <style scoped>
 @media screen and (min-width: 375px) and (max-width: 640px) {
@@ -288,247 +512,3 @@
   @apply tw-rounded tw-bg-light-green/20 tw-px-px tw-text-black;
 }
 </style>
-
-<script>
-import LandingPageCalendar from "@/components/landing/LandingPageCalendar.vue"
-import { isPhone, signInGoogle, signInOutlook } from "@/utils"
-import FAQ from "@/components/FAQ.vue"
-import Header from "@/components/Header.vue"
-import NumberBullet from "@/components/NumberBullet.vue"
-import NewEvent from "@/components/NewEvent.vue"
-import NewDialog from "@/components/NewDialog.vue"
-import LandingPageHeader from "@/components/landing/LandingPageHeader.vue"
-import Logo from "@/components/Logo.vue"
-import GithubButton from "vue-github-button"
-import SignInDialog from "@/components/SignInDialog.vue"
-import { calendarTypes } from "@/constants"
-import HowItWorksDialog from "@/components/HowItWorksDialog.vue"
-import { vueVimeoPlayer } from "vue-vimeo-player"
-import Footer from "@/components/Footer.vue"
-import PronunciationMenu from "@/components/PronunciationMenu.vue"
-import { mapState, mapMutations } from "vuex"
-import AuthUserMenu from "@/components/AuthUserMenu.vue"
-import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
-
-export default {
-  name: "Landing",
-
-  metaInfo: {
-    title: "Timeful (formerly Schej) - Find a time to meet",
-  },
-
-  components: {
-    LandingPageCalendar,
-    FAQ,
-    Header,
-    NumberBullet,
-    NewEvent,
-    NewDialog,
-    LandingPageHeader,
-    GithubButton,
-    Logo,
-    SignInDialog,
-    HowItWorksDialog,
-    vueVimeoPlayer,
-    Footer,
-    PronunciationMenu,
-    AuthUserMenu,
-    FormerlyKnownAs,
-  },
-
-  data: () => ({
-    signInDialog: false,
-    newDialog: false,
-    githubSnackbar: true,
-    howItWorksSteps: [
-      "Create a Timeful event",
-      "Share the Timeful link with your group for them to fill out",
-      "See where everybody's availability overlaps!",
-    ],
-    faqs: [
-      {
-        question: "Does Timeful support timezones?",
-        answer:
-          "Yes! Timeful automatically converts all times to the viewer's local timezone. There's also a timezone selector at the bottom of every meeting poll if you would like to manually change it.",
-      },
-      {
-        question: "How many people can respond to an event?",
-        answer:
-          "Unlimited! We've tested events with over 500+ responses and it works great.",
-      },
-      {
-        question: "What calendars does Timeful integrate with?",
-        answer:
-          "Timeful allows you to autofill your availability from your Google Calendar, Outlook, Apple Calendar, or an ICS feed URL. We are working on adding more calendar types soon!",
-      },
-      {
-        question: "Is calendar access required in order to use Timeful?",
-        answer:
-          "Nope! You can manually input your availability, but we highly recommend allowing calendar access in order to view your calendar events while doing so.",
-      },
-      {
-        question: "Will other people be able to see my calendar events?",
-        answer:
-          "Nope! All other users will be able to see is the availability that you enter for an event.",
-      },
-      {
-        question: "How do I edit my availability?",
-        answer:
-          'If you are signed in, simply click the "Edit availability" button. If you entered your availability as a guest, hover over your name and click the pencil icon next to it.',
-      },
-      {
-        question: "How is Timeful different from Lettucemeet or When2meet?",
-        points: [
-          "Much better UI (web and mobile)",
-          "Seamless and working calendar integration",
-          "A slew of other features that we don't have space to list here",
-        ],
-      },
-      {
-        question: `I want it so that only I can see people's responses.`,
-        answer: `Just check "Only show responses to event creator" under Advanced Options when creating your event! Other respondees will not be able to see each other's names or availability.`,
-        authRequired: true,
-      },
-      {
-        question: `Can I receive emails when someone fills out my event?`,
-        answer: `Absolutely! Check "Email me each time someone joins my event" when creating an event. <br><br>To receive email notifications after a specific number (X) of responses are added, check "Email me after X responses" in Advanced Options.`,
-        authRequired: true,
-      },
-      {
-        question: `How do I send reminders to people to fill out an event?`,
-        answer: `Open the "Email Reminders" section when creating an event and input everybody's email address. Reminder emails will be sent the day of event creation, one day after, and three days after. <br><br>You will also receive an email once everybody has filled out the Timeful.`,
-        authRequired: true,
-      },
-    ],
-    redditComments: [
-      {
-        text: "Genuinely the <span class='rdt-h'>best lightweight version of this kind of website</span> that I've come across so far, exceptional.",
-        author: "u/voipClock",
-        link: "https://www.reddit.com/r/opensource/comments/1klu471/comment/mt4l2ab",
-        picture:
-          "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_1.png",
-      },
-      {
-        text: "It's almost <span class='rdt-h'>comically easy</span> to schedule meetings with Timeful.",
-        author: "u/stuffingmybrain",
-        link: "https://www.reddit.com/r/schej/comments/1drs26z/comment/lb8rvty",
-        picture:
-          "https://styles.redditmedia.com/t5_qqojf/styles/profileIcon_snooa54a8eae-bc7f-406f-9778-b3b9dfb818e5-headshot.png?width=64&height=64&frame=1&auto=webp&crop=&s=a0a91575ff7cfc3b6698cac69da6c012c7deb8d6",
-      },
-      {
-        text: "Timeful is everything I've ever wanted and more. On top of that, <span class='rdt-h'>community support is the best I've seen</span> of any app or software, ever.",
-        author: "u/DMODD",
-        link: "https://www.reddit.com/r/schej/comments/1drs26z/comment/lb8udud",
-        picture:
-          "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_6.png",
-      },
-      {
-        text: "With Timeful, <span class='rdt-h'>I'm very quickly able to figure out the optimal time</span> to schedule online extra help sessions before an exam.",
-        author: "u/crackwurst",
-        link: "https://www.reddit.com/r/schej/comments/1drs26z/comment/lb9dmbe",
-        picture:
-          "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_3.png",
-      },
-      {
-        text: "Exactly what I was looking for! Clear and clean interface, also on mobile (<span class='rdt-h'>Doodle is a disaster</span>).",
-        author: "u/Willem1976",
-        link: "https://www.reddit.com/r/opensource/comments/1dlol7r/comment/lkn7sle",
-        picture:
-          "https://styles.redditmedia.com/t5_c0qtc/styles/profileIcon_snooa9d429ce-e3d9-458a-be9e-1b6dd157a209-headshot.png?width=64&height=64&frame=1&auto=webp&crop=&s=7eba44ea268928b969bcf73ee8667357412132ca",
-      },
-      // {
-      //   text: "Thank you very much! My workplace cannot seem to pick between when2meet and Doodle and I feel like this brings the best of each into one.\n\nWell done <3",
-      //   author: "u/jadiepants",
-      //   link: "https://www.reddit.com/r/opensource/comments/1dlol7r/comment/m6bf3li",
-      //   picture:
-      //     "https://styles.redditmedia.com/t5_d7myp/styles/profileIcon_snoof50f1128-f439-433b-a6b2-8e987630e506-headshot.png?width=64&height=64&frame=1&auto=webp&crop=&s=94077bf80603c2855747f1bfc0b9dd1539fae75c",
-      // },
-    ],
-    rive: null,
-    showSchejy: false,
-    showHowItWorksDialog: false,
-    isVideoPlaying: false,
-  }),
-
-  computed: {
-    ...mapState(["authUser"]),
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-  },
-
-  methods: {
-    ...mapMutations(["setAuthUser"]),
-    loadRiveAnimation() {
-      // if (!this.rive) {
-      //   this.rive = new Rive({
-      //     src: "/rive/schej.riv",
-      //     canvas: document.querySelector("canvas"),
-      //     autoplay: false,
-      //     stateMachines: "wave",
-      //     onLoad: () => {
-      //       // r.resizeDrawingSurfaceToCanvas()
-      //     },
-      //   })
-      //   setTimeout(() => {
-      //     this.showSchejy = true
-      //     setTimeout(() => {
-      //       this.rive.play("wave")
-      //     }, 1000)
-      //   }, 4000)
-      // } else {
-      //   this.rive.play("wave")
-      // }
-    },
-    _signIn(calendarType) {
-      if (calendarType === calendarTypes.GOOGLE) {
-        signInGoogle({ state: null, selectAccount: true })
-      } else if (calendarType === calendarTypes.OUTLOOK) {
-        // NOTE: selectAccount is not supported implemented yet for Outlook, maybe add it later
-        signInOutlook({ state: null, selectAccount: true })
-      }
-    },
-    _emailSignIn(user) {
-      this.setAuthUser(user)
-      this.$posthog?.identify(user._id, {
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-      })
-      this.$router.replace({ name: "home" })
-    },
-    signIn() {
-      this.$router.push({ name: "sign-in" })
-    },
-    openHowItWorksDialog() {
-      this.showHowItWorksDialog = true
-      this.$posthog.capture("how_it_works_clicked")
-    },
-    onPlay() {
-      setTimeout(() => {
-        this.isVideoPlaying = true
-      }, 1000)
-    },
-    openDashboard() {
-      this.$router.push({ name: "home" })
-    },
-  },
-
-  beforeDestroy() {
-    this.rive?.cleanup()
-  },
-
-  watch: {
-    [`$vuetify.breakpoint.name`]: {
-      immediate: true,
-      handler() {
-        if (this.$vuetify.breakpoint.mdAndUp) {
-          setTimeout(() => {
-            this.loadRiveAnimation()
-          }, 0)
-        }
-      },
-    },
-  },
-}
-</script>

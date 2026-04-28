@@ -19,43 +19,39 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "OverflowGradient",
-  props: {
-    scrollContainer: {
-      type: HTMLElement,
-      required: true,
-    },
-    showArrow: {
-      type: Boolean,
-      default: true,
-    },
-  },
-  data() {
-    return {
-      showGradient: false,
-    }
-  },
-  mounted() {
-    this.checkScroll()
-    this.scrollContainer.addEventListener("scroll", this.checkScroll)
-  },
-  beforeDestroy() {
-    this.scrollContainer.removeEventListener("scroll", this.checkScroll)
-  },
-  methods: {
-    /**
-     * Checks if the scroll bar is scrolled to the bottom of the client
-     */
-    checkScroll() {
-      const { scrollHeight, clientHeight, scrollTop } = this.scrollContainer
-      this.showGradient =
-        scrollHeight > clientHeight && scrollTop < scrollHeight - clientHeight - 1 // 1px tolerance
-    },
-    scrollToBottom() {
-      this.scrollContainer.scrollTop = this.scrollContainer.scrollHeight
-    },
-  },
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from "vue"
+
+const props = withDefaults(
+  defineProps<{
+    scrollContainer: HTMLElement | null
+    showArrow?: boolean
+  }>(),
+  { showArrow: true }
+)
+
+const showGradient = ref(false)
+
+const checkScroll = () => {
+  if (!props.scrollContainer) return
+  const { scrollHeight, clientHeight, scrollTop } = props.scrollContainer
+  showGradient.value =
+    scrollHeight > clientHeight && scrollTop < scrollHeight - clientHeight - 1
 }
+
+const scrollToBottom = () => {
+  if (!props.scrollContainer) return
+  // Use a local variable to avoid mutating the prop directly
+  const container = props.scrollContainer
+  container.scrollTop = container.scrollHeight
+}
+
+onMounted(() => {
+  checkScroll()
+  props.scrollContainer?.addEventListener("scroll", checkScroll)
+})
+
+onBeforeUnmount(() => {
+  props.scrollContainer?.removeEventListener("scroll", checkScroll)
+})
 </script>
