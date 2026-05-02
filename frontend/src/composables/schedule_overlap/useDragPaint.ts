@@ -1,6 +1,17 @@
 import { ref, type Ref, type ComputedRef } from "vue"
 import { Temporal } from "temporal-polyfill"
-import { clamp, dateToDowDate, isBetween } from "@/utils"
+import {
+  clamp,
+  dateToDowDate,
+  getRenderedWeekStart,
+  isBetween,
+  ZdtMap,
+  ZdtSet,
+  zdtMapGet,
+  zdtMapGetOrInsert,
+  zdtSetDelete,
+  zdtSetHas,
+} from "@/utils"
 import {
   availabilityTypes,
   eventTypes,
@@ -33,35 +44,37 @@ export interface UseDragPaintOptions {
     { isConsecutive?: boolean; dateObject: Temporal.ZonedDateTime }[]
   >
   monthDays: ComputedRef<MonthDayItem[]>
-  monthDayIncluded: ComputedRef<Map<Temporal.ZonedDateTime, boolean>>
+  monthDayIncluded: ComputedRef<ZdtMap<boolean>>
   columnOffsets: ComputedRef<number[]>
   timeslot: Ref<{ width: number; height: number }>
 
   // mutable state from other composables
-  availability: Ref<Set<Temporal.ZonedDateTime>>
-  ifNeeded: Ref<Set<Temporal.ZonedDateTime>>
-  tempTimes: Ref<Set<Temporal.ZonedDateTime>>
+  availability: Ref<ZdtSet>
+  ifNeeded: Ref<ZdtSet>
+  tempTimes: Ref<ZdtSet>
   availabilityType: Ref<AvailabilityType>
   signUpBlocksByDay: Ref<SignUpBlockLite[][]>
   signUpBlocksToAddByDay: Ref<SignUpBlockLite[][]>
-  manualAvailability: Ref<
-    Map<Temporal.ZonedDateTime, Set<Temporal.ZonedDateTime>>
-  >
+  manualAvailability: Ref<ZdtMap<ZdtSet>>
   curScheduledEvent: Ref<ScheduledEvent | null>
   maxSignUpBlockRowSize: ComputedRef<number | null>
 
   // helpers
   allowDrag: ComputedRef<boolean>
+  
   getDateFromRowCol: (row: number, col: number) => Temporal.ZonedDateTime | null
+  
   getAvailabilityForColumn: (
     col: number,
-    availability?: Temporal.ZonedDateTime[]
-  ) => Set<Temporal.ZonedDateTime>
+    availability?: ZdtSet
+  ) => ZdtSet
+  
   createSignUpBlock: (
     dayIndex: number,
     hoursOffset: Temporal.Duration,
     hoursLength: Temporal.Duration
   ) => SignUpBlockLite
+  
   scrollToSignUpBlock?: (id: string) => void
 }
 
@@ -191,7 +204,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
 
     if (
       opts.event.value.daysOnly &&
-      !opts.monthDayIncluded.value.get(date)
+      !zdtMapGet(opts.monthDayIncluded.value, date)
     )
       return
 
@@ -205,11 +218,11 @@ export function useDragPaint(opts: UseDragPaintOptions) {
       dragType.value = DRAG_TYPES.ADD
     } else if (
       (opts.state.value === states.SET_SPECIFIC_TIMES &&
-        opts.tempTimes.value.has(date)) ||
+        zdtSetHas(opts.tempTimes.value, date)) ||
       (opts.availabilityType.value === availabilityTypes.AVAILABLE &&
-        opts.availability.value.has(date)) ||
+        zdtSetHas(opts.availability.value, date)) ||
       (opts.availabilityType.value === availabilityTypes.IF_NEEDED &&
-        opts.ifNeeded.value.has(date))
+        zdtSetHas(opts.ifNeeded.value, date))
     ) {
       dragType.value = DRAG_TYPES.REMOVE
     } else {
@@ -275,7 +288,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
 
           if (eventValue.daysOnly) {
             const isMonthDayIncluded =
-              opts.monthDayIncluded.value.get(date) &&
+              zdtMapGet(opts.monthDayIncluded.value, date) &&
               inDragRange(r, c)
             if (!isMonthDayIncluded) continue
           }
@@ -286,71 +299,84 @@ export function useDragPaint(opts: UseDragPaintOptions) {
             } else {
               if (opts.availabilityType.value === availabilityTypes.AVAILABLE) {
                 opts.availability.value.add(date)
-                opts.ifNeeded.value.delete(date)
+                zdtSetDelete(opts.ifNeeded.value, date)
               } else {
                 opts.ifNeeded.value.add(date)
-                opts.availability.value.delete(date)
+                zdtSetDelete(opts.availability.value, date)
               }
             }
           } else {
             if (opts.state.value === states.SET_SPECIFIC_TIMES) {
-              opts.tempTimes.value.delete(date)
+              zdtSetDelete(opts.tempTimes.value, date)
             } else {
-              opts.availability.value.delete(date)
-              opts.ifNeeded.value.delete(date)
+              zdtSetDelete(opts.availability.value, date)
+              zdtSetDelete(opts.ifNeeded.value, date)
             }
           }
 
           if (eventValue.type === eventTypes.GROUP) {
             const eventDates = eventValue.dates ?? []
+            const renderedWeekStart = getRenderedWeekStart(
+              opts.weekOffset.value,
+              eventValue.startOnMonday
+            )
             const discreteDate = dateToDowDate(
               eventDates,
               date,
               opts.weekOffset.value,
-              true
+              true,
+              eventValue.startOnMonday,
+              renderedWeekStart
             )
             const startDateOfDay = dateToDowDate(
               eventDates,
               opts.days.value[c].dateObject,
               opts.weekOffset.value,
-              true
+              true,
+              eventValue.startOnMonday,
+              renderedWeekStart
             )
 
             const startDateOfDayKey = startDateOfDay
-            if (!opts.manualAvailability.value.has(startDateOfDayKey)) {
-              opts.manualAvailability.value.set(
-                startDateOfDayKey,
-                new Set<Temporal.ZonedDateTime>()
-              )
+            const dayAvailability = zdtMapGetOrInsert(
+              opts.manualAvailability.value,
+              startDateOfDayKey,
+              () => new ZdtSet()
+            )
 
+            if (dayAvailability.size === 0) {
               const existingAvailability = opts.getAvailabilityForColumn(c)
               for (const a of existingAvailability) {
                 const convertedDate = dateToDowDate(
                   eventDates,
                   a,
                   opts.weekOffset.value,
-                  true
+                  true,
+                  eventValue.startOnMonday,
+                  renderedWeekStart
                 )
-                opts.manualAvailability.value
-                  .get(startDateOfDayKey)
-                  ?.add(convertedDate)
+                dayAvailability.add(convertedDate)
               }
             }
 
             if (dragType.value === DRAG_TYPES.ADD) {
-              opts.manualAvailability.value
-                .get(startDateOfDayKey)
-                ?.add(discreteDate)
+              dayAvailability.add(discreteDate)
             } else {
-              opts.manualAvailability.value
-                .get(startDateOfDayKey)
-                ?.delete(discreteDate)
+              zdtSetDelete(dayAvailability, discreteDate)
             }
           }
         }
       }
-      // Force reactivity by reassigning the Set
-      opts.availability.value = new Set(opts.availability.value)
+      // Force reactivity by reassigning the value-keyed wrappers.
+      if (opts.state.value === states.SET_SPECIFIC_TIMES) {
+        opts.tempTimes.value = new ZdtSet(opts.tempTimes.value)
+      } else {
+        opts.availability.value = new ZdtSet(opts.availability.value)
+        opts.ifNeeded.value = new ZdtSet(opts.ifNeeded.value)
+        if (eventValue.type === eventTypes.GROUP) {
+          opts.manualAvailability.value = new ZdtMap(opts.manualAvailability.value)
+        }
+      }
     } else if (opts.state.value === states.SCHEDULE_EVENT) {
       const col = ds.col
       const row = ds.row

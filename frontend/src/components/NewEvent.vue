@@ -461,6 +461,7 @@ import {
   addEventToCreatedList,
   prefersStartOnMonday,
   plainTimeToTimeNum,
+  resolveTimezoneValue,
   timeNumToPlainTime,
 } from "@/utils"
 import { useMainStore } from "@/stores/main"
@@ -476,7 +477,7 @@ import OverflowGradient from "@/components/OverflowGradient.vue"
 import ExpandableSection from "./ExpandableSection.vue"
 import type { Event as EventModel } from "@/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
-import type { ContactsPayload } from "@/composables/event/types"
+import type { SerializedEventDraft } from "@/composables/event/types"
 
 interface FormRef {
   validate: () => Promise<{ valid: boolean }> | boolean
@@ -490,7 +491,7 @@ const props = withDefaults(
     event?: EventModel
     edit?: boolean
     dialog?: boolean
-    contactsPayload?: ContactsPayload
+    contactsPayload?: SerializedEventDraft
     showHelp?: boolean
     folderId?: string | null
     isDialogOpen?: boolean
@@ -597,13 +598,22 @@ const timeIncrementItems = computed(() => [
   { text: "60 min", value: 60 },
 ])
 
+const normalizeDraftTime = (
+  time: SerializedEventDraft["startTime"],
+  fallback: Temporal.PlainTime
+): Temporal.PlainTime => {
+  if (time == null) return fallback
+  if (typeof time === "number") return timeNumToPlainTime(time)
+  return Temporal.PlainTime.from(time)
+}
+
 onMounted(() => {
   if (Object.keys(props.contactsPayload).length > 0) {
     toggleEmailReminders(true)
 
     name.value = props.contactsPayload.name ?? ""
-    startTime.value = props.contactsPayload.startTime ?? hoursPlainTime.NINE
-    endTime.value = props.contactsPayload.endTime ?? hoursPlainTime.SEVENTEEN
+    startTime.value = normalizeDraftTime(props.contactsPayload.startTime, hoursPlainTime.NINE)
+    endTime.value = normalizeDraftTime(props.contactsPayload.endTime, hoursPlainTime.SEVENTEEN)
     daysOnly.value = props.contactsPayload.daysOnly ?? false
     selectedDateOption.value = (props.contactsPayload.selectedDateOption ?? dateOptions.SPECIFIC) as DateOptionType
     selectedDaysOfWeek.value = props.contactsPayload.selectedDaysOfWeek ?? []
@@ -649,6 +659,7 @@ const submit = async () => {
   const result = await formRef.value?.validate()
   const valid = typeof result === "boolean" ? result : result?.valid
   if (!valid) return
+  const timezoneValue = resolveTimezoneValue(timezone.value.value)
 
   selectedDays.value.sort()
 
@@ -679,7 +690,7 @@ const submit = async () => {
         const plainDate = Temporal.PlainDate.from(day)
         const plainTime = startTime.value
         const zdt = plainDate.toZonedDateTime({ 
-          timeZone: timezone.value.value,
+          timeZone: timezoneValue,
           plainTime
         })
         dates.push(zdt)
@@ -696,7 +707,7 @@ const submit = async () => {
         const plainTime = startTime.value
         
         // Get current date in the specified timezone
-        const now = Temporal.Now.zonedDateTimeISO(timezone.value.value)
+        const now = Temporal.Now.zonedDateTimeISO(timezoneValue)
         const currentDayOfWeek = now.dayOfWeek // 1-7 (Mon-Sun)
         const targetDayOfWeek = dayIndex === 7 ? 7 : dayIndex // Convert from Sunday-based to Monday-based
         
@@ -706,7 +717,7 @@ const submit = async () => {
         
         const targetDate = now.add({ days: daysUntil }).toPlainDate()
         const zdt = targetDate.toZonedDateTime({ 
-          timeZone: timezone.value.value,
+          timeZone: timezoneValue,
           plainTime
         })
         dates.push(zdt)
@@ -846,24 +857,15 @@ const requestContactsAccess = ({ emails: requestEmails }: { emails: (string | { 
 const updateFieldsFromEvent = () => {
   if (props.event) {
     name.value = props.event.name ?? ""
+    const eventDate = props.event.dates?.at(0)
+    if (eventDate != null) {
+      const zdt = getDateWithTimezone(eventDate)
+      startTime.value = zdt.toPlainTime()
 
-    // TODO fix throws if the array is empty?
-    
-    // Convert event date to PlainTime using Temporal API
-    const eventDate = (props.event.dates ?? [])[0]
-    const zdt = getDateWithTimezone(eventDate)
-    startTime.value = zdt.toPlainTime()
-
-    // Calculate endTime by adding duration to startTime using Temporal Duration
-    const duration = props.event.duration ?? durations.ZERO
-    const endTimePlainTime = startTime.value.add(duration)
-    // Handle wrap-around midnight
-    if (endTimePlainTime.hour >= 24) {
-      endTime.value = endTimePlainTime.subtract({ hours: 24 })
-    } else {
-      endTime.value = endTimePlainTime
+      const duration = props.event.duration ?? durations.ZERO
+      endTime.value = startTime.value.add(duration)
     }
-    
+
     notificationsEnabled.value = props.event.notificationsEnabled ?? false
     blindAvailabilityEnabled.value =
       props.event.blindAvailabilityEnabled ?? false

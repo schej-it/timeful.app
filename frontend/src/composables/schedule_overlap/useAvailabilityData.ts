@@ -1,11 +1,27 @@
-import { computed, nextTick, ref, type ComputedRef, type Ref } from "vue"
+import {
+  computed,
+  nextTick,
+  ref,
+  shallowRef,
+  type ComputedRef,
+  type Ref,
+} from "vue"
 import {
   _delete,
   dateToDowDate,
+  dateCompare,
+  fromEpochMillisecondsToZDT,
   getDateDayOffset,
   getDateHoursOffset,
+  getRenderedWeekStart,
+  isDateBetween,
+  parseTemporalEpochKey,
   post,
   generateEnabledCalendarsPayload,
+  ZdtMap,
+  ZdtSet,
+  zdtMapGet,
+  zdtSetHas,
   type CalendarAccountsMap,
 } from "@/utils"
 import { eventTypes, durations, UTC } from "@/constants"
@@ -13,6 +29,7 @@ import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import { Temporal } from "temporal-polyfill"
 import {
+  normalizeCalendarOptions,
   states,
   type CalendarEventsByDay,
   type CalendarOptions,
@@ -79,29 +96,36 @@ export interface UseAvailabilityDataOptions {
   getAvailabilityFromCalendarEvents: (input: {
     calendarEventsByDay?: CalendarEventsByDay
     includeTouchedAvailability?: boolean
-    fetchedManualAvailability?: Record<string, Set<Temporal.ZonedDateTime>>
-    curManualAvailability?: Record<string, Set<Temporal.ZonedDateTime>>
+    fetchedManualAvailability?: Record<string, ZdtSet>
+    curManualAvailability?: Record<string, ZdtSet>
     calendarOptions?: CalendarOptions
-  }) => Set<Temporal.ZonedDateTime>
+  }) => ZdtSet
 
   // emits / external
   refreshEvent: () => void
 }
 
+export const getNumCurRespondentsForDay = (
+  responsesFormatted: ResponsesFormatted,
+  day: Temporal.ZonedDateTime,
+  curRespondentsSet: Set<string>
+): number =>
+  [
+    ...(zdtMapGet(responsesFormatted, day) ?? new Set<string>()),
+  ].filter((respondentId) => curRespondentsSet.has(respondentId)).length
+
 export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   const mainStore = useMainStore()
 
-  const availability = ref<Set<Temporal.ZonedDateTime>>(new Set())
-  const ifNeeded = ref<Set<Temporal.ZonedDateTime>>(new Set())
-  const tempTimes = ref<Set<Temporal.ZonedDateTime>>(new Set())
+  const availability = shallowRef<ZdtSet>(new ZdtSet())
+  const ifNeeded = shallowRef<ZdtSet>(new ZdtSet())
+  const tempTimes = shallowRef<ZdtSet>(new ZdtSet())
   const availabilityAnimTimeouts = ref<ReturnType<typeof setTimeout>[]>([])
   const availabilityAnimEnabled = ref(false)
   const maxAnimTime = 1200
   const unsavedChanges = ref(false)
   const hideIfNeeded = ref(false)
-  const manualAvailability = ref<
-    Map<Temporal.ZonedDateTime, Set<Temporal.ZonedDateTime>>
-  >(new Map())
+  const manualAvailability = shallowRef<ZdtMap<ZdtSet>>(new ZdtMap())
   const fetchedResponses = ref<Record<string, FetchedResponse | undefined>>({})
   const loadingResponses = ref<{
     loading: boolean
@@ -110,7 +134,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     loading: false,
     lastFetched: Temporal.Now.instant().toZonedDateTimeISO(UTC),
   })
-  const responsesFormatted = ref<ResponsesFormatted>(new Map())
+  const responsesFormatted = shallowRef<ResponsesFormatted>(new ZdtMap())
   const curTimeslot = ref<RowCol>({ row: -1, col: -1 })
   const curTimeslotAvailability = ref<Record<string, boolean>>({})
   const timeslotSelected = ref(false)
@@ -122,17 +146,10 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     ...ifNeeded.value,
   ])
 
-  type ResponseEntry = { user?: ParsedResponse["user"] } & Record<
-    string,
-    unknown
-  >
-
   const parsedResponses = computed<ParsedResponses>(() => {
     const parsed: ParsedResponses = {}
     const authUser = mainStore.authUser
-    const responses = (
-      opts.event.value as { responses?: Record<string, ResponseEntry> }
-    ).responses
+    const responses = opts.event.value.responses
     if (!responses) return parsed
 
     if (opts.event.value.type === eventTypes.GROUP) {
@@ -144,7 +161,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
           >
         )[userId]
         if (calendarEventsByDay) {
-          const fetchedManualAvailability = getManualAvailabilityDow(
+          const fetchedManualAvailability = getFetchedManualAvailabilityDow(
             fetchedResponses.value[userId]?.manualAvailability
           )
           const curManualAvailability =
@@ -170,28 +187,32 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
           })
 
           parsed[userId] = {
-            user: responses[userId].user ?? { _id: userId },
+            user: {
+              ...(responses[userId].user ?? {}),
+              _id: responses[userId].user?._id ?? userId,
+            },
             availability: computedAvailability,
             ifNeeded:
               responses[userId].ifNeeded &&
               Array.isArray(responses[userId].ifNeeded)
-                ? new Set(
-                    (responses[userId].ifNeeded as number[]).map((ms) =>
-                      Temporal.ZonedDateTime.from({millisecond: ms})
+                ? new ZdtSet(
+                    responses[userId].ifNeeded.map((ms) =>
+                      fromEpochMillisecondsToZDT(ms)
                     )
                   )
                 : undefined,
-            enabledCalendars: responses[userId].enabledCalendars as
-              | Record<string, string[]>
-              | undefined,
-            calendarOptions: responses[userId].calendarOptions as
-              | CalendarOptions
-              | undefined,
+            enabledCalendars: responses[userId].enabledCalendars,
+            calendarOptions: normalizeCalendarOptions(
+              responses[userId].calendarOptions
+            ),
           }
         } else {
           parsed[userId] = {
-            user: responses[userId].user ?? { _id: userId },
-            availability: new Set(),
+            user: {
+              ...(responses[userId].user ?? {}),
+              _id: responses[userId].user?._id ?? userId,
+            },
+            availability: new ZdtSet(),
           }
         }
       }
@@ -212,16 +233,14 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
         }
         parsed[userId] = {
           user,
-          availability: new Set(
+          availability: new ZdtSet(
             fetchedResponses.value[userId]?.availability ?? []
           ),
-          ifNeeded: new Set(fetchedResponses.value[userId]?.ifNeeded ?? []),
-          enabledCalendars: responses[userId].enabledCalendars as
-            | Record<string, string[]>
-            | undefined,
-          calendarOptions: responses[userId].calendarOptions as
-            | CalendarOptions
-            | undefined,
+          ifNeeded: new ZdtSet(fetchedResponses.value[userId]?.ifNeeded ?? []),
+          enabledCalendars: responses[userId].enabledCalendars,
+          calendarOptions: normalizeCalendarOptions(
+            responses[userId].calendarOptions
+          ),
         }
       }
       return parsed
@@ -234,14 +253,10 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       }
       parsed[k] = {
         user: newUser,
-        availability: new Set(fetchedResponses.value[k]?.availability ?? []),
-        ifNeeded: new Set(fetchedResponses.value[k]?.ifNeeded ?? []),
-        enabledCalendars: responses[k].enabledCalendars as
-          | Record<string, string[]>
-          | undefined,
-        calendarOptions: responses[k].calendarOptions as
-          | CalendarOptions
-          | undefined,
+        availability: new ZdtSet(fetchedResponses.value[k]?.availability ?? []),
+        ifNeeded: new ZdtSet(fetchedResponses.value[k]?.ifNeeded ?? []),
+        enabledCalendars: responses[k].enabledCalendars,
+        calendarOptions: normalizeCalendarOptions(responses[k].calendarOptions),
       }
     }
     return parsed
@@ -271,7 +286,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     hoursOffset: Temporal.Duration
   ): Set<string> => {
     const d = date.add(hoursOffset)
-    return responsesFormatted.value.get(d) ?? new Set()
+    return zdtMapGet(responsesFormatted.value, d) ?? new Set()
   }
 
   const getResponsesFormatted = () => {
@@ -297,14 +312,14 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
         }
       }
 
-      const formatted: ResponsesFormatted = new Map()
+      const formatted: ResponsesFormatted = new ZdtMap()
       for (const date of dates) {
         const bucket = new Set<string>()
         formatted.set(date, bucket)
         for (const response of Object.values(pr)) {
           if (
-            response.availability.has(date) ||
-            (response.ifNeeded?.has(date) && !hideIfNeededFlag)
+            zdtSetHas(response.availability, date) ||
+            (response.ifNeeded && zdtSetHas(response.ifNeeded, date) && !hideIfNeededFlag)
           ) {
             bucket.add(response.user._id)
             continue
@@ -322,9 +337,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       hideIfNeeded.value
     )
 
-    if (
-      lastFetched >= loadingResponses.value.lastFetched
-    ) {
+    if (dateCompare(lastFetched, loadingResponses.value.lastFetched) >= 0) {
       responsesFormatted.value = formatted
     }
     if (lastFetched.equals(loadingResponses.value.lastFetched)) {
@@ -336,8 +349,8 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     const resp = (
       parsedResponses.value as Record<string, ParsedResponse | undefined>
     )[id]
-    availability.value = new Set(resp?.availability ?? [])
-    ifNeeded.value = new Set(resp?.ifNeeded ?? [])
+    availability.value = new ZdtSet(resp?.availability ?? [])
+    ifNeeded.value = new ZdtSet(resp?.ifNeeded ?? [])
     void nextTick(() => (unsavedChanges.value = false))
   }
 
@@ -346,10 +359,10 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   ) => {
     if (opts.event.value.type === eventTypes.GROUP) {
       initSharedCalendarAccounts?.()
-      manualAvailability.value = new Map()
+      manualAvailability.value = new ZdtMap()
     }
-    availability.value = new Set()
-    ifNeeded.value = new Set()
+    availability.value = new ZdtSet()
+    ifNeeded.value = new ZdtSet()
     const authUser = mainStore.authUser
     if (userHasResponded.value && authUser?._id) {
       populateUserAvailability(authUser._id)
@@ -361,7 +374,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   }
 
   const animateAvailability = (
-    incoming: Set<Temporal.ZonedDateTime>,
+    incoming: ZdtSet,
     startDate: Temporal.ZonedDateTime,
     endDate: Temporal.ZonedDateTime
   ) => {
@@ -375,8 +388,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     }
     let availabilityArray = [...incoming]
     availabilityArray = availabilityArray.filter(
-      (a) =>
-        a >= startDate && a <= endDate
+      (a) => isDateBetween(a, startDate, endDate)
     )
 
     for (let i = 0; i < availabilityArray.length / blocksPerGroup + 1; ++i) {
@@ -387,9 +399,9 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
         )) {
           availability.value.add(a)
         }
-        availability.value = new Set(availability.value)
+        availability.value = new ZdtSet(availability.value)
         if (i >= availabilityArray.length / blocksPerGroup) {
-          availability.value = new Set(incoming)
+          availability.value = new ZdtSet(incoming)
           availabilityAnimTimeouts.value.push(
             setTimeout(() => {
               availabilityAnimEnabled.value = false
@@ -414,7 +426,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   }
 
   const setAvailabilityAutomatically = () => {
-    availability.value = new Set()
+    availability.value = new ZdtSet()
     const tmpAvailability = opts.getAvailabilityFromCalendarEvents({
       calendarEventsByDay: opts.calendarEventsByDay.value,
       calendarOptions: {
@@ -438,9 +450,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
 
   const reanimateAvailability = () => {
     const authUser = mainStore.authUser
-    const responses = (
-      opts.event.value as { responses?: Record<string, unknown> }
-    ).responses
+    const responses = opts.event.value.responses
     if (
       opts.state.value === states.EDIT_AVAILABILITY &&
       authUser?._id &&
@@ -463,9 +473,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     const duration = opts.event.value.duration ?? durations.ZERO
     const end = getDateHoursOffset(date, duration)
     for (const a of fromAvailability) {
-      if (
-        start <= a && a <= end
-      ) {
+      if (isDateBetween(a, start, end)) {
         return true
       }
     }
@@ -474,62 +482,90 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
 
   const getAvailabilityForColumn = (
     column: number,
-    fromAvailability: Temporal.ZonedDateTime[] = [...availability.value]
-  ): Set<Temporal.ZonedDateTime> => {
-    const subset = new Set<Temporal.ZonedDateTime>()
-    const set = new Set(fromAvailability)
+    fromAvailability: ZdtSet = availability.value
+  ): ZdtSet => {
+    const subset = new ZdtSet()
     const totalRows =
       opts.splitTimes.value[0].length + opts.splitTimes.value[1].length
     for (let r = 0; r < totalRows; ++r) {
       const date = opts.getDateFromRowCol(r, column)
       if (!date) continue
-      if (set.has(date)) subset.add(date)
+      if (zdtSetHas(fromAvailability, date)) subset.add(date)
     }
     return subset
   }
 
   function getManualAvailabilityDow(
-    fromManualAvailability:
-      | Map<Temporal.ZonedDateTime, Set<Temporal.ZonedDateTime>>
-      | Record<
-          string,
-          Set<Temporal.ZonedDateTime> | Temporal.ZonedDateTime[]
-        > = manualAvailability.value
-  ): Record<string, Set<Temporal.ZonedDateTime>> {
+    fromManualAvailability: ZdtMap<ZdtSet> = manualAvailability.value
+  ): Record<string, ZdtSet> {
     const eventDates = opts.event.value.dates ?? []
-    const out: Record<string, Set<Temporal.ZonedDateTime>> = {}
+    const renderedWeekStart = getRenderedWeekStart(
+      opts.weekOffset.value,
+      opts.event.value.startOnMonday
+    )
+    const out: Record<string, ZdtSet> = {}
 
-    // Handle both Map and Record types for backward compatibility
-    if (fromManualAvailability instanceof Map) {
-      for (const [timeInstant, slot] of fromManualAvailability.entries()) {
-        const dowTime = dateToDowDate(
-          eventDates,
-          timeInstant,
-          opts.weekOffset.value
-        )
-        out[String(dowTime.epochMilliseconds)] = new Set(
-          Array.from(slot).map((a) =>
-            dateToDowDate(eventDates, a, opts.weekOffset.value)
+    for (const [timeInstant, slot] of fromManualAvailability.entries()) {
+      const dowTime = dateToDowDate(
+        eventDates,
+        timeInstant,
+        opts.weekOffset.value,
+        false,
+        opts.event.value.startOnMonday,
+        renderedWeekStart
+      )
+      out[String(dowTime.epochMilliseconds)] = new ZdtSet(
+        Array.from(slot).map((a) =>
+          dateToDowDate(
+            eventDates,
+            a,
+            opts.weekOffset.value,
+            false,
+            opts.event.value.startOnMonday,
+            renderedWeekStart
           )
         )
-      }
-    } else {
-      // Legacy Record format
-      for (const time in fromManualAvailability) {
-        const timeInstant = Temporal.ZonedDateTime.from(time)
-        const dowTime = dateToDowDate(
-          eventDates,
-          timeInstant,
-          opts.weekOffset.value
-        )
-        const slot = fromManualAvailability[time]
-        out[String(dowTime.epochMilliseconds)] = new Set(
-          Array.from(slot as Iterable<Temporal.ZonedDateTime>).map((a) =>
-            dateToDowDate(eventDates, a, opts.weekOffset.value)
-          )
-        )
-      }
+      )
     }
+    return out
+  }
+
+  function getFetchedManualAvailabilityDow(
+    fromManualAvailability?: Record<string, Temporal.ZonedDateTime[]>
+  ): Record<string, ZdtSet> {
+    if (!fromManualAvailability) return {}
+
+    const eventDates = opts.event.value.dates ?? []
+    const renderedWeekStart = getRenderedWeekStart(
+      opts.weekOffset.value,
+      opts.event.value.startOnMonday
+    )
+    const out: Record<string, ZdtSet> = {}
+
+    for (const time in fromManualAvailability) {
+      const timeInstant = parseTemporalEpochKey(time)
+      const dowTime = dateToDowDate(
+        eventDates,
+        timeInstant,
+        opts.weekOffset.value,
+        false,
+        opts.event.value.startOnMonday,
+        renderedWeekStart
+      )
+      out[String(dowTime.epochMilliseconds)] = new ZdtSet(
+        fromManualAvailability[time].map((a) =>
+          dateToDowDate(
+            eventDates,
+            a,
+            opts.weekOffset.value,
+            false,
+            opts.event.value.startOnMonday,
+            renderedWeekStart
+          )
+        )
+      )
+    }
+
     return out
   }
 
@@ -540,9 +576,11 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     let maxLocal = 0
     if (opts.event.value.daysOnly) {
       for (const day of allDays) {
-        const num = [
-          ...(responsesFormatted.value.get(day.dateObject) ?? new Set<string>()),
-        ].filter((r) => curRespondentsSet.has(r)).length
+        const num = getNumCurRespondentsForDay(
+          responsesFormatted.value,
+          day.dateObject,
+          curRespondentsSet
+        )
         if (num > maxLocal) maxLocal = num
       }
     } else {
@@ -569,7 +607,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     const date = opts.getDateFromRowCol(row, col)
     if (!date) return
     const available =
-      responsesFormatted.value.get(date) ?? new Set()
+      zdtMapGet(responsesFormatted.value, date) ?? new Set()
     for (const respondent of respondents.value) {
       if (respondent._id) {
         curTimeslotAvailability.value[respondent._id] = available.has(
@@ -673,7 +711,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       })
     }
     await _delete(`/events/${opts.event.value._id ?? ""}/response`, payload)
-    availability.value = new Set()
+    availability.value = new ZdtSet()
     if (opts.isGroup.value) {
       // group navigation handled by caller
     } else {
@@ -749,6 +787,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     isTouched,
     getAvailabilityForColumn,
     getManualAvailabilityDow,
+    getFetchedManualAvailabilityDow,
     curRespondentsMaxFor,
     showAvailability,
     submitAvailability,

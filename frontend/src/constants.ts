@@ -90,7 +90,6 @@ export const hoursPlainTime = {
   ZERO: Temporal.PlainTime.from({ hour: 0 }),
   NINE: Temporal.PlainTime.from({ hour: 9 }),
   SEVENTEEN: Temporal.PlainTime.from({ hour: 17 }),
-  TWENTY_FOUR: Temporal.PlainTime.from({ hour: 24 }),
 } as const
 
 export const UTC = "UTC"

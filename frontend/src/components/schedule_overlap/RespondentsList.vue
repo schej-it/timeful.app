@@ -422,12 +422,13 @@ import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } 
 import { storeToRefs } from "pinia"
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
-import { _delete, getLocale } from "@/utils"
+import { _delete, getLocale, zdtSetHas } from "@/utils"
 import { posthog } from "@/plugins/posthog"
 import UserAvatarContent from "../UserAvatarContent.vue"
 import EventOptions from "./EventOptions.vue"
 import OverflowGradient from "@/components/OverflowGradient.vue"
 import { Temporal } from "temporal-polyfill"
+import type { ZdtMap } from "@/utils"
 import type { EventLike, ParsedResponses, Timezone } from "@/composables/schedule_overlap/types"
 import type { User } from "@/types"
 
@@ -455,7 +456,7 @@ const props = defineProps<{
   isGroup: boolean
   attendees?: { email: string; declined?: boolean }[]
   showCalendarEvents: boolean
-  responsesFormatted: Map<Temporal.ZonedDateTime, Set<string>>
+  responsesFormatted: ZdtMap<Set<string>>
   timezone: Timezone
   showBestTimes: boolean
   hideIfNeeded: boolean
@@ -612,7 +613,10 @@ function respondentClass(id: string) {
 
 function respondentIfNeeded(id: string) {
   if (!props.curDate || props.hideIfNeeded) return false
-  return Boolean(props.parsedResponses[id].ifNeeded?.has(props.curDate))
+  return Boolean(
+    props.parsedResponses[id].ifNeeded &&
+      zdtSetHas(props.parsedResponses[id].ifNeeded, props.curDate)
+  )
 }
 
 function respondentSelected(id: string) {
@@ -693,9 +697,9 @@ function exportCsv() {
       for (let i = 0; i < numIterations; ++i) {
         const row = [getDateString(curDate)]
         for (const response of responses) {
-          if (response.availability.has(curDate)) {
+          if (zdtSetHas(response.availability, curDate)) {
             row.push("Available")
-          } else if (response.ifNeeded?.has(curDate)) {
+          } else if (response.ifNeeded && zdtSetHas(response.ifNeeded, curDate)) {
             row.push("If needed")
           } else {
             row.push("")
@@ -716,8 +720,8 @@ function exportCsv() {
         let curDate = Temporal.ZonedDateTime.from(date)
         for (let i = 0; i < numIterations; ++i) {
           if (
-            response.availability.has(curDate) ||
-            response.ifNeeded?.has(curDate)
+            zdtSetHas(response.availability, curDate) ||
+            (response.ifNeeded && zdtSetHas(response.ifNeeded, curDate))
           ) {
             row.push(getDateString(curDate))
           } else {

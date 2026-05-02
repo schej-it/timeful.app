@@ -97,6 +97,8 @@ import { authTypes, calendarTypes } from "@/constants"
 import { post, signInGoogle, getCalendarAccountKey } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
+import type { CalendarEventsTransportMap } from "@/composables/event/calendarEventsBoundary"
+import type { CalendarEventsMap } from "@/composables/schedule_overlap/types"
 
 interface SubCalendar {
   name?: string
@@ -110,17 +112,14 @@ interface CalendarAccountProp {
   subCalendars?: Record<string, SubCalendar>
 }
 
-interface CalendarEventsEntry {
-  error?: boolean
-  calendarEvents?: unknown[]
-}
+type CalendarAccountEventsMap = CalendarEventsTransportMap | CalendarEventsMap
 
 const props = withDefaults(
   defineProps<{
     toggleState?: boolean
     account?: CalendarAccountProp
     eventId?: string
-    calendarEventsMap?: Record<string, CalendarEventsEntry | undefined>
+    calendarEventsMap?: CalendarAccountEventsMap
     removeDialog?: boolean
     selectedRemoveEmail?: string
     syncWithBackend?: boolean

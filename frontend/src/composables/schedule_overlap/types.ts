@@ -1,5 +1,14 @@
-import type { Temporal } from "temporal-polyfill"
-import type { Event } from "@/types"
+import { Temporal } from "temporal-polyfill"
+import type {
+  Attendee,
+  CalendarEvent,
+  Event,
+  RawEvent,
+  RawSignUpBlock,
+  SignUpBlock,
+} from "@/types"
+import { fromRawSignUpBlock } from "@/types"
+import type { ZdtMap, ZdtSet } from "@/utils"
 
 export const states = {
   HEATMAP: "heatmap",
@@ -57,7 +66,14 @@ export interface ScheduledEvent {
 }
 
 // TODO rename to SignUpBlockLike?
-export interface SignUpBlockLite {
+type RawEventResponses = NonNullable<RawEvent["responses"]>
+type RawSignUpResponses = NonNullable<RawEvent["signUpResponses"]>
+
+export type ScheduleOverlapResponse = RawEventResponses[string]
+export type ScheduleOverlapSignUpResponse = RawSignUpResponses[string]
+
+export interface ScheduleOverlapSignUpBlock
+  extends Omit<SignUpBlock, "startDate" | "endDate" | "_id" | "capacity" | "name"> {
   _id: string
   capacity: number
   name: string
@@ -65,8 +81,7 @@ export interface SignUpBlockLite {
   endDate: Temporal.ZonedDateTime
   hoursOffset: Temporal.Duration
   hoursLength: Temporal.Duration
-  responses?: { userId?: string; signUpBlockIds?: string[] }[]
-  [key: string]: unknown
+  responses?: ScheduleOverlapSignUpResponse[]
 }
 
 export interface Timezone {
@@ -76,24 +91,75 @@ export interface Timezone {
   gmtString: string
 }
 
-export type EventLike = Event & Record<string, unknown>
+export type ScheduleOverlapEvent = Omit<
+  Event,
+  "responses" | "signUpBlocks" | "signUpResponses"
+> & {
+  responses?: RawEventResponses
+  signUpBlocks?: ScheduleOverlapSignUpBlock[]
+  signUpResponses?: RawSignUpResponses
+  attendees?: Attendee[]
+  location?: string
+  shortId?: string
+}
 
-// TODO
+export const toScheduleOverlapEvent = (
+  event: Event
+): ScheduleOverlapEvent => ({
+  ...event,
+  signUpBlocks: event.signUpBlocks?.flatMap((block) => {
+    const normalizedBlock: SignUpBlock =
+      typeof block.startDate === "number" || typeof block.endDate === "number"
+        ? fromRawSignUpBlock(block as RawSignUpBlock)
+        : block
+    if (
+      !(normalizedBlock.startDate instanceof Temporal.ZonedDateTime) ||
+      !(normalizedBlock.endDate instanceof Temporal.ZonedDateTime)
+    ) {
+      return []
+    }
+    return [{
+      _id: normalizedBlock._id ?? "",
+      capacity: normalizedBlock.capacity ?? 0,
+      name: normalizedBlock.name ?? "",
+      startDate: normalizedBlock.startDate,
+      endDate: normalizedBlock.endDate,
+      hoursOffset: Temporal.Duration.from({ minutes: 0 }),
+      hoursLength: Temporal.Duration.from({ minutes: 0 }),
+    }]
+  }),
+})
+
+export type EventLike = ScheduleOverlapEvent
+export type SignUpBlockLite = ScheduleOverlapSignUpBlock
+
 export interface CalendarOptions {
   bufferTime: { enabled: boolean; time: number }
   workingHours: { enabled: boolean; startTime: number; endTime: number }
 }
 
+export const normalizeCalendarOptions = (
+  calendarOptions?: RawEventResponses[string]["calendarOptions"]
+): CalendarOptions => ({
+  bufferTime: {
+    enabled: calendarOptions?.bufferTime?.enabled ?? false,
+    time: calendarOptions?.bufferTime?.time ?? 15,
+  },
+  workingHours: {
+    enabled: calendarOptions?.workingHours?.enabled ?? false,
+    startTime: calendarOptions?.workingHours?.startTime ?? 9,
+    endTime: calendarOptions?.workingHours?.endTime ?? 17,
+  },
+})
+
 // TODO rename to CalendarEventLike
 
-export interface CalendarEventLite {
+export interface CalendarEventLite
+  extends Omit<CalendarEvent, "startDate" | "endDate"> {
   startDate: Temporal.ZonedDateTime
   endDate: Temporal.ZonedDateTime
-  free?: boolean
-  calendarId?: string
   hoursOffset?: Temporal.Duration
   hoursLength?: Temporal.Duration
-  [k: string]: unknown
 }
 
 // Type for processed calendar events where dates are guaranteed to be ZonedDateTime objects
@@ -117,12 +183,9 @@ export interface CalendarEventsMapEntry {
 export type CalendarEventsMap = Record<string, CalendarEventsMapEntry>
 
 export interface ParsedResponse {
-  user: { _id: string; firstName?: string; email?: string } & Record<
-    string,
-    unknown
-  >
-  availability: Set<Temporal.ZonedDateTime>
-  ifNeeded?: Set<Temporal.ZonedDateTime>
+  user: { _id: string; firstName?: string; email?: string; lastName?: string }
+  availability: ZdtSet
+  ifNeeded?: ZdtSet
   enabledCalendars?: Record<string, string[]>
   calendarOptions?: CalendarOptions
 }
@@ -130,4 +193,4 @@ export interface ParsedResponse {
 export type ParsedResponses = Record<string, ParsedResponse>
 
 /** Map of Temporal.ZonedDateTime to set of user IDs who are available at that time */
-export type ResponsesFormatted = Map<Temporal.ZonedDateTime, Set<string>>
+export type ResponsesFormatted = ZdtMap<Set<string>>

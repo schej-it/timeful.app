@@ -5,6 +5,12 @@ import {
 } from "vue-router"
 import Landing from "@/views/Landing.vue"
 import { get } from "@/utils"
+import {
+  getEventRouteProps,
+  getGroupRouteProps,
+  getHomeRouteProps,
+  getSignUpRouteProps,
+} from "./routeProps"
 
 const routes: RouteRecordRaw[] = [
   {
@@ -16,7 +22,7 @@ const routes: RouteRecordRaw[] = [
     path: "/home",
     name: "home",
     component: () => import("@/views/Home.vue"),
-    props: true,
+    props: getHomeRouteProps,
   },
   {
     path: "/settings",
@@ -27,7 +33,7 @@ const routes: RouteRecordRaw[] = [
     path: "/e/:eventId",
     name: "event",
     component: () => import("@/views/Event.vue"),
-    props: true,
+    props: getEventRouteProps,
   },
   {
     path: "/e/:eventId/responded",
@@ -39,13 +45,13 @@ const routes: RouteRecordRaw[] = [
     path: "/g/:groupId",
     name: "group",
     component: () => import("@/views/Group.vue"),
-    props: true,
+    props: getGroupRouteProps,
   },
   {
     path: "/s/:signUpId",
     name: "signUp",
     component: () => import("@/views/SignUp.vue"),
-    props: true,
+    props: getSignUpRouteProps,
   },
   {
     path: "/sign-in",

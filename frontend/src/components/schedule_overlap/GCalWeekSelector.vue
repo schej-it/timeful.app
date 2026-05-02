@@ -12,14 +12,14 @@
 
 <script setup lang="ts">
 import { computed } from "vue"
-import { dateToDowDate } from "@/utils"
-import type { Event } from "@/types"
+import { dateToDowDate, getRenderedWeekStart } from "@/utils"
+import type { EventLike } from "@/composables/schedule_overlap/types"
 
 const props = withDefaults(
   defineProps<{
     weekOffset: number
     startOnMonday?: boolean
-    event: Event
+    event: EventLike
   }>(),
   { startOnMonday: false }
 )
@@ -30,11 +30,17 @@ const emit = defineEmits<{
 
 const weekText = computed(() => {
   const dates = props.event.dates ?? []
+  const renderedWeekStart = getRenderedWeekStart(
+    props.weekOffset,
+    props.startOnMonday
+  )
   const date = dateToDowDate(
     dates,
     dates[0],
     props.weekOffset,
-    true
+    true,
+    props.startOnMonday,
+    renderedWeekStart
   )
   // Get Sunday (or Monday if startOnMonday) of that week
   const dayOfWeek = date.dayOfWeek // 1-7 (Mon-Sun)

@@ -87,6 +87,7 @@ import NewSignUp from "@/components/NewSignUp.vue"
 import UnsavedChangesDialog from "@/components/general/UnsavedChangesDialog.vue"
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import type { SerializedEventDraft } from "@/composables/event/types"
 import type { Event } from "@/types"
 
 type TabType = "event" | "group" | "signup"
@@ -103,7 +104,7 @@ const props = withDefaults(
     type?: TabType
     event?: Event
     edit?: boolean
-    contactsPayload?: Record<string, unknown>
+    contactsPayload?: SerializedEventDraft
     noTabs?: boolean
     folderId?: string | null
   }>(),

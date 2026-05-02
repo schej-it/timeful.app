@@ -569,8 +569,8 @@
                 :is-owner="isOwner"
                 :already-responded="alreadyRespondedToSignUpForm"
                 :anonymous="event.blindAvailabilityEnabled"
-                @update:sign-up-block="(payload) => editSignUpBlock(payload as SignUpBlockLite)"
-                @delete:sign-up-block="(payload) => deleteSignUpBlock((payload as SignUpBlockLite)._id)"
+                @update:sign-up-block="editSignUpBlock"
+                @delete:sign-up-block="deleteSignUpBlock"
                 @sign-up-for-block="$emit('signUpForBlock', $event)"
               />
             </template>
@@ -999,7 +999,17 @@ import {
 } from "vue"
 import { useDisplay } from "vuetify"
 import type { Temporal } from "temporal-polyfill"
-import { post, lightOrDark, removeTransparencyFromHex, isTouchEnabled } from "@/utils"
+import {
+  getDateInTimezone,
+  post,
+  lightOrDark,
+  removeTransparencyFromHex,
+  isTouchEnabled,
+  compareDuration,
+  ZdtSet,
+  zdtMapGet,
+  zdtSetHas,
+} from "@/utils"
 import {
   availabilityTypes, calendarOptionsDefaults, eventTypes, guestUserId, timeTypes, durations
 } from "@/constants"
@@ -1032,11 +1042,11 @@ import { useSignUpForm } from "@/composables/schedule_overlap/useSignUpForm"
 import { useScheduleOverlapUI } from "@/composables/schedule_overlap/useScheduleOverlapUI"
 import type { UseScheduleOverlapUIReturn } from "@/composables/schedule_overlap/useScheduleOverlapUI"
 import {
-  states, DRAG_TYPES, SPLIT_GAP_HEIGHT, SPLIT_GAP_WIDTH, HOUR_HEIGHT,
+  states, DRAG_TYPES, SPLIT_GAP_HEIGHT, SPLIT_GAP_WIDTH, HOUR_HEIGHT, normalizeCalendarOptions,
 } from "@/composables/schedule_overlap/types"
 import type {
-  RowCol, Timezone, ScheduleOverlapState, EventLike, CalendarEventLite, CalendarEventsByDay,
-  CalendarOptions, ScheduledEvent, SignUpBlockLite, TimeItem,
+  RowCol, Timezone, ScheduleOverlapState, EventLike, CalendarEventLite, CalendarEventsByDay, CalendarEventsMap,
+  ScheduledEvent, SignUpBlockLite, TimeItem,
 } from "@/composables/schedule_overlap/types"
 
 // ── Props / Emits ──────────────────────────────────────────────────────
@@ -1046,7 +1056,7 @@ const props = withDefaults(
     ownerIsPremium?: boolean
     fromEditEvent?: boolean
     loadingCalendarEvents?: boolean
-    calendarEventsMap?: Record<string, { calendarEvents: CalendarEventLite[] }>
+    calendarEventsMap?: CalendarEventsMap
     sampleCalendarEventsByDay?: CalendarEventsByDay
     calendarPermissionGranted?: boolean
     weekOffset?: number
@@ -1090,7 +1100,7 @@ const emit = defineEmits<{
   addAvailabilityAsGuest: []
   setCurGuestId: [id: string]
   refreshEvent: []
-  signUpForBlock: [block: Record<string, unknown>]
+  signUpForBlock: [block: SignUpBlockLite]
   addAvailability: []
   deleteAvailability: []
 }>()
@@ -1149,7 +1159,7 @@ const bufferTimeShared = shallowRef<{ enabled: boolean; time: number }>({ ...cal
 const workingHoursShared = shallowRef<{ enabled: boolean; startTime: number; endTime: number }>({ ...calendarOptionsDefaults.workingHours })
 const getAvailFromCalEventsProxy = (
   ...args: Parameters<UseCalendarEventsReturn["getAvailabilityFromCalendarEvents"]>
-): Set<Temporal.ZonedDateTime> => calEventsResolved?.getAvailabilityFromCalendarEvents(...args) ?? new Set<Temporal.ZonedDateTime>()
+): ZdtSet => calEventsResolved?.getAvailabilityFromCalendarEvents(...args) ?? new ZdtSet()
 
 let uiResolved: UseScheduleOverlapUIReturn | null = null
 const defaultStateProxy = computed(() => uiResolved?.defaultState.value ?? states.HEATMAP)
@@ -1442,7 +1452,7 @@ watch(parsedResponses, () => {
     state.value === states.EDIT_AVAILABILITY &&
     mainStore.authUser?._id
   ) {
-    availability.value = new Set()
+    availability.value = new ZdtSet()
     populateUserAvailability(mainStore.authUser._id)
   }
 })
@@ -1473,7 +1483,7 @@ watch(
   () => props.fromEditEvent,
   () => {
     if (props.fromEditEvent && isSpecificTimes.value) {
-      tempTimes.value = new Set(
+      tempTimes.value = new ZdtSet(
         (props.event.times ?? [])
       )
       state.value = states.SET_SPECIFIC_TIMES
@@ -1537,11 +1547,11 @@ const overlaidAvailability = computed(() => {
       if (
         dAdd ||
         (!dRemove &&
-          (availability.value.has(date) || ifNeeded.value.has(date)))
+          (zdtSetHas(availability.value, date) || zdtSetHas(ifNeeded.value, date)))
       ) {
         const type = dAdd
           ? availabilityType.value
-          : availability.value.has(date)
+          : zdtSetHas(availability.value, date)
             ? availabilityTypes.AVAILABLE
             : availabilityTypes.IF_NEEDED
         if (idx in result[d]) {
@@ -1610,7 +1620,7 @@ function getTimeslotClassStyle(
   if (!date) return { class: c, style: s }
 
   const timeslotRespondents =
-    responsesFormatted.value.get(date) ?? new Set<string>()
+    zdtMapGet(responsesFormatted.value, date) ?? new Set<string>()
 
   if (isSignUp.value) {
     c += "tw-bg-light-gray "
@@ -1637,10 +1647,10 @@ function getTimeslotClassStyle(
       }
     } else {
       if (state.value === states.SET_SPECIFIC_TIMES) {
-        c += tempTimes.value.has(date) ? "tw-bg-white " : "tw-bg-gray "
+        c += zdtSetHas(tempTimes.value, date) ? "tw-bg-white " : "tw-bg-gray "
       } else {
-        if (availability.value.has(date)) s.backgroundColor = "#00994C77"
-        else if (ifNeeded.value.has(date)) c += "tw-bg-yellow "
+        if (zdtSetHas(availability.value, date)) s.backgroundColor = "#00994C77"
+        else if (zdtSetHas(ifNeeded.value, date)) c += "tw-bg-yellow "
       }
     }
   }
@@ -1648,7 +1658,10 @@ function getTimeslotClassStyle(
   if (state.value === states.SINGLE_AVAILABILITY) {
     const respondent = curRespondent.value
     if (timeslotRespondents.has(respondent)) {
-      if (parsedResponses.value[respondent].ifNeeded?.has(date)) {
+      if (
+        parsedResponses.value[respondent].ifNeeded &&
+        zdtSetHas(parsedResponses.value[respondent].ifNeeded, date)
+      ) {
         c += "tw-bg-yellow "
       } else {
         s.backgroundColor = "#00994C77"
@@ -1712,7 +1725,11 @@ function getTimeslotClassStyle(
             state.value === states.SUBSET_AVAILABILITY
               ? curRespondents.value[0]
               : respondents.value[0]._id
-          if (rid && parsedResponses.value[rid].ifNeeded?.has(date)) {
+          if (
+            rid &&
+            parsedResponses.value[rid].ifNeeded &&
+            zdtSetHas(parsedResponses.value[rid].ifNeeded, date)
+          ) {
 
             c += "tw-bg-yellow "
           } else {
@@ -1835,7 +1852,7 @@ function getDayTimeslotClassStyle(
   const col = i % 7
   let cs: { class: string; style: Record<string, string> }
 
-  if (monthDayIncluded.value.get(date)) {
+  if (zdtMapGet(monthDayIncluded.value, date)) {
     cs = getTimeslotClassStyle(date, row, col)
     if (state.value === states.EDIT_AVAILABILITY) cs.class += "tw-cursor-pointer "
     const bg = cs.style.backgroundColor
@@ -1852,7 +1869,7 @@ function getDayTimeslotClassStyle(
     (respondents.value.length > 0 || state.value === states.EDIT_AVAILABILITY) &&
     curTimeslot.value.row === row &&
     curTimeslot.value.col === col &&
-    monthDayIncluded.value.get(date)
+    zdtMapGet(monthDayIncluded.value, date)
   ) {
     cs.class += "tw-outline-2 tw-outline-dashed tw-outline-black tw-z-10 "
   } else {
@@ -1899,24 +1916,22 @@ function getTimeslotVon(row: number, col: number): Record<string, () => void> {
         if (!props.event.daysOnly) {
           const date = getDateFromRowCol(row, col)
           if (date) {
-            const localDate = date.subtract(timezoneOffset.value)
+            const localDate = getDateInTimezone(date, curTimezone.value)
             const start = localDate
             const end = start.add(timeslotDuration.value)
-            // TODO check
-            
-            // Format using Temporal's toLocaleString for locale-aware formatting            
-            const timeFormat: Intl.DateTimeFormatOptions = timeType.value === timeTypes.HOUR12 
+
+            const timeFormat: Intl.DateTimeFormatOptions = timeType.value === timeTypes.HOUR12
               ? { hour: "numeric", minute: "2-digit" }
               : { hour: "2-digit", minute: "2-digit", hour12: false }
-            
+
             const dateFormat: Intl.DateTimeFormatOptions = grid.isSpecificDates.value
               ? { weekday: "short", month: "short", day: "numeric", year: "numeric" }
               : { weekday: "short" }
-            
+
             const startDateStr = start.toLocaleString("en-US", dateFormat)
             const startTimeStr = start.toLocaleString("en-US", timeFormat)
             const endTimeStr = end.toLocaleString("en-US", timeFormat)
-            
+
             tooltipContent.value = `${startDateStr} ${startTimeStr} to ${endTimeStr}`
           }
         }
@@ -1932,13 +1947,13 @@ function getIsTimeBlockInFirstSplit(timeBlock: { hoursOffset: Temporal.Duration 
   const s0 = splitTimes.value[0]
   return (
     s0.length > 0 &&
-    timeBlock.hoursOffset >= s0[0].hoursOffset &&
-    timeBlock.hoursOffset <= s0[s0.length - 1].hoursOffset
+    compareDuration(timeBlock.hoursOffset, s0[0].hoursOffset) >= 0 &&
+    compareDuration(timeBlock.hoursOffset, s0[s0.length - 1].hoursOffset) <= 0
   )
 }
 
 function getTimeBlockStyle(
-  timeBlock: { hoursOffset?: Temporal.Duration; hoursLength?: Temporal.Duration } & Record<string, unknown>
+  timeBlock: { hoursOffset?: Temporal.Duration; hoursLength?: Temporal.Duration }
 ): Record<string, string> {
   const style: Record<string, string> = {}
   const s0 = splitTimes.value[0]
@@ -1961,8 +1976,8 @@ function getTimeBlockStyle(
 function startEditing() {
   state.value = isSignUp.value ? states.EDIT_SIGN_UP_BLOCKS : states.EDIT_AVAILABILITY
   availabilityType.value = availabilityTypes.AVAILABLE
-  availability.value = new Set()
-  ifNeeded.value = new Set()
+  availability.value = new ZdtSet()
+  ifNeeded.value = new ZdtSet()
   if (mainStore.authUser && !props.addingAvailabilityAsGuest) {
     resetCurUserAvailability()
   }
@@ -2057,14 +2072,16 @@ onMounted(() => {
 
   const authUser = mainStore.authUser
   if (authUser) {
-    bufferTime.value = (authUser.calendarOptions?.bufferTime ?? { enabled: false, time: 15 }) as { enabled: boolean; time: number }
-    workingHours.value = (authUser.calendarOptions?.workingHours ?? { enabled: false, startTime: 9, endTime: 17 }) as { enabled: boolean; startTime: number; endTime: number }
+    const userCalendarOptions = normalizeCalendarOptions(authUser.calendarOptions)
+    bufferTime.value = userCalendarOptions.bufferTime
+    workingHours.value = userCalendarOptions.workingHours
     if (isGroup.value) {
-      const responses = props.event.responses as Record<string, { calendarOptions?: CalendarOptions }> | undefined
-      const groupOpts: CalendarOptions | undefined = responses?.[authUser._id ?? ""]?.calendarOptions
-      if (groupOpts) {
-        bufferTime.value = groupOpts.bufferTime
-        workingHours.value = groupOpts.workingHours
+      const groupCalendarOptions = props.event.responses?.[authUser._id ?? ""]
+        ?.calendarOptions
+      if (groupCalendarOptions) {
+        const normalizedGroupOptions = normalizeCalendarOptions(groupCalendarOptions)
+        bufferTime.value = normalizedGroupOptions.bufferTime
+        workingHours.value = normalizedGroupOptions.workingHours
       } else {
         bufferTime.value = { enabled: false, time: 15 }
         workingHours.value = { enabled: false, startTime: 9, endTime: 17 }

@@ -4,7 +4,12 @@
 
 import { eventTypes, UTC } from "@/constants"
 import type { Event, User } from "@/types"
-import { dateToDowDate, toZDT, type ZonedDateTime } from "./date_utils"
+import {
+  dateToDowDate,
+  getRenderedWeekStart,
+  toZDT,
+  type ZonedDateTime,
+} from "./date_utils"
 import Color from "color"
 import type { useDisplay } from "vuetify"
 
@@ -113,7 +118,14 @@ export const processEvent = (event: Event): void => {
   if (!event.dates?.length || event.duration == null) return
   let startDate: ZonedDateTime = event.dates[0]
   if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
-    startDate = dateToDowDate(event.dates, startDate, 0, true)
+    startDate = dateToDowDate(
+      event.dates,
+      startDate,
+      0,
+      true,
+      event.startOnMonday,
+      getRenderedWeekStart(0, event.startOnMonday)
+    )
   }
 
   // Convert to PlainTime for startTime using toZDT helper

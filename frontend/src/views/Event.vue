@@ -281,13 +281,13 @@
           <ScheduleOverlap
             ref="scheduleOverlap"
             v-model:week-offset="weekOffset"
-            :event="event"
+            :event="scheduleOverlapEvent"
             :owner-is-premium="ownerIsPremium"
             :from-edit-event="fromEditEvent"
             :loading-calendar-events="loading"
-            :calendar-events-map="calendarEventsMap as unknown as Record<string, { calendarEvents: CalendarEventLite[] }>"
+            :calendar-events-map="calendarEventsMap"
             :calendar-permission-granted="calendarPermissionGranted"
-            :calendar-availabilities="calendarAvailabilities as unknown as Record<string, CalendarEventLite[]>"
+            :calendar-availabilities="calendarAvailabilities"
             :cur-guest-id="curGuestId"
             :initial-timezone="initialTimezone as unknown as Timezone"
             :adding-availability-as-guest="addingAvailabilityAsGuest"
@@ -480,6 +480,7 @@ import {
   toRef,
   onMounted,
   onBeforeUnmount,
+  type PropType,
 } from "vue"
 import { useRouter, useRoute } from "vue-router"
 import { storeToRefs } from "pinia"
@@ -489,16 +490,18 @@ import {
   post,
   getDateRangeStringForEvent,
   isIOS as isIOSFn,
-  dateToDowDate,
   sendPluginError,
   sendPluginSuccess,
   isValidPluginMessage,
-  convertToUTC,
-  convertUTCSlotsToLocalISO,
   validateDOWPayload,
-  timezoneObservesDST,
+  normalizePluginSetSlots,
+  resolvePluginTimezoneValue,
 } from "@/utils"
 import { validateEmail } from "@/utils"
+import {
+  getPluginEventTimeRange,
+  normalizePluginResponses,
+} from "@/views/event/pluginResponsesBoundary"
 
 import NewDialog from "@/components/NewDialog.vue"
 import ScheduleOverlap from "@/components/schedule_overlap/ScheduleOverlap.vue"
@@ -523,9 +526,13 @@ import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { useEventLoader } from "@/composables/event/useEventLoader"
 import { useEventEditing } from "@/composables/event/useEventEditing"
 import { useEventRespondent } from "@/composables/event/useEventRespondent"
+import type { SerializedEventDraft } from "@/composables/event/types"
 import type { ScheduleOverlapInstance } from "@/composables/event/types"
-import type { Timezone, CalendarEventLite } from "@/composables/schedule_overlap/types"
-import type { User } from "@/types"
+import {
+  toScheduleOverlapEvent,
+  type Timezone,
+} from "@/composables/schedule_overlap/types"
+import type { Event, RawResponse, User } from "@/types"
 
 defineOptions({ name: "AppEvent" })
 
@@ -535,7 +542,10 @@ const props = defineProps({
   editingMode: { type: Boolean, default: false },
   linkApple: { type: Boolean, default: false },
   initialTimezone: { type: Object, default: () => ({}) },
-  contactsPayload: { type: Object, default: () => ({}) },
+  contactsPayload: {
+    type: Object as PropType<SerializedEventDraft>,
+    default: () => ({}),
+  },
 })
 
 const router = useRouter()
@@ -656,6 +666,10 @@ const {
   calendarPermissionGranted, fromEditEvent, refreshEvent, refreshCalendar,
 } = loader
 
+const scheduleOverlapEvent = computed(() =>
+  toScheduleOverlapEvent(event.value as Event)
+)
+
 function resetWeekOffset() {
   weekOffset.value = 0
 }
@@ -725,55 +739,6 @@ interface SlotEntry {
   status?: string
 }
 
-interface ResponseEntry {
-  name?: string
-  email?: string
-  availability?: string[]
-  ifNeeded?: string[]
-  user?: {
-    firstName?: string
-    lastName?: string
-    email?: string
-  }
-}
-
-type EventResponses = Record<string, ResponseEntry & {
-    email?: string
-  }>;
-
-interface EventWithExtras {
-  _id?: string
-  ownerId?: string | number
-  name?: string
-  description?: string
-  isArchived?: boolean
-  isDeleted?: boolean
-  duration?: number
-  dates?: string[]
-  notificationsEnabled?: boolean
-  sendEmailAfterXResponses?: number
-  when2meetHref?: string
-  collectEmails?: boolean
-  timeIncrement?: number
-  hasSpecificTimes?: boolean
-  times?: string[]
-  type?: string
-  creatorPosthogId?: string
-  isSignUpForm?: boolean
-  signUpBlocks?: unknown[]
-  signUpResponses?: Record<string, unknown>
-  startOnMonday?: boolean
-  blindAvailabilityEnabled?: boolean
-  daysOnly?: boolean
-  responses?: EventResponses
-  numResponses?: number
-  scheduledEvent?: unknown
-  calendarEventId?: string
-  remindees?: unknown[]
-  attendees?: unknown[]
-  hasResponded?: boolean
-}
-
 function handleMessage(e: MessageEvent<PluginMessageData>) {
   if (!isValidPluginMessage(e)) return
   const payload = e.data.payload
@@ -836,7 +801,7 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
     sendPluginError(requestId, command, "Event not loaded yet")
     return
   }
-  const ev = event.value as EventWithExtras
+  const ev = event.value
   const timeIncrement = ev.timeIncrement ?? 15
   const payloadGuestName = e.data.payload?.guestName
   const hasGuestName = Boolean(payloadGuestName && payloadGuestName.length > 0)
@@ -904,51 +869,18 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
       return
     }
   }
-  if (ev.type === eventTypes.DOW && slots.length > 0) {
-    slots = slots.map((slot: SlotEntry) => {
-      // Parse the ISO string and add 1 hour using Temporal
-      const startZDT = Temporal.ZonedDateTime.from(slot.start, { overflow: "constrain" })
-      const endZDT = Temporal.ZonedDateTime.from(slot.end, { overflow: "constrain" })
-      
-      const newStart = startZDT.add({ hours: 1 })
-      const newEnd = endZDT.add({ hours: 1 })
-      
-      return {
-        ...slot,
-        start: newStart.toString({ calendarName: "never", timeZoneName: "never" }),
-        end: newEnd.toString({ calendarName: "never", timeZoneName: "never" }),
-      }
-    })
-  }
-  let timezoneValue: string | null = null
-  if (e.data.payload?.timezone) {
-    const providedTimezone = e.data.payload.timezone
-    if (!(providedTimezone in allTimezones)) {
+  const timezoneValue = e.data.payload?.timezone
+  if (timezoneValue) {
+    if (!(timezoneValue in allTimezones)) {
       sendPluginError(
         requestId,
         command,
-        `Invalid timezone: "${providedTimezone}". Please provide a valid IANA timezone name from the supported timezones list.`
+        `Invalid timezone: "${timezoneValue}". Please provide a valid IANA timezone name from the supported timezones list.`
       )
       return
     }
-    timezoneValue = providedTimezone
-  } else {
-    try {
-      const timezoneStr = localStorage.timezone as string
-      if (timezoneStr) {
-        const parsed = JSON.parse(timezoneStr) as { value?: string }
-        if (parsed.value && typeof parsed.value === "string") {
-          timezoneValue = parsed.value
-        } else {
-          timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
-        }
-      } else {
-        timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
-      }
-    } catch {
-      timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
-    }
   }
+  const effectiveTimezoneValue = timezoneValue ?? resolvePluginTimezoneValue()
   const timeSlotToRowCol =
     typeof scheduleOverlap.value?.getAllValidTimeRanges === "function"
       ? scheduleOverlap.value.getAllValidTimeRanges()
@@ -968,33 +900,27 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
       return
     }
   }
-  for (let i = 0; i < slots.length; i++) {
-    const slot = slots[i]
-    let startTime: Temporal.ZonedDateTime, endTime: Temporal.ZonedDateTime
-    try {
-      startTime = convertToUTC(slot.start, timezoneValue)
-      endTime = convertToUTC(slot.end, timezoneValue)
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err)
-      sendPluginError(requestId, command, `Failed to parse time at index ${String(i)}: ${msg}`)
-      return
-    }
-    if (endTime.epochMilliseconds <= startTime.epochMilliseconds) {
-      sendPluginError(requestId, command, `End time must be after start time at index ${String(i)}`)
-      return
-    }
+  const normalizedSlotsResult = normalizePluginSetSlots(
+    slots,
+    effectiveTimezoneValue,
+    ev.type
+  )
+  if (!normalizedSlotsResult.ok) {
+    sendPluginError(requestId, command, normalizedSlotsResult.error)
+    return
   }
+  const normalizedSlots = normalizedSlotsResult.slots
   const allAvailabilityTimestamps: number[] = []
   const allIfNeededTimestamps: number[] = []
   const timestampStatusMap = new Map<number, string>()
   let isBrokenBounds = false
-  slots.forEach((slot: SlotEntry, i: number) => {
-    const userStartZdt = Temporal.ZonedDateTime.from(slot.start, { overflow: 'constrain' }).withTimeZone(timezoneValue)
-    const userEndZdt = Temporal.ZonedDateTime.from(slot.end, { overflow: 'constrain' }).withTimeZone(timezoneValue)
-    
+  normalizedSlots.forEach((slot, i: number) => {
+    const userStartZdt = slot.parsedStart
+    const userEndZdt = slot.parsedEnd
+
     const userStartMs = userStartZdt.epochMilliseconds
     const userEndMs = userEndZdt.epochMilliseconds
-    
+
     const intWidth = userEndMs - userStartMs
     let coveredWidth = 0
     timeSlotToRowCol.forEach((value: { startTime: Temporal.ZonedDateTime; endTime: Temporal.ZonedDateTime }, _key: number) => {
@@ -1067,11 +993,9 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
     sendPluginError(requestId, command, "Event not loaded yet")
     return
   }
-  const ev = event.value as EventWithExtras
-  // Convert string dates to Temporal.ZonedDateTime if needed
-  const eventDates = ev.dates?.map(s => typeof s === 'string' ? Temporal.ZonedDateTime.from(s) : s) ?? []
-  
-  let timezoneValue: string | undefined = undefined
+  const ev = event.value
+
+  let timezoneValue: string
   if (e.data.payload?.timezone) {
     const providedTimezone = e.data.payload.timezone
     if (!(providedTimezone in allTimezones)) {
@@ -1080,45 +1004,15 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
     }
     timezoneValue = providedTimezone
   } else {
-    try {
-      const timezoneStr = localStorage.timezone as string
-      if (timezoneStr) {
-        const parsed = JSON.parse(timezoneStr) as { value?: string }
-        if (parsed.value && typeof parsed.value === "string") {
-          timezoneValue = parsed.value
-        } else {
-          timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
-        }
-      } else {
-        timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
-      }
-    } catch {
-      timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
-    }
+    timezoneValue = resolvePluginTimezoneValue()
   }
   const sanitizedId = props.eventId.replaceAll(".", "")
-  let timeMin: Temporal.ZonedDateTime | undefined, timeMax: Temporal.ZonedDateTime | undefined
-  if (ev.type === eventTypes.GROUP) {
-    if (eventDates.length > 0) {
-      timeMin = eventDates[0]
-      timeMax = eventDates[eventDates.length - 1]
-      // Convert to ZonedDateTime to add days, then back to Instant
-      timeMax = timeMax.add({ days: 1 })
-      timeMin = dateToDowDate(eventDates, timeMin, weekOffset.value, true)
-      timeMax = dateToDowDate(eventDates, timeMax, weekOffset.value, true)
-    }
-  } else {
-    if (eventDates.length > 0) {
-      timeMin = eventDates[0]
-      timeMax = eventDates[eventDates.length - 1]
-      // Convert to ZonedDateTime to add days, then back to Instant
-      timeMax = timeMax.add({ days: 1 })
-    }
-  }
-  if (!timeMin || !timeMax) {
+  const eventTimeRange = getPluginEventTimeRange(ev, weekOffset.value)
+  if (!eventTimeRange) {
     sendPluginError(requestId, command, "Could not calculate timeMin and timeMax")
     return
   }
+  const { timeMin, timeMax } = eventTimeRange
   try {
     let guestName: string | null = null
     if (typeof localStorage !== "undefined" && ev._id) {
@@ -1129,43 +1023,13 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
     if (guestName && guestName.length > 0) {
       url += `&guestName=${encodeURIComponent(guestName)}`
     }
-    const responses = await get<Record<string, ResponseEntry>>(url)
-    const allSlots: Record<string, unknown> = {}
-    for (const userId of Object.keys(responses)) {
-      const response = responses[userId]
-      let name = ""
-      let email = ""
-      if (response.name && response.name.length > 0) {
-        name = response.name
-        email = response.email ?? ""
-      } else {
-        const eventResponse = ev.responses?.[userId]
-        if (eventResponse?.user) {
-          const user = eventResponse.user
-          name = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()
-          email = user.email ?? ""
-        } else {
-          name = userId
-          email = ""
-        }
-      }
-      let availability: Temporal.ZonedDateTime[] = convertUTCSlotsToLocalISO(
-        response.availability?.map(s => Temporal.ZonedDateTime.from(s)) ?? [],
-        timezoneValue
-      )
-      let ifNeeded: Temporal.ZonedDateTime[] = convertUTCSlotsToLocalISO(
-        response.ifNeeded?.map(s => Temporal.ZonedDateTime.from(s)) ?? [],
-        timezoneValue
-      )
-      if (ev.type === eventTypes.DOW && timezoneObservesDST(timezoneValue)) {
-        const subtractOneHour = (s: Temporal.ZonedDateTime) => {
-          return s.withTimeZone(timezoneValue).subtract({ hours: 1  })
-        }
-        availability = availability.map(subtractOneHour)
-        ifNeeded = ifNeeded.map(subtractOneHour)
-      }
-      allSlots[userId] = { name, email, availability, ifNeeded: ifNeeded }
-    }
+    const responses = await get<Record<string, RawResponse>>(url)
+    const allSlots = normalizePluginResponses({
+      rawResponses: responses,
+      eventResponses: ev.responses,
+      timezoneValue,
+      eventType: ev.type,
+    })
     const timeIncrement = ev.timeIncrement ?? 15
     sendPluginSuccess(requestId, command, { slots: allSlots, timeIncrement, timezone: timezoneValue })
   } catch (err: unknown) {
@@ -1185,7 +1049,7 @@ void (async () => {
     await loader.refreshEvent()
     await loader.checkOwnerPremium()
 
-    const ev = loader.event.value as EventWithExtras | null
+    const ev = loader.event.value
     if (ev) {
       if (ev.type === eventTypes.GROUP) {
         if (route.name === "event") {
@@ -1239,7 +1103,7 @@ onMounted(() => {
 watch(loader.event, (ev) => {
   if (ev) {
     weekOffset.value = 0
-    document.title = `${(ev as EventWithExtras).name ?? ""} - Timeful`
+    document.title = `${ev.name ?? ""} - Timeful`
   }
 })
 

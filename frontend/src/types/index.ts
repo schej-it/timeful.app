@@ -1,5 +1,7 @@
 import type { components } from "./api"
 import { Temporal } from "temporal-polyfill"
+import type { SerializedEventDraft } from "@/composables/event/types"
+import { fromEpochMillisecondsToZDT } from "@/utils"
 
 type Schemas = components["schemas"]
 
@@ -36,13 +38,18 @@ export type RawWorkingHoursOptions = Schemas["models.WorkingHoursOptions"]
 export type User = RawUser
 
 // Event with Temporal date fields
-export type Event = Omit<RawEvent, "dates" | "times" | "duration"> & {
+export type Event = Omit<
+  RawEvent,
+  "dates" | "times" | "duration" | "scheduledEvent" | "signUpBlocks"
+> & {
   // TODO PlainDate?
   dates?: Temporal.ZonedDateTime[]
   times?: Temporal.ZonedDateTime[]
   startTime?: Temporal.PlainTime
   endTime?: Temporal.PlainTime
   duration?: Temporal.Duration
+  scheduledEvent?: CalendarEvent
+  signUpBlocks?: SignUpBlock[]
 }
 
 export type Folder = RawFolder
@@ -88,12 +95,16 @@ export type WorkingHoursOptions = RawWorkingHoursOptions
 export function fromRawEvent(raw: RawEvent): Event {
   return {
     ...raw,
-    dates: raw.dates?.map((ms) => Temporal.ZonedDateTime.from({ millisecond: ms })),
-    times: raw.times?.map((ms) => Temporal.ZonedDateTime.from({ millisecond: ms })),
+    dates: raw.dates?.map((ms) => fromEpochMillisecondsToZDT(ms)),
+    times: raw.times?.map((ms) => fromEpochMillisecondsToZDT(ms)),
     duration:
-      raw.duration
+      raw.duration != null
         ? Temporal.Duration.from({ hours: raw.duration })
         : undefined,
+    scheduledEvent: raw.scheduledEvent
+      ? fromRawCalendarEvent(raw.scheduledEvent)
+      : undefined,
+    signUpBlocks: raw.signUpBlocks?.map((block) => fromRawSignUpBlock(block)),
   }
 }
 
@@ -103,7 +114,11 @@ export function toRawEvent(event: Event): RawEvent {
     ...event,
     dates: event.dates?.map((instant) => instant.epochMilliseconds),
     times: event.times?.map((instant) => instant.epochMilliseconds),
-    duration: event.duration?.total("hours")
+    duration: event.duration?.total("hours"),
+    scheduledEvent: event.scheduledEvent
+      ? toRawCalendarEvent(event.scheduledEvent)
+      : undefined,
+    signUpBlocks: event.signUpBlocks?.map((block) => toRawSignUpBlock(block)),
   }
 }
 
@@ -111,17 +126,13 @@ export function toRawEvent(event: Event): RawEvent {
 export function fromRawResponse(raw: RawResponse): Response {
   return {
     ...raw,
-    availability: raw.availability?.map((ms) =>
-      Temporal.ZonedDateTime.from({ millisecond: ms})
-    ),
-    ifNeeded: raw.ifNeeded?.map((ms) =>
-      Temporal.ZonedDateTime.from({ millisecond: ms})
-    ),
+    availability: raw.availability?.map((ms) => fromEpochMillisecondsToZDT(ms)),
+    ifNeeded: raw.ifNeeded?.map((ms) => fromEpochMillisecondsToZDT(ms)),
     manualAvailability: raw.manualAvailability
       ? Object.fromEntries(
           Object.entries(raw.manualAvailability).map(([date, msArray]) => [
             date,
-            msArray.map((ms) => Temporal.ZonedDateTime.from({ millisecond: ms})),
+            msArray.map((ms) => fromEpochMillisecondsToZDT(ms)),
           ])
         )
       : undefined,
@@ -153,12 +164,8 @@ export function toRawResponse(response: Response): RawResponse {
 export function fromRawSignUpBlock(raw: RawSignUpBlock): SignUpBlock {
   return {
     ...raw,
-    startDate: raw.startDate
-      ? Temporal.ZonedDateTime.from({ millisecond: raw.startDate })
-      : undefined,
-    endDate: raw.endDate
-      ? Temporal.ZonedDateTime.from({ millisecond: raw.endDate })
-      : undefined,
+    startDate: raw.startDate != null ? fromEpochMillisecondsToZDT(raw.startDate) : undefined,
+    endDate: raw.endDate != null ? fromEpochMillisecondsToZDT(raw.endDate) : undefined,
   }
 }
 
@@ -175,12 +182,8 @@ export function toRawSignUpBlock(block: SignUpBlock): RawSignUpBlock {
 export function fromRawCalendarEvent(raw: RawCalendarEvent): CalendarEvent {
   return {
     ...raw,
-    startDate: raw.startDate
-      ? Temporal.ZonedDateTime.from({ millisecond: raw.startDate })
-      : undefined,
-    endDate: raw.endDate
-      ? Temporal.ZonedDateTime.from({ millisecond: raw.endDate })
-      : undefined,
+    startDate: raw.startDate != null ? fromEpochMillisecondsToZDT(raw.startDate) : undefined,
+    endDate: raw.endDate != null ? fromEpochMillisecondsToZDT(raw.endDate) : undefined,
   }
 }
 
@@ -196,7 +199,7 @@ export function toRawCalendarEvent(event: CalendarEvent): RawCalendarEvent {
 // App-local types
 export interface NewDialogOptions {
   show: boolean
-  contactsPayload: Record<string, unknown>
+  contactsPayload: SerializedEventDraft
   openNewGroup: boolean
   eventOnly: boolean
   folderId: string | null

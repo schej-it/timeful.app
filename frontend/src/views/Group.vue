@@ -22,13 +22,15 @@ import { errors, eventTypes } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import AccessDenied from "@/components/groups/AccessDenied.vue"
 import NotSignedIn from "@/components/groups/NotSignedIn.vue"
+import type { SerializedEventDraft } from "@/composables/event/types"
+import { serializeRouteContactsPayload, serializeRouteTimezone } from "@/router/routeProps"
 import type { Event as EventType } from "@/types"
 
 const props = defineProps<{
   groupId: string
   fromSignIn?: boolean
   initialTimezone?: Record<string, unknown>
-  contactsPayload?: Record<string, unknown>
+  contactsPayload?: SerializedEventDraft
 }>()
 
 defineOptions({ name: 'AppGroup' })
@@ -66,9 +68,9 @@ void (async () => {
         name: "event",
         params: {
           eventId: props.groupId,
-          initialTimezone: JSON.stringify(props.initialTimezone ?? {}),
+          initialTimezone: serializeRouteTimezone(props.initialTimezone),
           fromSignIn: String(props.fromSignIn),
-          contactsPayload: JSON.stringify(props.contactsPayload ?? {}),
+          contactsPayload: serializeRouteContactsPayload(props.contactsPayload),
         },
       })
     }

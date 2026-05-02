@@ -17,6 +17,7 @@ import Event from "./Event.vue"
 import { get } from "@/utils"
 import { errors } from "@/constants"
 import { useMainStore } from "@/stores/main"
+import type { SerializedEventDraft } from "@/composables/event/types"
 import type { Event as EventType } from "@/types"
 
 defineOptions({ name: 'AppSignUp' })
@@ -26,7 +27,7 @@ const props = defineProps<{
   fromSignIn?: boolean
   editingMode?: boolean
   initialTimezone?: Record<string, unknown>
-  contactsPayload?: Record<string, unknown>
+  contactsPayload?: SerializedEventDraft
 }>()
 
 const router = useRouter()

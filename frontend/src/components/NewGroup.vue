@@ -169,9 +169,11 @@ import { storeToRefs } from "pinia"
 import {
   post,
   put,
-  dateToTimeNum,
+  plainTimeToTimeNum,
+  resolveTimezoneValue,
   signInGoogle,
   getDateWithTimezone,
+  timeNumToPlainTime,
 } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { eventTypes, authTypes, durations, hoursPlainTime } from "@/constants"
@@ -182,7 +184,7 @@ import EmailInput from "./event/EmailInput.vue"
 import type { Event } from "@/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
 import { Temporal } from "temporal-polyfill"
-import type { ContactsPayload } from "@/composables/event/types"
+import type { SerializedEventDraft } from "@/composables/event/types"
 
 interface FormRef {
   validate: () => Promise<{ valid: boolean }> | boolean
@@ -198,7 +200,7 @@ const props = withDefaults(
     edit?: boolean
     dialog?: boolean
     showHelp?: boolean
-    contactsPayload?: ContactsPayload
+    contactsPayload?: SerializedEventDraft
     folderId?: string | null
   }>(),
   {
@@ -272,6 +274,14 @@ const times = computed(() => {
   t.push({ text: "12 am", value: 0 })
   return t
 })
+const normalizeDraftTime = (
+  time: SerializedEventDraft["startTime"],
+  fallback: Temporal.PlainTime
+): Temporal.PlainTime => {
+  if (time == null) return fallback
+  if (typeof time === "number") return timeNumToPlainTime(time)
+  return Temporal.PlainTime.from(time)
+}
 const otherEventAttendees = computed(() =>
   props.event?.attendees
     ? props.event.attendees
@@ -288,8 +298,8 @@ const addedEmails = computed(() => {
 onMounted(() => {
   if (Object.keys(props.contactsPayload).length > 0) {
     name.value = props.contactsPayload.name ?? ""
-    startTime.value = props.contactsPayload.startTime ?? hoursPlainTime.NINE
-    endTime.value = props.contactsPayload.endTime ?? hoursPlainTime.SEVENTEEN
+    startTime.value = normalizeDraftTime(props.contactsPayload.startTime, hoursPlainTime.NINE)
+    endTime.value = normalizeDraftTime(props.contactsPayload.endTime, hoursPlainTime.SEVENTEEN)
     selectedDaysOfWeek.value = props.contactsPayload.selectedDaysOfWeek ?? []
     startOnMonday.value = props.contactsPayload.startOnMonday ?? false
 
@@ -313,9 +323,12 @@ const submit = async () => {
   const result = await formRef.value?.validate()
   const valid = typeof result === "boolean" ? result : result?.valid
   if (!valid) return
+  const timezoneValue = resolveTimezoneValue(timezone.value.value)
 
-  let duration = endTime.value.since(startTime.value)
-  if (duration.total('hours') < 0) duration.add({ hours: 24 })
+  let duration = endTime.value.since(startTime.value, { largestUnit: "hours" })
+  if (duration.total("hours") <= 0) {
+    duration = duration.add({ hours: 24 })
+  }
 
   const dates: Temporal.ZonedDateTime[] = []
   selectedDaysOfWeek.value.sort((a, b) => a - b)
@@ -326,7 +339,7 @@ const submit = async () => {
     // For group events, we need to find the next occurrence of this day
     
     // Get current date in the specified timezone
-    const now = Temporal.Now.zonedDateTimeISO(timezone.value.value)
+    const now = Temporal.Now.zonedDateTimeISO(timezoneValue)
     const currentDayOfWeek = now.dayOfWeek // 1-7 (Mon-Sun)
     const targetDayOfWeek = dayIndex === 7 ? 7 : dayIndex // Convert from Sunday-based to Monday-based
     
@@ -336,7 +349,7 @@ const submit = async () => {
     
     const targetDate = now.add({ days: daysUntil }).toPlainDate()
     const targetZDT = targetDate.toZonedDateTime({ 
-      timeZone: timezone.value.value,
+      timeZone: timezoneValue,
       plainTime: startTime.value
     })
     dates.push(targetZDT)
@@ -429,8 +442,8 @@ const requestContactsAccess = ({ emails: requestEmails }: { emails: (string | { 
   const payload = {
     emails: emailStrings,
     name: name.value,
-    startTime: startTime.value,
-    endTime: endTime.value,
+    startTime: plainTimeToTimeNum(startTime.value),
+    endTime: plainTimeToTimeNum(endTime.value),
     selectedDaysOfWeek: selectedDaysOfWeek.value,
   }
   signInGoogle({
@@ -448,12 +461,13 @@ const updateFieldsFromEvent = () => {
   if (props.event) {
     name.value = props.event.name ?? ""
 
-    startTime.value =
-      // TODO Math.floor?
-      dateToTimeNum(getDateWithTimezone((props.event.dates ?? [])[0]), true)
+    const eventDate = props.event.dates?.at(0)
+    if (eventDate != null) {
+      startTime.value = getDateWithTimezone(eventDate).toPlainTime()
 
-    const durationHours = props.event.duration ?? durations.ZERO
-    endTime.value = startTime.value.add(durationHours)
+      const durationHours = props.event.duration ?? durations.ZERO
+      endTime.value = startTime.value.add(durationHours)
+    }
     startOnMonday.value = props.event.startOnMonday ?? false
 
     const days: number[] = []

@@ -1,6 +1,12 @@
 import { computed, ref, type ComputedRef, type Ref } from "vue"
 import { Temporal } from "temporal-polyfill"
-import { dateToDowDate, put } from "@/utils"
+import {
+  dateToDowDate,
+  getFixedOffsetTimeZoneId,
+  getRenderedWeekStart,
+  put,
+  type ZdtSet,
+} from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import {
@@ -44,7 +50,7 @@ export interface UseEventSchedulingOptions {
   dragCur: Ref<RowCol | null>
 
   // availability
-  tempTimes: Ref<Set<Temporal.ZonedDateTime>>
+  tempTimes: Ref<ZdtSet>
   respondents: ComputedRef<{ email?: string; firstName?: string }[]>
 }
 
@@ -130,17 +136,25 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
         if (nowZDT.dayOfWeek % 7 > startDate.dayOfWeek % 7) offset = 1
       }
       const eventDates = opts.event.value.dates ?? []
+      const renderedWeekStart = getRenderedWeekStart(
+        offset,
+        opts.event.value.startOnMonday
+      )
       startDate = dateToDowDate(
         eventDates,
         startDate,
         offset,
-        true
+        true,
+        opts.event.value.startOnMonday,
+        renderedWeekStart
       )
       endDate = dateToDowDate(
         eventDates,
         endDate,
         offset,
-        true
+        true,
+        opts.event.value.startOnMonday,
+        renderedWeekStart
       )
     }
 
@@ -153,6 +167,10 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
       (opts.event.value as { shortId?: string }).shortId ??
       opts.event.value._id ??
       ""
+    const scheduleTimezoneId = encodeURIComponent(
+      opts.curTimezone.value.value ||
+        getFixedOffsetTimeZoneId(opts.curTimezone.value.offset)
+    )
 
     let url: string
     if (googleCalendar) {
@@ -168,7 +186,7 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
         opts.event.value.name ?? ""
       )}&dates=${start}/${end}&details=${encodeURIComponent(
         "\n\nThis event was scheduled with Timeful: https://timeful.app/e/"
-      )}${eventId}&ctz=${opts.curTimezone.value.value}&add=${emailsString}`
+      )}${eventId}&ctz=${scheduleTimezoneId}&add=${emailsString}`
     } else {
       url = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(
         opts.event.value.name ?? ""
@@ -179,7 +197,7 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
         .toInstant()
         .toString()}&location=${encodeURIComponent(
         (opts.event.value as { location?: string }).location ?? ""
-      )}&path=/calendar/action/compose&timezone=${opts.curTimezone.value.value}`
+      )}&path=/calendar/action/compose&timezone=${scheduleTimezoneId}`
     }
 
     window.open(url, "_blank")

@@ -8,6 +8,8 @@ import { authTypes, calendarTypes } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import { Temporal } from "temporal-polyfill"
+import type { SerializedEventDraft } from "@/composables/event/types"
+import { serializeRouteContactsPayload } from "@/router/routeProps"
 import type { User } from "@/types"
 
 defineOptions({ name: 'AppAuth' })
@@ -18,7 +20,7 @@ interface AuthState {
   scope?: string
   eventId?: string
   groupId?: string
-  payload?: unknown
+  payload?: SerializedEventDraft
   openNewGroup?: boolean
   upgradeParams?: string
 }
@@ -138,7 +140,7 @@ void (async () => {
             void router.replace({
               name: "home",
               params: {
-                contactsPayload: state.payload as string,
+                contactsPayload: serializeRouteContactsPayload(state.payload),
                 openNewGroup: String(state.openNewGroup ?? false),
               },
             })
@@ -147,7 +149,7 @@ void (async () => {
               name: "event",
               params: {
                 eventId: state.eventId,
-                contactsPayload: state.payload as string,
+                contactsPayload: serializeRouteContactsPayload(state.payload),
               },
             })
           }

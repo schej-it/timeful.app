@@ -263,9 +263,10 @@ import { Temporal } from "temporal-polyfill"
 import {
   post,
   put,
-  dateToTimeNum,
   getDateWithTimezone,
   getTimeOptions,
+  resolveTimezoneValue,
+  timeNumToPlainTime,
 } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
@@ -276,7 +277,7 @@ import OverflowGradient from "@/components/OverflowGradient.vue"
 import ExpandableSection from "./ExpandableSection.vue"
 import type { Event } from "@/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
-import type { ContactsPayload } from "@/composables/event/types"
+import type { SerializedEventDraft } from "@/composables/event/types"
 
 interface FormRef {
   validate: () => Promise<{ valid: boolean }> | boolean
@@ -290,7 +291,7 @@ const props = withDefaults(
     event?: Event
     edit?: boolean
     dialog?: boolean
-    contactsPayload?: ContactsPayload
+    contactsPayload?: SerializedEventDraft
     showHelp?: boolean
   }>(),
   {
@@ -361,18 +362,32 @@ const minCalendarDate = computed(() => {
   return `${String(today.year)}-${String(today.month).padStart(2, "0")}-${String(today.day).padStart(2, "0")}`
 })
 
+const normalizeSelectedDays = (
+  selectedDays: SerializedEventDraft["selectedDays"]
+): Temporal.PlainDate[] => {
+  return (selectedDays ?? []).map((day) => Temporal.PlainDate.from(day))
+}
+
+const normalizeDraftTime = (
+  time: SerializedEventDraft["startTime"],
+  fallback: Temporal.PlainTime
+): Temporal.PlainTime => {
+  if (time == null) return fallback
+  if (typeof time === "number") return timeNumToPlainTime(time)
+  return Temporal.PlainTime.from(time)
+}
+
 onMounted(() => {
   if (Object.keys(props.contactsPayload).length > 0) {
     toggleEmailReminders(true)
     name.value = props.contactsPayload.name ?? ""
-    startTime.value = props.contactsPayload.startTime ?? hoursPlainTime.NINE
-    endTime.value = props.contactsPayload.endTime ?? hoursPlainTime.SEVENTEEN
+    startTime.value = normalizeDraftTime(props.contactsPayload.startTime, hoursPlainTime.NINE)
+    endTime.value = normalizeDraftTime(props.contactsPayload.endTime, hoursPlainTime.SEVENTEEN)
     daysOnly.value = props.contactsPayload.daysOnly ?? false
     type DateOptionType = typeof dateOptions[keyof typeof dateOptions]
     selectedDateOption.value = (props.contactsPayload.selectedDateOption ?? dateOptions.SPECIFIC) as DateOptionType
     selectedDaysOfWeek.value = props.contactsPayload.selectedDaysOfWeek ?? []
-    // TODO convert to plain dates
-    selectedDays.value = props.contactsPayload.selectedDays ?? []
+    selectedDays.value = normalizeSelectedDays(props.contactsPayload.selectedDays)
     notificationsEnabled.value = props.contactsPayload.notificationsEnabled ?? false
     timezone.value = (props.contactsPayload.timezone as Timezone | undefined) ?? { value: "", label: "", gmtString: "", offset: durations.ZERO }
 
@@ -411,11 +426,12 @@ const submit = async () => {
   const result = await formRef.value?.validate()
   const valid = typeof result === "boolean" ? result : result?.valid
   if (!valid) return
+  const timezoneValue = resolveTimezoneValue(timezone.value.value)
 
   selectedDays.value.sort()
 
-  let duration = endTime.value.until(startTime.value)
-  if (duration.total("hours") <= 0) duration.add({ hours: 24 })
+  let duration = endTime.value.since(startTime.value, { largestUnit: "hours" })
+  if (duration.total("hours") <= 0) duration = duration.add({ hours: 24 })
 
   const dates: Temporal.ZonedDateTime[] = []
   let type: string
@@ -436,7 +452,7 @@ const submit = async () => {
         const plainDate = Temporal.PlainDate.from(day)
         const plainTime = Temporal.PlainTime.from(startTime.value)
         const zdt = plainDate.toZonedDateTime({ 
-          timeZone: timezone.value.value,
+          timeZone: timezoneValue,
           plainTime
         })
         dates.push(zdt)
@@ -451,7 +467,7 @@ const submit = async () => {
       for (const dayIndex of selectedDaysOfWeek.value) {
         
         // Get current date in the specified timezone
-        const now = Temporal.Now.zonedDateTimeISO(timezone.value.value)
+        const now = Temporal.Now.zonedDateTimeISO(timezoneValue)
         const currentDayOfWeek = now.dayOfWeek // 1-7 (Mon-Sun)
         const targetDayOfWeek = dayIndex === 7 ? 7 : dayIndex // Convert from Sunday-based to Monday-based
         
@@ -461,7 +477,7 @@ const submit = async () => {
         
         const targetDate = 
           now.add({ days: daysUntil })
-          .withTimeZone(timezone.value.value)
+          .withTimeZone(timezoneValue)
           .withPlainTime(startTime.value)
 
         dates.push(targetDate)
@@ -565,13 +581,16 @@ const toggleEmailReminders = (delayed = false) => {
 const updateFieldsFromEvent = () => {
   if (props.event) {
     name.value = props.event.name ?? ""
-    
-    startTime.value =
-      // TODO Math.floor?
-      dateToTimeNum(getDateWithTimezone((props.event.dates ?? [])[0]), true)
 
-    const durationHours = props.event.duration ?? durations.ZERO
-    endTime.value = startTime.value.add(durationHours)
+    const eventDate = props.event.dates?.at(0)
+    if (eventDate != null) {
+      const zdt = getDateWithTimezone(eventDate)
+      startTime.value = zdt.toPlainTime()
+
+      const duration = props.event.duration ?? durations.ZERO
+      endTime.value = startTime.value.add(duration)
+    }
+
     notificationsEnabled.value = props.event.notificationsEnabled ?? false
     blindAvailabilityEnabled.value =
       props.event.blindAvailabilityEnabled ?? false

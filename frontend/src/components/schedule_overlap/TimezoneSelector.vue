@@ -44,6 +44,10 @@ import { ref, computed, watch } from "vue"
 import { Temporal } from "temporal-polyfill"
 import { allTimezones } from "@/constants"
 import type { Timezone } from "@/composables/schedule_overlap/types"
+import {
+  resolveSavedTimezoneValue,
+  type SavedTimezoneShape,
+} from "@/utils/timezone_utils"
 
 const props = withDefaults(
   defineProps<{
@@ -64,6 +68,8 @@ const emit = defineEmits<{
 }>()
 
 const timezoneModified = ref(false)
+const storage =
+  typeof globalThis.localStorage === "undefined" ? undefined : globalThis.localStorage
 
 const effectiveReferenceDate = computed(() => {
   const refDate = props.referenceDate ?? Temporal.Now.zonedDateTimeISO()
@@ -91,6 +97,25 @@ const timezones = computed<Timezone[]>(() => {
     .sort((a, b) => a.offset.total("minutes") - b.offset.total("minutes"))
   return t
 })
+
+function formatGmtString(offsetMinutes: number): string {
+  const hours = Math.trunc(offsetMinutes / 60)
+  const minutes = Math.abs(offsetMinutes % 60)
+  const hr = `${String(hours)}:${minutes === 0 ? "00" : String(minutes).padStart(2, "0")}`
+  return `(GMT${hr.includes("-") ? hr : `+${hr}`})`
+}
+
+function createFixedOffsetTimezone(offset: Temporal.Duration): Timezone {
+  const offsetMinutes = offset.total("minutes")
+  const value = resolveSavedTimezoneValue({ offset }) ?? ""
+
+  return {
+    value,
+    label: value,
+    gmtString: formatGmtString(offsetMinutes),
+    offset,
+  }
+}
 
 function getLocalTimezone(): Timezone | undefined {
   const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -134,26 +159,70 @@ function getLocalTimezone(): Timezone | undefined {
 }
 
 function onChange(val: Timezone) {
-  localStorage.timezone = JSON.stringify(val)
+  storage?.setItem("timezone", JSON.stringify(val))
   emit("update:modelValue", val)
   timezoneModified.value = true
+}
+
+function getSavedTimezone(): Timezone | undefined {
+  if (!storage) {
+    return undefined
+  }
+
+  try {
+    const savedTimezone = storage.getItem("timezone")
+    if (!savedTimezone) {
+      return undefined
+    }
+
+    const parsedSavedTimezone = JSON.parse(savedTimezone) as SavedTimezoneShape
+    const savedTimezoneValue = resolveSavedTimezoneValue(
+      parsedSavedTimezone
+    )
+    if (!savedTimezoneValue) {
+      return undefined
+    }
+
+    const matchedTimezone = timezones.value.find(
+      (timezone) => timezone.value === savedTimezoneValue
+    )
+    if (matchedTimezone) {
+      return matchedTimezone
+    }
+
+    if (!savedTimezoneValue.startsWith("+") && !savedTimezoneValue.startsWith("-")) {
+      return undefined
+    }
+
+    if (!parsedSavedTimezone.offset) {
+      return undefined
+    }
+
+    const offset =
+      typeof parsedSavedTimezone.offset === "string"
+        ? Temporal.Duration.from(parsedSavedTimezone.offset)
+        : parsedSavedTimezone.offset
+
+    return createFixedOffsetTimezone(offset)
+  } catch {
+    return undefined
+  }
 }
 
 function resetTimezone() {
   const local = getLocalTimezone()
   if (local) emit("update:modelValue", local)
-  localStorage.removeItem("timezone")
+  storage?.removeItem("timezone")
   timezoneModified.value = false
 }
 
 // created() equivalent
-if (localStorage.timezone) {
-  timezoneModified.value = true
-}
+const savedTimezone = getSavedTimezone()
+timezoneModified.value = savedTimezone !== undefined
+
 if (!props.modelValue.value) {
-  if (localStorage.timezone) {
-    const tz = JSON.parse(localStorage.timezone as string) as Timezone
-    emit("update:modelValue", tz)
+  if (savedTimezone) {
+    emit("update:modelValue", savedTimezone)
   } else {
     const local = getLocalTimezone()
     if (local) emit("update:modelValue", local)
@@ -171,8 +240,8 @@ watch(
 
     if (!refreshed || refreshed.offset === props.modelValue.offset) return
 
-    if (localStorage.timezone) {
-      localStorage.timezone = JSON.stringify(refreshed)
+    if (storage?.getItem("timezone")) {
+      storage.setItem("timezone", JSON.stringify(refreshed))
     }
 
     emit("update:modelValue", refreshed)

@@ -10,10 +10,14 @@ import { fromRawEvent } from "@/types"
 import type {
   CalendarEventLite,
   CalendarEventsMap,
-  CalendarEntry,
-  CalendarEventsEntry,
 } from "@/composables/schedule_overlap/types"
 import type { ScheduleOverlapInstance } from "./types"
+import {
+  fromCalendarAvailabilitiesTransportMap,
+  fromCalendarEventsTransportMap,
+  type CalendarAvailabilitiesTransportMap,
+  type CalendarEventsTransportMap,
+} from "./calendarEventsBoundary"
 
 export interface UseEventLoaderOptions {
   eventId: Ref<string>
@@ -77,8 +81,9 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     return getCalendarEventsMap(ev, { weekOffset: curWeekOffset, eventId: ev._id })
       .then((result) => {
         if (curWeekOffset !== opts.weekOffset.value) return
-        const avails = result as Record<string, CalendarEntry[]>
-        calendarAvailabilities.value = avails
+        calendarAvailabilities.value = fromCalendarAvailabilitiesTransportMap(
+          result as CalendarAvailabilitiesTransportMap
+        )
         // With Temporal, DST is handled automatically - no manual adjustment needed
       })
       .catch((err: unknown) => { console.error(err) })
@@ -94,8 +99,9 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     return getCalendarEventsMap(event.value, { weekOffset: curWeekOffset })
       .then((result) => {
         if (curWeekOffset !== opts.weekOffset.value) return
-        const eventsMap = result as Record<string, CalendarEventsEntry>
-        calendarEventsMap.value = eventsMap
+        calendarEventsMap.value = fromCalendarEventsTransportMap(
+          result as CalendarEventsTransportMap
+        )
 
         const evType = event.value?.type
         if (evType === eventTypes.GROUP || evType === eventTypes.DOW) {

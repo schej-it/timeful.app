@@ -56,11 +56,7 @@ export function useSignUpForm(opts: UseSignUpFormOptions) {
     const authUser = mainStore.authUser
     if (!authUser?._id) return false
     return signUpBlocksByDay.value.some((dayBlocks) =>
-      dayBlocks.some((block) =>
-        block.responses?.some(
-          (r) => (r as { userId?: string }).userId === authUser._id
-        )
-      )
+      dayBlocks.some((block) => block.responses?.some((r) => r.userId === authUser._id))
     )
   })
 
@@ -132,21 +128,17 @@ export function useSignUpForm(opts: UseSignUpFormOptions) {
   }
 
   const resetSignUpForm = () => {
-    const eventValue = opts.event.value as {
-      signUpBlocks?: SignUpBlockLite[]
-      signUpResponses?: Record<string, { signUpBlockIds: string[] }>
-    }
     signUpBlocksByDay.value = splitTimeBlocksByDay<SignUpBlockLite>(
       opts.event.value,
-      eventValue.signUpBlocks ?? []
+      opts.event.value.signUpBlocks ?? []
     )
 
     resetSignUpBlocksToAddByDay()
 
-    if (eventValue.signUpResponses) {
-      for (const userId in eventValue.signUpResponses) {
-        const signUpResponse = eventValue.signUpResponses[userId]
-        for (const signUpBlockId of signUpResponse.signUpBlockIds) {
+    if (opts.event.value.signUpResponses) {
+      for (const userId in opts.event.value.signUpResponses) {
+        const signUpResponse = opts.event.value.signUpResponses[userId]
+        for (const signUpBlockId of signUpResponse.signUpBlockIds ?? []) {
           const signUpBlock = signUpBlocksByDay.value
             .flat()
             .find((b) => b._id === signUpBlockId)

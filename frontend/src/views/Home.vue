@@ -104,6 +104,7 @@ import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { posthog } from "@/plugins/posthog"
 import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
+import type { SerializedEventDraft } from "@/composables/event/types"
 import type { User } from "@/types"
 
 defineOptions({ name: 'AppHome' })
@@ -112,20 +113,11 @@ useHead({ title: "Home - Timeful" })
 
 const props = withDefaults(
   defineProps<{
-    contactsPayload?: Record<string, unknown>
-    openNewGroup?: boolean | string
+    contactsPayload?: SerializedEventDraft
+    openNewGroup?: boolean
   }>(),
   { contactsPayload: () => ({}), openNewGroup: false }
 )
-
-// Convert string route param to boolean if needed
-const openNewGroupBool = computed(() => {
-  if (typeof props.openNewGroup === 'string') {
-    return props.openNewGroup === 'true'
-  }
-  // At this point openNewGroup is boolean | undefined
-  return props.openNewGroup || false
-})
 
 const mainStore = useMainStore()
 const { events } = storeToRefs(mainStore)
@@ -141,9 +133,9 @@ onMounted(() => {
   mainStore.setNewDialogOptions({
     show:
       Object.keys(props.contactsPayload).length > 0 ||
-      openNewGroupBool.value,
+      props.openNewGroup,
     contactsPayload: props.contactsPayload,
-    openNewGroup: openNewGroupBool.value,
+    openNewGroup: props.openNewGroup,
     eventOnly: false,
   })
 })

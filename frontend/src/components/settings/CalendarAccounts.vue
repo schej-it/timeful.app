@@ -110,11 +110,8 @@ import {
 import { useMainStore } from "@/stores/main"
 import CalendarAccount from "@/components/settings/CalendarAccount.vue"
 import CalendarTypeSelector from "@/components/settings/CalendarTypeSelector.vue"
-
-export interface CalendarEventsEntry {
-  error?: boolean
-  calendarEvents?: unknown[]
-}
+import type { CalendarEventsTransportMap } from "@/composables/event/calendarEventsBoundary"
+import type { CalendarEventsMap } from "@/composables/schedule_overlap/types"
 
 export interface SubCalendar {
   name?: string
@@ -127,6 +124,8 @@ export interface CalendarAccountEntry {
   enabled?: boolean
   subCalendars?: Record<string, SubCalendar>
 }
+
+type CalendarAccountsEventsMap = CalendarEventsTransportMap | CalendarEventsMap
 
 export interface ToggleCalendarPayload {
   email?: string
@@ -145,7 +144,7 @@ const props = withDefaults(
   defineProps<{
     toggleState?: boolean
     eventId?: string
-    calendarEventsMap?: Record<string, CalendarEventsEntry | undefined>
+    calendarEventsMap?: CalendarAccountsEventsMap
     syncWithBackend?: boolean
     allowAddCalendarAccount?: boolean
     initialCalendarAccountsData?: Record<string, CalendarAccountEntry>
@@ -182,7 +181,7 @@ const showCalendars = ref(
     : localStorage.showCalendars == "true"
 )
 
-const calendarEventsMapCopy = ref<Record<string, CalendarEventsEntry | undefined>>({})
+const calendarEventsMapCopy = ref<CalendarAccountsEventsMap>({})
 
 onMounted(() => {
   calendarAccounts.value = Object.keys(props.initialCalendarAccountsData).length === 0

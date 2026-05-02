@@ -38,7 +38,7 @@ export interface ScheduleOverlapInstance {
   >
 }
 
-export interface ContactsPayload {
+export interface EventDraft {
   emails?: string[]
   name?: string
   startTime?: Temporal.PlainTime
@@ -47,6 +47,21 @@ export interface ContactsPayload {
   selectedDateOption?: string
   selectedDaysOfWeek?: number[]
   selectedDays?: Temporal.PlainDate[]
+  notificationsEnabled?: boolean
+  timezone?: { value?: string; [k: string]: unknown }
+  specificTimesEnabled?: boolean
+  startOnMonday?: boolean
+}
+
+export interface SerializedEventDraft {
+  emails?: string[]
+  name?: string
+  startTime?: number
+  endTime?: number
+  daysOnly?: boolean
+  selectedDateOption?: string
+  selectedDaysOfWeek?: number[]
+  selectedDays?: string[]
   notificationsEnabled?: boolean
   timezone?: { value?: string; [k: string]: unknown }
   specificTimesEnabled?: boolean

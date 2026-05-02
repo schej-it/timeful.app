@@ -5,10 +5,13 @@ import {
   get,
   getCalendarAccountKey,
   getDateHoursOffset,
-  getDateWithTimezone,
-  getISODateString,
+  getDateInTimezone,
+  getFixedOffsetTimeZoneId,
+  getRenderedWeekStart,
+  parseTemporalEpochKey,
+  rangesOverlap,
   splitTimeBlocksByDay,
-  timeNumToTimeString,
+  ZdtSet,
 } from "@/utils"
 import { calendarOptionsDefaults, eventTypes } from "@/constants"
 import { useMainStore } from "@/stores/main"
@@ -17,6 +20,7 @@ import { fromRawResponse } from "@/types"
 import {
   type CalendarEventLite,
   type CalendarEventsByDay,
+  type CalendarEventsMap,
   type CalendarOptions,
   type DayItem,
   type EventLike,
@@ -31,8 +35,6 @@ type SharedCalendarAccount = {
 } & Record<string, unknown>
 
 type SharedCalendarAccounts = Record<string, SharedCalendarAccount>
-
-type CalendarEventsMap = Record<string, { calendarEvents: CalendarEventLite[] }>
 
 export interface UseCalendarEventsOptions {
   event: Ref<EventLike>
@@ -102,17 +104,10 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
       }
     }
 
-    const responses = (
-      opts.event.value as {
-        responses?: Record<
-          string,
-          { enabledCalendars?: Record<string, string[]> } | undefined
-        >
-      }
-    ).responses
+    const responses = opts.event.value.responses
     if (authUser._id && responses && authUser._id in responses) {
       const userResponse = responses[authUser._id]
-      const enabledCalendars = userResponse?.enabledCalendars ?? {}
+      const enabledCalendars = userResponse.enabledCalendars ?? {}
       for (const id in enabledCalendars) {
         if (id in sharedCalendarAccounts.value) {
           sharedCalendarAccounts.value[id].enabled = true
@@ -179,7 +174,7 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
 
       const calMap = opts.calendarEventsMap.value
       if (Object.prototype.hasOwnProperty.call(calMap, id)) {
-        for (const evt of calMap[id].calendarEvents) {
+        for (const evt of calMap[id].calendarEvents ?? []) {
           const subCalendars = calendarAccounts[id].subCalendars
           if (
             !subCalendars ||
@@ -216,9 +211,7 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
 
     const authUser = mainStore.authUser
     const out: Record<string, CalendarEventsByDay> = {}
-    const responses = (
-      opts.event.value as { responses?: Record<string, unknown> }
-    ).responses
+    const responses = opts.event.value.responses
     if (!responses) return out
 
     for (const userId in responses) {
@@ -237,13 +230,33 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
     return out
   })
 
+  const getWorkingHoursStart = (
+    date: Temporal.ZonedDateTime,
+    startTime: number
+  ): Temporal.ZonedDateTime => {
+    const localDate = getDateInTimezone(date, opts.curTimezone.value).toPlainDate()
+    const hours = Math.floor(startTime)
+    const minutes = Math.floor((startTime - hours) * 60)
+    const timeZone = opts.curTimezone.value.value
+      || getFixedOffsetTimeZoneId(opts.curTimezone.value.offset)
+
+    return Temporal.ZonedDateTime.from({
+      timeZone,
+      year: localDate.year,
+      month: localDate.month,
+      day: localDate.day,
+      hour: hours,
+      minute: minutes,
+    })
+  }
+
   const getAvailabilityFromCalendarEvents = (input: {
     calendarEventsByDay?: CalendarEventsByDay
     includeTouchedAvailability?: boolean
-    fetchedManualAvailability?: Record<string, Set<Temporal.ZonedDateTime>>
-    curManualAvailability?: Record<string, Set<Temporal.ZonedDateTime>>
+    fetchedManualAvailability?: Record<string, ZdtSet>
+    curManualAvailability?: Record<string, ZdtSet>
     calendarOptions?: CalendarOptions
-  }): Set<Temporal.ZonedDateTime> => {
+  }): ZdtSet => {
     const {
       calendarEventsByDay = [],
       includeTouchedAvailability = false,
@@ -252,7 +265,7 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
       calendarOptions = calendarOptionsDefaults,
     } = input
 
-    const availability = new Set<Temporal.ZonedDateTime>()
+    const availability = new ZdtSet()
 
     for (let i = 0; i < opts.allDays.value.length; ++i) {
       const day = opts.allDays.value[i]
@@ -269,10 +282,10 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
         let manualAvailabilityAdded = false
 
         for (const time in curManualAvailability) {
-          const timeInstant = Temporal.Instant.from(time)
+          const timeInstant = parseTemporalEpochKey(time).toInstant()
           if (
-            date.toInstant() <= timeInstant &&
-            timeInstant <= endDate.toInstant()
+            Temporal.Instant.compare(date.toInstant(), timeInstant) <= 0 &&
+            Temporal.Instant.compare(timeInstant, endDate.toInstant()) <= 0
           ) {
             const slot = curManualAvailability[time]
             const arr = Array.from(slot as Iterable<Temporal.ZonedDateTime>)
@@ -289,10 +302,10 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
         if (manualAvailabilityAdded) continue
 
         for (const time in fetchedManualAvailability) {
-          const timeInstant = Temporal.Instant.from(time)
+          const timeInstant = parseTemporalEpochKey(time).toInstant()
           if (
-            date.toInstant() <= timeInstant &&
-            timeInstant <= endDate.toInstant()
+            Temporal.Instant.compare(date.toInstant(), timeInstant) <= 0 &&
+            Temporal.Instant.compare(timeInstant, endDate.toInstant()) <= 0
           ) {
             const slot = fetchedManualAvailability[time]
             slot.forEach((a) => {
@@ -312,14 +325,9 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
         ? calendarOptions.bufferTime.time * 1000 * 60
         : 0
 
-      // TODO rewrite without timeNumToTimeString
-      const startTimeString = timeNumToTimeString(
+      const workingHoursStart = getWorkingHoursStart(
+        date,
         calendarOptions.workingHours.startTime
-      )
-      const isoDateString = getISODateString(getDateWithTimezone(date), true)
-      // Create working hours start date using Temporal
-      const workingHoursStart = Temporal.ZonedDateTime.from(
-        `${isoDateString}T${startTimeString}[UTC]`
       )
       let duration =
         calendarOptions.workingHours.endTime -
@@ -335,15 +343,17 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
         if (!startDate) continue
         const endDate = getDateHoursOffset(
           startDate,
-          Temporal.Duration.from({
-            hours: opts.timeslotDuration.value.total("hours"),
-          })
+          opts.timeslotDuration.value
         )
 
         if (calendarOptions.workingHours.enabled) {
           if (
-            endDate <= workingHoursStart ||
-            startDate >= workingHoursEnd
+            !rangesOverlap(
+              startDate,
+              endDate,
+              workingHoursStart,
+              workingHoursEnd
+            )
           ) {
             continue
           }
@@ -357,10 +367,14 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
             .subtract({ milliseconds: bufferTimeInMS })
           const endDateBuffered = e.endDate
             .add({ milliseconds: bufferTimeInMS })
-          const notIntersect =
-            endDate <= startDateBuffered ||
-            startDate >= endDateBuffered
-          return !notIntersect && !e.free
+          return (
+            rangesOverlap(
+              startDate,
+              endDate,
+              startDateBuffered,
+              endDateBuffered
+            ) && !e.free
+          )
         })
         if (index === undefined || index === -1) {
           availability.add(startDate)
@@ -372,9 +386,7 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
 
   const fetchResponses = () => {
     if (opts.calendarOnly.value) {
-      const responses = (
-        opts.event.value as { responses?: Record<string, unknown> }
-      ).responses
+      const responses = opts.event.value.responses
       if (responses) opts.fetchedResponses.value = responses
       return
     }
@@ -387,17 +399,25 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
         timeMin = eventDates[0]
         timeMax = eventDates[eventDates.length - 1].add({ days: 1 })
         // Convert to ZonedDateTime to add days, then back to Instant
+        const renderedWeekStart = getRenderedWeekStart(
+          opts.weekOffset.value,
+          opts.event.value.startOnMonday
+        )
         timeMin = dateToDowDate(
           eventDates,
           timeMin,
           opts.weekOffset.value,
-          true
+          true,
+          opts.event.value.startOnMonday,
+          renderedWeekStart
         )
         timeMax = dateToDowDate(
           eventDates,
           timeMax,
           opts.weekOffset.value,
-          true
+          true,
+          opts.event.value.startOnMonday,
+          renderedWeekStart
         )
       }
     } else {

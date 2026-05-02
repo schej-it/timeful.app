@@ -63,15 +63,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import type { ScheduleOverlapSignUpBlock } from "@/composables/schedule_overlap/types"
 import SignUpBlock from "./SignUpBlock.vue"
 import OverflowGradient from "@/components/OverflowGradient.vue"
 
-type SignUpBlockData = Record<string, unknown>
-
 withDefaults(
   defineProps<{
-    signUpBlocks: SignUpBlockData[]
-    signUpBlocksToAdd: SignUpBlockData[]
+    signUpBlocks: ScheduleOverlapSignUpBlock[]
+    signUpBlocksToAdd: ScheduleOverlapSignUpBlock[]
     isEditing: boolean
     isOwner: boolean
     alreadyResponded: boolean
@@ -81,9 +80,9 @@ withDefaults(
 )
 
 const emit = defineEmits<{
-  "update:signUpBlock": [payload: SignUpBlockData]
-  "delete:signUpBlock": [payload: SignUpBlockData]
-  signUpForBlock: [payload: SignUpBlockData]
+  "update:signUpBlock": [payload: ScheduleOverlapSignUpBlock]
+  "delete:signUpBlock": [payload: string]
+  signUpForBlock: [payload: ScheduleOverlapSignUpBlock]
 }>()
 
 const { isPhone } = useDisplayHelpers()
