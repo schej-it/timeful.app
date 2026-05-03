@@ -4,6 +4,7 @@ import { shallowMount } from "@vue/test-utils"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { durations } from "@/constants"
+import { createLocalStorageMock } from "@/test/localStorage"
 import type * as UtilsModule from "@/utils"
 import NewSignUp from "./NewSignUp.vue"
 
@@ -49,13 +50,6 @@ vi.mock("@/plugins/posthog", () => ({
     get_distinct_id: vi.fn(() => "distinct-id"),
   },
 }))
-
-const createLocalStorageMock = (timezoneJson: string | null = null) => ({
-  getItem: vi.fn(() => timezoneJson),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-})
 
 const formRefMethods = {
   validate: vi.fn<() => Promise<{ valid: boolean }>>(() =>
@@ -166,14 +160,14 @@ describe("NewSignUp", () => {
   it("preserves minute-level start and end times when editing an event", () => {
     vi.stubGlobal(
       "localStorage",
-      createLocalStorageMock(
-        JSON.stringify({
+      createLocalStorageMock({
+        timezone: JSON.stringify({
           value: "UTC",
           label: "UTC",
           gmtString: "GMT",
           offset: "PT0S",
-        })
-      )
+        }),
+      })
     )
 
     const wrapper = shallowMount(NewSignUp, {

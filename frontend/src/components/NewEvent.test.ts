@@ -4,6 +4,7 @@ import { shallowMount } from "@vue/test-utils"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { durations } from "@/constants"
 import { Temporal } from "temporal-polyfill"
+import { createLocalStorageMock } from "@/test/localStorage"
 import NewEvent from "./NewEvent.vue"
 
 vi.mock("vue-router", () => ({
@@ -35,31 +36,6 @@ vi.mock("@/plugins/posthog", () => ({
     get_distinct_id: vi.fn(() => "distinct-id"),
   },
 }))
-
-const createLocalStorageMock = () => {
-  const store = new Map<string, string>()
-
-  return {
-    getItem(key: string) {
-      return store.get(key) ?? null
-    },
-    setItem(key: string, value: string) {
-      store.set(key, value)
-    },
-    removeItem(key: string) {
-      store.delete(key)
-    },
-    clear() {
-      store.clear()
-    },
-    key(index: number) {
-      return [...store.keys()][index] ?? null
-    },
-    get length() {
-      return store.size
-    },
-  } satisfies Storage
-}
 
 describe("NewEvent", () => {
   beforeEach(() => {

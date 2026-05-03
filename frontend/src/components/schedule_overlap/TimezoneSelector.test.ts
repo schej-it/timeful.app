@@ -5,32 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { durations } from "@/constants"
 import { Temporal } from "temporal-polyfill"
 import type { Timezone } from "@/composables/schedule_overlap/types"
+import { createLocalStorageMock } from "@/test/localStorage"
 import TimezoneSelector from "./TimezoneSelector.vue"
-
-const createLocalStorageMock = () => {
-  const store = new Map<string, string>()
-
-  return {
-    getItem(key: string) {
-      return store.get(key) ?? null
-    },
-    setItem(key: string, value: string) {
-      store.set(key, value)
-    },
-    removeItem(key: string) {
-      store.delete(key)
-    },
-    clear() {
-      store.clear()
-    },
-    key(index: number) {
-      return [...store.keys()][index] ?? null
-    },
-    get length() {
-      return store.size
-    },
-  } as Storage
-}
 
 const mountTimezoneSelector = () =>
   shallowMount(TimezoneSelector, {

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { computed, ref, type Ref } from "vue"
 import { Temporal } from "temporal-polyfill"
+import { createLocalStorageMock } from "@/test/localStorage"
 import {
   fromRawCalendarEvent,
   fromRawEvent,
@@ -55,31 +56,6 @@ vi.mock("@/plugins/posthog", () => ({
 }))
 
 const zdt = (iso: string) => Temporal.Instant.from(iso).toZonedDateTimeISO(UTC)
-
-const createLocalStorageMock = () => {
-  const store = new Map<string, string>()
-
-  return {
-    getItem(key: string) {
-      return store.get(key) ?? null
-    },
-    setItem(key: string, value: string) {
-      store.set(key, value)
-    },
-    removeItem(key: string) {
-      store.delete(key)
-    },
-    clear() {
-      store.clear()
-    },
-    key(index: number) {
-      return [...store.keys()][index] ?? null
-    },
-    get length() {
-      return store.size
-    },
-  } as Storage & Record<string, string>
-}
 
 const makeAvailabilityData = (eventType: string = eventTypes.SPECIFIC_DATES) => {
   const day = zdt("2026-01-01T09:00:00Z")

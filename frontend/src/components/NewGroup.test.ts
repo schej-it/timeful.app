@@ -4,6 +4,7 @@ import { shallowMount } from "@vue/test-utils"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { durations } from "@/constants"
+import { createLocalStorageMock } from "@/test/localStorage"
 import type * as UtilsModule from "@/utils"
 import NewGroup from "./NewGroup.vue"
 
@@ -49,13 +50,6 @@ vi.mock("@/plugins/posthog", () => ({
     get_distinct_id: vi.fn(() => "distinct-id"),
   },
 }))
-
-const createLocalStorageMock = (timezoneJson: string | null = null) => ({
-  getItem: vi.fn(() => timezoneJson),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-})
 
 const formRefMethods = {
   validate: vi.fn<() => Promise<{ valid: boolean }>>(() =>
@@ -125,14 +119,14 @@ describe("NewGroup", () => {
   it("preserves minute-level start and end times when editing a group", () => {
     vi.stubGlobal(
       "localStorage",
-      createLocalStorageMock(
-        JSON.stringify({
+      createLocalStorageMock({
+        timezone: JSON.stringify({
           value: "UTC",
           label: "UTC",
           gmtString: "GMT",
           offset: "PT0S",
-        })
-      )
+        }),
+      })
     )
 
     const wrapper = shallowMount(NewGroup, {
@@ -233,14 +227,14 @@ describe("NewGroup", () => {
   it("falls back to the saved timezone when submit runs before timezone state is hydrated", async () => {
     vi.stubGlobal(
       "localStorage",
-      createLocalStorageMock(
-        JSON.stringify({
+      createLocalStorageMock({
+        timezone: JSON.stringify({
           value: "America/Los_Angeles",
           label: "Pacific Time",
           gmtString: "(GMT-8:00)",
           offset: "-PT8H",
-        })
-      )
+        }),
+      })
     )
 
     const wrapper = shallowMount(NewGroup, {
