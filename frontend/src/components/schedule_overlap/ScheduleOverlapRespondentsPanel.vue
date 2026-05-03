@@ -1,28 +1,28 @@
 <template>
   <RespondentsList
-    :show-calendar-events="showCalendarEvents"
-    :show-best-times="showBestTimes"
-    :hide-if-needed="hideIfNeeded"
+    :show-calendar-events="panel.showCalendarEvents"
+    :show-best-times="panel.showBestTimes"
+    :hide-if-needed="panel.hideIfNeeded"
     :max-height="maxHeight"
-    :event="event"
-    :event-id="eventId"
-    :days="days"
-    :times="times"
-    :cur-date="curDate"
-    :cur-respondent="curRespondent"
-    :cur-respondents="curRespondents"
-    :cur-timeslot="curTimeslot"
-    :cur-timeslot-availability="curTimeslotAvailability"
-    :respondents="respondents"
-    :parsed-responses="parsedResponses"
-    :is-owner="isOwner"
-    :is-group="isGroup"
-    :attendees="attendees"
-    :responses-formatted="responsesFormatted"
-    :timezone="timezone"
-    :show-event-options="showEventOptions"
-    :guest-added-availability="guestAddedAvailability"
-    :adding-availability-as-guest="addingAvailabilityAsGuest"
+    :event="panel.event"
+    :event-id="panel.eventId"
+    :days="panel.days"
+    :times="panel.times"
+    :cur-date="panel.curDate"
+    :cur-respondent="panel.curRespondent"
+    :cur-respondents="panel.curRespondents"
+    :cur-timeslot="panel.curTimeslot"
+    :cur-timeslot-availability="panel.curTimeslotAvailability"
+    :respondents="panel.respondents"
+    :parsed-responses="panel.parsedResponses"
+    :is-owner="panel.isOwner"
+    :is-group="panel.isGroup"
+    :attendees="panel.attendees"
+    :responses-formatted="panel.responsesFormatted"
+    :timezone="panel.timezone"
+    :show-event-options="panel.showEventOptions"
+    :guest-added-availability="panel.guestAddedAvailability"
+    :adding-availability-as-guest="panel.addingAvailabilityAsGuest"
     @update:show-calendar-events="$emit('update:showCalendarEvents', $event)"
     @update:show-best-times="$emit('update:showBestTimes', $event)"
     @update:hide-if-needed="$emit('update:hideIfNeeded', $event)"
@@ -38,40 +38,12 @@
 </template>
 
 <script setup lang="ts">
-import type { Temporal } from "temporal-polyfill"
-import type { User } from "@/types"
-import type { ZdtMap } from "@/utils"
 import RespondentsList from "./RespondentsList.vue"
-import type {
-  EventLike,
-  ParsedResponses,
-  Timezone,
-} from "@/composables/schedule_overlap/types"
+import type { ScheduleOverlapRespondentsPanelViewModel } from "./respondentsPanelTypes"
 
 defineProps<{
   maxHeight?: number
-  event: EventLike
-  eventId: string
-  days: unknown[]
-  times: unknown[]
-  curDate?: Temporal.ZonedDateTime
-  curRespondent: string
-  curRespondents: string[]
-  curTimeslot: { dayIndex: number; timeIndex: number }
-  curTimeslotAvailability: Record<string, boolean>
-  respondents: User[]
-  parsedResponses: ParsedResponses
-  isOwner: boolean
-  isGroup: boolean
-  attendees?: { email: string; declined?: boolean }[]
-  responsesFormatted: ZdtMap<Set<string>>
-  timezone: Timezone
-  showCalendarEvents: boolean
-  showBestTimes: boolean
-  hideIfNeeded: boolean
-  showEventOptions: boolean
-  guestAddedAvailability: boolean
-  addingAvailabilityAsGuest: boolean
+  panel: ScheduleOverlapRespondentsPanelViewModel
 }>()
 
 defineEmits<{

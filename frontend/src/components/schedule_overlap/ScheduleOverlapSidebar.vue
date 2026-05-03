@@ -260,29 +260,8 @@
 
         <ScheduleOverlapRespondentsPanel
           :ref="respondentsListRefSetter"
-          :show-calendar-events="showCalendarEvents"
-          :show-best-times="showBestTimes"
-          :hide-if-needed="hideIfNeeded"
           :max-height="100"
-          :event="event"
-          :event-id="event._id ?? ''"
-          :days="days"
-          :times="times"
-          :cur-date="curDate"
-          :cur-respondent="curRespondent"
-          :cur-respondents="curRespondents"
-          :cur-timeslot="curTimeslot"
-          :cur-timeslot-availability="curTimeslotAvailability"
-          :respondents="respondents"
-          :parsed-responses="parsedResponses"
-          :is-owner="isOwner"
-          :is-group="isGroup"
-          :attendees="attendees"
-          :responses-formatted="responsesFormatted"
-          :timezone="curTimezone"
-          :show-event-options="showEventOptions"
-          :guest-added-availability="guestAddedAvailability"
-          :adding-availability-as-guest="addingAvailabilityAsGuest"
+          :panel="respondentsPanel"
           @update:show-calendar-events="emit('update:showCalendarEvents', $event)"
           @update:show-best-times="emit('update:showBestTimes', $event)"
           @update:hide-if-needed="emit('update:hideIfNeeded', $event)"
@@ -302,19 +281,16 @@
 
 <script setup lang="ts">
 import { computed, type ComponentPublicInstance } from "vue"
-import type { Temporal } from "temporal-polyfill"
-import type { User } from "@/types"
-import type { ZdtMap } from "@/utils"
 import type { AvailabilityType } from "@/constants"
 import type {
   CalendarEventsMap,
   EventLike,
-  ParsedResponses,
   ScheduleOverlapState,
   SignUpBlockLite,
   Timezone,
 } from "@/composables/schedule_overlap/types"
 import type { CalendarAccountEntry } from "@/components/settings/CalendarAccounts.vue"
+import type { ScheduleOverlapRespondentsPanelViewModel } from "./respondentsPanelTypes"
 import { states } from "@/composables/schedule_overlap/types"
 import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
 import PubliftAd from "@/components/event/PubliftAd.vue"
@@ -367,22 +343,7 @@ const props = defineProps<{
   deleteAvailabilityDialog: boolean
   showAds: boolean
   rightSideWidth: string
-  days: unknown[]
-  times: unknown[]
-  curDate?: Temporal.ZonedDateTime
-  curRespondent: string
-  curRespondents: string[]
-  curTimeslot: { dayIndex: number; timeIndex: number }
-  curTimeslotAvailability: Record<string, boolean>
-  respondents: User[]
-  parsedResponses: ParsedResponses
-  attendees?: { email: string; declined?: boolean }[]
-  responsesFormatted: ZdtMap<Set<string>>
-  showCalendarEvents: boolean
-  showBestTimes: boolean
-  hideIfNeeded: boolean
-  showEventOptions: boolean
-  guestAddedAvailability: boolean
+  respondentsPanel: ScheduleOverlapRespondentsPanelViewModel
   signUpBlocksListRefSetter: (value: Element | ComponentPublicInstance | null) => void
   optionsSectionRefSetter: (value: Element | ComponentPublicInstance | null) => void
   respondentsListRefSetter: (value: Element | ComponentPublicInstance | null) => void
