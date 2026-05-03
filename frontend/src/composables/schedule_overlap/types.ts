@@ -3,6 +3,7 @@ import type {
   Attendee,
   CalendarEvent,
   Event,
+  Response,
   RawEvent,
   RawSignUpBlock,
   SignUpBlock,
@@ -194,3 +195,5 @@ export type ParsedResponses = Record<string, ParsedResponse>
 
 /** Map of Temporal.ZonedDateTime to set of user IDs who are available at that time */
 export type ResponsesFormatted = ZdtMap<Set<string>>
+
+export type FetchedResponse = Response

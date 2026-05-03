@@ -35,6 +35,7 @@ import {
   type CalendarOptions,
   type DayItem,
   type EventLike,
+  type FetchedResponse,
   type ParsedResponse,
   type ParsedResponses,
   type ResponsesFormatted,
@@ -42,15 +43,6 @@ import {
   type ScheduleOverlapState,
   type TimeItem,
 } from "./types"
-
-interface FetchedResponse {
-  user?: Record<string, unknown>
-  availability?: Temporal.ZonedDateTime[]
-  ifNeeded?: Temporal.ZonedDateTime[]
-  enabledCalendars?: Record<string, string[]>
-  calendarOptions?: CalendarOptions
-  manualAvailability?: Record<string, Temporal.ZonedDateTime[]>
-}
 
 declare global {
   interface Window {
@@ -67,6 +59,11 @@ export interface UseAvailabilityDataOptions {
   event: Ref<EventLike>
   weekOffset: Ref<number>
   state: Ref<ScheduleOverlapState>
+  fetchedResponses: Ref<Record<string, FetchedResponse | undefined>>
+  loadingResponses: Ref<{
+    loading: boolean
+    lastFetched: Temporal.ZonedDateTime
+  }>
   curGuestId: Ref<string>
   addingAvailabilityAsGuest: Ref<boolean>
   showSnackbar: Ref<boolean>
@@ -126,14 +123,6 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   const unsavedChanges = ref(false)
   const hideIfNeeded = ref(false)
   const manualAvailability = shallowRef<ZdtMap<ZdtSet>>(new ZdtMap())
-  const fetchedResponses = ref<Record<string, FetchedResponse | undefined>>({})
-  const loadingResponses = ref<{
-    loading: boolean
-    lastFetched: Temporal.ZonedDateTime
-  }>({
-    loading: false,
-    lastFetched: Temporal.Now.instant().toZonedDateTimeISO(UTC),
-  })
   const responsesFormatted = shallowRef<ResponsesFormatted>(new ZdtMap())
   const curTimeslot = ref<RowCol>({ row: -1, col: -1 })
   const curTimeslotAvailability = ref<Record<string, boolean>>({})
@@ -162,7 +151,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
         )[userId]
         if (calendarEventsByDay) {
           const fetchedManualAvailability = getFetchedManualAvailabilityDow(
-            fetchedResponses.value[userId]?.manualAvailability
+            opts.fetchedResponses.value[userId]?.manualAvailability
           )
           const curManualAvailability =
             userId === authUser?._id
@@ -180,10 +169,9 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
                     bufferTime: opts.bufferTime.value,
                     workingHours: opts.workingHours.value,
                   }
-                : fetchedResponses.value[userId]?.calendarOptions ?? {
-                    bufferTime: opts.bufferTime.value,
-                    workingHours: opts.workingHours.value,
-                  },
+                : normalizeCalendarOptions(
+                    opts.fetchedResponses.value[userId]?.calendarOptions
+                  ),
           })
 
           parsed[userId] = {
@@ -234,9 +222,11 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
         parsed[userId] = {
           user,
           availability: new ZdtSet(
-            fetchedResponses.value[userId]?.availability ?? []
+            opts.fetchedResponses.value[userId]?.availability ?? []
           ),
-          ifNeeded: new ZdtSet(fetchedResponses.value[userId]?.ifNeeded ?? []),
+          ifNeeded: new ZdtSet(
+            opts.fetchedResponses.value[userId]?.ifNeeded ?? []
+          ),
           enabledCalendars: responses[userId].enabledCalendars,
           calendarOptions: normalizeCalendarOptions(
             responses[userId].calendarOptions
@@ -253,8 +243,8 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       }
       parsed[k] = {
         user: newUser,
-        availability: new ZdtSet(fetchedResponses.value[k]?.availability ?? []),
-        ifNeeded: new ZdtSet(fetchedResponses.value[k]?.ifNeeded ?? []),
+        availability: new ZdtSet(opts.fetchedResponses.value[k]?.availability ?? []),
+        ifNeeded: new ZdtSet(opts.fetchedResponses.value[k]?.ifNeeded ?? []),
         enabledCalendars: responses[k].enabledCalendars,
         calendarOptions: normalizeCalendarOptions(responses[k].calendarOptions),
       }
@@ -291,8 +281,8 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
 
   const getResponsesFormatted = () => {
     const lastFetched = Temporal.Now.instant().toZonedDateTimeISO(UTC)
-    loadingResponses.value.loading = true
-    loadingResponses.value.lastFetched = lastFetched
+    opts.loadingResponses.value.loading = true
+    opts.loadingResponses.value.lastFetched = lastFetched
 
     const job = (
       days: DayItem[],
@@ -337,11 +327,11 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       hideIfNeeded.value
     )
 
-    if (dateCompare(lastFetched, loadingResponses.value.lastFetched) >= 0) {
+    if (dateCompare(lastFetched, opts.loadingResponses.value.lastFetched) >= 0) {
       responsesFormatted.value = formatted
     }
-    if (lastFetched.equals(loadingResponses.value.lastFetched)) {
-      loadingResponses.value.loading = false
+    if (lastFetched.equals(opts.loadingResponses.value.lastFetched)) {
+      opts.loadingResponses.value.loading = false
     }
   }
 
@@ -761,8 +751,8 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     unsavedChanges,
     hideIfNeeded,
     manualAvailability,
-    fetchedResponses,
-    loadingResponses,
+    fetchedResponses: opts.fetchedResponses,
+    loadingResponses: opts.loadingResponses,
     responsesFormatted,
     curTimeslot,
     curTimeslotAvailability,

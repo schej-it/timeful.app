@@ -17,6 +17,10 @@ export interface UseScheduleOverlapUIOptions {
   showHintText: Ref<boolean>
   /** Optional external state ref — if provided, used instead of creating one internally */
   state?: Ref<ScheduleOverlapState>
+  showBestTimes?: Ref<boolean>
+  defaultState?: ComputedRef<ScheduleOverlapState>
+  allowDrag?: ComputedRef<boolean>
+  availabilityType?: Ref<AvailabilityType>
   parsedResponses: ComputedRef<ParsedResponses>
   curTimeslot: Ref<RowCol>
   resetCurTimeslotOnDrag?: () => void
@@ -37,13 +41,13 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
 
   const state = opts.state ?? ref<ScheduleOverlapState>(states.BEST_TIMES)
 
-  const showBestTimes = ref<boolean>(
+  const showBestTimes = opts.showBestTimes ?? ref<boolean>(
     localStorage.showBestTimes === undefined
       ? false
       : localStorage.showBestTimes === "true"
   )
 
-  const defaultState = computed<ScheduleOverlapState>(() =>
+  const defaultState = opts.defaultState ?? computed<ScheduleOverlapState>(() =>
     showBestTimes.value ? states.BEST_TIMES : states.HEATMAP
   )
 
@@ -53,7 +57,7 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
       state.value === states.EDIT_SIGN_UP_BLOCKS
   )
   const scheduling = computed(() => state.value === states.SCHEDULE_EVENT)
-  const allowDrag = computed(
+  const allowDrag = opts.allowDrag ?? computed(
     () =>
       state.value === states.EDIT_AVAILABILITY ||
       state.value === states.EDIT_SIGN_UP_BLOCKS ||
@@ -77,7 +81,7 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
   )
   const showCalendarEvents = ref(false)
 
-  const availabilityType = ref<AvailabilityType>(availabilityTypes.AVAILABLE)
+  const availabilityType = opts.availabilityType ?? ref<AvailabilityType>(availabilityTypes.AVAILABLE)
   const overlayAvailability = ref(false)
 
   const deleteAvailabilityDialog = ref(false)

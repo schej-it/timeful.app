@@ -1,4 +1,4 @@
-import { ref, type Ref, type ComputedRef } from "vue"
+import { type Ref, ref, type ComputedRef } from "vue"
 import { Temporal } from "temporal-polyfill"
 import {
   clamp,
@@ -36,6 +36,9 @@ export interface UseDragPaintOptions {
   state: Ref<ScheduleOverlapState>
   isSignUp: ComputedRef<boolean>
   weekOffset: Ref<number>
+  dragging: Ref<boolean>
+  dragStart: Ref<RowCol | null>
+  dragCur: Ref<RowCol | null>
 
   // grid info
   splitTimes: ComputedRef<TimeItem[][]>
@@ -79,10 +82,10 @@ export interface UseDragPaintOptions {
 }
 
 export function useDragPaint(opts: UseDragPaintOptions) {
-  const dragging = ref(false)
+  const dragging = opts.dragging
   const dragType = ref<DragType>(DRAG_TYPES.ADD)
-  const dragStart = ref<RowCol | null>(null)
-  const dragCur = ref<RowCol | null>(null)
+  const dragStart = opts.dragStart
+  const dragCur = opts.dragCur
 
   const normalizeXY = (
     e: MouseEvent | TouchEvent

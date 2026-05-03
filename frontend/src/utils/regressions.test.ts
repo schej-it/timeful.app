@@ -103,6 +103,11 @@ const makeAvailabilityData = (eventType: string = eventTypes.SPECIFIC_DATES) => 
     } as never),
     weekOffset: ref(0),
     state: ref(states.EDIT_AVAILABILITY),
+    fetchedResponses: ref({}),
+    loadingResponses: ref({
+      loading: false,
+      lastFetched: day,
+    }),
     curGuestId: ref(""),
     addingAvailabilityAsGuest: ref(false),
     showSnackbar: ref(false),

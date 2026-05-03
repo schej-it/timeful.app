@@ -997,16 +997,16 @@
 
 <script setup lang="ts">
 import {
-  ref, computed, watch, nextTick, shallowRef,
+  ref, computed, nextTick,
 } from "vue"
 import { useDisplay } from "vuetify"
-import type { Temporal } from "temporal-polyfill"
+import { Temporal } from "temporal-polyfill"
 import {
   post,
   ZdtSet,
 } from "@/utils"
 import {
-  availabilityTypes, calendarOptionsDefaults, eventTypes, guestUserId
+  availabilityTypes, eventTypes, guestUserId, UTC
 } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
@@ -1036,20 +1036,17 @@ import {
 } from "./scheduleOverlapRendering"
 import { useCalendarGrid } from "@/composables/schedule_overlap/useCalendarGrid"
 import { useCalendarEvents } from "@/composables/schedule_overlap/useCalendarEvents"
-import type { UseCalendarEventsReturn } from "@/composables/schedule_overlap/useCalendarEvents"
 import { useAvailabilityData } from "@/composables/schedule_overlap/useAvailabilityData"
 import { useDragPaint } from "@/composables/schedule_overlap/useDragPaint"
-import type { UseDragPaintReturn } from "@/composables/schedule_overlap/useDragPaint"
 import { useEventScheduling } from "@/composables/schedule_overlap/useEventScheduling"
 import { useSignUpForm } from "@/composables/schedule_overlap/useSignUpForm"
 import { useScheduleOverlapUI } from "@/composables/schedule_overlap/useScheduleOverlapUI"
-import type { UseScheduleOverlapUIReturn } from "@/composables/schedule_overlap/useScheduleOverlapUI"
 import { useScheduleOverlapController } from "./useScheduleOverlapController"
 import {
   states, SPLIT_GAP_HEIGHT, SPLIT_GAP_WIDTH,
 } from "@/composables/schedule_overlap/types"
 import type {
-  RowCol, Timezone, ScheduleOverlapState, EventLike, CalendarEventLite, CalendarEventsByDay, CalendarEventsMap,
+  FetchedResponse, RowCol, Timezone, ScheduleOverlapState, EventLike, CalendarEventLite, CalendarEventsByDay, CalendarEventsMap,
   SignUpBlockLite,
 } from "@/composables/schedule_overlap/types"
 
@@ -1126,9 +1123,31 @@ const guestNameKey = computed(() => `${String(props.event._id)}.guestName`)
 const guestName = computed<string | undefined>(() => (localStorage[guestNameKey.value] as string | undefined) ?? undefined)
 
 const curTimezone = ref<Timezone>(props.initialTimezone)
-
-// Pre-create state ref to break grid ↔ UI circular dep
 const state = ref<ScheduleOverlapState>(states.BEST_TIMES)
+const showBestTimes = ref<boolean>(
+  localStorage.showBestTimes === undefined
+    ? false
+    : localStorage.showBestTimes === "true"
+)
+const defaultState = computed<ScheduleOverlapState>(() =>
+  showBestTimes.value ? states.BEST_TIMES : states.HEATMAP
+)
+const availabilityType = ref(availabilityTypes.AVAILABLE)
+const allowDrag = computed(
+  () =>
+    state.value === states.EDIT_AVAILABILITY ||
+    state.value === states.EDIT_SIGN_UP_BLOCKS ||
+    state.value === states.SCHEDULE_EVENT ||
+    state.value === states.SET_SPECIFIC_TIMES
+)
+const dragging = ref(false)
+const dragStart = ref<RowCol | null>(null)
+const dragCur = ref<RowCol | null>(null)
+const fetchedResponses = ref<Record<string, FetchedResponse | undefined>>({})
+const loadingResponses = ref({
+  loading: false,
+  lastFetched: Temporal.Now.instant().toZonedDateTimeISO(UTC),
+})
 
 // Template refs
 const signUpBlocksListRef = ref<{ scrollToSignUpBlock?: (id: string) => void } | null>(null)
@@ -1152,65 +1171,7 @@ const prevPage = (e?: Event) => {
   ;(e as MouseEvent | undefined)?.stopImmediatePropagation()
   grid.prevPage(e ?? new Event('click'), (n) => { emit("update:weekOffset", n); })
 }
-
-// ── 2. Proxy stubs for circular deps ──────────────────────────────────
-let calEventsResolved: UseCalendarEventsReturn | null = null
-const calendarEventsByDayProxy = computed(() => calEventsResolved?.calendarEventsByDay.value ?? [])
-const groupCalendarEventsByDayProxy = computed<Record<string, CalendarEventsByDay>>(
-  () => calEventsResolved?.groupCalendarEventsByDay.value ?? {}
-)
-const bufferTimeShared = shallowRef<{ enabled: boolean; time: number }>({ ...calendarOptionsDefaults.bufferTime })
-const workingHoursShared = shallowRef<{ enabled: boolean; startTime: number; endTime: number }>({ ...calendarOptionsDefaults.workingHours })
-const getAvailFromCalEventsProxy = (
-  ...args: Parameters<UseCalendarEventsReturn["getAvailabilityFromCalendarEvents"]>
-): ZdtSet => calEventsResolved?.getAvailabilityFromCalendarEvents(...args) ?? new ZdtSet()
-
-let uiResolved: UseScheduleOverlapUIReturn | null = null
-const defaultStateProxy = computed(() => uiResolved?.defaultState.value ?? states.HEATMAP)
-const allowDragProxy = computed(() => uiResolved?.allowDrag.value ?? false)
-const availabilityTypeProxy = computed(
-  () => uiResolved?.availabilityType.value ?? availabilityTypes.AVAILABLE
-)
-
-let dragPaintResolved: UseDragPaintReturn | null = null
-const endDragProxy = () => dragPaintResolved?.endDrag()
-
-// Pre-create drag refs to break dragPaint ↔ eventScheduling circular dep
-const draggingShared = ref(false)
-const dragStartShared = ref<RowCol | null>(null)
-const dragCurShared = ref<RowCol | null>(null)
-
-// ── 3. useAvailabilityData ─────────────────────────────────────────────
-const avail = useAvailabilityData({
-  event: eventRef,
-  weekOffset: weekOffsetRef,
-  state,
-  curGuestId: computed(() => props.curGuestId),
-  addingAvailabilityAsGuest: computed(() => props.addingAvailabilityAsGuest),
-  showSnackbar: computed(() => props.showSnackbar),
-  calendarPermissionGranted: computed(() => props.calendarPermissionGranted),
-  loadingCalendarEvents: computed(() => props.loadingCalendarEvents),
-  allDays: grid.allDays,
-  days: grid.days,
-  times: grid.times,
-  splitTimes: grid.splitTimes,
-  timeslotDuration: grid.timeslotDuration,
-  page: grid.page,
-  maxDaysPerPage: grid.maxDaysPerPage,
-  isGroup,
-  isOwner,
-  guestNameKey,
-  guestName,
-  getDateFromRowCol: grid.getDateFromRowCol,
-  calendarEventsByDay: calendarEventsByDayProxy,
-  groupCalendarEventsByDay: groupCalendarEventsByDayProxy,
-  bufferTime: bufferTimeShared,
-  workingHours: workingHoursShared,
-  getAvailabilityFromCalendarEvents: getAvailFromCalEventsProxy,
-  refreshEvent: () => { emit("refreshEvent"); },
-})
-
-// ── 4. useCalendarEvents ───────────────────────────────────────────────
+// ── 2. useCalendarEvents ───────────────────────────────────────────────
 const calEvents = useCalendarEvents({
   event: eventRef,
   weekOffset: weekOffsetRef,
@@ -1231,23 +1192,49 @@ const calEvents = useCalendarEvents({
   isGroup,
   guestName,
   getDateFromDayTimeIndex: grid.getDateFromDayTimeIndex,
-  fetchedResponses: avail.fetchedResponses,
-  loadingResponses: avail.loadingResponses,
-  onResponsesFetched: () => { avail.getResponsesFormatted(); },
+  fetchedResponses,
+  loadingResponses,
 })
-calEventsResolved = calEvents
 
-// Sync calEvents buffer/hours into shared refs so avail sees updated values
-watch(calEvents.bufferTime, (val) => { bufferTimeShared.value = { ...val } }, { immediate: true })
-watch(calEvents.workingHours, (val) => { workingHoursShared.value = { ...val } }, { immediate: true })
+// ── 3. useAvailabilityData ─────────────────────────────────────────────
+const avail = useAvailabilityData({
+  event: eventRef,
+  weekOffset: weekOffsetRef,
+  state,
+  fetchedResponses,
+  loadingResponses,
+  curGuestId: computed(() => props.curGuestId),
+  addingAvailabilityAsGuest: computed(() => props.addingAvailabilityAsGuest),
+  showSnackbar: computed(() => props.showSnackbar),
+  calendarPermissionGranted: computed(() => props.calendarPermissionGranted),
+  loadingCalendarEvents: computed(() => props.loadingCalendarEvents),
+  allDays: grid.allDays,
+  days: grid.days,
+  times: grid.times,
+  splitTimes: grid.splitTimes,
+  timeslotDuration: grid.timeslotDuration,
+  page: grid.page,
+  maxDaysPerPage: grid.maxDaysPerPage,
+  isGroup,
+  isOwner,
+  guestNameKey,
+  guestName,
+  getDateFromRowCol: grid.getDateFromRowCol,
+  calendarEventsByDay: calEvents.calendarEventsByDay,
+  groupCalendarEventsByDay: calEvents.groupCalendarEventsByDay,
+  bufferTime: calEvents.bufferTime,
+  workingHours: calEvents.workingHours,
+  getAvailabilityFromCalendarEvents: calEvents.getAvailabilityFromCalendarEvents,
+  refreshEvent: () => { emit("refreshEvent"); },
+})
 
-// ── 5. useEventScheduling ──────────────────────────────────────────────
+// ── 4. useEventScheduling ──────────────────────────────────────────────
 const eventSched = useEventScheduling({
   event: eventRef,
   weekOffset: weekOffsetRef,
   curTimezone,
   state,
-  defaultState: defaultStateProxy,
+  defaultState,
   splitTimes: grid.splitTimes,
   timeslotDuration: grid.timeslotDuration,
   timeslotHeight: grid.timeslotHeight,
@@ -1257,28 +1244,31 @@ const eventSched = useEventScheduling({
   isSpecificTimes: grid.isSpecificTimes,
   getDateFromRowCol: grid.getDateFromRowCol,
   getMinMaxHoursFromTimes: grid.getMinMaxHoursFromTimes,
-  dragging: draggingShared,
-  dragStart: dragStartShared,
-  dragCur: dragCurShared,
+  dragging,
+  dragStart,
+  dragCur,
   tempTimes: avail.tempTimes,
   respondents: avail.respondents,
 })
 
-// ── 6. useSignUpForm ───────────────────────────────────────────────────
+// ── 5. useSignUpForm ───────────────────────────────────────────────────
 const signUpForm = useSignUpForm({
   event: eventRef,
   isSignUp,
   days: grid.days,
   isOwner,
-  dragStart: dragStartShared,
+  dragStart,
 })
 
-// ── 7. useDragPaint ────────────────────────────────────────────────────
+// ── 6. useDragPaint ────────────────────────────────────────────────────
 const drag = useDragPaint({
   event: eventRef,
   state,
   isSignUp,
   weekOffset: weekOffsetRef,
+  dragging,
+  dragStart,
+  dragCur,
   splitTimes: grid.splitTimes,
   times: grid.times,
   days: grid.days,
@@ -1289,26 +1279,20 @@ const drag = useDragPaint({
   availability: avail.availability,
   ifNeeded: avail.ifNeeded,
   tempTimes: avail.tempTimes,
-  availabilityType: availabilityTypeProxy,
+  availabilityType,
   signUpBlocksByDay: signUpForm.signUpBlocksByDay,
   signUpBlocksToAddByDay: signUpForm.signUpBlocksToAddByDay,
   manualAvailability: avail.manualAvailability,
   curScheduledEvent: eventSched.curScheduledEvent,
   maxSignUpBlockRowSize: signUpForm.maxSignUpBlockRowSize,
-  allowDrag: allowDragProxy,
+  allowDrag,
   getDateFromRowCol: grid.getDateFromRowCol,
   getAvailabilityForColumn: avail.getAvailabilityForColumn,
   createSignUpBlock: signUpForm.createSignUpBlock,
   scrollToSignUpBlock: (id: string) => signUpBlocksListRef.value?.scrollToSignUpBlock?.(id),
 })
-dragPaintResolved = drag
 
-// Sync drag state into shared refs with flush:sync so eventSched sees them immediately
-watch(drag.dragging, (val) => { draggingShared.value = val }, { flush: "sync" })
-watch(drag.dragStart, (val) => { dragStartShared.value = val }, { flush: "sync" })
-watch(drag.dragCur, (val) => { dragCurShared.value = val }, { flush: "sync" })
-
-// ── 8. useScheduleOverlapUI ────────────────────────────────────────────
+// ── 7. useScheduleOverlapUI ────────────────────────────────────────────
 const guestAddedAvailability = computed(
   () =>
     Boolean(guestName.value?.length && guestName.value in avail.parsedResponses.value)
@@ -1320,9 +1304,13 @@ const ui = useScheduleOverlapUI({
   isGroup,
   showHintText: computed(() => props.showHintText),
   state,
+  showBestTimes,
+  defaultState,
+  allowDrag,
+  availabilityType,
   parsedResponses: avail.parsedResponses,
   curTimeslot: avail.curTimeslot,
-  endDrag: endDragProxy,
+  endDrag: drag.endDrag,
   timeslotSelected: avail.timeslotSelected,
   curTimeslotAvailability: avail.curTimeslotAvailability,
   respondents: avail.respondents,
@@ -1332,7 +1320,6 @@ const ui = useScheduleOverlapUI({
   optionsSectionRef,
   respondentsListRef,
 })
-uiResolved = ui
 
 // ── Destructure composable returns for template access ─────────────────
 const {
@@ -1368,7 +1355,7 @@ const toggleSubCalendarAccount = (payload: { email?: string; calendarType?: stri
 
 const {
   availability, ifNeeded, tempTimes, availabilityAnimEnabled, availabilityAnimTimeouts: _availabilityAnimTimeouts,
-  unsavedChanges, hideIfNeeded, manualAvailability: _manualAvailability, fetchedResponses, loadingResponses,
+  unsavedChanges, hideIfNeeded, manualAvailability: _manualAvailability,
   responsesFormatted, curTimeslot, curTimeslotAvailability, timeslotSelected,
   availabilityArray: _availabilityArray, ifNeededArray: _ifNeededArray, parsedResponses, respondents, userHasResponded, max,
   getRespondentsForHoursOffset: _getRespondentsForHoursOffset, getResponsesFormatted, populateUserAvailability,
@@ -1390,16 +1377,17 @@ const {
 } = signUpForm
 
 const {
-  dragging, dragType, dragStart, dragCur: _dragCur, normalizeXY: _normalizeXY, clampRow: _clampRow, clampCol: _clampCol,
+  dragType, normalizeXY: _normalizeXY, clampRow: _clampRow, clampCol: _clampCol,
   getRowColFromXY: _getRowColFromXY, inDragRange, startDrag, moveDrag, endDrag,
 } = drag
 
 const {
-  showBestTimes, showEditOptions, showEventOptions, showCalendarEvents, availabilityType,
+  showEditOptions, showEventOptions, showCalendarEvents,
   overlayAvailability, deleteAvailabilityDialog, calendarOptionsDialog, editGuestNameDialog,
-  newGuestName, tooltipContent, optionsVisible: _optionsVisible, scrolledToRespondents: _scrolledToRespondents, delayedShowStickyRespondents,
-  delayedShowStickyRespondentsTimeout, hintState: _hintState, curRespondent, curRespondents, defaultState,
-  editing, scheduling: _scheduling, allowDrag: _allowDrag, curRespondentsSet, rightSideWidth, showStickyRespondents: _showStickyRespondents,
+  newGuestName, tooltipContent, optionsVisible: _optionsVisible, scrolledToRespondents: _scrolledToRespondents,
+  delayedShowStickyRespondents, delayedShowStickyRespondentsTimeout, hintState: _hintState, curRespondent,
+  curRespondents, editing, scheduling: _scheduling, curRespondentsSet, rightSideWidth,
+  showStickyRespondents: _showStickyRespondents,
   hintStateLocalStorageKey: _hintStateLocalStorageKey, hintText, hintClosed: _hintClosed, hintTextShown, showOverlayAvailabilityToggle,
   selectedGuestRespondent: _selectedGuestRespondent, canEditGuestName, mouseOverRespondent, mouseLeaveRespondent,
   clickRespondent, deselectRespondents, isGuest: _isGuest, checkElementsVisible, onScroll,

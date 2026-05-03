@@ -432,13 +432,6 @@ import type { ZdtMap } from "@/utils"
 import type { EventLike, ParsedResponses, Timezone } from "@/composables/schedule_overlap/types"
 import type { User } from "@/types"
 
-interface RespondentUser {
-  _id: string
-  firstName?: string
-  lastName?: string
-  email?: string
-}
-
 const props = defineProps<{
   eventId: string
   event: EventLike
@@ -677,23 +670,24 @@ function exportCsv() {
     : (durationHours * 60) / increment
 
   const responses = Object.values(props.parsedResponses).sort((a, b) =>
-    ((a.user as RespondentUser).firstName ?? "").localeCompare(
-      (b.user as RespondentUser).firstName ?? ""
+    (a.user.firstName ?? "").localeCompare(
+      b.user.firstName ?? ""
     )
   )
+  const eventDates = props.event.dates ?? []
 
   if (exportCsvDialog.type === "datesToAvailable") {
     const header = ["Date / Time"]
     header.push(
       ...responses.map((r) => {
-        const u = r.user as RespondentUser
+        const u = r.user
         return `${u.firstName ?? ""} ${u.lastName ?? ""}`
       })
     )
     csv.push(header)
 
-    for (const date of props.event.dates as unknown as string[]) {
-      let curDate = Temporal.ZonedDateTime.from(date)
+    for (const date of eventDates) {
+      let curDate = date
       for (let i = 0; i < numIterations; ++i) {
         const row = [getDateString(curDate)]
         for (const response of responses) {
@@ -713,11 +707,11 @@ function exportCsv() {
     csv.push(["Name", "Date / Times available"])
 
     for (const response of responses) {
-      const u = response.user as RespondentUser
+      const u = response.user
       const row = [`${u.firstName ?? ""} ${u.lastName ?? ""}`]
 
-      for (const date of props.event.dates as unknown as string[]) {
-        let curDate = Temporal.ZonedDateTime.from(date)
+      for (const date of eventDates) {
+        let curDate = date
         for (let i = 0; i < numIterations; ++i) {
           if (
             zdtSetHas(response.availability, curDate) ||

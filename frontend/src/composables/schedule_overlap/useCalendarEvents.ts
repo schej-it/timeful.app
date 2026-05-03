@@ -24,6 +24,7 @@ import {
   type CalendarOptions,
   type DayItem,
   type EventLike,
+  type FetchedResponse,
   type TimeItem,
   type Timezone,
   type ProcessedCalendarEvent,
@@ -59,7 +60,7 @@ export interface UseCalendarEventsOptions {
   ) => Temporal.ZonedDateTime | null
 
   // mutable from useAvailabilityData
-  fetchedResponses: Ref<Record<string, unknown>>
+  fetchedResponses: Ref<Record<string, FetchedResponse | undefined>>
   loadingResponses: Ref<{
     loading: boolean
     lastFetched: Temporal.ZonedDateTime
@@ -387,7 +388,13 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
   const fetchResponses = () => {
     if (opts.calendarOnly.value) {
       const responses = opts.event.value.responses
-      if (responses) opts.fetchedResponses.value = responses
+      if (responses) {
+        const convertedResponses: Record<string, FetchedResponse | undefined> = {}
+        for (const [userId, rawResponse] of Object.entries(responses)) {
+          convertedResponses[userId] = fromRawResponse(rawResponse)
+        }
+        opts.fetchedResponses.value = convertedResponses
+      }
       return
     }
 
@@ -444,7 +451,7 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
     get<Record<string, RawResponse>>(url)
       .then((rawResponses) => {
         // Convert raw responses to Temporal-based responses
-        const convertedResponses: Record<string, unknown> = {}
+        const convertedResponses: Record<string, FetchedResponse | undefined> = {}
         for (const [userId, rawResponse] of Object.entries(rawResponses)) {
           convertedResponses[userId] = fromRawResponse(rawResponse)
         }
