@@ -138,4 +138,11 @@ describe("ScheduleOverlap", () => {
   it("renders overnight split calendar events without comparing Temporal.Duration via valueOf", () => {
     expect(() => mountScheduleOverlap()).not.toThrow()
   })
+
+  it("renders the extracted timed grid child for timed events", () => {
+    const wrapper = mountScheduleOverlap()
+
+    expect(wrapper.findComponent({ name: "ScheduleOverlapTimeGrid" }).exists()).toBe(true)
+    expect(wrapper.findComponent({ name: "ScheduleOverlapDaysOnlyGrid" }).exists()).toBe(false)
+  })
 })

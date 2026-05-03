@@ -7,534 +7,118 @@
             class="tw-flex tw-grow tw-pl-4"
             :class="isSignUp ? '' : 'tw-pr-4'"
           >
-            <template v-if="event.daysOnly">
-              <div class="tw-grow">
-                <div class="tw-flex tw-items-center tw-justify-between">
-                  <v-btn
-                    :class="hasPrevPage ? 'tw-visible' : 'tw-invisible'"
-                    class="tw-border-gray"
-                    outlined
-                    icon
-                    @click="prevPage"
-                    ><v-icon>mdi-chevron-left</v-icon></v-btn
-                  >
-                  <div
-                    class="tw-text-lg tw-font-medium tw-capitalize sm:tw-text-xl"
-                  >
-                    {{ curMonthText }}
-                  </div>
-                  <v-btn
-                    :class="hasNextPage ? 'tw-visible' : 'tw-invisible'"
-                    class="tw-border-gray"
-                    outlined
-                    icon
-                    @click="nextPage"
-                    ><v-icon>mdi-chevron-right</v-icon></v-btn
-                  >
-                </div>
-                <!-- Header -->
-                <div class="tw-flex tw-w-full">
-                  <div
-                    v-for="day in daysOfWeek"
-                    :key="day"
-                    class="tw-flex-1 tw-p-2 tw-text-center tw-text-base tw-capitalize tw-text-dark-gray"
-                  >
-                    {{ day }}
-                  </div>
-                </div>
-                <!-- Days grid -->
-                <div class="tw-relative">
-                  <div
-                    id="drag-section"
-                    class="tw-grid tw-grid-cols-7"
-                    @mouseleave="resetCurTimeslot"
-                  >
-                    <div
-                      v-for="(day, i) in monthDays"
-                      :key="day.time.epochMilliseconds"
-                      class="timeslot tw-aspect-square tw-flex tw-items-center tw-justify-center tw-text-sm sm:tw-text-base"
-                      :class="dayTimeslotClassStyle[i].class"
-                      :style="dayTimeslotClassStyle[i].style"
-                      v-on="dayTimeslotVon[i]"
-                    >
-                      {{ day.date }}
-                    </div>
-                  </div>
-                  <ZigZag
-                    v-if="hasPrevPage"
-                    left
-                    class="tw-absolute tw-left-0 tw-top-0 tw-h-full tw-w-3"
-                  />
-                  <ZigZag
-                    v-if="hasNextPage"
-                    right
-                    class="tw-absolute tw-right-0 tw-top-0 tw-h-full tw-w-3"
-                  />
-                </div>
-
-                <v-expand-transition>
-                  <div
-                    v-if="!isPhone && hintTextShown"
-                    :key="hintText"
-                    class="tw-sticky tw-bottom-4 tw-z-10 tw-flex"
-                  >
-                    <div
-                      class="tw-mt-2 tw-flex tw-w-full tw-items-center tw-justify-between tw-gap-1 tw-rounded-md tw-bg-off-white tw-p-2 tw-px-[7px] tw-text-sm tw-text-very-dark-gray"
-                    >
-                      <div class="tw-flex tw-items-center tw-gap-1">
-                        <v-icon small>mdi-information-outline</v-icon>
-                        {{ hintText }}
-                      </div>
-                      <v-icon small @click="closeHint">mdi-close</v-icon>
-                    </div>
-                  </div>
-                </v-expand-transition>
-
-                <ToolRow
-                  v-if="!isPhone && !calendarOnly"
-                  v-model:cur-timezone="curTimezone"
-                  v-model:show-best-times="showBestTimes"
-                  v-model:hide-if-needed="hideIfNeeded"
-                  v-model:mobile-num-days="mobileNumDays"
-                  v-model:time-type="timeType"
-                  :event="event"
-                  :state="state"
-                  :states="states"
-                  :timezone-reference-date="timezoneReferenceDate"
-                  :is-weekly="isWeekly"
-                  :calendar-permission-granted="calendarPermissionGranted"
-                  :week-offset="weekOffset"
-                  :num-responses="respondents.length"
-                  :allow-schedule-event="allowScheduleEvent"
-                  :show-event-options="showEventOptions"
-                  @toggle-show-event-options="toggleShowEventOptions"
-                  @update:week-offset="(val) => $emit('update:weekOffset', val)"
-                  @schedule-event="scheduleEvent"
-                  @cancel-schedule-event="cancelScheduleEvent"
-                  @confirm-schedule-event="confirmScheduleEvent"
-                />
-              </div>
-            </template>
+            <ScheduleOverlapDaysOnlyGrid
+              v-if="event.daysOnly"
+              v-model:cur-timezone="curTimezone"
+              v-model:show-best-times="showBestTimes"
+              v-model:hide-if-needed="hideIfNeeded"
+              v-model:mobile-num-days="mobileNumDays"
+              v-model:time-type="timeType"
+              :event="event"
+              :cur-month-text="curMonthText"
+              :has-prev-page="hasPrevPage"
+              :has-next-page="hasNextPage"
+              :days-of-week="daysOfWeek"
+              :month-days="monthDays"
+              :day-timeslot-class-style="dayTimeslotClassStyle"
+              :day-timeslot-von="dayTimeslotVon"
+              :is-phone="isPhone"
+              :hint-text-shown="hintTextShown"
+              :hint-text="hintText"
+              :calendar-only="calendarOnly"
+              :state="state"
+              :states="states"
+              :timezone-reference-date="timezoneReferenceDate"
+              :is-weekly="isWeekly"
+              :calendar-permission-granted="calendarPermissionGranted"
+              :week-offset="weekOffset"
+              :num-responses="respondents.length"
+              :allow-schedule-event="allowScheduleEvent"
+              :show-event-options="showEventOptions"
+              @prev-page="prevPage"
+              @next-page="nextPage"
+              @reset-cur-timeslot="resetCurTimeslot"
+              @close-hint="closeHint"
+              @toggle-show-event-options="toggleShowEventOptions"
+              @update:week-offset="(val) => $emit('update:weekOffset', val)"
+              @schedule-event="scheduleEvent"
+              @cancel-schedule-event="cancelScheduleEvent"
+              @confirm-schedule-event="confirmScheduleEvent"
+            />
             <template v-else>
-              <!-- Times -->
-              <div
-                :class="calendarOnly ? 'tw-w-12' : ''"
-                class="tw-w-8 tw-flex-none sm:tw-w-12"
-              >
-                <div
-                  :class="calendarOnly ? 'tw-invisible' : 'tw-visible'"
-                  class="tw-sticky tw-top-14 tw-z-10 -tw-ml-3 tw-mb-3 tw-h-11 tw-bg-white sm:tw-top-16 sm:tw-ml-0"
-                >
-                  <div
-                    :class="hasPrevPage ? 'tw-visible' : 'tw-invisible'"
-                    class="tw-sticky tw-top-14 tw-ml-0.5 tw-self-start tw-pt-1.5 sm:tw-top-16 sm:-tw-ml-2"
-                  >
-                    <v-btn
-                      class="tw-border-gray"
-                      outlined
-                      icon
-                      @click="prevPage"
-                      ><v-icon>mdi-chevron-left</v-icon></v-btn
-                    >
-                  </div>
-                </div>
-
-                <div
-                  :class="calendarOnly ? '' : '-tw-ml-3'"
-                  class="-tw-mt-[8px] sm:tw-ml-0"
-                >
-                  <div
-                    v-for="(time, i) in splitTimes[0]"
-                    :id="time.id"
-                    :key="i"
-                    class="tw-pr-1 tw-text-right tw-text-xs tw-font-light tw-uppercase sm:tw-pr-2"
-                    :style="{ height: `${timeslotHeight}px` }"
-                  >
-                    {{ time.text }}
-                  </div>
-                </div>
-
-                <template v-if="splitTimes[1].length > 0">
-                  <div
-                    :style="{
-                      height: `${SPLIT_GAP_HEIGHT}px`,
-                    }"
-                  ></div>
-                  <div
-                    v-if="splitTimes[1].length > 0"
-                    :class="calendarOnly ? '' : '-tw-ml-3'"
-                    class="sm:tw-ml-0"
-                  >
-                    <div
-                      v-for="(time, i) in splitTimes[1]"
-                      :id="time.id"
-                      :key="i"
-                      class="tw-pr-1 tw-text-right tw-text-xs tw-font-light tw-uppercase sm:tw-pr-2"
-                      :style="{ height: `${timeslotHeight}px` }"
-                    >
-                      {{ time.text }}
-                    </div>
-                  </div>
-                </template>
-              </div>
-
-              <!-- Middle section -->
-              <div class="tw-grow">
-                <div
-                  ref="calendar"
-                  class="tw-relative tw-flex tw-flex-col"
-                  @scroll="onCalendarScroll"
-                >
-                  <!-- Days -->
-                  <div
-                    :class="
-                      sampleCalendarEventsByDay
-                        ? undefined
-                        : 'tw-sticky tw-top-14'
-                    "
-                    class="tw-z-10 tw-flex tw-h-14 tw-items-center tw-bg-white sm:tw-top-16"
-                  >
-                    <template v-for="(day, i) in days" :key="i">
-                      <div
-                        v-if="!day.isConsecutive"
-                        :key="`${i}-gap`"
-                        :style="{ width: `${SPLIT_GAP_WIDTH}px` }"
-                      ></div>
-                      <div class="tw-flex-1 tw-bg-white">
-                        <div class="tw-text-center">
-                          <div
-                            v-if="isSpecificDates || isGroup"
-                            class="tw-text-[12px] tw-font-light tw-capitalize tw-text-very-dark-gray sm:tw-text-xs"
-                          >
-                            {{ day.dateString }}
-                          </div>
-                          <div class="tw-text-base tw-capitalize sm:tw-text-lg">
-                            {{ day.dayText }}
-                          </div>
-                        </div>
-                      </div>
-                    </template>
-                  </div>
-
-                  <!-- Calendar -->
-                  <div class="tw-flex tw-flex-col">
-                    <div class="tw-flex-1">
-                      <div
-                        id="drag-section"
-                        data-long-press-delay="500"
-                        class="tw-relative tw-flex"
-                        @mouseleave="resetCurTimeslot"
-                      >
-                        <!-- Loader -->
-                        <div
-                          v-if="showLoader"
-                          class="tw-absolute tw-z-10 tw-grid tw-h-full tw-w-full tw-place-content-center"
-                        >
-                          <v-progress-circular
-                            class="tw-text-green"
-                            indeterminate
-                          />
-                        </div>
-
-                        <template v-for="(day, d) in days" :key="d">
-                          <div
-                            v-if="!day.isConsecutive"
-                            :key="`${d}-gap`"
-                            :style="{ width: `${SPLIT_GAP_WIDTH}px` }"
-                          ></div>
-                          <div
-                            class="tw-relative tw-flex-1"
-                            :class="
-                              ((isGroup && loadingCalendarEvents) ||
-                                loadingResponses.loading) &&
-                              'tw-opacity-50'
-                            "
-                          >
-                            <!-- Timeslots -->
-                            <div
-                              v-for="(_, t) in splitTimes[0]"
-                              :key="`${d}-${t}-0`"
-                              class="tw-w-full"
-                            >
-                              <div
-                                class="timeslot"
-                                :class="
-                                  timeslotClassStyle[d * times.length + t]
-                                    ?.class
-                                "
-                                :style="
-                                  timeslotClassStyle[d * times.length + t]
-                                    ?.style
-                                "
-                                v-on="timeslotVon[d * times.length + t]"
-                              ></div>
-                            </div>
-
-                            <template v-if="splitTimes[1].length > 0">
-                              <div
-                                :style="{
-                                  height: `${SPLIT_GAP_HEIGHT}px`,
-                                }"
-                              ></div>
-                              <div
-                                v-for="(_, t) in splitTimes[1]"
-                                :key="`${d}-${t}-1`"
-                                class="tw-w-full"
-                              >
-                                <div
-                                  class="timeslot"
-                                  :class="
-                                    timeslotClassStyle[
-                                      d * times.length +
-                                        t +
-                                        splitTimes[0].length
-                                    ]?.class
-                                  "
-                                  :style="
-                                    timeslotClassStyle[
-                                      d * times.length +
-                                        t +
-                                        splitTimes[0].length
-                                    ]?.style
-                                  "
-                                  v-on="
-                                    timeslotVon[
-                                      d * times.length +
-                                        t +
-                                        splitTimes[0].length
-                                    ]
-                                  "
-                                ></div>
-                              </div>
-                            </template>
-
-                            <!-- Calendar events -->
-                            <template
-                              v-if="
-                                !loadingCalendarEvents &&
-                                (editing ||
-                                  alwaysShowCalendarEvents ||
-                                  showCalendarEvents)
-                              "
-                            >
-                              <template
-                                v-for="calendarEvent in calendarEventsByDay[
-                                  d + page * maxDaysPerPage
-                                ]"
-                                :key="(calendarEvent.id as string | number)"
-                              >
-                                <CalendarEventBlock
-                                  :block-style="
-                                    getRenderedTimeBlockStyleForTemplate(
-                                      calendarEvent
-                                    )
-                                  "
-                                  :calendar-event="calendarEvent"
-                                  :is-group="isGroup"
-                                  :is-editing-availability="
-                                    state === states.EDIT_AVAILABILITY
-                                  "
-                                  :no-event-names="noEventNames"
-                                  :transition-name="
-                                    isGroup ? '' : 'fade-transition'
-                                  "
-                                />
-                              </template>
-                            </template>
-
-                            <!-- Scheduled event -->
-                            <div v-if="state === states.SCHEDULE_EVENT">
-                              <div
-                                v-if="
-                                  (dragStart && dragStart.col === d) ||
-                                  (!dragStart &&
-                                    curScheduledEvent &&
-                                    curScheduledEvent.col === d)
-                                "
-                                class="tw-absolute tw-w-full tw-select-none tw-p-px"
-                                :style="scheduledEventStyle"
-                                style="pointer-events: none"
-                              >
-                                <div
-                                  class="tw-h-full tw-w-full tw-overflow-hidden tw-text-ellipsis tw-rounded tw-border tw-border-solid tw-border-blue tw-bg-blue tw-p-px tw-text-xs"
-                                >
-                                  <div class="tw-font-medium tw-text-white">
-                                    {{ event.name }}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <!-- Sign up block being dragged -->
-                            <div v-if="state === states.EDIT_SIGN_UP_BLOCKS">
-                              <div
-                                v-if="dragStart && dragStart.col === d"
-                                class="tw-absolute tw-w-full tw-select-none tw-p-px"
-                                :style="signUpBlockBeingDraggedStyle"
-                                style="pointer-events: none"
-                              >
-                                <SignUpCalendarBlock
-                                  :title="newSignUpBlockName"
-                                  title-only
-                                  unsaved
-                                />
-                              </div>
-                            </div>
-
-                            <div v-if="isSignUp">
-                              <!-- Sign up blocks -->
-                              <div
-                                v-for="block in signUpBlocksByDay[
-                                  d + page * maxDaysPerPage
-                                ]"
-                                :key="block._id"
-                              >
-                                <div
-                                  class="tw-absolute tw-w-full tw-select-none tw-p-px"
-                                  :style="getSignUpBlockStyle(block)"
-                                  @click="handleSignUpBlockClick(block, (b) => $emit('signUpForBlock', b))"
-                                >
-                                  <SignUpCalendarBlock :sign-up-block="block" />
-                                </div>
-                              </div>
-
-                              <!-- Sign up blocks to be added after hitting 'save' -->
-                              <div
-                                v-for="block in signUpBlocksToAddByDay[
-                                  d + page * maxDaysPerPage
-                                ]"
-                                :key="block._id"
-                              >
-                                <div
-                                  class="tw-absolute tw-w-full tw-select-none tw-p-px"
-                                  :style="getSignUpBlockStyle(block)"
-                                >
-                                  <SignUpCalendarBlock
-                                    :title="block.name"
-                                    title-only
-                                    unsaved
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                            <!-- Overlaid availabilities -->
-                            <div v-if="overlayAvailability">
-                              <div
-                                v-for="(timeBlock, tb) in overlaidAvailability[
-                                  d
-                                ]"
-                                :key="tb"
-                                class="tw-absolute tw-w-full tw-select-none tw-p-px"
-                                :style="
-                                  getRenderedTimeBlockStyleForTemplate(
-                                    timeBlock
-                                  )
-                                "
-                                style="pointer-events: none"
-                              >
-                                <div
-                                  class="tw-h-full tw-w-full tw-border-2"
-                                  :class="
-                                    timeBlock.type === 'available'
-                                      ? 'overlay-avail-shadow-green tw-border-[#00994CB3] tw-bg-[#00994C66]'
-                                      : 'overlay-avail-shadow-yellow tw-border-[#997700CC] tw-bg-[#FFE8B8B3]'
-                                  "
-                                ></div>
-                              </div>
-                            </div>
-                          </div>
-                        </template>
-                      </div>
-                    </div>
-                  </div>
-
-                  <ZigZag
-                    v-if="hasPrevPage"
-                    left
-                    class="tw-absolute tw-left-0 tw-top-0 tw-h-full tw-w-3"
-                  />
-                  <ZigZag
-                    v-if="hasNextPage"
-                    right
-                    class="tw-absolute tw-right-0 tw-top-0 tw-h-full tw-w-3"
-                  />
-                </div>
-
-                <!-- Hint text (desktop) -->
-                <v-expand-transition>
-                  <div
-                    v-if="!isPhone && hintTextShown"
-                    :key="hintText"
-                    class="tw-sticky tw-bottom-4 tw-z-10 tw-flex"
-                  >
-                    <div
-                      class="tw-mt-2 tw-flex tw-w-full tw-items-center tw-justify-between tw-gap-1 tw-rounded-md tw-bg-off-white tw-p-2 tw-px-[7px] tw-text-sm tw-text-very-dark-gray"
-                    >
-                      <div class="tw-flex tw-items-center tw-gap-1">
-                        <v-icon small>mdi-information-outline</v-icon>
-                        {{ hintText }}
-                      </div>
-                      <v-icon small @click="closeHint">mdi-close</v-icon>
-                    </div>
-                  </div>
-                </v-expand-transition>
-
-                <v-expand-transition>
-                  <div
-                    v-if="
-                      state !== states.EDIT_AVAILABILITY &&
-                      max !== respondents.length &&
-                      Object.keys(fetchedResponses).length !== 0 &&
-                      !loadingResponses.loading
-                    "
-                  >
-                    <div class="tw-mt-2 tw-text-sm tw-text-dark-gray">
-                      Note: There's no time when all
-                      {{ respondents.length }} respondents are available.
-                    </div>
-                  </div>
-                </v-expand-transition>
-
-                <ToolRow
-                  v-if="!isPhone && !calendarOnly"
-                  v-model:cur-timezone="curTimezone"
-                  v-model:show-best-times="showBestTimes"
-                  v-model:hide-if-needed="hideIfNeeded"
-                  v-model:mobile-num-days="mobileNumDays"
-                  v-model:time-type="timeType"
-                  :event="event"
-                  :state="state"
-                  :states="states"
-                  :timezone-reference-date="timezoneReferenceDate"
-                  :is-weekly="isWeekly"
-                  :calendar-permission-granted="calendarPermissionGranted"
-                  :week-offset="weekOffset"
-                  :num-responses="respondents.length"
-                  :allow-schedule-event="allowScheduleEvent"
-                  :show-event-options="showEventOptions"
-                  @toggle-show-event-options="toggleShowEventOptions"
-                  @update:week-offset="(val) => $emit('update:weekOffset', val)"
-                  @schedule-event="scheduleEvent"
-                  @cancel-schedule-event="cancelScheduleEvent"
-                  @confirm-schedule-event="confirmScheduleEvent"
-                />
-              </div>
-
-              <div
-                v-if="!calendarOnly"
-                :class="calendarOnly ? 'tw-invisible' : 'tw-visible'"
-                class="tw-sticky tw-top-14 tw-z-10 tw-mb-4 tw-h-11 tw-bg-white sm:tw-top-16"
-              >
-                <div
-                  :class="hasNextPage ? 'tw-visible' : 'tw-invisible'"
-                  class="tw-sticky tw-top-14 -tw-mr-2 tw-self-start tw-pt-1.5 sm:tw-top-16"
-                >
-                  <v-btn class="tw-border-gray" outlined icon @click="nextPage"
-                    ><v-icon>mdi-chevron-right</v-icon></v-btn
-                  >
-                </div>
-              </div>
+              <ScheduleOverlapTimeGrid
+                v-model:cur-timezone="curTimezone"
+                v-model:show-best-times="showBestTimes"
+                v-model:hide-if-needed="hideIfNeeded"
+                v-model:mobile-num-days="mobileNumDays"
+                v-model:time-type="timeType"
+                :event="event"
+                :calendar-only="calendarOnly"
+                :has-prev-page="hasPrevPage"
+                :has-next-page="hasNextPage"
+                :split-times="splitTimes"
+                :times="times"
+                :timeslot-height="timeslotHeight"
+                :days="days"
+                :is-specific-dates="isSpecificDates"
+                :is-group="isGroup"
+                :sample-calendar-events-by-day="sampleCalendarEventsByDay"
+                :show-loader="showLoader"
+                :loading-calendar-events="loadingCalendarEvents"
+                :editing="editing"
+                :always-show-calendar-events="alwaysShowCalendarEvents"
+                :show-calendar-events="showCalendarEvents"
+                :calendar-events-by-day="calendarEventsByDay"
+                :state="state"
+                :states="states"
+                :page="page"
+                :max-days-per-page="maxDaysPerPage"
+                :drag-start="dragStart"
+                :cur-scheduled-event="curScheduledEvent"
+                :scheduled-event-style="scheduledEventStyle"
+                :sign-up-block-being-dragged-style="signUpBlockBeingDraggedStyle"
+                :new-sign-up-block-name="newSignUpBlockName"
+                :is-sign-up="isSignUp"
+                :sign-up-blocks-by-day="signUpBlocksByDay"
+                :sign-up-blocks-to-add-by-day="signUpBlocksToAddByDay"
+                :overlay-availability="overlayAvailability"
+                :overlaid-availability="overlaidAvailability"
+                :timeslot-class-style="timeslotClassStyle"
+                :timeslot-von="timeslotVon"
+                :no-event-names="noEventNames"
+                :hint-text-shown="hintTextShown"
+                :hint-text="hintText"
+                :is-phone="isPhone"
+                :max="max"
+                :respondents-length="respondents.length"
+                :fetched-responses="fetchedResponses"
+                :loading-responses-loading="loadingResponses.loading"
+                :timezone-reference-date="timezoneReferenceDate"
+                :is-weekly="isWeekly"
+                :calendar-permission-granted="calendarPermissionGranted"
+                :week-offset="weekOffset"
+                :num-responses="respondents.length"
+                :allow-schedule-event="allowScheduleEvent"
+                :show-event-options="showEventOptions"
+                :get-rendered-time-block-style="getRenderedTimeBlockStyleForTemplate"
+                :get-sign-up-block-style="getSignUpBlockStyle"
+                @prev-page="prevPage"
+                @next-page="nextPage"
+                @calendar-scroll="onCalendarScroll"
+                @reset-cur-timeslot="resetCurTimeslot"
+                @close-hint="closeHint"
+                @toggle-show-event-options="toggleShowEventOptions"
+                @update:week-offset="(val) => $emit('update:weekOffset', val)"
+                @schedule-event="scheduleEvent"
+                @cancel-schedule-event="cancelScheduleEvent"
+                @confirm-schedule-event="confirmScheduleEvent"
+                @sign-up-for-block="
+                  (block) =>
+                    handleSignUpBlockClick(block, (selectedBlock) =>
+                      $emit('signUpForBlock', selectedBlock)
+                    )
+                "
+              />
             </template>
           </div>
 
@@ -1011,9 +595,9 @@ import {
 import { useMainStore } from "@/stores/main"
 import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
 import PubliftAd from "@/components/event/PubliftAd.vue"
-import SignUpCalendarBlock from "@/components/sign_up_form/SignUpCalendarBlock.vue"
 import SignUpBlocksList from "@/components/sign_up_form/SignUpBlocksList.vue"
-import ZigZag from "./ZigZag.vue"
+import ScheduleOverlapDaysOnlyGrid from "./ScheduleOverlapDaysOnlyGrid.vue"
+import ScheduleOverlapTimeGrid from "./ScheduleOverlapTimeGrid.vue"
 import ToolRow from "./ToolRow.vue"
 import RespondentsList from "./RespondentsList.vue"
 import GCalWeekSelector from "./GCalWeekSelector.vue"
@@ -1024,7 +608,6 @@ import Tooltip from "../Tooltip.vue"
 import ColorLegend from "./ColorLegend.vue"
 import AvailabilityTypeToggle from "./AvailabilityTypeToggle.vue"
 import BufferTimeSwitch from "./BufferTimeSwitch.vue"
-import CalendarEventBlock from "./CalendarEventBlock.vue"
 import SpecificTimesInstructions from "./SpecificTimesInstructions.vue"
 import {
   buildDayGridTimeslotClassStyles,
@@ -1043,7 +626,7 @@ import { useSignUpForm } from "@/composables/schedule_overlap/useSignUpForm"
 import { useScheduleOverlapUI } from "@/composables/schedule_overlap/useScheduleOverlapUI"
 import { useScheduleOverlapController } from "./useScheduleOverlapController"
 import {
-  states, SPLIT_GAP_HEIGHT, SPLIT_GAP_WIDTH,
+  states,
 } from "@/composables/schedule_overlap/types"
 import type {
   FetchedResponse, RowCol, Timezone, ScheduleOverlapState, EventLike, CalendarEventLite, CalendarEventsByDay, CalendarEventsMap,
