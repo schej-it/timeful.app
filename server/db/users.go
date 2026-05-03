@@ -2,10 +2,12 @@ package db
 
 import (
 	"context"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"schej.it/server/logger"
 	"schej.it/server/models"
 )
@@ -54,9 +56,17 @@ func GetUserByStripeCustomerId(stripeCustomerId string) *models.User {
 }
 
 func GetUserByEmail(email string) *models.User {
-	result := UsersCollection.FindOne(context.Background(), bson.M{
-		"email": email,
+	emailQuery := strings.TrimSpace(email)
+	if emailQuery == "" {
+		return nil
+	}
+	opts := options.FindOne().SetCollation(&options.Collation{
+		Locale:   "en",
+		Strength: 2, // case-insensitive match on email
 	})
+	result := UsersCollection.FindOne(context.Background(), bson.M{
+		"email": emailQuery,
+	}, opts)
 	if result.Err() == mongo.ErrNoDocuments {
 		// User does not exist!
 		return nil

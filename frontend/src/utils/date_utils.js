@@ -1,4 +1,9 @@
-import { eventTypes, timeTypes, dayIndexToDayString } from "@/constants"
+import {
+  eventTypes,
+  timeTypes,
+  dayIndexToDayString,
+  calendarTypes,
+} from "@/constants"
 import { get } from "./fetch_utils"
 import { isBetween } from "./general_utils"
 import dayjs from "dayjs"
@@ -882,7 +887,12 @@ export const processTimeBlocks = (
 }
 
 export const getCalendarAccountKey = (email, calendarType) => {
-  return `${email}_${calendarType}`
+  const trimmed = String(email ?? "").trim()
+  const keyPart =
+    calendarType === calendarTypes.ICS
+      ? trimmed
+      : trimmed.toLowerCase()
+  return `${keyPart}_${calendarType}`
 }
 
 export const stdTimezoneOffset = (date) => {
