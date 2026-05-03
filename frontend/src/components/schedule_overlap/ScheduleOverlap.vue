@@ -124,321 +124,89 @@
 
           <!-- Right hand side content -->
 
-          <div
+          <ScheduleOverlapSidebar
             v-if="!calendarOnly"
-            class="tw-px-4 tw-py-4 sm:tw-sticky sm:tw-top-16 sm:tw-flex-none sm:tw-self-start sm:tw-py-0 sm:tw-pl-0 sm:tw-pr-0 sm:tw-pt-14"
-            :style="{ width: rightSideWidth }"
-          >
-            <!-- Show section on the right depending on some if conditions -->
-            <template v-if="isSignUp">
-              <div class="tw-mb-2 tw-text-lg tw-text-black">Slots</div>
-              <div v-if="!isOwner" class="tw-mb-3 tw-flex tw-flex-col">
-                <div
-                  class="tw-flex tw-flex-col tw-gap-1 tw-rounded-md tw-bg-light-gray tw-p-3 tw-text-xs tw-italic tw-text-dark-gray"
-                >
-                  <div v-if="!authUser || alreadyRespondedToSignUpForm">
-                    <a class="tw-underline" :href="`mailto:${event.ownerId}`"
-                      >Contact sign up creator</a
-                    >
-                    to edit your slot
-                  </div>
-                  <div v-if="event.blindAvailabilityEnabled">
-                    Responses are only visible to creator
-                  </div>
-                </div>
-              </div>
-              <SignUpBlocksList
-                ref="signUpBlocksList"
-                :sign-up-blocks="signUpBlocksByDay.flat()"
-                :sign-up-blocks-to-add="signUpBlocksToAddByDay.flat()"
-                :is-editing="state == states.EDIT_SIGN_UP_BLOCKS"
-                :is-owner="isOwner"
-                :already-responded="alreadyRespondedToSignUpForm"
-                :anonymous="event.blindAvailabilityEnabled"
-                @update:sign-up-block="editSignUpBlock"
-                @delete:sign-up-block="deleteSignUpBlock"
-                @sign-up-for-block="$emit('signUpForBlock', $event)"
-              />
-            </template>
-            <template v-else-if="state === states.SET_SPECIFIC_TIMES">
-              <SpecificTimesInstructions
-                v-if="!isPhone"
-                :num-temp-times="tempTimes.size"
-                @save-temp-times="saveTempTimes"
-              />
-            </template>
-            <template v-else>
-              <div
-                v-if="state == states.EDIT_AVAILABILITY"
-                class="tw-flex tw-flex-col tw-gap-5"
-              >
-                <div
-                  v-if="
-                    !(
-                      calendarPermissionGranted &&
-                      !event.daysOnly &&
-                      !addingAvailabilityAsGuest
-                    )
-                  "
-                  class="tw-flex tw-flex-wrap tw-items-baseline tw-gap-1 tw-text-sm tw-italic tw-text-dark-gray"
-                >
-                  {{
-                    (userHasResponded && !addingAvailabilityAsGuest) ||
-                    curGuestId
-                      ? "Editing"
-                      : "Adding"
-                  }}
-                  availability as
-                  <div
-                    v-if="curGuestId && canEditGuestName"
-                    class="tw-group tw-mt-0.5 tw-flex tw-w-fit tw-cursor-pointer tw-items-center tw-gap-1"
-                    @click="openEditGuestNameDialog"
-                  >
-                    <span class="tw-font-medium group-hover:tw-underline">{{
-                      curGuestId
-                    }}</span>
-                    <v-icon small>mdi-pencil</v-icon>
-                  </div>
-                  <span v-else>
-                    {{
-                      authUser && !addingAvailabilityAsGuest
-                        ? `${authUser.firstName} ${authUser.lastName}`
-                        : curGuestId?.length > 0
-                        ? curGuestId
-                        : "a guest"
-                    }}
-                  </span>
-                  <v-dialog
-                    v-model="editGuestNameDialog"
-                    width="400"
-                    content-class="tw-m-0"
-                  >
-                    <v-card>
-                      <v-card-title>Edit guest name</v-card-title>
-                      <v-card-text>
-                        <v-text-field
-                          v-model="newGuestName"
-                          label="Guest name"
-                          autofocus
-                          hide-details
-                          @keydown.enter="saveGuestName"
-                        ></v-text-field>
-                      </v-card-text>
-                      <v-card-actions>
-                        <v-spacer />
-                        <v-btn text @click="editGuestNameDialog = false"
-                          >Cancel</v-btn
-                        >
-                        <v-btn text color="primary" @click="saveGuestName"
-                          >Save</v-btn
-                        >
-                      </v-card-actions>
-                    </v-card>
-                  </v-dialog>
-                </div>
-                <div class="tw-flex tw-flex-col tw-gap-3">
-                  <AvailabilityTypeToggle
-                    v-if="!isGroup && !isPhone"
-                    v-model="availabilityType"
-                    class="tw-w-full"
-                  />
-                  <ColorLegend />
-                </div>
-                <!-- User's calendar accounts -->
-                <CalendarAccounts
-                  v-if="
-                    calendarPermissionGranted &&
-                    !event.daysOnly &&
-                    !addingAvailabilityAsGuest
-                  "
-                  :toggle-state="true"
-                  :event-id="event._id"
-                  :calendar-events-map="calendarEventsMap"
-                  :sync-with-backend="!isGroup"
-                  :allow-add-calendar-account="!isGroup"
-                  :initial-calendar-accounts-data="
-                    isGroup ? sharedCalendarAccounts : (authUser?.calendarAccounts ?? {})
-                  "
-                  @toggle-calendar-account="toggleCalendarAccount"
-                  @toggle-sub-calendar-account="toggleSubCalendarAccount"
-                ></CalendarAccounts>
-
-                <div v-if="showOverlayAvailabilityToggle">
-                  <v-switch
-                    id="overlay-availabilities-toggle"
-                    inset
-                    :input-value="overlayAvailability"
-                    hide-details
-                    @change="updateOverlayAvailability"
-                  >
-                    <template #label>
-                      <div class="tw-text-sm tw-text-black">
-                        Overlay availabilities
-                      </div>
-                    </template>
-                  </v-switch>
-
-                  <div class="tw-mt-2 tw-text-xs tw-text-dark-gray">
-                    View everyone's availability while inputting your own
-                  </div>
-                </div>
-
-                <!-- Options section -->
-                <div
-                  v-if="!event.daysOnly && showCalendarOptions"
-                  ref="optionsSection"
-                >
-                  <ExpandableSection
-                    label="Options"
-                    :model-value="showEditOptions"
-                    @update:model-value="toggleShowEditOptions"
-                  >
-                    <div class="tw-flex tw-flex-col tw-gap-5 tw-pt-2.5">
-                      <v-dialog
-                        v-if="showCalendarOptions"
-                        v-model="calendarOptionsDialog"
-                        width="500"
-                      >
-                        <template #activator="{ props: activatorProps }">
-                          <v-btn
-                            outlined
-                            class="tw-border-gray tw-text-sm"
-                            v-bind="activatorProps"
-                          >
-                            Calendar options...
-                          </v-btn>
-                        </template>
-
-                        <v-card>
-                          <v-card-title class="tw-flex">
-                            <div>Calendar options</div>
-                            <v-spacer />
-                            <v-btn icon @click="calendarOptionsDialog = false">
-                              <v-icon>mdi-close</v-icon>
-                            </v-btn>
-                          </v-card-title>
-                          <v-card-text
-                            class="tw-flex tw-flex-col tw-gap-6 tw-pb-8 tw-pt-2"
-                          >
-                            <AlertText v-if="isGroup" class="-tw-mb-4">
-                              Calendar options will only updated for the current
-                              group
-                            </AlertText>
-
-                            <BufferTimeSwitch
-                              v-model:buffer-time="bufferTime"
-                              :sync-with-backend="!isGroup"
-                            />
-
-                            <WorkingHoursToggle
-                              v-model:working-hours="workingHours"
-                              :timezone="curTimezone"
-                              :sync-with-backend="!isGroup"
-                            />
-                          </v-card-text>
-                        </v-card>
-                      </v-dialog>
-                    </div>
-                  </ExpandableSection>
-                </div>
-
-                <!-- Delete availability button -->
-                <div
-                  v-if="
-                    (!addingAvailabilityAsGuest && userHasResponded) ||
-                    curGuestId
-                  "
-                >
-                  <v-dialog
-                    v-model="deleteAvailabilityDialog"
-                    width="500"
-                    persistent
-                  >
-                    <template #activator="{ props: activatorProps }">
-                      <span
-                        v-bind="activatorProps"
-                        class="tw-cursor-pointer tw-text-sm tw-text-red"
-                      >
-                        {{ !isGroup ? "Delete availability" : "Leave group" }}
-                      </span>
-                    </template>
-
-                    <v-card>
-                      <v-card-title>Are you sure?</v-card-title>
-                      <v-card-text class="tw-text-sm tw-text-dark-gray"
-                        >Are you sure you want to
-                        {{
-                          !isGroup
-                            ? "delete your availability from this event?"
-                            : "leave this group?"
-                        }}</v-card-text
-                      >
-                      <v-card-actions>
-                        <v-spacer />
-                        <v-btn text @click="deleteAvailabilityDialog = false"
-                          >Cancel</v-btn
-                        >
-                        <v-btn
-                          text
-                          color="error"
-                          @click="handleDeleteAvailability"
-                          >{{ !isGroup ? "Delete" : "Leave" }}</v-btn
-                        >
-                      </v-card-actions>
-                    </v-card>
-                  </v-dialog>
-                </div>
-              </div>
-              <template v-else>
-                <PubliftAd
-                  :show-ad="showAds"
-                  fuse-id="meet_incontent"
-                  class="-tw-mx-4 tw-my-4 tw-block !tw-rounded-none sm:tw-hidden"
-                >
-                  <div class="tw-h-[375px] publift-m:tw-h-[90px]">
-                    <div
-                      id="meet_incontent"
-                      data-fuse="meet_incontent"
-                      class="tw-flex tw-items-center tw-justify-center"
-                    ></div>
-                  </div>
-                </PubliftAd>
-                <RespondentsList
-                  v-model:show-calendar-events="showCalendarEvents"
-                  v-model:show-best-times="showBestTimes"
-                  v-model:hide-if-needed="hideIfNeeded"
-                  :max-height="100"
-                  :event="event"
-                  :event-id="event._id ?? ''"
-                  :days="allDays"
-                  :times="times"
-                  :cur-date="getDateFromRowCol(curTimeslot.row, curTimeslot.col) ?? undefined"
-                  :cur-respondent="curRespondent"
-                  :cur-respondents="curRespondents"
-                  :cur-timeslot="{ dayIndex: curTimeslot.col, timeIndex: curTimeslot.row }"
-                  :cur-timeslot-availability="curTimeslotAvailability"
-                  :respondents="respondents"
-                  :parsed-responses="parsedResponses"
-                  :is-owner="isOwner"
-                  :is-group="isGroup"
-                  :attendees="formattedAttendees"
-                  :responses-formatted="responsesFormatted"
-                  :timezone="curTimezone"
-                  :show-event-options="showEventOptions"
-                  :guest-added-availability="guestAddedAvailability"
-                  :adding-availability-as-guest="addingAvailabilityAsGuest"
-                  @toggle-show-event-options="toggleShowEventOptions"
-                  @add-availability="$emit('addAvailability')"
-                  @add-availability-as-guest="$emit('addAvailabilityAsGuest')"
-                  @mouse-over-respondent="mouseOverRespondent"
-                  @mouse-leave-respondent="() => mouseLeaveRespondent()"
-                  @click-respondent="clickRespondent"
-                  @edit-guest-availability="editGuestAvailability"
-                  @refresh-event="refreshEvent"
-                />
-              </template>
-            </template>
-          </div>
+            :event="event"
+            :state="state"
+            :is-sign-up="isSignUp"
+            :is-owner="isOwner"
+            :is-group="isGroup"
+            :is-phone="isPhone"
+            :auth-user="authUser"
+            :already-responded-to-sign-up-form="alreadyRespondedToSignUpForm"
+            :sign-up-blocks="signUpBlocksByDay.flat()"
+            :sign-up-blocks-to-add="signUpBlocksToAddByDay.flat()"
+            :num-temp-times="tempTimes.size"
+            :cur-guest-id="curGuestId"
+            :user-has-responded="userHasResponded"
+            :adding-availability-as-guest="addingAvailabilityAsGuest"
+            :can-edit-guest-name="canEditGuestName"
+            :new-guest-name="newGuestName"
+            :edit-guest-name-dialog="editGuestNameDialog"
+            :availability-type="availabilityType"
+            :show-overlay-availability-toggle="showOverlayAvailabilityToggle"
+            :overlay-availability="overlayAvailability"
+            :calendar-permission-granted="calendarPermissionGranted"
+            :calendar-events-map="calendarEventsMap"
+            :shared-calendar-accounts="sharedCalendarAccounts"
+            :show-calendar-options="showCalendarOptions"
+            :show-edit-options="showEditOptions"
+            :calendar-options-dialog="calendarOptionsDialog"
+            :buffer-time="bufferTime"
+            :working-hours="workingHours"
+            :cur-timezone="curTimezone"
+            :delete-availability-dialog="deleteAvailabilityDialog"
+            :show-ads="showAds"
+            :right-side-width="rightSideWidth"
+            :days="allDays"
+            :times="times"
+            :cur-date="getDateFromRowCol(curTimeslot.row, curTimeslot.col) ?? undefined"
+            :cur-respondent="curRespondent"
+            :cur-respondents="curRespondents"
+            :cur-timeslot="{ dayIndex: curTimeslot.col, timeIndex: curTimeslot.row }"
+            :cur-timeslot-availability="curTimeslotAvailability"
+            :respondents="respondents"
+            :parsed-responses="parsedResponses"
+            :attendees="formattedAttendees"
+            :responses-formatted="responsesFormatted"
+            :show-calendar-events="showCalendarEvents"
+            :show-best-times="showBestTimes"
+            :hide-if-needed="hideIfNeeded"
+            :show-event-options="showEventOptions"
+            :guest-added-availability="guestAddedAvailability"
+            :sign-up-blocks-list-ref-setter="setSignUpBlocksListRef"
+            :options-section-ref-setter="setOptionsSectionRef"
+            :respondents-list-ref-setter="setRespondentsListRef"
+            @save-temp-times="saveTempTimes"
+            @open-edit-guest-name-dialog="openEditGuestNameDialog"
+            @save-guest-name="saveGuestName"
+            @update:new-guest-name="newGuestName = $event"
+            @update:edit-guest-name-dialog="editGuestNameDialog = $event"
+            @update:availability-type="availabilityType = $event"
+            @toggle-calendar-account="toggleCalendarAccount"
+            @toggle-sub-calendar-account="toggleSubCalendarAccount"
+            @update-overlay-availability="updateOverlayAvailability"
+            @toggle-show-edit-options="toggleShowEditOptions"
+            @update:calendar-options-dialog="calendarOptionsDialog = $event"
+            @update:buffer-time="bufferTime = $event"
+            @update:working-hours="workingHours = $event"
+            @update:delete-availability-dialog="deleteAvailabilityDialog = $event"
+            @delete-availability="handleDeleteAvailability"
+            @update-sign-up-block="editSignUpBlock"
+            @delete-sign-up-block="deleteSignUpBlock"
+            @sign-up-for-block="$emit('signUpForBlock', $event)"
+            @update:show-calendar-events="showCalendarEvents = $event"
+            @update:show-best-times="showBestTimes = $event"
+            @update:hide-if-needed="hideIfNeeded = $event"
+            @toggle-show-event-options="toggleShowEventOptions"
+            @add-availability="$emit('addAvailability')"
+            @add-availability-as-guest="$emit('addAvailabilityAsGuest')"
+            @mouse-over-respondent="mouseOverRespondent"
+            @mouse-leave-respondent="mouseLeaveRespondent"
+            @click-respondent="clickRespondent"
+            @edit-guest-availability="editGuestAvailability"
+            @refresh-event="refreshEvent"
+          />
         </div>
 
         <ToolRow
@@ -524,7 +292,7 @@
           <v-expand-transition>
             <div v-if="delayedShowStickyRespondents">
               <div class="tw-bg-white tw-p-4">
-                <RespondentsList
+                <ScheduleOverlapRespondentsPanel
                   v-model:show-calendar-events="showCalendarEvents"
                   v-model:show-best-times="showBestTimes"
                   v-model:hide-if-needed="hideIfNeeded"
@@ -581,7 +349,7 @@
 
 <script setup lang="ts">
 import {
-  ref, computed, nextTick,
+  ref, computed, nextTick, type ComponentPublicInstance,
 } from "vue"
 import { useDisplay } from "vuetify"
 import { Temporal } from "temporal-polyfill"
@@ -590,24 +358,17 @@ import {
   ZdtSet,
 } from "@/utils"
 import {
-  availabilityTypes, eventTypes, guestUserId, UTC
+  availabilityTypes, eventTypes, guestUserId, UTC, type AvailabilityType
 } from "@/constants"
 import { useMainStore } from "@/stores/main"
-import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
-import PubliftAd from "@/components/event/PubliftAd.vue"
-import SignUpBlocksList from "@/components/sign_up_form/SignUpBlocksList.vue"
 import ScheduleOverlapDaysOnlyGrid from "./ScheduleOverlapDaysOnlyGrid.vue"
+import ScheduleOverlapRespondentsPanel from "./ScheduleOverlapRespondentsPanel.vue"
+import ScheduleOverlapSidebar from "./ScheduleOverlapSidebar.vue"
 import ScheduleOverlapTimeGrid from "./ScheduleOverlapTimeGrid.vue"
 import ToolRow from "./ToolRow.vue"
-import RespondentsList from "./RespondentsList.vue"
 import GCalWeekSelector from "./GCalWeekSelector.vue"
-import ExpandableSection from "../ExpandableSection.vue"
-import WorkingHoursToggle from "./WorkingHoursToggle.vue"
-import AlertText from "../AlertText.vue"
 import Tooltip from "../Tooltip.vue"
-import ColorLegend from "./ColorLegend.vue"
 import AvailabilityTypeToggle from "./AvailabilityTypeToggle.vue"
-import BufferTimeSwitch from "./BufferTimeSwitch.vue"
 import SpecificTimesInstructions from "./SpecificTimesInstructions.vue"
 import {
   buildDayGridTimeslotClassStyles,
@@ -715,7 +476,7 @@ const showBestTimes = ref<boolean>(
 const defaultState = computed<ScheduleOverlapState>(() =>
   showBestTimes.value ? states.BEST_TIMES : states.HEATMAP
 )
-const availabilityType = ref(availabilityTypes.AVAILABLE)
+const availabilityType = ref<AvailabilityType>(availabilityTypes.AVAILABLE)
 const allowDrag = computed(
   () =>
     state.value === states.EDIT_AVAILABILITY ||
@@ -736,6 +497,28 @@ const loadingResponses = ref({
 const signUpBlocksListRef = ref<{ scrollToSignUpBlock?: (id: string) => void } | null>(null)
 const optionsSectionRef = ref<HTMLElement | null>(null)
 const respondentsListRef = ref<{ $el?: HTMLElement } | null>(null)
+
+const setSignUpBlocksListRef = (value: Element | ComponentPublicInstance | null) => {
+  if (
+    value &&
+    "scrollToSignUpBlock" in value &&
+    typeof value.scrollToSignUpBlock === "function"
+  ) {
+    signUpBlocksListRef.value = {
+      scrollToSignUpBlock: value.scrollToSignUpBlock as (id: string) => void,
+    }
+    return
+  }
+  signUpBlocksListRef.value = null
+}
+
+const setOptionsSectionRef = (value: Element | ComponentPublicInstance | null) => {
+  optionsSectionRef.value = value instanceof HTMLElement ? value : null
+}
+
+const setRespondentsListRef = (value: Element | ComponentPublicInstance | null) => {
+  respondentsListRef.value = value && "$el" in value ? value : null
+}
 
 // ── 1. useCalendarGrid ─────────────────────────────────────────────────
 const grid = useCalendarGrid({
