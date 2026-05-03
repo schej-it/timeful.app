@@ -33,7 +33,7 @@ export interface UseScheduleOverlapUIOptions {
   guestAddedAvailability: ComputedRef<boolean>
   // refs to other components for visibility checks
   optionsSectionRef?: Ref<HTMLElement | null>
-  respondentsListRef?: Ref<{ $el?: HTMLElement } | null>
+  respondentsListRef?: Ref<HTMLElement | null>
 }
 
 export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
@@ -224,7 +224,7 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
       })
     }
 
-    const respondentsListEl = opts.respondentsListRef?.value?.$el
+    const respondentsListEl = opts.respondentsListRef?.value
     if (respondentsListEl) {
       scrolledToRespondents.value = isElementInViewport(respondentsListEl, {
         bottomOffset: -64,

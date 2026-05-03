@@ -126,42 +126,8 @@
 
           <ScheduleOverlapSidebar
             v-if="!calendarOnly"
-            :event="event"
-            :state="state"
-            :is-sign-up="isSignUp"
-            :is-owner="isOwner"
-            :is-group="isGroup"
-            :is-phone="isPhone"
-            :auth-user="authUser"
-            :already-responded-to-sign-up-form="alreadyRespondedToSignUpForm"
-            :sign-up-blocks="signUpBlocksByDay.flat()"
-            :sign-up-blocks-to-add="signUpBlocksToAddByDay.flat()"
-            :num-temp-times="tempTimes.size"
-            :cur-guest-id="curGuestId"
-            :user-has-responded="userHasResponded"
-            :adding-availability-as-guest="addingAvailabilityAsGuest"
-            :can-edit-guest-name="canEditGuestName"
-            :new-guest-name="newGuestName"
-            :edit-guest-name-dialog="editGuestNameDialog"
-            :availability-type="availabilityType"
-            :show-overlay-availability-toggle="showOverlayAvailabilityToggle"
-            :overlay-availability="overlayAvailability"
-            :calendar-permission-granted="calendarPermissionGranted"
-            :calendar-events-map="calendarEventsMap"
-            :shared-calendar-accounts="sharedCalendarAccounts"
-            :show-calendar-options="showCalendarOptions"
-            :show-edit-options="showEditOptions"
-            :calendar-options-dialog="calendarOptionsDialog"
-            :buffer-time="bufferTime"
-            :working-hours="workingHours"
-            :cur-timezone="curTimezone"
-            :delete-availability-dialog="deleteAvailabilityDialog"
-            :show-ads="showAds"
-            :right-side-width="rightSideWidth"
-            :respondents-panel="respondentsPanel"
-            :sign-up-blocks-list-ref-setter="setSignUpBlocksListRef"
-            :options-section-ref-setter="setOptionsSectionRef"
-            :respondents-list-ref-setter="setRespondentsListRef"
+            ref="sidebarRef"
+            :sidebar="sidebarViewModel"
             @save-temp-times="saveTempTimes"
             @open-edit-guest-name-dialog="openEditGuestNameDialog"
             @save-guest-name="saveGuestName"
@@ -222,21 +188,7 @@
 
         <ScheduleOverlapMobileOverlay
           v-if="isPhone && !calendarOnly"
-          :bottom-offset="showAds ? 'calc(4rem + 115px)' : '4rem'"
-          :hint-text-shown="hintTextShown"
-          :hint-text="hintText"
-          :is-group="isGroup"
-          :editing="editing"
-          :is-sign-up="isSignUp"
-          :availability-type="availabilityType"
-          :is-weekly="isWeekly"
-          :calendar-permission-granted="calendarPermissionGranted"
-          :week-offset="weekOffset"
-          :event="event"
-          :show-sticky-respondents="delayedShowStickyRespondents"
-          :respondents-panel="respondentsPanel"
-          :state="state"
-          :num-temp-times="tempTimes.size"
+          :overlay="mobileOverlayViewModel"
           @close-hint="closeHint"
           @update:availability-type="availabilityType = $event"
           @update:week-offset="(val) => $emit('update:weekOffset', val)"
@@ -259,9 +211,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  ref, computed, nextTick, type ComponentPublicInstance,
-} from "vue"
+import { ref, computed, nextTick, watchEffect } from "vue"
 import { useDisplay } from "vuetify"
 import { Temporal } from "temporal-polyfill"
 import {
@@ -301,7 +251,11 @@ import type {
   FetchedResponse, RowCol, Timezone, ScheduleOverlapState, EventLike, CalendarEventLite, CalendarEventsByDay, CalendarEventsMap,
   SignUpBlockLite,
 } from "@/composables/schedule_overlap/types"
-import type { ScheduleOverlapRespondentsPanelViewModel } from "./respondentsPanelTypes"
+import type {
+  ScheduleOverlapMobileOverlayViewModel,
+  ScheduleOverlapRespondentsPanelViewModel,
+  ScheduleOverlapSidebarViewModel,
+} from "./scheduleOverlapViewModels"
 
 // ── Props / Emits ──────────────────────────────────────────────────────
 const props = withDefaults(
@@ -403,31 +357,18 @@ const loadingResponses = ref({
 })
 
 // Template refs
-const signUpBlocksListRef = ref<{ scrollToSignUpBlock?: (id: string) => void } | null>(null)
+const sidebarRef = ref<{
+  scrollToSignUpBlock?: (id: string) => void
+  optionsSectionEl?: HTMLElement | null
+  respondentsPanelEl?: HTMLElement | null
+} | null>(null)
 const optionsSectionRef = ref<HTMLElement | null>(null)
-const respondentsListRef = ref<{ $el?: HTMLElement } | null>(null)
+const respondentsListRef = ref<HTMLElement | null>(null)
 
-const setSignUpBlocksListRef = (value: Element | ComponentPublicInstance | null) => {
-  if (
-    value &&
-    "scrollToSignUpBlock" in value &&
-    typeof value.scrollToSignUpBlock === "function"
-  ) {
-    signUpBlocksListRef.value = {
-      scrollToSignUpBlock: value.scrollToSignUpBlock as (id: string) => void,
-    }
-    return
-  }
-  signUpBlocksListRef.value = null
-}
-
-const setOptionsSectionRef = (value: Element | ComponentPublicInstance | null) => {
-  optionsSectionRef.value = value instanceof HTMLElement ? value : null
-}
-
-const setRespondentsListRef = (value: Element | ComponentPublicInstance | null) => {
-  respondentsListRef.value = value && "$el" in value ? value : null
-}
+watchEffect(() => {
+  optionsSectionRef.value = sidebarRef.value?.optionsSectionEl ?? null
+  respondentsListRef.value = sidebarRef.value?.respondentsPanelEl ?? null
+})
 
 // ── 1. useCalendarGrid ─────────────────────────────────────────────────
 const grid = useCalendarGrid({
@@ -564,7 +505,7 @@ const drag = useDragPaint({
   getDateFromRowCol: grid.getDateFromRowCol,
   getAvailabilityForColumn: avail.getAvailabilityForColumn,
   createSignUpBlock: signUpForm.createSignUpBlock,
-  scrollToSignUpBlock: (id: string) => signUpBlocksListRef.value?.scrollToSignUpBlock?.(id),
+  scrollToSignUpBlock: (id: string) => sidebarRef.value?.scrollToSignUpBlock?.(id),
 })
 
 // ── 7. useScheduleOverlapUI ────────────────────────────────────────────
@@ -772,6 +713,62 @@ const respondentsPanel = computed<ScheduleOverlapRespondentsPanelViewModel>(() =
   guestAddedAvailability: guestAddedAvailability.value,
   addingAvailabilityAsGuest: props.addingAvailabilityAsGuest,
 }))
+
+const sidebarViewModel = computed<ScheduleOverlapSidebarViewModel>(() => ({
+  event: props.event,
+  state: state.value,
+  isSignUp: isSignUp.value,
+  isOwner: isOwner.value,
+  isGroup: isGroup.value,
+  isPhone: isPhone.value,
+  authUser: authUser.value,
+  alreadyRespondedToSignUpForm: alreadyRespondedToSignUpForm.value,
+  signUpBlocks: signUpBlocksByDay.value.flat(),
+  signUpBlocksToAdd: signUpBlocksToAddByDay.value.flat(),
+  numTempTimes: tempTimes.value.size,
+  curGuestId: props.curGuestId,
+  userHasResponded: userHasResponded.value,
+  addingAvailabilityAsGuest: props.addingAvailabilityAsGuest,
+  canEditGuestName: canEditGuestName.value,
+  newGuestName: newGuestName.value,
+  editGuestNameDialog: editGuestNameDialog.value,
+  availabilityType: availabilityType.value,
+  showOverlayAvailabilityToggle: showOverlayAvailabilityToggle.value,
+  overlayAvailability: overlayAvailability.value,
+  calendarPermissionGranted: props.calendarPermissionGranted,
+  calendarEventsMap: props.calendarEventsMap,
+  sharedCalendarAccounts: sharedCalendarAccounts.value,
+  showCalendarOptions: showCalendarOptions.value,
+  showEditOptions: showEditOptions.value,
+  calendarOptionsDialog: calendarOptionsDialog.value,
+  bufferTime: bufferTime.value,
+  workingHours: workingHours.value,
+  curTimezone: curTimezone.value,
+  deleteAvailabilityDialog: deleteAvailabilityDialog.value,
+  showAds: showAds.value,
+  rightSideWidth: rightSideWidth.value,
+  respondentsPanel: respondentsPanel.value,
+}))
+
+const mobileOverlayViewModel = computed<ScheduleOverlapMobileOverlayViewModel>(
+  () => ({
+    bottomOffset: showAds.value ? "calc(4rem + 115px)" : "4rem",
+    hintTextShown: hintTextShown.value,
+    hintText: hintText.value,
+    isGroup: isGroup.value,
+    editing: editing.value,
+    isSignUp: isSignUp.value,
+    availabilityType: availabilityType.value,
+    isWeekly: isWeekly.value,
+    calendarPermissionGranted: props.calendarPermissionGranted,
+    weekOffset: props.weekOffset,
+    event: props.event,
+    showStickyRespondents: delayedShowStickyRespondents.value,
+    respondentsPanel: respondentsPanel.value,
+    state: state.value,
+    numTempTimes: tempTimes.value.size,
+  })
+)
 
 const overlaidAvailability = computed(() => {
   return buildOverlaidAvailability({

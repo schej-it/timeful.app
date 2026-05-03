@@ -14,21 +14,23 @@ describe("ScheduleOverlapMobileOverlay", () => {
   it("renders the extracted mobile-only boundaries from a single presentational child", () => {
     const wrapper = shallowMount(ScheduleOverlapMobileOverlay, {
       props: {
-        bottomOffset: "4rem",
-        hintTextShown: true,
-        hintText: "Tap the grid to add availability",
-        isGroup: false,
-        editing: true,
-        isSignUp: false,
-        availabilityType: availabilityTypes.AVAILABLE,
-        isWeekly: true,
-        calendarPermissionGranted: true,
-        weekOffset: 1,
-        event: buildRespondentsPanelViewModel().event,
-        showStickyRespondents: true,
-        respondentsPanel: buildRespondentsPanelViewModel(),
-        state: states.SET_SPECIFIC_TIMES,
-        numTempTimes: 2,
+        overlay: {
+          bottomOffset: "4rem",
+          hintTextShown: true,
+          hintText: "Tap the grid to add availability",
+          isGroup: false,
+          editing: true,
+          isSignUp: false,
+          availabilityType: availabilityTypes.AVAILABLE,
+          isWeekly: true,
+          calendarPermissionGranted: true,
+          weekOffset: 1,
+          event: buildRespondentsPanelViewModel().event,
+          showStickyRespondents: true,
+          respondentsPanel: buildRespondentsPanelViewModel(),
+          state: states.SET_SPECIFIC_TIMES,
+          numTempTimes: 2,
+        },
       },
       global: {
         stubs: {

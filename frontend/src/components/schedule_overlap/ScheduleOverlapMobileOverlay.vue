@@ -1,15 +1,15 @@
 <template>
-  <div class="tw-fixed tw-z-20 tw-w-full" :style="{ bottom: bottomOffset }">
+  <div class="tw-fixed tw-z-20 tw-w-full" :style="{ bottom: overlay.bottomOffset }">
     <v-expand-transition>
-      <template v-if="hintTextShown">
-        <div :key="hintText">
+      <template v-if="overlay.hintTextShown">
+        <div :key="overlay.hintText">
           <div
             class="tw-flex tw-w-full tw-items-center tw-justify-between tw-gap-1 tw-bg-light-gray tw-px-2 tw-py-2 tw-text-sm tw-text-very-dark-gray"
           >
-            <div :class="`tw-flex tw-gap-${hintText.length > 60 ? 2 : 1}`">
+            <div :class="`tw-flex tw-gap-${overlay.hintText.length > 60 ? 2 : 1}`">
               <v-icon small>mdi-information-outline</v-icon>
               <div>
-                {{ hintText }}
+                {{ overlay.hintText }}
               </div>
             </div>
             <v-icon small @click="emit('closeHint')">mdi-close</v-icon>
@@ -19,10 +19,10 @@
     </v-expand-transition>
 
     <v-expand-transition>
-      <div v-if="!isGroup && editing && !isSignUp">
-        <div class="tw-bg-white tw-p-4">
-          <AvailabilityTypeToggle
-            :model-value="availabilityType"
+        <div v-if="!overlay.isGroup && overlay.editing && !overlay.isSignUp">
+          <div class="tw-bg-white tw-p-4">
+            <AvailabilityTypeToggle
+            :model-value="overlay.availabilityType"
             class="tw-w-full"
             @update:model-value="emit('update:availabilityType', $event as AvailabilityType)"
           />
@@ -31,12 +31,18 @@
     </v-expand-transition>
 
     <v-expand-transition>
-      <div v-if="isWeekly && editing && calendarPermissionGranted">
+      <div
+        v-if="
+          overlay.isWeekly &&
+          overlay.editing &&
+          overlay.calendarPermissionGranted
+        "
+      >
         <div class="tw-h-16 tw-text-sm">
           <GCalWeekSelector
-            :week-offset="weekOffset"
-            :event="event"
-            :start-on-monday="event.startOnMonday"
+            :week-offset="overlay.weekOffset"
+            :event="overlay.event"
+            :start-on-monday="overlay.event.startOnMonday"
             @update:week-offset="emit('update:weekOffset', $event)"
           />
         </div>
@@ -44,11 +50,11 @@
     </v-expand-transition>
 
     <v-expand-transition>
-      <div v-if="showStickyRespondents">
+      <div v-if="overlay.showStickyRespondents">
         <div class="tw-bg-white tw-p-4">
           <ScheduleOverlapRespondentsPanel
             :max-height="100"
-            :panel="respondentsPanel"
+            :panel="overlay.respondentsPanel"
             @update:show-calendar-events="emit('update:showCalendarEvents', $event)"
             @update:show-best-times="emit('update:showBestTimes', $event)"
             @update:hide-if-needed="emit('update:hideIfNeeded', $event)"
@@ -67,11 +73,11 @@
 
     <v-expand-transition>
       <div
-        v-if="state === states.SET_SPECIFIC_TIMES"
+        v-if="overlay.state === states.SET_SPECIFIC_TIMES"
         class="-tw-mb-16 tw-bg-white tw-p-4"
       >
         <SpecificTimesInstructions
-          :num-temp-times="numTempTimes"
+          :num-temp-times="overlay.numTempTimes"
           @save-temp-times="emit('saveTempTimes')"
         />
       </div>
@@ -81,33 +87,15 @@
 
 <script setup lang="ts">
 import type { AvailabilityType } from "@/constants"
-import type {
-  EventLike,
-  ScheduleOverlapState,
-} from "@/composables/schedule_overlap/types"
 import { states } from "@/composables/schedule_overlap/types"
 import AvailabilityTypeToggle from "./AvailabilityTypeToggle.vue"
 import GCalWeekSelector from "./GCalWeekSelector.vue"
 import ScheduleOverlapRespondentsPanel from "./ScheduleOverlapRespondentsPanel.vue"
 import SpecificTimesInstructions from "./SpecificTimesInstructions.vue"
-import type { ScheduleOverlapRespondentsPanelViewModel } from "./respondentsPanelTypes"
+import type { ScheduleOverlapMobileOverlayViewModel } from "./scheduleOverlapViewModels"
 
 defineProps<{
-  bottomOffset: string
-  hintTextShown: boolean
-  hintText: string
-  isGroup: boolean
-  editing: boolean
-  isSignUp: boolean
-  availabilityType: AvailabilityType
-  isWeekly: boolean
-  calendarPermissionGranted: boolean
-  weekOffset: number
-  event: EventLike
-  showStickyRespondents: boolean
-  respondentsPanel: ScheduleOverlapRespondentsPanelViewModel
-  state: ScheduleOverlapState
-  numTempTimes: number
+  overlay: ScheduleOverlapMobileOverlayViewModel
 }>()
 
 const emit = defineEmits<{

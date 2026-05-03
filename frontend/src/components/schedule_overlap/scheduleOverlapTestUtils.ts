@@ -104,18 +104,21 @@ export const mountScheduleOverlap = (
     props?: Record<string, unknown>
     global?: { stubs?: Record<string, unknown> }
   } = {}
-) =>
-  shallowMount(ScheduleOverlap as never, {
+) => {
+  const { props, global, ...mountOptions } = options
+
+  return shallowMount(ScheduleOverlap as never, {
+    ...mountOptions,
     props: {
       ...buildScheduleOverlapProps(),
-      ...(options.props ?? {}),
+      ...(props ?? {}),
     },
-    ...options,
     global: {
-      ...options.global,
+      ...global,
       stubs: {
         ...scheduleOverlapGlobalStubs,
-        ...(options.global?.stubs ?? {}),
+        ...(global?.stubs ?? {}),
       },
     },
   } as never)
+}

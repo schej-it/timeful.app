@@ -39,7 +39,7 @@
 
 <script setup lang="ts">
 import RespondentsList from "./RespondentsList.vue"
-import type { ScheduleOverlapRespondentsPanelViewModel } from "./respondentsPanelTypes"
+import type { ScheduleOverlapRespondentsPanelViewModel } from "./scheduleOverlapViewModels"
 
 defineProps<{
   maxHeight?: number
