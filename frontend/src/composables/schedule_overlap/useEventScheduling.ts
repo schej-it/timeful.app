@@ -128,22 +128,15 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
     })
 
     if (opts.isWeekly.value || opts.isGroup.value) {
-      let offset = 0
-      if (opts.isGroup.value) {
-        offset = opts.weekOffset.value
-      } else if (opts.isWeekly.value) {
-        const nowZDT = Temporal.Now.zonedDateTimeISO(UTC)
-        if (nowZDT.dayOfWeek % 7 > startDate.dayOfWeek % 7) offset = 1
-      }
       const eventDates = opts.event.value.dates ?? []
       const renderedWeekStart = getRenderedWeekStart(
-        offset,
+        opts.weekOffset.value,
         opts.event.value.startOnMonday
       )
       startDate = dateToDowDate(
         eventDates,
         startDate,
-        offset,
+        opts.weekOffset.value,
         true,
         opts.event.value.startOnMonday,
         renderedWeekStart
@@ -151,7 +144,7 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
       endDate = dateToDowDate(
         eventDates,
         endDate,
-        offset,
+        opts.weekOffset.value,
         true,
         opts.event.value.startOnMonday,
         renderedWeekStart
