@@ -4,7 +4,7 @@
 
     <v-combobox
       v-model="remindees"
-      :search-input.sync="query"
+      v-model:search-input="query"
       :items="searchedContacts"
       item-text="queryString"
       item-value="queryString"
@@ -15,36 +15,40 @@
       solo
       :rules="[validEmails]"
     >
-      <template v-slot:selection="data, parent">
+      <template #selection="{ item }">
         <UserChip
           :user="
-            isContact(data.item) ? data.item : { email: data.item, picture: '' }
+            isContact(item.raw) ? item.raw : { email: item.raw, picture: '' }
           "
           :removable="true"
-          :removeEmail="removeEmail"
+          :remove-email="removeEmail"
         ></UserChip>
       </template>
-      <template v-slot:item="{ item }">
+      <template #item="{ item }">
         <v-list-item-avatar>
           <img
-            v-if="item.picture.length > 0"
-            :src="item.picture"
+            v-if="item.raw.picture.length > 0"
+            :src="item.raw.picture"
             referrerpolicy="no-referrer"
           />
           <v-icon v-else>mdi-account</v-icon>
         </v-list-item-avatar>
         <v-list-item-content>
           <v-list-item-title
-            v-text="`${item.firstName} ${item.lastName}`"
-          ></v-list-item-title>
-          <v-list-item-subtitle v-text="item.email"></v-list-item-subtitle>
+            >{{ item.raw.firstName }} {{ item.raw.lastName }}</v-list-item-title
+          >
+          <v-list-item-subtitle>{{ item.raw.email }}</v-list-item-subtitle>
         </v-list-item-content>
       </template>
     </v-combobox>
 
-    <div class="tw-transition-all tw-relative" :class="emailsAreValid ? '-tw-mt-5' : ''" @click="requestContactsAccess">
+    <div
+      class="tw-transition-all tw-relative"
+      :class="emailsAreValid ? '-tw-mt-5' : ''"
+      @click="requestContactsAccess"
+    >
       <v-expand-transition>
-        <div class="tw-text-xs tw-text-dark-gray" v-if="!hasContactsAccess">
+        <div v-if="!hasContactsAccess" class="tw-text-xs tw-text-dark-gray">
           <a class="tw-underline" @click="requestContactsAccess"
             >Enable contacts access</a
           >
@@ -55,159 +59,146 @@
   </div>
 </template>
 
-<script>
-import UserAvatarContent from "@/components/UserAvatarContent.vue"
+<script setup lang="ts">
+import { onMounted, ref, watch } from "vue"
 import UserChip from "@/components/general/UserChip.vue"
-import { validateEmail, get, post } from "@/utils"
+import { validateEmail, get } from "@/utils"
 
-export default {
-  name: "EmailReminders",
-
-  props: {
-    addedEmails: {
-      type: Array,
-      default: () => [],
-    },
-  },
-
-  data: () => ({
-    remindees: [], // Currently displayed emails
-    searchedContacts: [], // Contacts that match the search query
-    timeout: null, // Timeout for search debouncing
-    searchDebounceTime: 250, // Search debounce time in ms
-
-    hasContactsAccess: true,
-    query: "",
-
-    emailsAreValid: true, // Whether all emails are valid
-  }),
-
-  mounted() {
-    // Send a warmup request to update cache and check if contacts permissions are enabled
-    get(`/user/searchContacts?query=`).catch((err) => {
-      // User has not granted contacts permissions
-      if (err.error?.code === 403 || err.error?.code === 401) {
-        this.hasContactsAccess = false
-      }
-    })
-
-    this.remindees = this.addedEmails
-  },
-
-  methods: {
-    /**
-     * Requests access to contacts.
-     */
-    requestContactsAccess() {
-      this.$emit("requestContactsAccess", {
-        emails: this.remindees,
-      })
-    },
-    /**
-     * Searches contacts based on the query string if the user has access to contacts.
-     */
-    searchContacts() {
-      if (this.hasContactsAccess) {
-        if (this.timeout) clearTimeout(this.timeout)
-        this.timeout = setTimeout(() => {
-          get(`/user/searchContacts?query=${this.query}`).then((results) => {
-            this.searchedContacts = results
-            this.searchedContacts.map((contact) => {
-              contact["queryString"] = this.contactToQueryString(contact)
-            })
-          })
-        }, this.searchDebounceTime)
-      }
-    },
-    /**
-     * Removes the specified email from the remindees list.
-     */
-    removeEmail(email) {
-      // this.remindees.splice(this.remindees.indexOf(email), 1)
-
-      for (let i = 0; i < this.remindees.length; i++) {
-        if (this.isContact(this.remindees[i])) {
-          if (this.remindees[i].email == email) {
-            this.remindees.splice(i, 1)
-          }
-        } else {
-          if (this.remindees[i] == email) {
-            this.remindees.splice(i, 1)
-          }
-        }
-      }
-    },
-    /**
-     * Check if the contact is an object and not a user inputed string.
-     */
-    isContact(contact) {
-      return typeof contact === "object"
-    },
-    /**
-     * Takes a contact object and converts it to a query string.
-     */
-    contactToQueryString(contact) {
-      // Need to split first name to get rid of middle name
-      return `${contact["firstName"].split(" ")[0]} ${contact["lastName"]} ${
-        contact["email"]
-      }`
-    },
-    /**
-     * Determines if emails are all valid.
-     */
-    validEmails(emails) {
-      for (const email of emails) {
-        if (email?.length > 0 && !validateEmail(email)) {
-          this.emailsAreValid = false
-          return "Please enter a valid email."
-        }
-      }
-      this.emailsAreValid = true
-      return true
-    },
-    reset() {
-      this.remindees = this.addedEmails
-    },
-  },
-
-  watch: {
-    remindees() {
-      this.$emit(
-        "update:emails",
-        this.remindees.map((r) => (this.isContact(r) ? r.email : r))
-      )
-    },
-    query() {
-      if (this.query && this.query.length > 0) {
-        if ( /[,\s]/.test(this.query)) {
-          /** If the query has spaces or commas, add the valid emails to the list */
-          let successfullyAdded = false
-          const emailsArray = this.query.split(/[,\s]+/).filter(email => email.trim() !== "");
-
-          emailsArray.forEach((email) => {
-            if (validateEmail(email) && !this.remindees.includes(email)) {
-              successfullyAdded = true
-              this.remindees.push(email)
-            }
-          })
-
-          if (successfullyAdded) {
-            this.query = ""
-            return
-          }
-          
-        }
-
-        this.searchContacts()
-      } else {
-        clearTimeout(this.timeout)
-        this.searchedContacts = []
-      }
-    },
-  },
-
-  computed: {},
-
-  components: { UserAvatarContent, UserChip },
+interface Contact {
+  firstName: string
+  lastName: string
+  email: string
+  picture: string
+  queryString?: string
 }
+
+type Remindee = Contact | string
+
+const props = withDefaults(
+  defineProps<{
+    addedEmails?: string[]
+  }>(),
+  {
+    addedEmails: () => [],
+  }
+)
+
+const emit = defineEmits<{
+  requestContactsAccess: [payload: { emails: Remindee[] }]
+  "update:emails": [emails: string[]]
+}>()
+
+const remindees = ref<Remindee[]>([])
+const searchedContacts = ref<Contact[]>([])
+let timeout: ReturnType<typeof setTimeout> | null = null
+const searchDebounceTime = 250
+
+const hasContactsAccess = ref(true)
+const query = ref("")
+
+const emailsAreValid = ref(true)
+
+onMounted(() => {
+  get(`/user/searchContacts?query=`).catch((err: unknown) => {
+    const errCode = (err as { error?: { code?: number } }).error?.code
+    if (errCode === 403 || errCode === 401) {
+      hasContactsAccess.value = false
+    }
+  })
+
+  remindees.value = [...props.addedEmails]
+})
+
+function requestContactsAccess() {
+  emit("requestContactsAccess", { emails: remindees.value })
+}
+
+function searchContacts() {
+  if (!hasContactsAccess.value) return
+  if (timeout) clearTimeout(timeout)
+  timeout = setTimeout(() => {
+    void get(`/user/searchContacts?query=${query.value}`).then((results) => {
+      searchedContacts.value = results as Contact[]
+      searchedContacts.value.forEach((contact) => {
+        contact.queryString = contactToQueryString(contact)
+      })
+    })
+  }, searchDebounceTime)
+}
+
+function removeEmail(email: string) {
+  for (let i = 0; i < remindees.value.length; i++) {
+    const r = remindees.value[i]
+    if (isContact(r)) {
+      if (r.email == email) {
+        remindees.value.splice(i, 1)
+      }
+    } else {
+      if (r == email) {
+        remindees.value.splice(i, 1)
+      }
+    }
+  }
+}
+
+function isContact(contact: Remindee): contact is Contact {
+  return typeof contact === "object"
+}
+
+function contactToQueryString(contact: Contact): string {
+  return `${contact.firstName.split(" ")[0]} ${contact.lastName} ${contact.email}`
+}
+
+function validEmails(emails: Remindee[]): true | string {
+  for (const email of emails) {
+    if (typeof email === "string" && email.length > 0 && !validateEmail(email)) {
+      emailsAreValid.value = false
+      return "Please enter a valid email."
+    }
+  }
+  emailsAreValid.value = true
+  return true
+}
+
+function reset() {
+  remindees.value = [...props.addedEmails]
+}
+
+watch(remindees, () => {
+  emit(
+    "update:emails",
+    remindees.value.map((r) => (isContact(r) ? r.email : r))
+  )
+})
+
+watch(query, () => {
+  if (query.value && query.value.length > 0) {
+    if (/[,\s]/.test(query.value)) {
+      let successfullyAdded = false
+      const emailsArray = query.value
+        .split(/[,\s]+/)
+        .filter((email) => email.trim() !== "")
+
+      emailsArray.forEach((email) => {
+        if (validateEmail(email) && !remindees.value.includes(email)) {
+          successfullyAdded = true
+          remindees.value.push(email)
+        }
+      })
+
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (successfullyAdded) {
+        query.value = ""
+        return
+      }
+    }
+
+    searchContacts()
+  } else {
+    if (timeout) clearTimeout(timeout)
+    searchedContacts.value = []
+  }
+})
+
+defineExpose({ reset })
 </script>

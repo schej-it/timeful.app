@@ -21,11 +21,11 @@
         <v-btn v-if="showHelp" icon @click="helpDialog = true">
           <v-icon>mdi-information-outline</v-icon>
         </v-btn>
-        <v-btn v-else @click="$emit('input', false)" icon>
+        <v-btn v-else icon @click="emit('update:modelValue', false)">
           <v-icon>mdi-close</v-icon>
         </v-btn>
         <HelpDialog v-model="helpDialog">
-          <template v-slot:header>Events</template>
+          <template #header>Events</template>
           <div class="tw-mb-4">
             Use events to collect people's availabilities and compare them
             across certain days.
@@ -37,33 +37,33 @@
       ref="cardText"
       class="tw-relative tw-flex-1 tw-overflow-auto tw-px-4 tw-py-1 sm:tw-px-8"
     >
-      <AlertText v-if="edit && event?.ownerId == 0" class="tw-mb-4">
+      <AlertText v-if="edit && guestEvent" class="tw-mb-4">
         Anybody can edit this event because it was created while not signed in
       </AlertText>
       <v-form
-        ref="form"
+        ref="formRef"
         v-model="formValid"
         lazy-validation
         class="tw-flex tw-flex-col tw-gap-y-6"
         :disabled="loading"
       >
         <v-text-field
-          ref="name-field"
+          ref="nameField"
           v-model="name"
           placeholder="Name your event..."
           hide-details="auto"
           solo
-          @keyup.enter="blurNameField"
           :rules="nameRules"
           autofocus
           required
+          @keyup.enter="blurNameField"
         />
 
         <SlideToggle
           v-if="daysOnlyEnabled && !edit"
-          class="tw-w-full"
           v-model="daysOnly"
-          :options="daysOnlyOptions"
+          class="tw-w-full"
+          :options="[...daysOnlyOptions]"
         />
 
         <div>
@@ -78,23 +78,21 @@
                     class="tw-mb-2 tw-flex tw-items-baseline tw-justify-center tw-space-x-2"
                   >
                     <v-select
-                      :value="startTime"
-                      @input="(t) => (startTime = t.time)"
-                      menu-props="auto"
+                      :model-value="startTimeNum"
                       :items="times"
                       return-object
                       hide-details
                       solo
+                      @update:model-value="(t: any) => (startTimeNum = t.time ?? t)"
                     ></v-select>
                     <div>to</div>
                     <v-select
-                      :value="endTime"
-                      @input="(t) => (endTime = t.time)"
-                      menu-props="auto"
+                      :model-value="endTimeNum"
                       :items="times"
                       return-object
                       hide-details
                       solo
+                      @update:model-value="(t: any) => (endTimeNum = t.time ?? t)"
                     ></v-select>
                   </div>
                 </div>
@@ -104,7 +102,7 @@
                   v-model="specificTimesEnabled"
                   messages="Specify the times in the next step"
                 >
-                  <template v-slot:label>
+                  <template #label>
                     <span
                       class="tw-text-sm"
                       :class="
@@ -116,7 +114,7 @@
                       Set specific times per day
                     </span>
                   </template>
-                  <template v-slot:message="{ key, message }">
+                  <template #message="{ message }">
                     <v-expand-transition>
                       <div
                         v-if="specificTimesEnabled"
@@ -151,24 +149,24 @@
                 Drag to select multiple dates
               </div>
               <v-input
+                key="date-picker"
                 v-model="selectedDays"
                 hide-details="auto"
                 :rules="selectedDaysRules"
-                key="date-picker"
               >
                 <DatePicker
-                  v-model="selectedDays"
-                  :minCalendarDate="minCalendarDate"
-                  :startCalendarOnMonday="startOnMonday"
+                  v-model="selectedDaysStr"
+                  :min-calendar-date="minCalendarDate"
+                  :start-calendar-on-monday="startOnMonday"
                 />
               </v-input>
             </div>
             <div v-else-if="selectedDateOption === dateOptions.DOW">
               <v-input
+                key="days-of-week"
                 v-model="selectedDaysOfWeek"
                 hide-details="auto"
                 :rules="selectedDaysRules"
-                key="days-of-week"
                 class="tw-w-fit"
               >
                 <v-btn-toggle
@@ -177,18 +175,18 @@
                   solo
                   color="primary"
                 >
-                  <v-btn depressed v-show="!startOnMonday"> Sun </v-btn>
+                  <v-btn v-show="!startOnMonday" depressed> Sun </v-btn>
                   <v-btn depressed> Mon </v-btn>
                   <v-btn depressed> Tue </v-btn>
                   <v-btn depressed> Wed </v-btn>
                   <v-btn depressed> Thu </v-btn>
                   <v-btn depressed> Fri </v-btn>
                   <v-btn depressed> Sat </v-btn>
-                  <v-btn depressed v-show="startOnMonday"> Sun </v-btn>
+                  <v-btn v-show="startOnMonday" depressed> Sun </v-btn>
                 </v-btn-toggle>
               </v-input>
-              <v-checkbox class="tw-mt-2" v-model="startOnMonday" hide-details>
-                <template v-slot:label>
+              <v-checkbox v-model="startOnMonday" class="tw-mt-2" hide-details>
+                <template #label>
                   <span class="tw-text-sm tw-text-very-dark-gray">
                     Start on Monday
                   </span>
@@ -204,7 +202,7 @@
           hide-details
           class="tw-mt-2"
         >
-          <template v-slot:label>
+          <template #label>
             <span class="tw-text-sm tw-text-very-dark-gray"
               >Email me each time someone joins my event</span
             >
@@ -217,17 +215,17 @@
           off-icon="mdi-checkbox-blank-off-outline"
           class="tw-mt-2"
         >
-          <template v-slot:label>
+          <template #label>
             <span class="tw-text-sm"
               >Email me each time someone joins my event</span
             >
           </template>
-          <template v-slot:message="{ key, message }">
+          <template #message>
             <div
               class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
             >
               <span class="tw-font-medium tw-text-very-dark-gray"
-                ><a @click="$emit('signIn')">Sign in</a>
+                ><a @click="emit('signIn')">Sign in</a>
                 to use this feature
               </span>
             </div>
@@ -237,20 +235,20 @@
         <div class="tw-flex tw-flex-col tw-gap-2">
           <ExpandableSection
             v-if="authUser && !guestEvent"
-            label="Email reminders"
             v-model="showEmailReminders"
+            label="Email reminders"
             :auto-scroll="dialog"
           >
             <div class="tw-flex tw-flex-col tw-gap-5 tw-pt-2">
               <EmailInput
                 v-show="authUser"
                 ref="emailInput"
-                @requestContactsAccess="requestContactsAccess"
-                labelColor="tw-text-very-dark-gray"
-                :addedEmails="addedEmails"
-                @update:emails="(newEmails) => (emails = newEmails)"
+                label-color="tw-text-very-dark-gray"
+                :added-emails="addedEmails"
+                @request-contacts-access="requestContactsAccess"
+                @update:emails="(newEmails) => { emails = newEmails as string[] }"
               >
-                <template v-slot:header>
+                <template #header>
                   <div class="tw-flex tw-gap-1">
                     <div class="tw-text-very-dark-gray">
                       Remind people to fill out the event
@@ -260,8 +258,8 @@
                       top
                       content-class="tw-bg-very-dark-gray tw-shadow-lg tw-opacity-100 tw-py-4"
                     >
-                      <template v-slot:activator="{ on, attrs }">
-                        <v-icon small v-bind="attrs" v-on="on"
+                      <template #activator="{ props: tooltipProps }">
+                        <v-icon small v-bind="tooltipProps"
                           >mdi-information-outline
                         </v-icon>
                       </template>
@@ -290,7 +288,6 @@
                   v-model="timeIncrement"
                   dense
                   class="-tw-mt-[2px] tw-w-24 tw-grow-0 tw-text-sm"
-                  menu-props="auto"
                   hide-details
                   :items="timeIncrementItems"
                 ></v-select>
@@ -300,12 +297,12 @@
                 v-model="collectEmails"
                 hide-details
               >
-                <template v-slot:label>
+                <template #label>
                   <span class="tw-text-sm tw-text-black">
                     Collect respondents' email addresses
                   </span>
                 </template>
-                <template v-slot:message="{ key, message }">
+                <template #message="{ message }">
                   <div
                     class="-tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
                   >
@@ -319,17 +316,17 @@
                 messages="test"
                 off-icon="mdi-checkbox-blank-off-outline"
               >
-                <template v-slot:label>
+                <template #label>
                   <span class="tw-text-sm"
                     >Collect respondents' email addresses</span
                   >
                 </template>
-                <template v-slot:message="{ key, message }">
+                <template #message>
                   <div
                     class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
                   >
                     <span class="tw-font-medium tw-text-very-dark-gray"
-                      ><a @click="$emit('signIn')">Sign in</a>
+                      ><a @click="emit('signIn')">Sign in</a>
                       to use this feature
                     </span>
                   </div>
@@ -340,12 +337,12 @@
                 v-model="blindAvailabilityEnabled"
                 messages="Only show responses to event creator"
               >
-                <template v-slot:label>
+                <template #label>
                   <span class="tw-text-sm tw-text-black">
                     Hide responses from respondents
                   </span>
                 </template>
-                <template v-slot:message="{ key, message }">
+                <template #message="{ message }">
                   <div
                     class="-tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
                   >
@@ -359,18 +356,18 @@
                 messages="Only show responses to event creator. "
                 off-icon="mdi-checkbox-blank-off-outline"
               >
-                <template v-slot:label>
+                <template #label>
                   <span class="tw-text-sm"
                     >Hide responses from respondents</span
                   >
                 </template>
-                <template v-slot:message="{ key, message }">
+                <template #message="{ message }">
                   <div
                     class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
                   >
                     {{ message }}
                     <span class="tw-font-medium tw-text-very-dark-gray"
-                      ><a @click="$emit('signIn')">Sign in</a>
+                      ><a @click="emit('signIn')">Sign in</a>
                       to use this feature
                     </span>
                   </div>
@@ -381,7 +378,7 @@
                 v-model="sendEmailAfterXResponsesEnabled"
                 hide-details
               >
-                <template v-slot:label>
+                <template #label>
                   <div
                     :class="!sendEmailAfterXResponsesEnabled && 'tw-opacity-50'"
                     class="tw-flex tw-items-center tw-gap-x-2 tw-text-sm tw-text-very-dark-gray"
@@ -389,16 +386,9 @@
                     <div>Email me after</div>
                     <v-text-field
                       v-model="sendEmailAfterXResponses"
-                      @click="
-                        (e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                        }
-                      "
                       :disabled="!sendEmailAfterXResponsesEnabled"
                       dense
                       class="email-me-after-text-field -tw-mt-[2px] tw-w-10"
-                      menu-props="auto"
                       hide-details
                       type="number"
                       min="1"
@@ -410,7 +400,7 @@
               <TimezoneSelector
                 v-model="timezone"
                 label="Timezone"
-                @input="trackTimezoneChange"
+                @update:model-value="(val) => { timezone = val; trackTimezoneChange(val) }"
               />
             </div>
           </ExpandableSection>
@@ -441,568 +431,563 @@
     </v-card-actions>
 
     <OverflowGradient
-      v-if="hasMounted"
-      :scrollContainer="$refs.cardText"
+      v-if="hasMounted && cardText"
+      :scroll-container="cardText"
       class="tw-bottom-[90px]"
     />
   </v-card>
 </template>
+
+<script setup lang="ts">
+import { computed, nextTick, onMounted, ref, watch } from "vue"
+import { useRouter } from "vue-router"
+import { storeToRefs } from "pinia"
+import {
+  eventTypes,
+  authTypes,
+  guestUserId,
+  durations,
+  hoursPlainTime,
+  UTC,
+  dateOptions,
+  type DateOptionType
+} from "@/constants"
+import {
+  post,
+  put,
+  signInGoogle,
+  getDateWithTimezone,
+  getTimeOptions,
+  addEventToCreatedList,
+  prefersStartOnMonday,
+  plainTimeToTimeNum,
+  resolveTimezoneValue,
+  timeNumToPlainTime,
+} from "@/utils"
+import { useMainStore } from "@/stores/main"
+import { posthog } from "@/plugins/posthog"
+import TimezoneSelector from "./schedule_overlap/TimezoneSelector.vue"
+import HelpDialog from "./HelpDialog.vue"
+import { Temporal } from "temporal-polyfill"
+import EmailInput from "./event/EmailInput.vue"
+import DatePicker from "@/components/DatePicker.vue"
+import SlideToggle from "./SlideToggle.vue"
+import AlertText from "@/components/AlertText.vue"
+import OverflowGradient from "@/components/OverflowGradient.vue"
+import ExpandableSection from "./ExpandableSection.vue"
+import type { Event as EventModel } from "@/types"
+import type { Timezone } from "@/composables/schedule_overlap/types"
+import type { SerializedEventDraft } from "@/composables/event/types"
+
+interface FormRef {
+  validate: () => Promise<{ valid: boolean }> | boolean
+  resetValidation: () => void
+}
+interface NameFieldRef { blur: () => void }
+interface EmailInputRef { reset: () => void }
+
+const props = withDefaults(
+  defineProps<{
+    event?: EventModel
+    edit?: boolean
+    dialog?: boolean
+    contactsPayload?: SerializedEventDraft
+    showHelp?: boolean
+    folderId?: string | null
+    isDialogOpen?: boolean
+  }>(),
+  {
+    event: undefined,
+    edit: false,
+    dialog: true,
+    contactsPayload: () => ({}),
+    showHelp: false,
+    folderId: null,
+    isDialogOpen: false,
+  }
+)
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+  signIn: []
+}>()
+
+const router = useRouter()
+const mainStore = useMainStore()
+const { authUser, daysOnlyEnabled } = storeToRefs(mainStore)
+
+const daysOnlyOptions = [
+  { text: "Dates and times", value: false },
+  { text: "Dates only", value: true },
+] as const
+
+const formRef = ref<FormRef | null>(null)
+const nameField = ref<NameFieldRef | null>(null)
+const emailInput = ref<EmailInputRef | null>(null)
+const cardText = ref<HTMLElement | null>(null)
+
+const formValid = ref(true)
+const name = ref("")
+const startTime = ref<Temporal.PlainTime>(hoursPlainTime.NINE)
+const endTime = ref<Temporal.PlainTime>(hoursPlainTime.SEVENTEEN)
+const specificTimesEnabled = ref(false)
+const loading = ref(false)
+const selectedDays = ref<Temporal.ZonedDateTime[]>([])
+const selectedDaysStr = computed(() => {
+  return selectedDays.value.map(x => x.toPlainDate().toString())
+})
+const selectedDaysOfWeek = ref<number[]>([])
+const startOnMonday = ref(prefersStartOnMonday())
+const notificationsEnabled = ref(true)
+
+const daysOnly = ref(false)
+const selectedDateOption = ref<DateOptionType>(dateOptions.SPECIFIC)
+
+const showEmailReminders = ref(false)
+const emails = ref<string[]>([])
+
+const showAdvancedOptions = ref(false)
+const timeIncrement = ref(15)
+const collectEmails = ref(false)
+const blindAvailabilityEnabled = ref(false)
+const timezone = ref<Timezone>({ value: "", label: "", gmtString: "", offset: durations.ZERO })
+const sendEmailAfterXResponsesEnabled = ref(false)
+const sendEmailAfterXResponses = ref(3)
+
+const helpDialog = ref(false)
+const initialEventData = ref<Record<string, unknown>>({})
+const hasMounted = ref(false)
+
+const nameRules = computed(() => [
+  (v: string) => !!v || "Event name is required",
+])
+const selectedDaysRules = computed(() => [
+  (s: unknown[]) => s.length > 0 || "Please select at least one day",
+])
+const addedEmails = computed(() => {
+  if (Object.keys(props.contactsPayload).length > 0)
+    return props.contactsPayload.emails ?? []
+  return props.event?.remindees
+    ? props.event.remindees
+        .map((r) => r.email)
+        .filter((e): e is string => !!e)
+    : []
+})
+const times = computed(() => getTimeOptions())
+// Computed properties to convert Temporal.PlainTime to/from number for UI compatibility
+const startTimeNum = computed({
+  get: () => plainTimeToTimeNum(startTime.value),
+  set: (num: number) => { startTime.value = timeNumToPlainTime(num) }
+})
+const endTimeNum = computed({
+  get: () => plainTimeToTimeNum(endTime.value),
+  set: (num: number) => { endTime.value = timeNumToPlainTime(num) }
+})
+const minCalendarDate = computed(() => {
+  if (props.edit) return ""
+  // Use Temporal to get today's date in ISO format
+  const today = Temporal.Now.plainDateISO()
+  return today.toString()
+})
+const guestEvent = computed(
+  () => props.event?.ownerId === guestUserId
+)
+const timeIncrementItems = computed(() => [
+  { text: "15 min", value: 15 },
+  { text: "30 min", value: 30 },
+  { text: "60 min", value: 60 },
+])
+
+const normalizeDraftTime = (
+  time: SerializedEventDraft["startTime"],
+  fallback: Temporal.PlainTime
+): Temporal.PlainTime => {
+  if (time == null) return fallback
+  if (typeof time === "number") return timeNumToPlainTime(time)
+  return Temporal.PlainTime.from(time)
+}
+
+onMounted(() => {
+  if (Object.keys(props.contactsPayload).length > 0) {
+    toggleEmailReminders(true)
+
+    name.value = props.contactsPayload.name ?? ""
+    startTime.value = normalizeDraftTime(props.contactsPayload.startTime, hoursPlainTime.NINE)
+    endTime.value = normalizeDraftTime(props.contactsPayload.endTime, hoursPlainTime.SEVENTEEN)
+    daysOnly.value = props.contactsPayload.daysOnly ?? false
+    selectedDateOption.value = (props.contactsPayload.selectedDateOption ?? dateOptions.SPECIFIC) as DateOptionType
+    selectedDaysOfWeek.value = props.contactsPayload.selectedDaysOfWeek ?? []
+    selectedDays.value = (props.contactsPayload.selectedDays ?? []).map(x => Temporal.ZonedDateTime.from(x))
+    notificationsEnabled.value = props.contactsPayload.notificationsEnabled ?? true
+    timezone.value = (props.contactsPayload.timezone as Timezone | undefined) ?? { value: "", label: "", gmtString: "", offset: durations.ZERO }
+    specificTimesEnabled.value = props.contactsPayload.specificTimesEnabled ?? false
+
+    formRef.value?.resetValidation()
+  }
+
+  void nextTick(() => {
+    hasMounted.value = true
+  })
+})
+
+const blurNameField = () => {
+  nameField.value?.blur()
+}
+
+const reset = () => {
+  name.value = ""
+  startTime.value = hoursPlainTime.NINE
+  endTime.value = hoursPlainTime.SEVENTEEN
+  specificTimesEnabled.value = false
+  selectedDays.value = []
+  selectedDaysOfWeek.value = []
+  notificationsEnabled.value = true
+  daysOnly.value = false
+  selectedDateOption.value = dateOptions.SPECIFIC
+  emails.value = []
+  showAdvancedOptions.value = false
+  blindAvailabilityEnabled.value = false
+  sendEmailAfterXResponsesEnabled.value = false
+  sendEmailAfterXResponses.value = 3
+  collectEmails.value = false
+  startOnMonday.value = prefersStartOnMonday()
+
+  formRef.value?.resetValidation()
+}
+
+const submit = async () => {
+  const result = await formRef.value?.validate()
+  const valid = typeof result === "boolean" ? result : result?.valid
+  if (!valid) return
+  const timezoneValue = resolveTimezoneValue(timezone.value.value)
+
+  selectedDays.value.sort()
+
+  // Calculate duration using Temporal.Duration
+  let duration = endTime.value.since(startTime.value, { largestUnit: "hours" })
+  // Handle case where endTime is before startTime (crosses midnight)
+  if (duration.total("hours") <= 0) {
+    duration = duration.add({ hours: 24 })
+  }
+  const durationHoursNum = duration.total("hours")
+
+  const dates: Temporal.ZonedDateTime[] = []
+  let type: string
+  if (daysOnly.value) {
+    duration = durations.ZERO
+    type = eventTypes.SPECIFIC_DATES
+
+    for (const day of selectedDays.value) {
+      const zdt = day.withTimeZone(UTC).withPlainTime("00:00")
+      dates.push(zdt)
+    }
+    specificTimesEnabled.value = false
+  } else {
+    if (selectedDateOption.value === dateOptions.SPECIFIC) {
+      type = eventTypes.SPECIFIC_DATES
+      for (const day of selectedDays.value) {
+        // Parse the date string and create a ZonedDateTime in the specified timezone
+        const plainDate = Temporal.PlainDate.from(day)
+        const plainTime = startTime.value
+        const zdt = plainDate.toZonedDateTime({ 
+          timeZone: timezoneValue,
+          plainTime
+        })
+        dates.push(zdt)
+      }
+    } else {
+      type = eventTypes.DOW
+
+      selectedDaysOfWeek.value.sort((a, b) => a - b)
+      selectedDaysOfWeek.value = selectedDaysOfWeek.value.filter((dayIndex) =>
+        startOnMonday.value ? dayIndex !== 0 : dayIndex !== 7
+      )
+      for (const dayIndex of selectedDaysOfWeek.value) {
+        // For DOW events, we need to find the next occurrence of this day
+        const plainTime = startTime.value
+        
+        // Get current date in the specified timezone
+        const now = Temporal.Now.zonedDateTimeISO(timezoneValue)
+        const currentDayOfWeek = now.dayOfWeek // 1-7 (Mon-Sun)
+        const targetDayOfWeek = dayIndex === 7 ? 7 : dayIndex // Convert from Sunday-based to Monday-based
+        
+        // Calculate days until next occurrence
+        let daysUntil = targetDayOfWeek - currentDayOfWeek
+        if (daysUntil < 0) daysUntil += 7
+        
+        const targetDate = now.add({ days: daysUntil }).toPlainDate()
+        const zdt = targetDate.toZonedDateTime({ 
+          timeZone: timezoneValue,
+          plainTime
+        })
+        dates.push(zdt)
+      }
+    }
+  }
+
+  loading.value = true
+
+  const payload = {
+    name: name.value,
+    duration: durationHoursNum,
+    dates,
+    hasSpecificTimes: specificTimesEnabled.value,
+    notificationsEnabled: !authUser.value ? false : notificationsEnabled.value,
+    blindAvailabilityEnabled: blindAvailabilityEnabled.value,
+    daysOnly: daysOnly.value,
+    remindees: emails.value,
+    type,
+    sendEmailAfterXResponses: sendEmailAfterXResponsesEnabled.value
+      ? sendEmailAfterXResponses.value
+      : -1,
+    collectEmails: collectEmails.value,
+    startOnMonday: startOnMonday.value,
+    timeIncrement: timeIncrement.value,
+    creatorPosthogId: posthog.get_distinct_id(),
+  }
+
+  const posthogPayload: Record<string, unknown> = {
+    eventName: name.value,
+    eventDuration: duration,
+    eventDates: JSON.stringify(dates),
+    eventHasSpecificTimes: specificTimesEnabled.value,
+    eventNotificationsEnabled: !authUser.value
+      ? false
+      : notificationsEnabled.value,
+    eventBlindAvailabilityEnabled: blindAvailabilityEnabled.value,
+    eventDaysOnly: daysOnly.value,
+    eventRemindees: emails.value,
+    eventType: type,
+    eventSendEmailAfterXResponses: sendEmailAfterXResponsesEnabled.value
+      ? sendEmailAfterXResponses.value
+      : -1,
+    eventCollectEmails: collectEmails.value,
+    eventStartOnMonday: startOnMonday.value,
+    eventTimeIncrement: timeIncrement.value,
+  }
+
+  if (!props.edit) {
+    post<{ eventId: string; shortId?: string }>("/events", payload)
+      .then(async ({ eventId, shortId }) => {
+        if (authUser.value) {
+          await mainStore.setEventFolder({ eventId, folderId: props.folderId })
+        }
+        await router.push({
+          name: "event",
+          params: { eventId: shortId ?? eventId },
+        })
+
+        emit("update:modelValue", false)
+        reset()
+
+        posthogPayload.eventId = eventId
+        posthog.capture("Event created", posthogPayload)
+
+        if (!authUser.value) {
+          addEventToCreatedList(eventId)
+        }
+      })
+      .catch((err: unknown) => {
+        mainStore.showError(
+          "There was a problem creating that event! Please try again later."
+        )
+        console.error(err)
+      })
+      .finally(() => {
+        loading.value = false
+      })
+  } else if (props.event) {
+    put(`/events/${props.event._id ?? ""}`, payload)
+      .then(() => {
+        posthogPayload.eventId = props.event?._id
+        posthog.capture("Event edited", posthogPayload)
+
+        localStorage.setItem(`from-edit-event-${props.event?._id ?? ""}`, "true")
+        window.location.reload()
+      })
+      .catch((err: unknown) => {
+        mainStore.showError(
+          "There was a problem editing this event! Please try again later."
+        )
+        console.log(err)
+      })
+      .finally(() => {
+        loading.value = false
+      })
+  }
+}
+
+const toggleEmailReminders = (delayed = false) => {
+  if (delayed) {
+    setTimeout(
+      () => (showEmailReminders.value = !showEmailReminders.value),
+      300
+    )
+  } else {
+    showEmailReminders.value = !showEmailReminders.value
+  }
+}
+
+const requestContactsAccess = ({ emails: requestEmails }: { emails: (string | { email: string })[] }) => {
+  // Convert Remindee[] (which can be strings or Contact objects) to string[]
+  const emailStrings = requestEmails.map(e => typeof e === 'string' ? e : e.email)
+  const payload = {
+    emails: emailStrings,
+    name: name.value,
+    startTime: plainTimeToTimeNum(startTime.value),
+    endTime: plainTimeToTimeNum(endTime.value),
+    daysOnly: daysOnly.value,
+    selectedDays: selectedDays.value,
+    selectedDaysOfWeek: selectedDaysOfWeek.value,
+    selectedDateOption: selectedDateOption.value,
+    notificationsEnabled: notificationsEnabled.value,
+    timezone: timezone.value,
+  }
+  signInGoogle({
+    state: {
+      type: authTypes.EVENT_CONTACTS,
+      eventId: props.event ? props.event.shortId ?? props.event._id : "",
+      openNewGroup: false,
+      payload,
+    },
+    requestContactsPermission: true,
+  })
+}
+
+const updateFieldsFromEvent = () => {
+  if (props.event) {
+    name.value = props.event.name ?? ""
+    const eventDate = props.event.dates?.at(0)
+    if (eventDate != null) {
+      const zdt = getDateWithTimezone(eventDate)
+      startTime.value = zdt.toPlainTime()
+
+      const duration = props.event.duration ?? durations.ZERO
+      endTime.value = startTime.value.add(duration)
+    }
+
+    notificationsEnabled.value = props.event.notificationsEnabled ?? false
+    blindAvailabilityEnabled.value =
+      props.event.blindAvailabilityEnabled ?? false
+    daysOnly.value = props.event.daysOnly ?? false
+    specificTimesEnabled.value = props.event.hasSpecificTimes ?? false
+    startOnMonday.value = props.event.startOnMonday ?? startOnMonday.value
+    collectEmails.value = props.event.collectEmails ?? false
+    timeIncrement.value = props.event.timeIncrement ?? 15
+
+    if (
+      props.event.sendEmailAfterXResponses != null &&
+      props.event.sendEmailAfterXResponses > 0
+    ) {
+      sendEmailAfterXResponsesEnabled.value = true
+      sendEmailAfterXResponses.value = props.event.sendEmailAfterXResponses
+    }
+
+    if (props.event.daysOnly) {
+      selectedDateOption.value = dateOptions.SPECIFIC
+      selectedDays.value = props.event.dates ?? []
+    } else {
+      if (props.event.type === eventTypes.SPECIFIC_DATES) {
+        selectedDateOption.value = dateOptions.SPECIFIC
+        const days: Temporal.ZonedDateTime[] = []
+        for (let date of props.event.dates ?? []) {
+          const d = getDateWithTimezone(date)
+          days.push(d.with({ timeZone: UTC }))
+        }
+        selectedDays.value = days
+      } else if (props.event.type === eventTypes.DOW) {
+        selectedDateOption.value = dateOptions.DOW
+        const dows: number[] = []
+        for (let date of props.event.dates ?? []) {
+          const d = getDateWithTimezone(date)
+          // Temporal dayOfWeek returns 1-7 (Mon-Sun), convert to 1-7 where Sunday is 7
+          const dayOfWeek = d.dayOfWeek // Already 1-7 (Mon-Sun) in Temporal
+          dows.push(dayOfWeek)
+        }
+        selectedDaysOfWeek.value = dows
+        if (props.event.startOnMonday) startOnMonday.value = true
+      }
+    }
+  }
+}
+const resetToEventData = () => {
+  updateFieldsFromEvent()
+  emailInput.value?.reset()
+}
+const setInitialEventData = () => {
+  initialEventData.value = {
+    name: name.value,
+    startTime: startTime.value,
+    endTime: endTime.value,
+    specificTimesEnabled: specificTimesEnabled.value,
+    daysOnly: daysOnly.value,
+    selectedDays: [...selectedDays.value],
+    selectedDaysOfWeek: [...selectedDaysOfWeek.value],
+    selectedDateOption: selectedDateOption.value,
+    notificationsEnabled: notificationsEnabled.value,
+    emails: [...emails.value],
+    blindAvailabilityEnabled: blindAvailabilityEnabled.value,
+    sendEmailAfterXResponsesEnabled: sendEmailAfterXResponsesEnabled.value,
+    sendEmailAfterXResponses: sendEmailAfterXResponses.value,
+    timeIncrement: timeIncrement.value,
+  }
+}
+const hasEventBeenEdited = () => {
+  const i = initialEventData.value
+  return (
+    name.value !== i.name ||
+    startTime.value !== i.startTime ||
+    endTime.value !== i.endTime ||
+    specificTimesEnabled.value !== i.specificTimesEnabled ||
+    selectedDateOption.value !== i.selectedDateOption ||
+    JSON.stringify(selectedDays.value) !== JSON.stringify(i.selectedDays) ||
+    JSON.stringify(selectedDaysOfWeek.value) !==
+      JSON.stringify(i.selectedDaysOfWeek) ||
+    daysOnly.value !== i.daysOnly ||
+    notificationsEnabled.value !== i.notificationsEnabled ||
+    JSON.stringify(emails.value) !== JSON.stringify(i.emails) ||
+    blindAvailabilityEnabled.value !== i.blindAvailabilityEnabled ||
+    sendEmailAfterXResponsesEnabled.value !==
+      i.sendEmailAfterXResponsesEnabled ||
+    sendEmailAfterXResponses.value !== i.sendEmailAfterXResponses
+  )
+}
+const trackTimezoneChange = (newTimezone: Timezone) => {
+  posthog.capture("timezone_selected_in_new_event_dialog", {
+    timezone: newTimezone.value,
+  })
+}
+
+defineExpose({ reset, resetToEventData, hasEventBeenEdited })
+
+watch(
+  () => props.event,
+  () => {
+    updateFieldsFromEvent()
+    setInitialEventData()
+  },
+  { immediate: true }
+)
+watch(selectedDateOption, () => {
+  if (selectedDateOption.value === dateOptions.SPECIFIC) {
+    selectedDaysOfWeek.value = []
+  } else {
+    selectedDays.value = []
+  }
+})
+watch(startOnMonday, () => {
+  localStorage.setItem("startCalendarOnMonday", String(startOnMonday.value))
+})
+watch(
+  () => props.isDialogOpen,
+  (newVal) => {
+    if (newVal) reset()
+  }
+)
+</script>
 
 <style>
 .email-me-after-text-field input {
   padding: 0px !important;
 }
 </style>
-
-<script>
-import { eventTypes, dayIndexToDayString, authTypes } from "@/constants"
-import {
-  post,
-  put,
-  timeNumToTimeString,
-  dateToTimeNum,
-  getISODateString,
-  isPhone,
-  signInGoogle,
-  getDateWithTimezone,
-  getTimeOptions,
-  addEventToCreatedList,
-  prefersStartOnMonday,
-} from "@/utils"
-import { mapActions, mapState } from "vuex"
-import TimezoneSelector from "./schedule_overlap/TimezoneSelector.vue"
-import HelpDialog from "./HelpDialog.vue"
-import EmailInput from "./event/EmailInput.vue"
-import DatePicker from "@/components/DatePicker.vue"
-import SlideToggle from "./SlideToggle.vue"
-import AlertText from "@/components/AlertText.vue"
-import OverflowGradient from "@/components/OverflowGradient.vue"
-import { guestUserId } from "@/constants"
-import dayjs from "dayjs"
-import utcPlugin from "dayjs/plugin/utc"
-import timezonePlugin from "dayjs/plugin/timezone"
-import ExpandableSection from "./ExpandableSection.vue"
-dayjs.extend(utcPlugin)
-dayjs.extend(timezonePlugin)
-
-export default {
-  name: "NewEvent",
-
-  emits: ["input"],
-
-  props: {
-    event: { type: Object },
-    edit: { type: Boolean, default: false },
-    dialog: { type: Boolean, default: true },
-    contactsPayload: { type: Object, default: () => ({}) },
-    showHelp: { type: Boolean, default: false },
-    folderId: { type: String, default: null },
-    isDialogOpen: { type: Boolean, default: false },
-  },
-
-  components: {
-    TimezoneSelector,
-    HelpDialog,
-    EmailInput,
-    DatePicker,
-    SlideToggle,
-    ExpandableSection,
-    AlertText,
-    OverflowGradient,
-  },
-
-  data: () => ({
-    formValid: true,
-    name: "",
-    startTime: 9,
-    endTime: 17,
-    specificTimesEnabled: false,
-    loading: false,
-    selectedDays: [],
-    selectedDaysOfWeek: [],
-    startOnMonday: prefersStartOnMonday(),
-    notificationsEnabled: true,
-
-    daysOnly: false,
-    daysOnlyOptions: Object.freeze([
-      { text: "Dates and times", value: false },
-      { text: "Dates only", value: true },
-    ]),
-
-    // Date options
-    dateOptions: Object.freeze({
-      SPECIFIC: "Specific dates",
-      DOW: "Days of the week",
-    }),
-    selectedDateOption: "Specific dates",
-
-    // Email reminders
-    showEmailReminders: false,
-    emails: [], // For email reminders
-
-    // Advanced options
-    showAdvancedOptions: false,
-    timeIncrement: 15,
-    collectEmails: false,
-    blindAvailabilityEnabled: false,
-    timezone: {},
-    sendEmailAfterXResponsesEnabled: false,
-    sendEmailAfterXResponses: 3,
-
-    helpDialog: false,
-
-    // Unsaved changes
-    initialEventData: {},
-
-    hasMounted: false,
-  }),
-
-  mounted() {
-    if (Object.keys(this.contactsPayload).length > 0) {
-      this.toggleEmailReminders(true)
-
-      /** Get previously filled out data after enabling contacts  */
-      this.name = this.contactsPayload.name
-      this.startTime = this.contactsPayload.startTime
-      this.endTime = this.contactsPayload.endTime
-      this.daysOnly = this.contactsPayload.daysOnly
-      this.selectedDateOption = this.contactsPayload.selectedDateOption
-      this.selectedDaysOfWeek = this.contactsPayload.selectedDaysOfWeek
-      this.selectedDays = this.contactsPayload.selectedDays
-      this.notificationsEnabled = this.contactsPayload.notificationsEnabled
-      this.timezone = this.contactsPayload.timezone
-      this.specificTimesEnabled = this.contactsPayload.specificTimesEnabled
-
-      this.$refs.form.resetValidation()
-    }
-
-    this.$nextTick(() => {
-      this.hasMounted = true
-    })
-  },
-
-  computed: {
-    ...mapState(["authUser", "daysOnlyEnabled"]),
-    nameRules() {
-      return [(v) => !!v || "Event name is required"]
-    },
-    selectedDaysRules() {
-      return [
-        (selectedDays) =>
-          selectedDays.length > 0 || "Please select at least one day",
-      ]
-    },
-    addedEmails() {
-      if (Object.keys(this.contactsPayload).length > 0)
-        return this.contactsPayload.emails
-      return this.event && this.event.remindees
-        ? this.event.remindees.map((r) => r.email)
-        : []
-    },
-    times() {
-      return getTimeOptions()
-    },
-    minCalendarDate() {
-      if (this.edit) {
-        return ""
-      }
-
-      let today = new Date()
-      let dd = String(today.getDate()).padStart(2, "0")
-      let mm = String(today.getMonth() + 1).padStart(2, "0")
-      let yyyy = today.getFullYear()
-
-      return yyyy + "-" + mm + "-" + dd
-    },
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-    guestEvent() {
-      return this.event && this.event.ownerId == guestUserId
-    },
-    timeIncrementItems() {
-      return [
-        { text: "15 min", value: 15 },
-        { text: "30 min", value: 30 },
-        { text: "60 min", value: 60 },
-      ]
-    },
-  },
-
-  methods: {
-    ...mapActions(["showError", "setEventFolder"]),
-    blurNameField() {
-      this.$refs["name-field"].blur()
-    },
-    reset() {
-      this.name = ""
-      this.startTime = 9
-      this.endTime = 17
-      this.specificTimesEnabled = false
-      this.selectedDays = []
-      this.selectedDaysOfWeek = []
-      this.notificationsEnabled = true
-      this.daysOnly = false
-      this.selectedDateOption = "Specific dates"
-      this.emails = []
-      this.showAdvancedOptions = false
-      this.blindAvailabilityEnabled = false
-      this.sendEmailAfterXResponsesEnabled = false
-      this.sendEmailAfterXResponses = 3
-      this.collectEmails = false
-      this.startOnMonday = prefersStartOnMonday()
-
-      this.$refs.form.resetValidation()
-    },
-    submit() {
-      if (!this.$refs.form.validate()) return
-
-      this.selectedDays.sort()
-
-      // Get duration of event
-      let duration = this.endTime - this.startTime
-      if (duration <= 0) duration += 24
-
-      // Get date objects for each selected day
-      let dates = []
-      let type = ""
-      if (this.daysOnly) {
-        duration = 0
-        type = eventTypes.SPECIFIC_DATES
-
-        for (const day of this.selectedDays) {
-          const date = new Date(`${day} 00:00:00Z`)
-          dates.push(date)
-        }
-
-        this.specificTimesEnabled = false
-      } else {
-        const startTimeString = timeNumToTimeString(this.startTime)
-        if (this.selectedDateOption === this.dateOptions.SPECIFIC) {
-          type = eventTypes.SPECIFIC_DATES
-
-          for (const day of this.selectedDays) {
-            const date = dayjs.tz(
-              `${day} ${startTimeString}`,
-              this.timezone.value
-            )
-            dates.push(date.toDate())
-          }
-        } else if (this.selectedDateOption === this.dateOptions.DOW) {
-          type = eventTypes.DOW
-
-          this.selectedDaysOfWeek.sort((a, b) => a - b)
-          this.selectedDaysOfWeek = this.selectedDaysOfWeek.filter(
-            (dayIndex) => {
-              return this.startOnMonday ? dayIndex !== 0 : dayIndex !== 7
-            }
-          )
-          for (const dayIndex of this.selectedDaysOfWeek) {
-            const day = dayIndexToDayString[dayIndex]
-            const date = dayjs.tz(
-              `${day} ${startTimeString}`,
-              this.timezone.value
-            )
-
-            // The reference dates (dayIndexToDayString) are from June 2018, which may have
-            // a different DST offset than the current date. Adjust so the stored UTC time
-            // corresponds to the user's current timezone offset.
-            const refOffset = date.utcOffset()
-            const currentOffset = dayjs().tz(this.timezone.value).utcOffset()
-            dates.push(date.subtract(currentOffset - refOffset, 'minutes').toDate())
-          }
-        }
-      }
-
-      this.loading = true
-
-      const payload = {
-        name: this.name,
-        duration: duration,
-        dates: dates,
-        hasSpecificTimes: this.specificTimesEnabled,
-        notificationsEnabled: !this.authUser
-          ? false
-          : this.notificationsEnabled,
-        blindAvailabilityEnabled: this.blindAvailabilityEnabled,
-        daysOnly: this.daysOnly,
-        remindees: this.emails,
-        type: type,
-        sendEmailAfterXResponses: this.sendEmailAfterXResponsesEnabled
-          ? parseInt(this.sendEmailAfterXResponses)
-          : -1,
-        collectEmails: this.collectEmails,
-        startOnMonday: this.startOnMonday,
-        timeIncrement: this.timeIncrement,
-        creatorPosthogId: this.$posthog?.get_distinct_id(),
-      }
-
-      const posthogPayload = {
-        eventName: this.name,
-        eventDuration: duration,
-        eventDates: JSON.stringify(dates),
-        eventHasSpecificTimes: this.specificTimesEnabled,
-        eventNotificationsEnabled: !this.authUser
-          ? false
-          : this.notificationsEnabled,
-        eventBlindAvailabilityEnabled: this.blindAvailabilityEnabled,
-        eventDaysOnly: this.daysOnly,
-        eventRemindees: this.emails,
-        eventType: type,
-        eventSendEmailAfterXResponses: this.sendEmailAfterXResponsesEnabled
-          ? parseInt(this.sendEmailAfterXResponses)
-          : -1,
-        eventCollectEmails: this.collectEmails,
-        eventStartOnMonday: this.startOnMonday,
-        eventTimeIncrement: this.timeIncrement,
-      }
-
-      if (!this.edit) {
-        // Create new event on backend
-        post("/events", payload)
-          .then(async ({ eventId, shortId }) => {
-            if (this.authUser) {
-              await this.setEventFolder({ eventId, folderId: this.folderId })
-            }
-            this.$router.push({
-              name: "event",
-              params: {
-                eventId: shortId ?? eventId,
-                initialTimezone: this.timezone,
-              },
-            })
-
-            this.$emit("input", false)
-            this.reset()
-
-            posthogPayload.eventId = eventId
-            this.$posthog?.capture("Event created", posthogPayload)
-
-            if (!this.authUser) {
-              // Add eventId to localStorage, so the user can claim it later
-              addEventToCreatedList(eventId)
-            }
-          })
-          .catch((err) => {
-            this.showError(
-              "There was a problem creating that event! Please try again later."
-            )
-            console.error(err)
-          })
-          .finally(() => {
-            this.loading = false
-          })
-      } else {
-        // Edit event on backend
-        if (this.event) {
-          put(`/events/${this.event._id}`, payload)
-            .then(() => {
-              posthogPayload.eventId = this.event._id
-              this.$posthog?.capture("Event edited", posthogPayload)
-
-              // this.$emit("input", false)
-              // this.reset()
-              localStorage.setItem(`from-edit-event-${this.event._id}`, "true")
-              window.location.reload()
-            })
-            .catch((err) => {
-              this.showError(
-                "There was a problem editing this event! Please try again later."
-              )
-              console.log(err)
-            })
-            .finally(() => {
-              this.loading = false
-            })
-        }
-      }
-    },
-
-    toggleEmailReminders(delayed = false) {
-      if (delayed) {
-        setTimeout(
-          () => (this.showEmailReminders = !this.showEmailReminders),
-          300
-        )
-      } else {
-        this.showEmailReminders = !this.showEmailReminders
-      }
-    },
-
-    /** Redirects user to oauth page requesting access to the user's contacts */
-    requestContactsAccess({ emails }) {
-      const payload = {
-        emails,
-        name: this.name,
-        startTime: this.startTime,
-        endTime: this.endTime,
-        daysOnly: this.daysOnly,
-        selectedDays: this.selectedDays,
-        selectedDaysOfWeek: this.selectedDaysOfWeek,
-        selectedDateOption: this.selectedDateOption,
-        notificationsEnabled: this.notificationsEnabled,
-        timezone: this.timezone,
-      }
-      signInGoogle({
-        state: {
-          type: authTypes.EVENT_CONTACTS,
-          eventId: this.event ? this.event.shortId ?? this.event._id : "",
-          openNewGroup: false,
-          payload,
-        },
-        requestContactsPermission: true,
-      })
-    },
-    /** Update state based on the contactsPayload after granting contacts access */
-    contactsAccessGranted({ curScheduledEvent, ...data }) {
-      this.curScheduledEvent = curScheduledEvent
-      this.$refs.confirmDetailsDialog?.setData(data)
-      this.confirmDetailsDialog = true
-    },
-
-    /** Populates the form fields based on this.event */
-    updateFieldsFromEvent() {
-      if (this.event) {
-        this.name = this.event.name
-
-        // Set start time, accounting for the timezone
-        this.startTime = Math.floor(
-          dateToTimeNum(getDateWithTimezone(this.event.dates[0]), true)
-        )
-        this.startTime %= 24
-
-        this.endTime = (this.startTime + this.event.duration) % 24
-        this.notificationsEnabled = this.event.notificationsEnabled
-        this.blindAvailabilityEnabled = this.event.blindAvailabilityEnabled
-        this.daysOnly = this.event.daysOnly
-        this.specificTimesEnabled = this.event.hasSpecificTimes
-        this.startOnMonday = this.event.startOnMonday
-        this.collectEmails = this.event.collectEmails
-        this.timeIncrement = this.event.timeIncrement ?? 15
-
-        if (
-          this.event.sendEmailAfterXResponses !== null &&
-          this.event.sendEmailAfterXResponses > 0
-        ) {
-          this.sendEmailAfterXResponsesEnabled = true
-          this.sendEmailAfterXResponses = this.event.sendEmailAfterXResponses
-        }
-
-        if (this.event.daysOnly) {
-          this.selectedDateOption = this.dateOptions.SPECIFIC
-          const selectedDays = []
-          for (let date of this.event.dates) {
-            selectedDays.push(getISODateString(date, true))
-          }
-          this.selectedDays = selectedDays
-        } else {
-          if (this.event.type === eventTypes.SPECIFIC_DATES) {
-            this.selectedDateOption = this.dateOptions.SPECIFIC
-            const selectedDays = []
-            for (let date of this.event.dates) {
-              date = getDateWithTimezone(date)
-
-              selectedDays.push(getISODateString(date, true))
-            }
-            this.selectedDays = selectedDays
-          } else if (this.event.type === eventTypes.DOW) {
-            this.selectedDateOption = this.dateOptions.DOW
-            const selectedDaysOfWeek = []
-            for (let date of this.event.dates) {
-              date = getDateWithTimezone(date)
-
-              if (this.event.startOnMonday && date.getUTCDay() === 0) {
-                selectedDaysOfWeek.push(7)
-              } else {
-                selectedDaysOfWeek.push(date.getUTCDay())
-              }
-            }
-            this.selectedDaysOfWeek = selectedDaysOfWeek
-            if (this.event.startOnMonday) {
-              this.startOnMonday = true
-            }
-          }
-        }
-      }
-    },
-    resetToEventData() {
-      this.updateFieldsFromEvent()
-      this.$refs.emailInput.reset()
-    },
-    setInitialEventData() {
-      this.initialEventData = {
-        name: this.name,
-        startTime: this.startTime,
-        endTime: this.endTime,
-        specificTimesEnabled: this.specificTimesEnabled,
-        daysOnly: this.daysOnly,
-        selectedDays: this.selectedDays,
-        selectedDaysOfWeek: this.selectedDaysOfWeek,
-        selectedDateOption: this.selectedDateOption,
-        notificationsEnabled: this.notificationsEnabled,
-        emails: [...this.emails],
-        blindAvailabilityEnabled: this.blindAvailabilityEnabled,
-        sendEmailAfterXResponsesEnabled: this.sendEmailAfterXResponsesEnabled,
-        sendEmailAfterXResponses: this.sendEmailAfterXResponses,
-        timeIncrement: this.timeIncrement,
-      }
-    },
-    hasEventBeenEdited() {
-      return (
-        this.name !== this.initialEventData.name ||
-        this.startTime !== this.initialEventData.startTime ||
-        this.endTime !== this.initialEventData.endTime ||
-        this.specificTimesEnabled !==
-          this.initialEventData.specificTimesEnabled ||
-        this.selectedDateOption !== this.initialEventData.selectedDateOption ||
-        JSON.stringify(this.selectedDays) !==
-          JSON.stringify(this.initialEventData.selectedDays) ||
-        JSON.stringify(this.selectedDaysOfWeek) !==
-          JSON.stringify(this.initialEventData.selectedDaysOfWeek) ||
-        this.daysOnly !== this.initialEventData.daysOnly ||
-        this.notificationsEnabled !==
-          this.initialEventData.notificationsEnabled ||
-        JSON.stringify(this.emails) !==
-          JSON.stringify(this.initialEventData.emails) ||
-        this.blindAvailabilityEnabled !==
-          this.initialEventData.blindAvailabilityEnabled ||
-        this.sendEmailAfterXResponsesEnabled !==
-          this.initialEventData.sendEmailAfterXResponsesEnabled ||
-        this.sendEmailAfterXResponses !==
-          this.initialEventData.sendEmailAfterXResponses
-      )
-    },
-    trackTimezoneChange(newTimezone) {
-      this.$posthog.capture("timezone_selected_in_new_event_dialog", {
-        timezone: newTimezone?.value,
-      })
-    },
-  },
-
-  watch: {
-    event: {
-      immediate: true,
-      handler() {
-        this.updateFieldsFromEvent()
-        this.setInitialEventData()
-      },
-    },
-    selectedDateOption() {
-      // Reset the other date / day selection when date option is changed
-      if (this.selectedDateOption === this.dateOptions.SPECIFIC) {
-        this.selectedDaysOfWeek = []
-      } else if (this.selectedDateOption === this.dateOptions.DOW) {
-        this.selectedDays = []
-      }
-    },
-    startOnMonday() {
-      localStorage.setItem("startCalendarOnMonday", this.startOnMonday)
-    },
-    isDialogOpen(newVal) {
-      if (newVal) {
-        this.reset()
-      }
-    },
-  },
-}
-</script>

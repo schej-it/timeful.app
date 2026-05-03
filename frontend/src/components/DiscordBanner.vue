@@ -24,60 +24,46 @@
     <v-btn
       icon
       small
-      @click="dismiss"
       class="tw-absolute tw-right-2 tw-top-1/2 -tw-translate-y-1/2"
+      @click="dismiss"
     >
       <v-icon color="white">mdi-close</v-icon>
     </v-btn>
   </div>
 </template>
 
-<script>
-import { isPhone } from "@/utils"
-export default {
-  name: "DiscordBanner",
+<script setup lang="ts">
+import { computed, ref, watch } from "vue"
+import { useRoute } from "vue-router"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import { posthog } from "@/plugins/posthog"
 
-  data() {
-    return {
-      discordUrl: "https://discord.gg/v6raNqYxx3",
-      show: false,
-    }
-  },
+const { isPhone } = useDisplayHelpers()
+const route = useRoute()
 
-  computed: {
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-    localStorageKey() {
-      // Use a versioned key to force re-showing banner if message changes
-      return `discordBannerDismissed_v1`
-    },
-  },
+const discordUrl = "https://discord.gg/v6raNqYxx3"
+const show = ref(false)
 
-  methods: {
-    dismiss() {
-      this.show = false
-      localStorage.setItem(this.localStorageKey, "true")
-      this.$posthog?.capture("discord_banner_dismissed")
-    },
-    trackDiscordClick() {
-      this.$posthog?.capture("discord_banner_clicked", {
-        discordUrl: this.discordUrl,
-      })
-    },
-  },
+const localStorageKey = computed(() => `discordBannerDismissed_v1`)
 
-  watch: {
-    $route: {
-      immediate: true,
-      handler() {
-        const showOnRoute = this.$route.name === "landing"
-        const userHasDismissed =
-          localStorage.getItem(this.localStorageKey) === "true"
-
-        this.show = !userHasDismissed && showOnRoute
-      },
-    },
-  },
+const dismiss = () => {
+  show.value = false
+  localStorage.setItem(localStorageKey.value, "true")
+  posthog.capture("discord_banner_dismissed")
 }
+
+const trackDiscordClick = () => {
+  posthog.capture("discord_banner_clicked", { discordUrl })
+}
+
+watch(
+  () => route.name,
+  () => {
+    const showOnRoute = route.name === "landing"
+    const userHasDismissed =
+      localStorage.getItem(localStorageKey.value) === "true"
+    show.value = !userHasDismissed && showOnRoute
+  },
+  { immediate: true }
+)
 </script>

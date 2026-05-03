@@ -6,9 +6,9 @@
       transition="slide-y-reverse-transition"
       class="tw-bottom-4 tw-left-0 tw-right-0 tw-mx-auto tw-w-fit sm:tw-bottom-8"
     >
-      <template v-slot:activator>
-        <v-btn v-model="speedDial" fab color="primary" dark>
-          <v-icon v-if="fab"> mdi-close </v-icon>
+      <template #activator="{ props: activatorProps }">
+        <v-btn v-bind="activatorProps" fab color="primary" dark>
+          <v-icon v-if="speedDial"> mdi-close </v-icon>
           <v-icon v-else> mdi-plus </v-icon>
         </v-btn>
       </template>
@@ -22,16 +22,13 @@
   </v-scale-transition>
 </template>
 
-<script>
-export default {
-  name: "CreateSpeedDial",
+<script setup lang="ts">
+import { ref } from "vue"
 
-  emits: ["createGroup", "createEvent"],
+defineEmits<{
+  createGroup: []
+  createEvent: []
+}>()
 
-  data() {
-    return {
-      speedDial: false,
-    }
-  },
-}
+const speedDial = ref(false)
 </script>

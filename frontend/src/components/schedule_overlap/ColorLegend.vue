@@ -22,8 +22,4 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "ColorLegend",
-}
-</script>
+<script setup lang="ts"></script>

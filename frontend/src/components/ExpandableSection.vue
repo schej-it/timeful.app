@@ -12,13 +12,13 @@
       </span>
       <v-spacer />
       <v-icon
-        :class="`tw-rotate-${value ? '180' : '0'} ${iconClass}`"
+        :class="`tw-rotate-${modelValue ? '180' : '0'} ${iconClass}`"
         :size="30"
         >mdi-chevron-down</v-icon
       ></v-btn
     >
     <v-expand-transition>
-      <div v-show="value">
+      <div v-show="modelValue">
         <slot></slot>
       </div>
     </v-expand-transition>
@@ -26,35 +26,47 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "ExpandableSection",
+<script setup lang="ts">
+import { ref, watch } from "vue"
 
-  props: {
-    value: { type: Boolean, required: true },
-    label: { type: String, default: "" },
-    labelClass: { type: String, default: "tw-text-base" },
-    iconClass: { type: String, default: "" },
-    autoScroll: { type: Boolean, default: false },
-  },
+const props = withDefaults(
+  defineProps<{
+    modelValue: boolean
+    label?: string
+    labelClass?: string
+    iconClass?: string
+    autoScroll?: boolean
+  }>(),
+  {
+    label: "",
+    labelClass: "tw-text-base",
+    iconClass: "",
+    autoScroll: false,
+  }
+)
 
-  methods: {
-    toggle() {
-      this.$emit("input", !this.value)
-    },
-    scrollToElement(element) {
-      if (this.autoScroll && element) {
-        setTimeout(() => element.scrollIntoView({ behavior: "smooth" }), 200)
-      }
-    },
-  },
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+}>()
 
-  watch: {
-    value() {
-      if (this.value) {
-        this.scrollToElement(this.$refs.scrollTo)
-      }
-    },
-  },
+const scrollTo = ref<HTMLElement | null>(null)
+
+const toggle = () => {
+  emit("update:modelValue", !props.modelValue)
 }
+
+const scrollToElement = (element: HTMLElement | null) => {
+  if (props.autoScroll && element) {
+    setTimeout(() => { element.scrollIntoView({ behavior: "smooth" }); }, 200)
+  }
+}
+
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (val) {
+      scrollToElement(scrollTo.value)
+    }
+  }
+)
 </script>

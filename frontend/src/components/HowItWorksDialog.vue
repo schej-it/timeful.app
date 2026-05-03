@@ -16,23 +16,21 @@
   </v-dialog>
 </template>
 
-<script>
-export default {
-  name: "HowItWorksDialog",
-  props: {
-    value: Boolean, // v-model for dialog visibility
-  },
-  computed: {
-    dialog: {
-      get() {
-        return this.value
-      },
-      set(val) {
-        this.$emit("input", val)
-      },
-    },
-  },
-}
+<script setup lang="ts">
+import { computed } from "vue"
+
+const props = defineProps<{
+  modelValue: boolean
+}>()
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+}>()
+
+const dialog = computed({
+  get: () => props.modelValue,
+  set: (val: boolean) => { emit("update:modelValue", val); },
+})
 </script>
 
 <style scoped>
@@ -41,7 +39,7 @@ export default {
   padding-bottom: 56.25%; /* 16:9 aspect ratio */
   height: 0;
   overflow: hidden;
-  background-color: #000; /* Optional: background for when video loads */
+  background-color: #000;
 }
 
 .video-container iframe {

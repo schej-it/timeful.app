@@ -11,7 +11,7 @@
           class="tw-mb-4 tw-text-center"
         />
         <h1 class="tw-mb-2 tw-text-center tw-text-xl tw-font-medium">
-          {{ owner.firstName ?? "" }} invited you to join <br />"{{
+          {{ owner?.firstName ?? "" }} invited you to join <br />"{{
             event.name
           }}"
         </h1>
@@ -20,12 +20,12 @@
           calendar availability with each other!
         </div>
       </div>
-      <v-btn @click="join" color="primary" class="tw-mb-8"
+      <v-btn color="primary" class="tw-mb-8" @click="join"
         >Join with Google Calendar</v-btn
       >
       <div class="tw-text-center tw-text-dark-gray">
         Already have a Timeful account?
-        <a @click="signIn" class="tw-underline">Sign in</a>
+        <a class="tw-underline" @click="signIn">Sign in</a>
       </div>
 
       <v-dialog
@@ -46,87 +46,67 @@
   </v-fade-transition>
 </template>
 
-<script>
-import { get, isPhone, signInGoogle } from "@/utils"
+<script setup lang="ts">
+import { ref } from "vue"
+import { useRoute } from "vue-router"
+import { get, signInGoogle } from "@/utils"
 import { authTypes } from "@/constants"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import CalendarPermissionsCard from "@/components/calendar_permission_dialogs/CalendarPermissionsCard.vue"
 import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
 import isWebview from "is-ua-webview"
+import type { Event, User } from "@/types"
 
-export default {
-  name: "NotSignedIn",
+const props = defineProps<{
+  event: Event
+}>()
 
-  props: {
-    event: { type: Object, required: true },
-  },
+const route = useRoute()
+const { isPhone } = useDisplayHelpers()
 
-  components: {
-    CalendarPermissionsCard,
-    SignInNotSupportedDialog,
-    UserAvatarContent,
-  },
+const owner = ref<User | null>(null)
+const loaded = ref(false)
+const calendarPermissionsDialog = ref(false)
+const webviewDialog = ref(false)
 
-  data() {
-    return {
-      owner: {},
-      loaded: false,
-      calendarPermissionsDialog: false,
-      webviewDialog: false,
-    }
-  },
-
-  computed: {
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-  },
-
-  methods: {
-    join() {
-      this.calendarPermissionsDialog = true
-    },
-    allowCalendarAccess() {
-      if (isWebview(navigator.userAgent)) {
-        this.webviewDialog = true
-        return
-      }
-
-      // Ask the user to select the account they want to sign in with if not logged in yet
-      signInGoogle({
-        state: {
-          type: authTypes.GROUP_SIGN_IN,
-          groupId: this.$route.params.groupId,
-        },
-        selectAccount: true,
-        requestCalendarPermission: true,
-      })
-    },
-    signIn() {
-      if (isWebview(navigator.userAgent)) {
-        this.webviewDialog = true
-        return
-      }
-
-      const state = {
-        type: authTypes.GROUP_SIGN_IN,
-        groupId: this.$route.params.groupId,
-      }
-      signInGoogle({
-        state,
-        selectAccount: true,
-      })
-    },
-  },
-
-  async created() {
-    try {
-      this.owner = await get(`/users/${this.event.ownerId}`)
-    } catch {
-      this.owner = { firstName: "", picture: "" }
-    } finally {
-      this.loaded = true
-    }
-  },
+const join = () => {
+  calendarPermissionsDialog.value = true
 }
+
+const allowCalendarAccess = () => {
+  if (isWebview(navigator.userAgent)) {
+    webviewDialog.value = true
+    return
+  }
+
+  signInGoogle({
+    state: {
+      type: authTypes.GROUP_SIGN_IN,
+      groupId: route.params.groupId,
+    },
+    selectAccount: true,
+    requestCalendarPermission: true,
+  })
+}
+
+const signIn = () => {
+  if (isWebview(navigator.userAgent)) {
+    webviewDialog.value = true
+    return
+  }
+
+  signInGoogle({
+    state: {
+      type: authTypes.GROUP_SIGN_IN,
+      groupId: route.params.groupId,
+    },
+    selectAccount: true,
+  })
+}
+
+void (async () => {
+  owner.value = await get<User>(`/users/${props.event.ownerId ?? ""}`)
+  loaded.value = true
+})()
 </script>

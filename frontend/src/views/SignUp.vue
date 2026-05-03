@@ -1,68 +1,52 @@
 <template>
   <div v-if="event" class="tw-h-full">
     <Event
-      :eventId="signUpId"
-      :fromSignIn="fromSignIn"
-      :editingMode="editingMode"
-      :initialTimezone="initialTimezone"
-      :contactsPayload="contactsPayload"
+      :event-id="signUpId"
+      :from-sign-in="fromSignIn"
+      :editing-mode="editingMode"
+      :initial-timezone="initialTimezone"
+      :contacts-payload="contactsPayload"
     ></Event>
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref } from "vue"
+import { useRouter } from "vue-router"
 import Event from "./Event.vue"
-import { mapActions, mapState } from "vuex"
 import { get } from "@/utils"
 import { errors } from "@/constants"
-import AccessDenied from "@/components/groups/AccessDenied.vue"
-import NotSignedIn from "@/components/groups/NotSignedIn.vue"
+import { useMainStore } from "@/stores/main"
+import type { SerializedEventDraft } from "@/composables/event/types"
+import type { Event as EventType } from "@/types"
 
-export default {
-  name: "SignUp",
+defineOptions({ name: 'AppSignUp' })
 
-  props: {
-    signUpId: { type: String, required: true },
-    fromSignIn: { type: Boolean, default: false },
-    editingMode: { type: Boolean, default: false },
-    initialTimezone: { type: Object, default: () => ({}) },
-    contactsPayload: { type: Object, default: () => ({}) },
-  },
+const props = defineProps<{
+  signUpId: string
+  fromSignIn?: boolean
+  editingMode?: boolean
+  initialTimezone?: Record<string, unknown>
+  contactsPayload?: SerializedEventDraft
+}>()
 
-  components: {
-    AccessDenied,
-    Event,
-    NotSignedIn,
-  },
+const router = useRouter()
+const mainStore = useMainStore()
 
+const event = ref<EventType | null>(null)
 
-  data() {
-    return {
-      event: null,
+void (async () => {
+  try {
+    event.value = await get<EventType>(`/events/${props.signUpId}`)
+
+    // TODO(tony): Redirect to correct route if we're at the wrong route
+  } catch (err: unknown) {
+    switch ((err as { error?: string }).error) {
+      case errors.EventNotFound:
+        mainStore.showError("The specified event does not exist!")
+        void router.replace({ name: "home" })
+        return
     }
-  },
-
-  computed: {
-    ...mapState(["authUser"]),
-  },
-
-  methods: {
-    ...mapActions(["showError"]),
-  },
-
-  async created() {
-    try {
-      this.event = await get(`/events/${this.signUpId}`)
-
-      // TODO(tony): Redirect to correct routeif we're at the wrong route
-    } catch (err) {
-      switch (err.error) {
-        case errors.EventNotFound:
-          this.showError("The specified event does not exist!")
-          this.$router.replace({ name: "home" })
-          return
-      }
-    }
-  },
-}
+  }
+})()
 </script>

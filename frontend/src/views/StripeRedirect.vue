@@ -34,87 +34,84 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref, onMounted } from "vue"
+import { useRouter } from "vue-router"
 import { get, post } from "@/utils"
-import { mapMutations } from "vuex"
+import { useMainStore } from "@/stores/main"
+import { posthog } from "@/plugins/posthog"
 import confetti from "canvas-confetti"
+import type { User } from "@/types"
 
-export default {
-  name: "StripeRedirect",
-  data() {
-    return {
-      fulfillmentComplete: false,
-      redirectUrl: "",
-    }
-  },
-  methods: {
-    ...mapMutations(["setAuthUser"]), // Assuming setAuthUser might be needed if fulfillment updates user state
-    async handleRedirect() {
-      const urlParams = new URLSearchParams(window.location.search)
-      const upgradeStatus = urlParams.get("upgrade")
-      const sessionId = urlParams.get("session_id")
-      this.redirectUrl = urlParams.get("redirect_url")
+const router = useRouter()
+const mainStore = useMainStore()
 
-      if (!this.redirectUrl) {
-        this.$router.replace({ name: "home" })
-        return
-      }
+const fulfillmentComplete = ref(false)
+const redirectUrl = ref("")
 
-      try {
-        if (upgradeStatus === "success" && sessionId) {
-          // Fulfill checkout
-          await post("/stripe/fulfill-checkout", { sessionId })
-          const user = await get("/user/profile")
-          this.setAuthUser(user)
-          this.fulfillmentComplete = true
-          this.fireConfetti()
-          this.$posthog.capture("upgrade_success")
-        } else {
-          // Upgrade cancelled, navigate to redirect url
-          this.navigateToRedirectUrl()
-        }
-      } catch (err) {
-        // Error during checkout fulfillment, navigate to redirect url
-        console.error("Error during Stripe redirect handling:", err)
-        this.navigateToRedirectUrl()
-      }
-    },
-    navigateToRedirectUrl() {
-      window.location.replace(this.redirectUrl)
-    },
-    fireConfetti() {
-      var duration = 15 * 1000
-      var animationEnd = Date.now() + duration
-      var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 }
-
-      function randomInRange(min, max) {
-        return Math.random() * (max - min) + min
-      }
-
-      var interval = setInterval(function () {
-        var timeLeft = animationEnd - Date.now()
-
-        if (timeLeft <= 0) {
-          return clearInterval(interval)
-        }
-
-        var particleCount = 50 * (timeLeft / duration)
-        // since particles fall down, start a bit higher than random
-        confetti({
-          ...defaults,
-          particleCount,
-          origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-        })
-        confetti({
-          ...defaults,
-          particleCount,
-          origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-        })
-      }, 250)
-    },
-  },
-  mounted() {
-    this.handleRedirect()
-  },
+function navigateToRedirectUrl() {
+  window.location.replace(redirectUrl.value)
 }
+
+function fireConfetti() {
+  const duration = 15 * 1000
+  const animationEnd = Date.now() + duration
+  const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 }
+
+  function randomInRange(min: number, max: number) {
+    return Math.random() * (max - min) + min
+  }
+
+  const interval = setInterval(function () {
+    const timeLeft = animationEnd - Date.now()
+
+    if (timeLeft <= 0) {
+      clearInterval(interval); return;
+    }
+
+    const particleCount = 50 * (timeLeft / duration)
+    void confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+    })
+    void confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+    })
+  }, 250)
+}
+
+async function handleRedirect() {
+  const urlParams = new URLSearchParams(window.location.search)
+  const upgradeStatus = urlParams.get("upgrade")
+  const sessionId = urlParams.get("session_id")
+  redirectUrl.value = urlParams.get("redirect_url") ?? ""
+
+  if (!redirectUrl.value) {
+    void router.replace({ name: "home" })
+    return
+  }
+
+  try {
+    if (upgradeStatus === "success" && sessionId) {
+      await post("/stripe/fulfill-checkout", { sessionId })
+      const user = await get<User>("/user/profile")
+      mainStore.setAuthUser(user)
+      fulfillmentComplete.value = true
+      fireConfetti()
+      posthog.capture("upgrade_success")
+    } else {
+      navigateToRedirectUrl()
+    }
+  } catch (err) {
+    console.error("Error during Stripe redirect handling:", err)
+    navigateToRedirectUrl()
+  }
+}
+
+onMounted(() => {
+  void handleRedirect()
+})
 </script>

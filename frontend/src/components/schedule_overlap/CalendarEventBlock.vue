@@ -17,56 +17,41 @@
   </transition>
 </template>
 
-<script>
-export default {
-  name: "CalendarEventBlock",
-  props: {
-    blockStyle: {
-      type: Object,
-      default: () => ({}),
-    },
-    calendarEvent: {
-      type: Object,
-      required: true,
-    },
-    isGroup: {
-      type: Boolean,
-      required: true,
-    },
-    isEditingAvailability: {
-      type: Boolean,
-      required: true,
-    },
-    noEventNames: {
-      type: Boolean,
-      required: true,
-    },
-    transitionName: {
-      type: String,
-      required: true,
-    },
-  },
-  computed: {
-    containerClass() {
-      if (this.calendarEvent.free) {
-        return this.isGroup && !this.isEditingAvailability
-          ? "tw-border-white tw-bg-light-blue tw-opacity-50"
-          : "tw-border-dashed tw-border-blue"
-      } else {
-        return this.isGroup && !this.isEditingAvailability
-          ? "tw-border-white tw-bg-light-blue"
-          : "tw-border-blue"
-      }
-    },
-    textColor() {
-      const color =
-        this.isGroup && !this.isEditingAvailability
-          ? "white"
-          : this.noEventNames
-          ? "dark-gray"
-          : "blue"
-      return `tw-text-${color}`
-    },
-  },
-}
+<script setup lang="ts">
+import { computed } from "vue"
+import type { CalendarEventLite } from "@/composables/schedule_overlap/types"
+
+const props = withDefaults(
+  defineProps<{
+    blockStyle?: Record<string, string>
+    calendarEvent: CalendarEventLite
+    isGroup: boolean
+    isEditingAvailability: boolean
+    noEventNames: boolean
+    transitionName: string
+  }>(),
+  { blockStyle: () => ({}) }
+)
+
+const containerClass = computed(() => {
+  if (props.calendarEvent.free) {
+    return props.isGroup && !props.isEditingAvailability
+      ? "tw-border-white tw-bg-light-blue tw-opacity-50"
+      : "tw-border-dashed tw-border-blue"
+  } else {
+    return props.isGroup && !props.isEditingAvailability
+      ? "tw-border-white tw-bg-light-blue"
+      : "tw-border-blue"
+  }
+})
+
+const textColor = computed(() => {
+  const color =
+    props.isGroup && !props.isEditingAvailability
+      ? "white"
+      : props.noEventNames
+      ? "dark-gray"
+      : "blue"
+  return `tw-text-${color}`
+})
 </script>

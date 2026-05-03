@@ -21,11 +21,11 @@
         <v-btn v-if="showHelp" icon @click="helpDialog = true">
           <v-icon>mdi-information-outline</v-icon>
         </v-btn>
-        <v-btn v-else @click="$emit('input', false)" icon>
+        <v-btn v-else icon @click="emit('update:modelValue', false)">
           <v-icon>mdi-close</v-icon>
         </v-btn>
         <HelpDialog v-model="helpDialog">
-          <template v-slot:header>Availability groups</template>
+          <template #header>Availability groups</template>
           <div class="mb-4">
             Use availability groups to see group members' weekly calendar
             availabilities from Google Calendar. Your actual calendar events
@@ -36,21 +36,21 @@
     </v-card-title>
     <v-card-text class="tw-flex-1 tw-overflow-auto tw-px-4 tw-py-1 sm:tw-px-8">
       <v-form
-        ref="form"
-        class="tw-flex tw-flex-col tw-space-y-6"
+        ref="formRef"
         v-model="formValid"
+        class="tw-flex tw-flex-col tw-space-y-6"
         lazy-validation
         :disabled="loading"
       >
         <v-text-field
-          ref="name-field"
+          ref="nameField"
           v-model="name"
           placeholder="Name your group..."
           hide-details="auto"
           solo
-          @keyup.enter="blurNameField"
           :rules="nameRules"
           required
+          @keyup.enter="blurNameField"
         />
 
         <div>
@@ -58,7 +58,6 @@
           <div class="tw-flex tw-items-baseline tw-justify-center tw-space-x-2">
             <v-select
               v-model="startTime"
-              menu-props="auto"
               :items="times"
               hide-details
               solo
@@ -66,7 +65,6 @@
             <div>to</div>
             <v-select
               v-model="endTime"
-              menu-props="auto"
               :items="times"
               hide-details
               solo
@@ -87,18 +85,18 @@
               solo
               color="primary"
             >
-              <v-btn depressed v-show="!startOnMonday"> Sun </v-btn>
+              <v-btn v-show="!startOnMonday" depressed> Sun </v-btn>
               <v-btn depressed> Mon </v-btn>
               <v-btn depressed> Tue </v-btn>
               <v-btn depressed> Wed </v-btn>
               <v-btn depressed> Thu </v-btn>
               <v-btn depressed> Fri </v-btn>
               <v-btn depressed> Sat </v-btn>
-              <v-btn depressed v-show="startOnMonday"> Sun </v-btn>
+              <v-btn v-show="startOnMonday" depressed> Sun </v-btn>
             </v-btn-toggle>
           </v-input>
-          <v-checkbox class="tw-mt-2" v-model="startOnMonday" hide-details>
-            <template v-slot:label>
+          <v-checkbox v-model="startOnMonday" class="tw-mt-2" hide-details>
+            <template #label>
               <span class="tw-text-sm tw-text-very-dark-gray">
                 Start on Monday
               </span>
@@ -106,18 +104,16 @@
           </v-checkbox>
         </div>
 
-        <!-- <div v-if="!edit"> -->
         <EmailInput
           ref="emailInput"
-          :addedEmails="addedEmails"
-          @update:emails="(newEmails) => (emails = newEmails)"
-          @requestContactsAccess="requestContactsAccess"
+          :added-emails="addedEmails"
+          @update:emails="(newEmails) => { emails = newEmails }"
+          @request-contacts-access="requestContactsAccess"
         >
-          <template v-slot:header>
+          <template #header>
             <div class="tw-mb-2 tw-text-lg tw-text-black">Members</div>
           </template>
         </EmailInput>
-        <!-- </div> -->
 
         <div>
           <v-btn
@@ -133,7 +129,10 @@
           <v-expand-transition>
             <div v-show="showAdvancedOptions">
               <div class="tw-my-2">
-                <TimezoneSelector v-model="timezone" label="Timezone" />
+                <TimezoneSelector
+                  v-model="timezone"
+                  label="Timezone"
+                />
               </div>
             </div>
           </v-expand-transition>
@@ -163,337 +162,361 @@
   </v-card>
 </template>
 
-<script>
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from "vue"
+import { useRouter } from "vue-router"
+import { storeToRefs } from "pinia"
 import {
-  validateEmail,
-  isPhone,
   post,
   put,
-  timeNumToTimeString,
-  dateToTimeNum,
+  plainTimeToTimeNum,
+  resolveTimezoneValue,
   signInGoogle,
   getDateWithTimezone,
+  timeNumToPlainTime,
 } from "@/utils"
-import { mapState, mapActions } from "vuex"
-import { eventTypes, dayIndexToDayString, authTypes } from "@/constants"
+import { useMainStore } from "@/stores/main"
+import { eventTypes, authTypes, durations, hoursPlainTime } from "@/constants"
+import { posthog } from "@/plugins/posthog"
 import HelpDialog from "./HelpDialog.vue"
-import CalendarPermissionsCard from "./calendar_permission_dialogs/CalendarPermissionsCard.vue"
 import TimezoneSelector from "./schedule_overlap/TimezoneSelector.vue"
 import EmailInput from "./event/EmailInput.vue"
+import type { Event } from "@/types"
+import type { Timezone } from "@/composables/schedule_overlap/types"
+import { Temporal } from "temporal-polyfill"
+import type { SerializedEventDraft } from "@/composables/event/types"
 
-import dayjs from "dayjs"
-import utcPlugin from "dayjs/plugin/utc"
-import timezonePlugin from "dayjs/plugin/timezone"
-dayjs.extend(utcPlugin)
-dayjs.extend(timezonePlugin)
-
-export default {
-  name: "NewGroup",
-
-  emits: ["input"],
-
-  props: {
-    event: { type: Object },
-    edit: { type: Boolean, default: false },
-    dialog: { type: Boolean, default: true },
-    showHelp: { type: Boolean, default: false },
-    contactsPayload: { type: Object, default: () => ({}) },
-    folderId: { type: String, default: null },
-  },
-
-  components: {
-    HelpDialog,
-    TimezoneSelector,
-    EmailInput,
-    CalendarPermissionsCard,
-  },
-
-  data: () => ({
-    formValid: true,
-    name: "",
-    startTime: 9,
-    endTime: 17,
-    loading: false,
-    selectedDaysOfWeek: [],
-    startOnMonday: false,
-    emails: [],
-
-    showAdvancedOptions: false,
-    timezone: {},
-
-    helpDialog: false,
-    initialEventData: {},
-  }),
-
-  computed: {
-    ...mapState(["authUser"]),
-    nameRules() {
-      return [(v) => !!v || "Group name is required"]
-    },
-    selectedDaysRules() {
-      return [
-        (selectedDays) =>
-          selectedDays.length > 0 || "Please select at least one day",
-      ]
-    },
-    formEmpty() {
-      return (
-        this.name === "" &&
-        this.emails.length === 0 &&
-        this.selectedDaysOfWeek.length === 0
-      )
-    },
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-    times() {
-      const times = []
-
-      for (let h = 1; h < 12; ++h) {
-        times.push({ text: `${h} am`, value: h })
-      }
-      for (let h = 0; h < 12; ++h) {
-        times.push({ text: `${h == 0 ? 12 : h} pm`, value: h + 12 })
-      }
-      times.push({ text: "12 am", value: 0 })
-
-      return times
-    },
-    otherEventAttendees() {
-      return this.event && this.event.attendees
-        ? this.event.attendees
-            .map((a) => a.email)
-            .filter((email) => email !== this.authUser.email)
-        : []
-    },
-    addedEmails() {
-      if (Object.keys(this.contactsPayload).length > 0)
-        return this.contactsPayload.emails
-      return this.otherEventAttendees
-    },
-  },
-
-  mounted() {
-    if (Object.keys(this.contactsPayload).length > 0) {
-      this.name = this.contactsPayload.name
-      this.startTime = this.contactsPayload.startTime
-      this.endTime = this.contactsPayload.endTime
-      this.selectedDaysOfWeek = this.contactsPayload.selectedDaysOfWeek
-      this.startOnMonday = this.contactsPayload.startOnMonday
-
-      this.$refs.form.resetValidation()
-    }
-  },
-
-  methods: {
-    ...mapActions(["showError", "setEventFolder"]),
-    blurNameField() {
-      this.$refs["name-field"].blur()
-    },
-    reset() {
-      this.name = ""
-      this.startTime = 9
-      this.endTime = 17
-      this.selectedDaysOfWeek = []
-
-      this.$refs.form.resetValidation()
-    },
-    submit() {
-      if (!this.$refs.form.validate()) return
-
-      // Get duration of event
-      let duration = this.endTime - this.startTime
-      if (duration < 0) duration += 24
-
-      // Populate dates
-      const dates = []
-      const startTimeString = timeNumToTimeString(this.startTime)
-      this.selectedDaysOfWeek.sort((a, b) => a - b)
-      this.selectedDaysOfWeek = this.selectedDaysOfWeek.filter((dayIndex) => {
-        return this.startOnMonday ? dayIndex !== 0 : dayIndex !== 7
-      })
-      for (const dayIndex of this.selectedDaysOfWeek) {
-        const day = dayIndexToDayString[dayIndex]
-        const date = dayjs.tz(`${day} ${startTimeString}`, this.timezone.value)
-
-        // The reference dates (dayIndexToDayString) are from June 2018, which may have
-        // a different DST offset than the current date. Adjust so the stored UTC time
-        // corresponds to the user's current timezone offset.
-        const refOffset = date.utcOffset()
-        const currentOffset = dayjs().tz(this.timezone.value).utcOffset()
-        dates.push(date.subtract(currentOffset - refOffset, 'minutes').toDate())
-      }
-
-      this.loading = true
-
-      const name = this.name
-      const type = eventTypes.GROUP
-      const attendees = this.emails
-      const startOnMonday = this.startOnMonday
-
-      if (!this.edit) {
-        // Create a new group
-        post("/events", {
-          name,
-          duration,
-          dates,
-          attendees,
-          type,
-          startOnMonday,
-          creatorPosthogId: this.$posthog?.get_distinct_id(),
-        })
-          .then(async ({ eventId, shortId }) => {
-            if (this.authUser) {
-              await this.setEventFolder({ eventId, folderId: this.folderId })
-            }
-            this.$router.push({
-              name: "group",
-              params: {
-                groupId: shortId ?? eventId,
-                initialTimezone: this.timezone,
-              },
-            })
-            this.$emit("input", false)
-
-            this.$posthog?.capture("Availability group created", {
-              eventId: eventId,
-              eventName: name,
-              eventDuration: duration,
-              eventDates: JSON.stringify(dates),
-              eventAttendees: attendees,
-              eventType: type,
-              eventStartOnMonday: startOnMonday,
-            })
-          })
-          .catch((err) => {
-            this.showError(
-              "There was a problem creating that group! Please try again later."
-            )
-            console.error(err)
-          })
-          .finally(() => {
-            this.loading = false
-          })
-      } else {
-        // Edit group
-        put(`/events/${this.event._id}`, {
-          name,
-          duration,
-          dates,
-          attendees,
-          type,
-          startOnMonday,
-        })
-          .then(() => {
-            this.$posthog?.capture("Availability group edited", {
-              eventId: this.event._id,
-              eventName: name,
-              eventDuration: duration,
-              eventDates: JSON.stringify(dates),
-              eventAttendees: attendees,
-              eventType: type,
-              eventStartOnMonday: startOnMonday,
-            })
-
-            this.$emit("input", false)
-            this.reset()
-            window.location.reload()
-          })
-          .catch((err) => {
-            this.showError(
-              "There was a problem editing this group! Please try again later."
-            )
-          })
-          .finally(() => {
-            this.loading = false
-          })
-      }
-    },
-    /** Redirects user to oauth page requesting access to the user's contacts */
-    requestContactsAccess({ emails }) {
-      const payload = {
-        emails,
-        name: this.name,
-        startTime: this.startTime,
-        endTime: this.endTime,
-        selectedDaysOfWeek: this.selectedDaysOfWeek,
-      }
-      signInGoogle({
-        state: {
-          type: authTypes.EVENT_CONTACTS,
-          eventId: this.event ? this.event.shortId ?? this.event._id : "",
-          openNewGroup: true,
-          payload,
-        },
-        requestContactsPermission: true,
-      })
-    },
-    /** Populate fields with data from event */
-    updateFieldsFromEvent() {
-      if (this.event) {
-        this.name = this.event.name
-
-        // Set start time, accounting for the timezone
-        this.startTime = Math.floor(
-          dateToTimeNum(getDateWithTimezone(this.event.dates[0]), true)
-        )
-        this.startTime %= 24
-
-        this.endTime = (this.startTime + this.event.duration) % 24
-        this.startOnMonday = this.event.startOnMonday
-
-        const selectedDaysOfWeek = []
-        for (let date of this.event.dates) {
-          date = getDateWithTimezone(date)
-
-          if (this.startOnMonday && date.getUTCDay() === 0) {
-            selectedDaysOfWeek.push(7)
-          } else {
-            selectedDaysOfWeek.push(date.getUTCDay())
-          }
-        }
-        this.selectedDaysOfWeek = selectedDaysOfWeek
-
-        this.emails = this.otherEventAttendees
-      }
-    },
-    resetToEventData() {
-      this.updateFieldsFromEvent()
-      this.$refs.emailInput.reset()
-    },
-    setInitialEventData() {
-      this.initialEventData = {
-        name: this.name,
-        startTime: this.startTime,
-        endTime: this.endTime,
-        selectedDaysOfWeek: this.selectedDaysOfWeek,
-        emails: [...this.emails],
-      }
-    },
-    hasEventBeenEdited() {
-      return (
-        this.name !== this.initialEventData.name ||
-        this.startTime !== this.initialEventData.startTime ||
-        this.endTime !== this.initialEventData.endTime ||
-        JSON.stringify(this.selectedDaysOfWeek) !==
-          JSON.stringify(this.initialEventData.selectedDaysOfWeek) ||
-        JSON.stringify(this.emails) !==
-          JSON.stringify(this.initialEventData.emails)
-      )
-    },
-  },
-
-  watch: {
-    event: {
-      immediate: true,
-      handler() {
-        this.updateFieldsFromEvent()
-        this.setInitialEventData()
-      },
-    },
-    formEmpty(val) {
-      this.$emit("update:formEmpty", val)
-    },
-  },
+interface FormRef {
+  validate: () => Promise<{ valid: boolean }> | boolean
+  resetValidation: () => void
 }
+
+interface EmailInputRef { reset: () => void }
+interface NameFieldRef { blur: () => void }
+
+const props = withDefaults(
+  defineProps<{
+    event?: Event
+    edit?: boolean
+    dialog?: boolean
+    showHelp?: boolean
+    contactsPayload?: SerializedEventDraft
+    folderId?: string | null
+  }>(),
+  {
+    event: undefined,
+    edit: false,
+    dialog: true,
+    showHelp: false,
+    contactsPayload: () => ({}),
+    folderId: null,
+  }
+)
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+  "update:formEmpty": [empty: boolean]
+}>()
+
+const router = useRouter()
+const mainStore = useMainStore()
+const { authUser } = storeToRefs(mainStore)
+
+const formRef = ref<FormRef | null>(null)
+const nameField = ref<NameFieldRef | null>(null)
+const emailInput = ref<EmailInputRef | null>(null)
+
+const formValid = ref(true)
+const name = ref("")
+const startTime = ref(hoursPlainTime.NINE)
+const endTime = ref(hoursPlainTime.SEVENTEEN)
+const loading = ref(false)
+const selectedDaysOfWeek = ref<number[]>([])
+const startOnMonday = ref(false)
+const emails = ref<string[]>([])
+
+const showAdvancedOptions = ref(false)
+const timezone = ref<Timezone>({ value: "", label: "", gmtString: "", offset: durations.ZERO })
+
+const helpDialog = ref(false)
+const initialEventData = ref<{
+  name: string
+  startTime: Temporal.PlainTime
+  endTime: Temporal.PlainTime
+  selectedDaysOfWeek: number[]
+  emails: string[]
+}>({
+  name: "",
+  startTime: hoursPlainTime.NINE,
+  endTime: hoursPlainTime.SEVENTEEN,
+  selectedDaysOfWeek: [],
+  emails: [],
+})
+
+const nameRules = computed(() => [
+  (v: string) => !!v || "Group name is required",
+])
+const selectedDaysRules = computed(() => [
+  (selectedDays: number[]) =>
+    selectedDays.length > 0 || "Please select at least one day",
+])
+const formEmpty = computed(
+  () =>
+    name.value === "" &&
+    emails.value.length === 0 &&
+    selectedDaysOfWeek.value.length === 0
+)
+const times = computed(() => {
+  const t: { text: string; value: number }[] = []
+  for (let h = 1; h < 12; ++h) t.push({ text: `${String(h)} am`, value: h })
+  for (let h = 0; h < 12; ++h)
+    t.push({ text: `${String(h == 0 ? 12 : h)} pm`, value: h + 12 })
+  t.push({ text: "12 am", value: 0 })
+  return t
+})
+const normalizeDraftTime = (
+  time: SerializedEventDraft["startTime"],
+  fallback: Temporal.PlainTime
+): Temporal.PlainTime => {
+  if (time == null) return fallback
+  if (typeof time === "number") return timeNumToPlainTime(time)
+  return Temporal.PlainTime.from(time)
+}
+const otherEventAttendees = computed(() =>
+  props.event?.attendees
+    ? props.event.attendees
+        .map((a) => a.email)
+        .filter((email): email is string => !!email && email !== authUser.value?.email)
+    : []
+)
+const addedEmails = computed(() => {
+  if (Object.keys(props.contactsPayload).length > 0)
+    return props.contactsPayload.emails ?? []
+  return otherEventAttendees.value
+})
+
+onMounted(() => {
+  if (Object.keys(props.contactsPayload).length > 0) {
+    name.value = props.contactsPayload.name ?? ""
+    startTime.value = normalizeDraftTime(props.contactsPayload.startTime, hoursPlainTime.NINE)
+    endTime.value = normalizeDraftTime(props.contactsPayload.endTime, hoursPlainTime.SEVENTEEN)
+    selectedDaysOfWeek.value = props.contactsPayload.selectedDaysOfWeek ?? []
+    startOnMonday.value = props.contactsPayload.startOnMonday ?? false
+
+    formRef.value?.resetValidation()
+  }
+})
+
+const blurNameField = () => {
+  nameField.value?.blur()
+}
+const reset = () => {
+  name.value = ""
+  startTime.value = hoursPlainTime.NINE
+  endTime.value = hoursPlainTime.SEVENTEEN
+  selectedDaysOfWeek.value = []
+
+  formRef.value?.resetValidation()
+}
+
+const submit = async () => {
+  const result = await formRef.value?.validate()
+  const valid = typeof result === "boolean" ? result : result?.valid
+  if (!valid) return
+  const timezoneValue = resolveTimezoneValue(timezone.value.value)
+
+  let duration = endTime.value.since(startTime.value, { largestUnit: "hours" })
+  if (duration.total("hours") <= 0) {
+    duration = duration.add({ hours: 24 })
+  }
+
+  const dates: Temporal.ZonedDateTime[] = []
+  selectedDaysOfWeek.value.sort((a, b) => a - b)
+  selectedDaysOfWeek.value = selectedDaysOfWeek.value.filter((dayIndex) => {
+    return startOnMonday.value ? dayIndex !== 0 : dayIndex !== 7
+  })
+  for (const dayIndex of selectedDaysOfWeek.value) {
+    // For group events, we need to find the next occurrence of this day
+    
+    // Get current date in the specified timezone
+    const now = Temporal.Now.zonedDateTimeISO(timezoneValue)
+    const currentDayOfWeek = now.dayOfWeek // 1-7 (Mon-Sun)
+    const targetDayOfWeek = dayIndex === 7 ? 7 : dayIndex // Convert from Sunday-based to Monday-based
+    
+    // Calculate days until next occurrence
+    let daysUntil = targetDayOfWeek - currentDayOfWeek
+    if (daysUntil < 0) daysUntil += 7
+    
+    const targetDate = now.add({ days: daysUntil }).toPlainDate()
+    const targetZDT = targetDate.toZonedDateTime({ 
+      timeZone: timezoneValue,
+      plainTime: startTime.value
+    })
+    dates.push(targetZDT)
+  }
+
+  loading.value = true
+
+  const groupName = name.value
+  const type = eventTypes.GROUP
+  const attendees = emails.value
+  const startMon = startOnMonday.value
+
+  if (!props.edit) {
+    post<{ eventId: string; shortId?: string }>("/events", {
+      name: groupName,
+      duration,
+      dates,
+      attendees,
+      type,
+      startOnMonday: startMon,
+      creatorPosthogId: posthog.get_distinct_id(),
+    })
+      .then(async ({ eventId, shortId }) => {
+        if (authUser.value) {
+          await mainStore.setEventFolder({ eventId, folderId: props.folderId })
+        }
+        void router.push({
+          name: "group",
+          params: { groupId: shortId ?? eventId },
+        })
+        emit("update:modelValue", false)
+
+        posthog.capture("Availability group created", {
+          eventId,
+          eventName: groupName,
+          eventDuration: duration,
+          eventDates: JSON.stringify(dates),
+          eventAttendees: attendees,
+          eventType: type,
+          eventStartOnMonday: startMon,
+        })
+      })
+      .catch((err: unknown) => {
+        mainStore.showError(
+          "There was a problem creating that group! Please try again later."
+        )
+        console.error(err)
+      })
+      .finally(() => {
+        loading.value = false
+      })
+  } else if (props.event) {
+    put(`/events/${props.event._id ?? ""}`, {
+      name: groupName,
+      duration,
+      dates,
+      attendees,
+      type,
+      startOnMonday: startMon,
+    })
+      .then(() => {
+        posthog.capture("Availability group edited", {
+          eventId: props.event?._id,
+          eventName: groupName,
+          eventDuration: duration,
+          eventDates: JSON.stringify(dates),
+          eventAttendees: attendees,
+          eventType: type,
+          eventStartOnMonday: startMon,
+        })
+
+        emit("update:modelValue", false)
+        reset()
+        window.location.reload()
+      })
+      .catch(() => {
+        mainStore.showError(
+          "There was a problem editing this group! Please try again later."
+        )
+      })
+      .finally(() => {
+        loading.value = false
+      })
+  }
+}
+
+const requestContactsAccess = ({ emails: requestEmails }: { emails: (string | { email: string })[] }) => {
+  // Convert Remindee[] (which can be strings or Contact objects) to string[]
+  const emailStrings = requestEmails.map(e => typeof e === 'string' ? e : e.email)
+  const payload = {
+    emails: emailStrings,
+    name: name.value,
+    startTime: plainTimeToTimeNum(startTime.value),
+    endTime: plainTimeToTimeNum(endTime.value),
+    selectedDaysOfWeek: selectedDaysOfWeek.value,
+  }
+  signInGoogle({
+    state: {
+      type: authTypes.EVENT_CONTACTS,
+      eventId: props.event ? props.event.shortId ?? props.event._id : "",
+      openNewGroup: true,
+      payload,
+    },
+    requestContactsPermission: true,
+  })
+}
+
+const updateFieldsFromEvent = () => {
+  if (props.event) {
+    name.value = props.event.name ?? ""
+
+    const eventDate = props.event.dates?.at(0)
+    if (eventDate != null) {
+      startTime.value = getDateWithTimezone(eventDate).toPlainTime()
+
+      const durationHours = props.event.duration ?? durations.ZERO
+      endTime.value = startTime.value.add(durationHours)
+    }
+    startOnMonday.value = props.event.startOnMonday ?? false
+
+    const days: number[] = []
+    for (let date of props.event.dates ?? []) {
+      const d = getDateWithTimezone(date)
+      // Temporal dayOfWeek returns 1-7 (Mon-Sun), which is what we need
+      days.push(d.dayOfWeek)
+    }
+    selectedDaysOfWeek.value = days
+
+    emails.value = otherEventAttendees.value
+  }
+}
+const resetToEventData = () => {
+  updateFieldsFromEvent()
+  emailInput.value?.reset()
+}
+const setInitialEventData = () => {
+  initialEventData.value = {
+    name: name.value,
+    startTime: startTime.value,
+    endTime: endTime.value,
+    selectedDaysOfWeek: [...selectedDaysOfWeek.value],
+    emails: [...emails.value],
+  }
+}
+const hasEventBeenEdited = () => {
+  return (
+    name.value !== initialEventData.value.name ||
+    startTime.value !== initialEventData.value.startTime ||
+    endTime.value !== initialEventData.value.endTime ||
+    JSON.stringify(selectedDaysOfWeek.value) !==
+      JSON.stringify(initialEventData.value.selectedDaysOfWeek) ||
+    JSON.stringify(emails.value) !==
+      JSON.stringify(initialEventData.value.emails)
+  )
+}
+
+defineExpose({ reset, resetToEventData, hasEventBeenEdited })
+
+watch(
+  () => props.event,
+  () => {
+    updateFieldsFromEvent()
+    setInitialEventData()
+  },
+  { immediate: true }
+)
+watch(formEmpty, (val) => {
+  emit("update:formEmpty", val)
+})
 </script>

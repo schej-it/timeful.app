@@ -4,7 +4,7 @@
   >
     <v-img
       alt="schejie sad"
-      src="@/assets/schejie/sad.png"
+      src="@/assets/schej/sad.png"
       transition="fade-transition"
       contain
       class="tw-mb-6 tw-h-[150px] tw-flex-none sm:tw-h-[200px]"
@@ -14,27 +14,15 @@
         404 - Page not found
       </h1>
       <div class="tw-text-center tw-text-dark-gray">
-        The page you’re looking for doesn’t exist or an error occurred.
+        The page you're looking for doesn't exist or an error occurred.
       </div>
     </div>
     <v-btn href="/home" color="primary">Back to home</v-btn>
   </div>
 </template>
 
-<script>
-import { isPhone } from "@/utils"
+<script setup lang="ts">
+import { useHead } from "@unhead/vue"
 
-export default {
-  name: "PageNotFound",
-
-  metaInfo: {
-    title: "Page not found - Timeful",
-  },
-
-  computed: {
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-  },
-}
+useHead({ title: "Page not found - Timeful" })
 </script>

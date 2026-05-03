@@ -17,29 +17,20 @@
         <span class="tw-text-sm">Potential meeting times</span>
       </div>
     </div>
-    <v-btn color="primary" @click="saveTempTimes" :disabled="numTempTimes === 0"
+    <v-btn color="primary" :disabled="numTempTimes === 0" @click="emit('saveTempTimes')"
       >Next</v-btn
     >
   </div>
 </template>
 
-<script>
-export default {
-  name: "SpecificTimesInstructions",
-  props: {
-    numTempTimes: {
-      type: Number,
-      required: true,
-    },
-  },
-  methods: {
-    saveTempTimes() {
-      this.$emit("saveTempTimes")
-    },
-  },
-}
+<script setup lang="ts">
+defineProps<{
+  numTempTimes: number
+}>()
+
+const emit = defineEmits<{
+  saveTempTimes: []
+}>()
 </script>
 
-<style scoped>
-/* Styles can be added here if needed */
-</style>
+<style scoped></style>

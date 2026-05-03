@@ -22,42 +22,49 @@
   </div>
 </template>
 
-<script>
-import { mapActions } from "vuex"
+<script setup lang="ts">
+import { watch, onMounted } from "vue"
+import { useMainStore } from "@/stores/main"
 import { upgradeDialogTypes } from "@/constants"
 
-export default {
-  name: "PubliftAd",
+const props = defineProps<{
+  showAd?: boolean
+  fuseId?: string
+}>()
 
-  props: {
-    showAd: { type: Boolean, default: false },
-    fuseId: { type: String, default: "" },
-  },
+const mainStore = useMainStore()
 
-  mounted() {
-    if (this.showAd && this.fuseId) this.$nextTick(() => this.registerZone())
-  },
-
-  watch: {
-    showAd: {
-      handler(val) {
-        if (val && this.fuseId) this.$nextTick(() => this.registerZone())
-      },
-    },
-  },
-
-  methods: {
-    ...mapActions(["showUpgradeDialog"]),
-    removeAds() {
-      this.showUpgradeDialog({ type: upgradeDialogTypes.REMOVE_ADS })
-    },
-    registerZone() {
-      const fuseId = this.fuseId
-      const fusetag = window.fusetag || (window.fusetag = { que: [] })
-      fusetag.que.push(function () {
-        fusetag.registerZone(fuseId)
-      })
-    },
-  },
+function removeAds() {
+  mainStore.showUpgradeDialog({ type: upgradeDialogTypes.REMOVE_ADS })
 }
+
+function registerZone() {
+  const fuseId = props.fuseId
+  if (!fuseId) return
+  
+  window.fusetag ??= { que: [], registerZone: () => void 0 }
+  
+  window.fusetag.que.push(function () {
+    window.fusetag?.registerZone?.(fuseId)
+  })
+}
+
+watch(
+  () => props.showAd,
+  (val) => {
+    if (val && props.fuseId) {
+      setTimeout(() => {
+        registerZone()
+      }, 0)
+    }
+  }
+)
+
+onMounted(() => {
+  if (props.showAd && props.fuseId) {
+    setTimeout(() => {
+      registerZone()
+    }, 0)
+  }
+})
 </script>

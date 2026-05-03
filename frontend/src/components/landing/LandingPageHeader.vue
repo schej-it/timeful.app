@@ -1,8 +1,8 @@
 <template>
   <div v-if="isPhone">
     <v-menu v-model="menuOpen">
-      <template v-slot:activator="{ on, attrs }">
-        <v-btn icon v-bind="attrs" v-on="on">
+      <template #activator="{ props }">
+        <v-btn icon v-bind="props">
           <v-icon>mdi-menu</v-icon>
         </v-btn>
       </template>
@@ -16,28 +16,10 @@
   </div>
 </template>
 
-<script>
-import { isPhone } from "@/utils"
+<script setup lang="ts">
+import { ref } from "vue"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 
-export default {
-  name: "LandingPageHeader",
-
-  data() {
-    return {
-      menuOpen: false,
-    }
-  },
-
-  computed: {
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-  },
-
-  methods: {
-    toggleMenu() {
-      this.menuOpen = !this.menuOpen
-    },
-  },
-}
+const { isPhone } = useDisplayHelpers()
+const menuOpen = ref(false)
 </script>

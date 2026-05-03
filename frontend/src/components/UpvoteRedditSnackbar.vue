@@ -1,9 +1,9 @@
 <template>
   <v-snackbar
     v-if="!isPhone"
-    min-width="unset"
     v-model="show"
-    bottom
+    min-width="unset"
+    location="bottom"
     :timeout="-1"
     class="tw-bottom-0 tw-z-50"
     rounded="lg"
@@ -22,61 +22,49 @@
       Upvote
       <v-icon small class="-tw-mr-px -tw-mt-px">mdi-arrow-up-bold</v-icon>
     </v-btn>
-    <template v-slot:action="{ attrs }">
-      <v-btn v-bind="attrs" icon @click="dismiss" class="-tw-ml-2 tw-mr-2">
+    <template #actions>
+      <v-btn icon class="-tw-ml-2 tw-mr-2" @click="dismiss">
         <v-icon>mdi-close</v-icon>
       </v-btn>
     </template>
   </v-snackbar>
 </template>
 
-<script>
-import { isPhone } from "@/utils"
+<script setup lang="ts">
+import { computed, ref, watch } from "vue"
+import { useRoute } from "vue-router"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import { posthog } from "@/plugins/posthog"
 
-export default {
-  name: "UpvoteRedditSnackbar",
+const { isPhone } = useDisplayHelpers()
+const route = useRoute()
 
-  data() {
-    return {
-      redditUrl:
-        "https://www.reddit.com/r/opensource/comments/1klu471/i_made_a_doodle_alternative/",
-      show: false,
-    }
-  },
+const redditUrl =
+  "https://www.reddit.com/r/opensource/comments/1klu471/i_made_a_doodle_alternative/"
+const show = ref(false)
 
-  computed: {
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-    localStorageKey() {
-      return `upvoteRedditSnackbarDismissed_${this.redditUrl}`
-    },
-  },
+const localStorageKey = computed(
+  () => `upvoteRedditSnackbarDismissed_${redditUrl}`
+)
 
-  methods: {
-    dismiss() {
-      this.show = false
-      localStorage.setItem(this.localStorageKey, "true")
-      this.$posthog.capture("reddit_upvote_snackbar_dismissed")
-    },
-    trackRedditClick() {
-      this.$posthog.capture("reddit_upvote_snackbar_clicked", {
-        redditUrl: this.redditUrl,
-      })
-    },
-  },
-
-  watch: {
-    $route: {
-      immediate: true,
-      handler() {
-        const showOnRoute = this.$route.name === "home" // || this.$route.name === "event"
-        const userHasDismissed =
-          localStorage.getItem(this.localStorageKey) === "true"
-
-        this.show = !userHasDismissed && showOnRoute
-      },
-    },
-  },
+const dismiss = () => {
+  show.value = false
+  localStorage.setItem(localStorageKey.value, "true")
+  posthog.capture("reddit_upvote_snackbar_dismissed")
 }
+
+const trackRedditClick = () => {
+  posthog.capture("reddit_upvote_snackbar_clicked", { redditUrl })
+}
+
+watch(
+  () => route.name,
+  () => {
+    const showOnRoute = route.name === "home"
+    const userHasDismissed =
+      localStorage.getItem(localStorageKey.value) === "true"
+    show.value = !userHasDismissed && showOnRoute
+  },
+  { immediate: true }
+)
 </script>

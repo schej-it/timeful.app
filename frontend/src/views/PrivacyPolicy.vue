@@ -6,12 +6,8 @@
   ></iframe>
 </template>
 
-<script>
-export default {
-  name: "PrivacyPolicy",
+<script setup lang="ts">
+import { useHead } from "@unhead/vue"
 
-  metaInfo: {
-    title: "Privacy Policy - Timeful",
-  },
-}
+useHead({ title: "Privacy Policy - Timeful" })
 </script>

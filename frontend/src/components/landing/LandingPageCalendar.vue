@@ -5,285 +5,201 @@
       <ScheduleOverlap
         ref="scheduleOverlap"
         :event="event"
-        :sampleCalendarEventsByDay="calendarEventsByDay"
-        calendarOnly
+        :sample-calendar-events-by-day="calendarEventsByDay"
+        calendar-only
         :interactable="false"
-        :showSnackbar="false"
-        :alwaysShowCalendarEvents="true"
-        animateTimeslotAlways
-        :showHintText="false"
+        :show-snackbar="false"
+        :always-show-calendar-events="true"
+        animate-timeslot-always
+        :show-hint-text="false"
       />
     </div>
   </v-card>
 </template>
 
-<script>
-import ScheduleOverlap from "@/components//schedule_overlap/ScheduleOverlap"
+<script setup lang="ts">
+import { computed, onMounted, ref } from "vue"
+import { Temporal } from "temporal-polyfill"
+import ScheduleOverlap from "@/components/schedule_overlap/ScheduleOverlap.vue"
 import {
-  getDateDayOffset,
-  getDateWithTimeNum,
-  isPhone,
-  dateToTimeNum,
   processTimeBlocks,
 } from "@/utils"
+import { UTC } from "@/constants"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import type { CalendarEventsByDay } from "@/composables/schedule_overlap/types"
 
-export default {
-  name: "LandingPageCalendar",
-
-  components: {
-    ScheduleOverlap,
-  },
-
-  data: () => ({
-    dates: [
-      getDateWithTimeNum(getDateDayOffset(new Date(), -1), 9),
-      getDateWithTimeNum(new Date(), 9),
-      getDateWithTimeNum(getDateDayOffset(new Date(), 1), 9),
-    ],
-
-    responses: {},
-
-    calendarEventsByDay: [],
-  }),
-
-  computed: {
-    event() {
-      return {
-        dates: this.dates,
-        duration: this.duration,
-        startTime: this.startTime,
-        endTime: this.endTime,
-        responses: this.responses,
-      }
-    },
-    duration() {
-      return isPhone(this.$vuetify) ? 6 : 8
-    },
-    startTime() {
-      return dateToTimeNum(new Date(this.dates[0]), true)
-    },
-    endTime() {
-      return (this.startTime + this.duration) % 24
-    },
-  },
-
-  methods: {
-    getCalendarEventsByDay() {
-      const [day1, day2, day3] = this.dates
-      const events = [
-        {
-          startDate: getDateWithTimeNum(day1, 9),
-          endDate: getDateWithTimeNum(day1, 10),
-          summary: "Coffee with Jen",
-        },
-        {
-          startDate: getDateWithTimeNum(day2, 11),
-          endDate: getDateWithTimeNum(day2, 14),
-          summary: "Karaoke with friends",
-        },
-        {
-          startDate: getDateWithTimeNum(day3, 13),
-          endDate: getDateWithTimeNum(day3, 17),
-          summary: "Study session",
-        },
-      ]
-
-      if (!isPhone(this.$vuetify)) {
-        events.push({
-          startDate: getDateWithTimeNum(day3, 20.5),
-          endDate: getDateWithTimeNum(day3, 22),
-          summary: "Hackathon meeting",
-        })
-      }
-
-      this.calendarEventsByDay = processTimeBlocks(
-        this.dates,
-        this.duration,
-        events
-      )
-    },
-    getResponses() {
-      const [day1, day2, day3] = this.dates
-      this.responses = {
-        "62828fec1bc681fa020632f2": {
-          user: { _id: "1", name: "1" },
-          availability: [
-            getDateWithTimeNum(day1, 10),
-            getDateWithTimeNum(day1, 10.5),
-            getDateWithTimeNum(day1, 11),
-            getDateWithTimeNum(day1, 11.5),
-            getDateWithTimeNum(day1, 12),
-            getDateWithTimeNum(day1, 12.5),
-            getDateWithTimeNum(day1, 13),
-            getDateWithTimeNum(day1, 14.5),
-            getDateWithTimeNum(day1, 15),
-            getDateWithTimeNum(day1, 15.5),
-            getDateWithTimeNum(day1, 16),
-            getDateWithTimeNum(day1, 16.5),
-            getDateWithTimeNum(day1, 17),
-            getDateWithTimeNum(day1, 17.5),
-            getDateWithTimeNum(day1, 18),
-            getDateWithTimeNum(day1, 18.5),
-            getDateWithTimeNum(day1, 19),
-            getDateWithTimeNum(day1, 20.5),
-            getDateWithTimeNum(day1, 21),
-            getDateWithTimeNum(day1, 21.5),
-
-            getDateWithTimeNum(day2, 9),
-            getDateWithTimeNum(day2, 9.5),
-            getDateWithTimeNum(day2, 14),
-            getDateWithTimeNum(day2, 14.5),
-            getDateWithTimeNum(day2, 15),
-            getDateWithTimeNum(day2, 15.5),
-            getDateWithTimeNum(day2, 16),
-            getDateWithTimeNum(day2, 16.5),
-            getDateWithTimeNum(day2, 17),
-            getDateWithTimeNum(day2, 17.5),
-            getDateWithTimeNum(day2, 18),
-            getDateWithTimeNum(day2, 18.5),
-            getDateWithTimeNum(day2, 19),
-            getDateWithTimeNum(day2, 19.5),
-            getDateWithTimeNum(day2, 20),
-            getDateWithTimeNum(day2, 21.5),
-
-            getDateWithTimeNum(day3, 12.5),
-            getDateWithTimeNum(day3, 17),
-            getDateWithTimeNum(day3, 19.5),
-          ],
-        },
-        "628292fe6e12d2baa9c01395": {
-          user: { _id: "2", name: "2" },
-          availability: [
-            getDateWithTimeNum(day1, 14),
-            getDateWithTimeNum(day1, 14.5),
-            getDateWithTimeNum(day1, 15),
-            getDateWithTimeNum(day1, 15.5),
-            getDateWithTimeNum(day1, 16),
-            getDateWithTimeNum(day1, 16.5),
-            getDateWithTimeNum(day1, 17),
-            getDateWithTimeNum(day1, 17.5),
-            getDateWithTimeNum(day1, 18),
-            getDateWithTimeNum(day1, 18.5),
-            getDateWithTimeNum(day1, 19),
-            getDateWithTimeNum(day1, 19.5),
-            getDateWithTimeNum(day1, 20),
-            getDateWithTimeNum(day1, 20.5),
-            getDateWithTimeNum(day1, 21),
-            getDateWithTimeNum(day1, 21.5),
-
-            getDateWithTimeNum(day2, 9),
-            getDateWithTimeNum(day2, 9.5),
-            getDateWithTimeNum(day2, 10),
-            getDateWithTimeNum(day2, 10.5),
-            getDateWithTimeNum(day2, 16),
-            getDateWithTimeNum(day2, 16.5),
-            getDateWithTimeNum(day2, 17),
-            getDateWithTimeNum(day2, 17.5),
-            getDateWithTimeNum(day2, 18),
-            getDateWithTimeNum(day2, 18.5),
-            getDateWithTimeNum(day2, 19),
-            getDateWithTimeNum(day2, 19.5),
-            getDateWithTimeNum(day2, 20),
-            getDateWithTimeNum(day2, 20.5),
-            getDateWithTimeNum(day2, 21),
-            getDateWithTimeNum(day2, 21.5),
-
-            getDateWithTimeNum(day3, 9),
-            getDateWithTimeNum(day3, 9.5),
-            getDateWithTimeNum(day3, 10),
-            getDateWithTimeNum(day3, 12.5),
-            getDateWithTimeNum(day3, 17),
-            getDateWithTimeNum(day3, 18),
-            getDateWithTimeNum(day3, 18.5),
-            getDateWithTimeNum(day3, 19),
-            getDateWithTimeNum(day3, 19.5),
-            getDateWithTimeNum(day3, 20),
-          ],
-        },
-        "628208870df4418ff4213757": {
-          user: { _id: "3", name: "3" },
-          availability: [
-            getDateWithTimeNum(day1, 11),
-            getDateWithTimeNum(day1, 11.5),
-            getDateWithTimeNum(day1, 12),
-            getDateWithTimeNum(day1, 12.5),
-            getDateWithTimeNum(day1, 13),
-            getDateWithTimeNum(day1, 13.5),
-            getDateWithTimeNum(day1, 14),
-            getDateWithTimeNum(day1, 14.5),
-            getDateWithTimeNum(day1, 15),
-            getDateWithTimeNum(day1, 15.5),
-            getDateWithTimeNum(day1, 16),
-            getDateWithTimeNum(day1, 16.5),
-            getDateWithTimeNum(day1, 20),
-            getDateWithTimeNum(day1, 20.5),
-            getDateWithTimeNum(day1, 21),
-            getDateWithTimeNum(day1, 21.5),
-
-            getDateWithTimeNum(day2, 9),
-            getDateWithTimeNum(day2, 9.5),
-            getDateWithTimeNum(day2, 10),
-            getDateWithTimeNum(day2, 10.5),
-            getDateWithTimeNum(day2, 19),
-            getDateWithTimeNum(day2, 19.5),
-            getDateWithTimeNum(day2, 20),
-            getDateWithTimeNum(day2, 20.5),
-            getDateWithTimeNum(day2, 21),
-            getDateWithTimeNum(day2, 21.5),
-
-            getDateWithTimeNum(day3, 9),
-            getDateWithTimeNum(day3, 9.5),
-            getDateWithTimeNum(day3, 10),
-            getDateWithTimeNum(day3, 10.5),
-            getDateWithTimeNum(day3, 11),
-            getDateWithTimeNum(day3, 11.5),
-            getDateWithTimeNum(day3, 12),
-            getDateWithTimeNum(day3, 12.5),
-            getDateWithTimeNum(day3, 17),
-            getDateWithTimeNum(day3, 17.5),
-            getDateWithTimeNum(day3, 18),
-            getDateWithTimeNum(day3, 18.5),
-            getDateWithTimeNum(day3, 19),
-            getDateWithTimeNum(day3, 19.5),
-            getDateWithTimeNum(day3, 20),
-          ],
-        },
-      }
-
-      for (const id of Object.keys(this.responses)) {
-        const fixedAvailability = []
-        for (const date of this.responses[id].availability) {
-          fixedAvailability.push(date)
-          const dateCopy = new Date(date)
-          dateCopy.setMinutes(date.getMinutes() + 15)
-          fixedAvailability.push(dateCopy)
-        }
-        this.responses[id].availability = fixedAvailability
-      }
-    },
-    reset() {
-      this.responses = {}
-      this.calendarEventsByDay = []
-    },
-    playAnimation() {
-      this.reset()
-
-      this.$refs.scheduleOverlap.startEditing()
-      setTimeout(() => {
-        this.getCalendarEventsByDay()
-        this.getResponses()
-        setTimeout(() => {
-          this.$refs.scheduleOverlap.setAvailabilityAutomatically()
-          setTimeout(() => {
-            this.$refs.scheduleOverlap.stopEditing()
-          }, 2000)
-        }, 500)
-      }, 200)
-    },
-  },
-
-  mounted() {
-    this.playAnimation()
-  },
+interface ScheduleOverlapRef {
+  startEditing: () => void
+  stopEditing: () => void
+  setAvailabilityAutomatically: () => void
 }
+
+const { isPhone } = useDisplayHelpers()
+
+const dates = ref<Temporal.ZonedDateTime[]>([
+  Temporal.Now.zonedDateTimeISO(UTC).subtract({ days: 1 }).with({ hour: 9 }),
+  Temporal.Now.zonedDateTimeISO(UTC).with({ hour: 9 }),
+  Temporal.Now.zonedDateTimeISO(UTC).add({ days: 1 }).with({ hour: 9 }),
+])
+const responses = ref<Record<string, unknown>>({})
+const calendarEventsByDay = ref<CalendarEventsByDay>([])
+
+const scheduleOverlap = ref<ScheduleOverlapRef | null>(null)
+
+const duration = computed(() => Temporal.Duration.from({hours: (isPhone.value ? 6 : 8) }))
+const startTime = computed(() => {
+  const zdt = dates.value[0]
+  return zdt
+})
+
+const endTime = computed(() => (startTime.value.add(duration.value)))
+
+const event = computed(() => ({
+  dates: dates.value,
+  duration: duration.value,
+  startTime: startTime.value.toPlainTime(),
+  endTime: endTime.value.toPlainTime(),
+}))
+
+// Helper function to create Temporal.ZonedDateTime with specific time
+const makeZDTWithTime = (date: Temporal.ZonedDateTime, hour: number): Temporal.ZonedDateTime => {
+  return date.with({ hour: hour })
+}
+
+const getCalendarEventsByDay = () => {
+  const [day1, day2, day3] = dates.value
+  const events = [
+    {
+      startDate: makeZDTWithTime(day1, 9),
+      endDate: makeZDTWithTime(day1, 10),
+      summary: "Coffee with Jen",
+    },
+    {
+      startDate: makeZDTWithTime(day2, 11),
+      endDate: makeZDTWithTime(day2, 14),
+      summary: "Karaoke with friends",
+    },
+    {
+      startDate: makeZDTWithTime(day3, 13),
+      endDate: makeZDTWithTime(day3, 17),
+      summary: "Study session",
+    },
+  ]
+
+  if (!isPhone.value) {
+    events.push({
+      startDate: makeZDTWithTime(day3, 20.5),
+      endDate: makeZDTWithTime(day3, 22),
+      summary: "Hackathon meeting",
+    })
+  }
+
+  calendarEventsByDay.value = processTimeBlocks(
+    dates.value,
+    duration.value,
+    events
+  )
+}
+
+const getResponses = () => {
+  const [day1, day2, day3] = dates.value
+  
+  const makeSlot = (instant: Temporal.ZonedDateTime, hour: number): Temporal.ZonedDateTime => {
+    return instant.with({ hour })
+  }
+  
+  responses.value = {
+    "62828fec1bc681fa020632f2": {
+      user: { _id: "1", name: "1" },
+      availability: [
+        makeSlot(day1, 10), makeSlot(day1, 10.5), makeSlot(day1, 11), makeSlot(day1, 11.5),
+        makeSlot(day1, 12), makeSlot(day1, 12.5), makeSlot(day1, 13), makeSlot(day1, 14.5),
+        makeSlot(day1, 15), makeSlot(day1, 15.5), makeSlot(day1, 16), makeSlot(day1, 16.5),
+        makeSlot(day1, 17), makeSlot(day1, 17.5), makeSlot(day1, 18), makeSlot(day1, 18.5),
+        makeSlot(day1, 19), makeSlot(day1, 20.5), makeSlot(day1, 21), makeSlot(day1, 21.5),
+
+        makeSlot(day2, 9), makeSlot(day2, 9.5), makeSlot(day2, 14), makeSlot(day2, 14.5),
+        makeSlot(day2, 15), makeSlot(day2, 15.5), makeSlot(day2, 16), makeSlot(day2, 16.5),
+        makeSlot(day2, 17), makeSlot(day2, 17.5), makeSlot(day2, 18), makeSlot(day2, 18.5),
+        makeSlot(day2, 19), makeSlot(day2, 19.5), makeSlot(day2, 20), makeSlot(day2, 21.5),
+
+        makeSlot(day3, 12.5), makeSlot(day3, 17), makeSlot(day3, 19.5),
+      ],
+    },
+    "628292fe6e12d2baa9c01395": {
+      user: { _id: "2", name: "2" },
+      availability: [
+        makeSlot(day1, 14), makeSlot(day1, 14.5), makeSlot(day1, 15), makeSlot(day1, 15.5),
+        makeSlot(day1, 16), makeSlot(day1, 16.5), makeSlot(day1, 17), makeSlot(day1, 17.5),
+        makeSlot(day1, 18), makeSlot(day1, 18.5), makeSlot(day1, 19), makeSlot(day1, 19.5),
+        makeSlot(day1, 20), makeSlot(day1, 20.5), makeSlot(day1, 21), makeSlot(day1, 21.5),
+
+        makeSlot(day2, 9), makeSlot(day2, 9.5), makeSlot(day2, 10), makeSlot(day2, 10.5),
+        makeSlot(day2, 16), makeSlot(day2, 16.5), makeSlot(day2, 17), makeSlot(day2, 17.5),
+        makeSlot(day2, 18), makeSlot(day2, 18.5), makeSlot(day2, 19), makeSlot(day2, 19.5),
+        makeSlot(day2, 20), makeSlot(day2, 20.5), makeSlot(day2, 21), makeSlot(day2, 21.5),
+
+        makeSlot(day3, 9), makeSlot(day3, 9.5), makeSlot(day3, 10), makeSlot(day3, 12.5),
+        makeSlot(day3, 17), makeSlot(day3, 18), makeSlot(day3, 18.5), makeSlot(day3, 19),
+        makeSlot(day3, 19.5), makeSlot(day3, 20),
+      ],
+    },
+    "628208870df4418ff4213757": {
+      user: { _id: "3", name: "3" },
+      availability: [
+        makeSlot(day1, 11), makeSlot(day1, 11.5), makeSlot(day1, 12), makeSlot(day1, 12.5),
+        makeSlot(day1, 13), makeSlot(day1, 13.5), makeSlot(day1, 14), makeSlot(day1, 14.5),
+        makeSlot(day1, 15), makeSlot(day1, 15.5), makeSlot(day1, 16), makeSlot(day1, 16.5),
+        makeSlot(day1, 20), makeSlot(day1, 20.5), makeSlot(day1, 21), makeSlot(day1, 21.5),
+
+        makeSlot(day2, 9), makeSlot(day2, 9.5), makeSlot(day2, 10), makeSlot(day2, 10.5),
+        makeSlot(day2, 19), makeSlot(day2, 19.5), makeSlot(day2, 20), makeSlot(day2, 20.5),
+        makeSlot(day2, 21), makeSlot(day2, 21.5),
+
+        makeSlot(day3, 9), makeSlot(day3, 9.5), makeSlot(day3, 10), makeSlot(day3, 10.5),
+        makeSlot(day3, 11), makeSlot(day3, 11.5), makeSlot(day3, 12), makeSlot(day3, 12.5),
+        makeSlot(day3, 17), makeSlot(day3, 17.5), makeSlot(day3, 18), makeSlot(day3, 18.5),
+        makeSlot(day3, 19), makeSlot(day3, 19.5), makeSlot(day3, 20),
+      ],
+    },
+  }
+
+  // Add duplicate slots with 15-minute offset
+  for (const id of Object.keys(responses.value)) {
+    const fixedAvailability: Temporal.ZonedDateTime[] = []
+    const userEntry = responses.value[id] as { availability: Temporal.ZonedDateTime[] }
+    for (const instant of userEntry.availability) {
+      fixedAvailability.push(instant)
+      const slotPlus15 = instant.add({ minutes: 15 })
+      fixedAvailability.push(slotPlus15)
+    }
+    userEntry.availability = fixedAvailability
+  }
+}
+
+const reset = () => {
+  responses.value = {}
+  calendarEventsByDay.value = []
+}
+
+const playAnimation = () => {
+  reset()
+  scheduleOverlap.value?.startEditing()
+  setTimeout(() => {
+    getCalendarEventsByDay()
+    getResponses()
+    setTimeout(() => {
+      scheduleOverlap.value?.setAvailabilityAutomatically()
+      setTimeout(() => {
+        scheduleOverlap.value?.stopEditing()
+      }, 2000)
+    }, 500)
+  }, 200)
+}
+
+defineExpose({ playAnimation })
+
+onMounted(() => {
+  playAnimation()
+})
 </script>

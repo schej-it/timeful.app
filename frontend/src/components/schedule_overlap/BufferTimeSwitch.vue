@@ -6,26 +6,25 @@
     </div>
     <v-switch
       id="buffer-time-switch"
-      :input-value="bufferTime.enabled"
-      @change="handleBufferTimeToggle"
+      :model-value="bufferTime.enabled"
       inset
       class="tw-flex tw-items-center"
       hide-details
+      @update:model-value="handleBufferTimeToggle"
     >
-      <template v-slot:label>
+      <template #label>
         <div
           class="tw-flex tw-items-center tw-justify-center tw-gap-2 tw-text-sm tw-text-black"
         >
           <v-select
-            menu-props="auto"
             dense
             hide-details
             :items="bufferTimes"
             class="-tw-mt-0.5 tw-w-20 tw-text-xs"
-            :value="bufferTime.time"
-            @input="(val) => updateBufferTime('time', val)"
+            :model-value="bufferTime.time"
+            @update:model-value="(val: number) => updateBufferTime('time', val)"
             @click="
-              (e) => {
+              (e: MouseEvent) => {
                 e.preventDefault()
                 e.stopPropagation()
               }
@@ -37,52 +36,43 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { patch } from "@/utils"
+import { posthog } from "@/plugins/posthog"
+import type { BufferTimeOptions } from "@/types"
 
-export default {
-  name: "BufferTimeToggle",
+const props = withDefaults(
+  defineProps<{
+    bufferTime: BufferTimeOptions
+    syncWithBackend?: boolean
+  }>(),
+  { syncWithBackend: false }
+)
 
-  props: {
-    bufferTime: { type: Object, required: true },
-    syncWithBackend: { type: Boolean, default: false },
-  },
+const emit = defineEmits<{
+  "update:bufferTime": [value: BufferTimeOptions]
+}>()
 
-  components: {},
+const bufferTimes = [
+  { title: "15 min", value: 15 },
+  { title: "30 min", value: 30 },
+  { title: "45 min", value: 45 },
+  { title: "1 hour", value: 60 },
+]
 
-  data() {
-    return {
-      bufferTimes: [
-        { text: "15 min", value: 15 },
-        { text: "30 min", value: 30 },
-        { text: "45 min", value: 45 },
-        { text: "1 hour", value: 60 },
-      ],
-    }
-  },
+const updateBufferTime = (key: "enabled" | "time", val: boolean | number) => {
+  const bufferTime: BufferTimeOptions = {
+    ...props.bufferTime,
+    [key]: val,
+  }
+  if (props.syncWithBackend) {
+    void patch(`/user/calendar-options`, { bufferTime })
+  }
+  emit("update:bufferTime", bufferTime)
+}
 
-  methods: {
-    updateBufferTime(key, val) {
-      const bufferTime = {
-        ...this.bufferTime,
-        [key]: val,
-      }
-      if (this.syncWithBackend) {
-        patch(`/user/calendar-options`, {
-          bufferTime,
-        })
-      }
-      this.$emit("update:bufferTime", bufferTime)
-    },
-    handleBufferTimeToggle(isEnabled) {
-      // Update the buffer time state
-      this.updateBufferTime("enabled", isEnabled)
-
-      // Capture PostHog event
-      this.$posthog.capture("buffer_time_switch_toggled", {
-        enabled: isEnabled,
-      })
-    },
-  },
+const handleBufferTimeToggle = (isEnabled: boolean | null) => {
+  updateBufferTime("enabled", !!isEnabled)
+  posthog.capture("buffer_time_switch_toggled", { enabled: !!isEnabled })
 }
 </script>

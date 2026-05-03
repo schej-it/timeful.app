@@ -7,24 +7,23 @@
     <v-switch
       id="working-hours-toggle"
       inset
-      :input-value="workingHours.enabled"
-      @change="(val) => updateWorkingHours('enabled', val)"
+      :model-value="workingHours.enabled"
       hide-details
+      @update:model-value="(val: boolean | null) => updateWorkingHours('enabled', !!val)"
     >
-      <template v-slot:label>
+      <template #label>
         <div class="tw-text-sm tw-text-black">
           <div class="tw-flex tw-items-center tw-gap-2">
             <v-select
-              menu-props="auto"
               dense
               hide-details
               return-object
               class="-tw-mt-0.5 tw-w-20 tw-text-xs"
               :items="times"
-              :value="workingHours.startTime"
-              @input="(val) => updateWorkingHours('startTime', val.time)"
+              :model-value="workingHours.startTime as unknown as TimeOption"
+              @update:model-value="(val: TimeOption) => updateWorkingHours('startTime', val.time)"
               @click="
-                (e) => {
+                (e: MouseEvent) => {
                   e.preventDefault()
                   e.stopPropagation()
                 }
@@ -32,16 +31,15 @@
             />
             <div>to</div>
             <v-select
-              menu-props="auto"
               dense
               hide-details
               return-object
               class="-tw-mt-0.5 tw-w-20 tw-text-xs"
               :items="times"
-              :value="workingHours.endTime"
-              @input="(val) => updateWorkingHours('endTime', val.time)"
+              :model-value="workingHours.endTime as unknown as TimeOption"
+              @update:model-value="(val: TimeOption) => updateWorkingHours('endTime', val.time)"
               @click="
-                (e) => {
+                (e: MouseEvent) => {
                   e.preventDefault()
                   e.stopPropagation()
                 }
@@ -54,37 +52,41 @@
   </div>
 </template>
 
-<script>
-import { getTimeOptions } from "@/utils"
-import { patch } from "@/utils"
+<script setup lang="ts">
+import { computed } from "vue"
+import { getTimeOptions, patch } from "@/utils"
+import type { WorkingHoursOptions } from "@/types"
 
-export default {
-  name: "WorkingHoursToggle",
+interface TimeOption {
+  time: number
+  [key: string]: unknown
+}
 
-  props: {
-    workingHours: { type: Object, required: true },
-    syncWithBackend: { type: Boolean, default: false },
-  },
+const props = withDefaults(
+  defineProps<{
+    workingHours: WorkingHoursOptions
+    syncWithBackend?: boolean
+  }>(),
+  { syncWithBackend: false }
+)
 
-  computed: {
-    times() {
-      return getTimeOptions()
-    },
-  },
+const emit = defineEmits<{
+  "update:workingHours": [value: WorkingHoursOptions]
+}>()
 
-  methods: {
-    updateWorkingHours(key, val) {
-      const workingHours = {
-        ...this.workingHours,
-        [key]: val,
-      }
-      if (this.syncWithBackend) {
-        patch(`/user/calendar-options`, {
-          workingHours,
-        })
-      }
-      this.$emit("update:workingHours", workingHours)
-    },
-  },
+const times = computed(() => getTimeOptions() as TimeOption[])
+
+const updateWorkingHours = (
+  key: "enabled" | "startTime" | "endTime",
+  val: boolean | number
+) => {
+  const workingHours: WorkingHoursOptions = {
+    ...props.workingHours,
+    [key]: val,
+  }
+  if (props.syncWithBackend) {
+    void patch(`/user/calendar-options`, { workingHours })
+  }
+  emit("update:workingHours", workingHours)
 }
 </script>

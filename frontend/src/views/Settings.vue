@@ -30,13 +30,13 @@
             <div v-if="profileUnsavedChanges">
               <div class="tw-mt-4">
                 <v-btn
-                  @click="resetProfileChanges"
                   color="primary"
                   outlined
                   class="tw-mr-2"
+                  @click="resetProfileChanges"
                   >Cancel</v-btn
                 >
-                <v-btn @click="saveName" color="primary">Save changes</v-btn>
+                <v-btn color="primary" @click="saveName">Save changes</v-btn>
               </div>
             </div>
           </v-expand-transition>
@@ -45,7 +45,7 @@
 
       <!-- Billing Section -->
       <div
-        v-if="authUser.stripeCustomerId"
+        v-if="authUser && authUser.stripeCustomerId"
         class="tw-flex tw-flex-col tw-gap-5"
       >
         <div
@@ -100,6 +100,7 @@
           >
             <div
               v-for="(h, i) in heading"
+              :key="i"
               :class="`tw-border-r-[${i == heading.length - 1 ? '0' : '1'}px]`"
               class="tw-w-1/3 tw-border-light-gray-stroke tw-p-4 tw-font-bold"
             >
@@ -109,11 +110,13 @@
 
           <div
             v-for="(c, j) in content"
+            :key="j"
             :class="`tw-border-b-[${j == content.length - 1 ? '0' : '1'}px]`"
             class="tw-flex tw-w-full tw-flex-row tw-border-light-gray-stroke"
           >
             <div
               v-for="(text, k) in c"
+              :key="k"
               :class="`tw-border-r-[${k == c.length - 1 ? '0' : '1'}px]`"
               class="tw-w-1/3 tw-border-light-gray-stroke tw-p-4"
             >
@@ -147,8 +150,8 @@
       <div class="tw-mt-28 tw-flex tw-flex-row tw-justify-center">
         <div class="tw-w-64">
           <v-dialog v-model="deleteDialog" width="400" persistent>
-            <template v-slot:activator="{ on, attrs }">
-              <v-btn outlined class="tw-text-red" block v-bind="attrs" v-on="on"
+            <template #activator="{ props: activatorProps }">
+              <v-btn outlined class="tw-text-red" block v-bind="activatorProps"
                 >Delete account</v-btn
               >
             </template>
@@ -166,7 +169,7 @@
                   v-model="deleteValidateEmail"
                   autofocus
                   class="tw-flex-initial tw-text-white"
-                  :placeholder="authUser.email"
+                  :placeholder="authUser?.email ?? ''"
                 />
               </div>
               <v-card-actions>
@@ -175,8 +178,8 @@
                 <v-btn
                   text
                   color="error"
+                  :disabled="authUser?.email != deleteValidateEmail"
                   @click="deleteAccount()"
-                  :disabled="authUser.email != deleteValidateEmail"
                   >Delete</v-btn
                 >
               </v-card-actions>
@@ -188,110 +191,93 @@
   </div>
 </template>
 
-<script>
-import { mapState, mapActions } from "vuex"
-import { _delete, patch, isPhone, get } from "@/utils"
+<script setup lang="ts">
+import { ref, computed } from "vue"
+import { storeToRefs } from "pinia"
+import { useHead } from "@unhead/vue"
+import { _delete, patch, get } from "@/utils"
+import { useMainStore } from "@/stores/main"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
 
-export default {
-  name: "Settings",
+useHead({ title: "Settings - Timeful" })
 
-  metaInfo: {
-    title: "Settings - Timeful",
-  },
+defineOptions({ name: 'AppSettings' })
 
-  components: { CalendarAccounts },
+const mainStore = useMainStore()
+const { authUser } = storeToRefs(mainStore)
+const { isPhone } = useDisplayHelpers()
 
-  data: () => ({
-    dialog: false,
-    deleteDialog: false,
-    deleteValidateEmail: "",
-    heading: ["Permission", "Purpose", "Requested When"],
-    content: [
-      [
-        "View all calendar events",
-        "Allows us to display the names/times of your calendar events",
-        "User tries to input availability automatically with Google Calendar",
-      ],
-      [
-        "View all calendars subscribed to",
-        "Allows us to display calendar events on all your calendars instead of just your primary calendar",
-        "User tries to input availability automatically with Google Calendar",
-      ],
-    ],
+const deleteDialog = ref(false)
+const deleteValidateEmail = ref("")
+const heading = ["Permission", "Purpose", "Requested When"]
+const content = [
+  [
+    "View all calendar events",
+    "Allows us to display the names/times of your calendar events",
+    "User tries to input availability automatically with Google Calendar",
+  ],
+  [
+    "View all calendars subscribed to",
+    "Allows us to display calendar events on all your calendars instead of just your primary calendar",
+    "User tries to input availability automatically with Google Calendar",
+  ],
+]
 
-    // Profile settings
-    firstName: "",
-    lastName: "",
-  }),
+const firstName = ref(authUser.value?.firstName ?? "")
+const lastName = ref(authUser.value?.lastName ?? "")
 
-  computed: {
-    ...mapState(["authUser"]),
-    nameUnsavedChanges() {
-      return (
-        this.firstName !== this.authUser.firstName ||
-        this.lastName !== this.authUser.lastName
+const nameUnsavedChanges = computed(
+  () =>
+    firstName.value !== authUser.value?.firstName ||
+    lastName.value !== authUser.value.lastName
+)
+const profileUnsavedChanges = computed(() => nameUnsavedChanges.value)
+
+function openBillingPortal() {
+  const customerId = authUser.value?.stripeCustomerId ?? ""
+  get<{ url: string }>(
+    `/stripe/billing-portal?customerId=${encodeURIComponent(customerId)}&returnUrl=${encodeURIComponent(window.location.href)}`
+  )
+    .then((res) => {
+      window.location.href = res.url
+    })
+    .catch(() => {
+      mainStore.showError(
+        "There was a problem opening the billing portal! Please try again later."
       )
-    },
-    profileUnsavedChanges() {
-      return this.nameUnsavedChanges
-    },
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-  },
+    })
+}
 
-  methods: {
-    ...mapActions(["showError"]),
-    openBillingPortal() {
-      get(
-        `/stripe/billing-portal?customerId=${encodeURIComponent(
-          this.authUser.stripeCustomerId
-        )}&returnUrl=${encodeURIComponent(window.location.href)}`
+function deleteAccount() {
+  _delete(`/user`)
+    .then(() => {
+      window.location.reload()
+    })
+    .catch(() => {
+      mainStore.showError(
+        "There was a problem deleting your account! Please try again later."
       )
-        .then((res) => {
-          window.location.href = res.url
-        })
-        .catch((err) => {
-          this.showError(
-            "There was a problem opening the billing portal! Please try again later."
-          )
-        })
-    },
-    deleteAccount() {
-      _delete(`/user`)
-        .then(() => {
-          window.location.reload()
-        })
-        .catch((err) => {
-          this.showError(
-            "There was a problem deleting your account! Please try again later."
-          )
-        })
-    },
-    resetProfileChanges() {
-      this.firstName = this.authUser.firstName
-      this.lastName = this.authUser.lastName
-    },
-    saveName() {
-      patch(`/user/name`, {
-        firstName: this.firstName,
-        lastName: this.lastName,
-      })
-        .then(() => {
-          window.location.reload()
-        })
-        .catch((err) => {
-          this.showError(
-            "There was a problem updating your name! Please try again later."
-          )
-        })
-    },
-  },
+    })
+}
 
-  created() {
-    this.firstName = this.authUser.firstName
-    this.lastName = this.authUser.lastName
-  },
+function resetProfileChanges() {
+  firstName.value = authUser.value?.firstName ?? ""
+  lastName.value = authUser.value?.lastName ?? ""
+}
+
+function saveName() {
+  patch(`/user/name`, {
+    firstName: firstName.value,
+    lastName: lastName.value,
+  })
+    .then(() => {
+      window.location.reload()
+    })
+    .catch(() => {
+      mainStore.showError(
+        "There was a problem updating your name! Please try again later."
+      )
+    })
 }
 </script>

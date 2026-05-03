@@ -1,24 +1,12 @@
 <template>
   <div>
     <h1>Test</h1>
-    <UpgradeDialog :value="true" />
+    <UpgradeDialog :model-value="true" />
   </div>
 </template>
 
-<script>
-import UpgradeDialog from "@/components/pricing/UpgradeDialog"
+<script setup lang="ts">
+import UpgradeDialog from "@/components/pricing/UpgradeDialog.vue"
 
-export default {
-  name: "Test",
-  components: {
-    UpgradeDialog,
-  },
-  methods: {
-    createCheckoutSession() {
-      post("/stripe/create-checkout-session").then((res) => {
-        console.log(res)
-      })
-    },
-  },
-}
+defineOptions({ name: 'AppTest' })
 </script>

@@ -6,9 +6,9 @@
         <v-spacer />
         <v-btn
           absolute
-          @click="dialog = false"
           icon
           class="tw-right-0 tw-mr-2 tw-self-center"
+          @click="dialog = false"
         >
           <v-icon>mdi-close</v-icon>
         </v-btn>
@@ -31,7 +31,7 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn text @click="dialog = false" :disabled="loading">Cancel</v-btn>
+        <v-btn text :disabled="loading" @click="dialog = false">Cancel</v-btn>
         <v-btn
           color="primary"
           :loading="loading"
@@ -45,82 +45,86 @@
   </v-dialog>
 </template>
 
-<script>
+<script setup lang="ts">
+import { computed, ref } from "vue"
+import { useRouter } from "vue-router"
 import { post } from "@/utils"
+import { useMainStore } from "@/stores/main"
 
-export default {
-  name: "TimefulImportDialog",
-  props: {
-    value: Boolean,
+const props = defineProps<{ modelValue: boolean }>()
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+}>()
+
+const router = useRouter()
+const mainStore = useMainStore()
+
+const url = ref("")
+const loading = ref(false)
+const error = ref("")
+
+const dialog = computed({
+  get: () => props.modelValue,
+  set: (val: boolean) => {
+    emit("update:modelValue", val)
+    if (!val) {
+      url.value = ""
+      error.value = ""
+    }
   },
-  data: () => ({
-    url: "",
-    loading: false,
-    error: "",
-  }),
-  computed: {
-    dialog: {
-      get() {
-        return this.value
-      },
-      set(val) {
-        this.$emit("input", val)
-        if (!val) {
-          this.url = ""
-          this.error = ""
-        }
-      },
-    },
-  },
-  methods: {
-    isBlockedUrl(urlStr) {
-      try {
-        const parsed = new URL(urlStr)
-        const hostname = parsed.hostname
-        if (hostname === window.location.hostname) return true
-        // note, this is just extra client-side validation for optimistic UI. the server checks the outgoing ip properly
-        if (
-          /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.|169\.254\.|0\.0\.0\.0|localhost$|\[?::1\]?)/.test(
-            hostname
-          )
-        )
-          return true
-        return false
-      } catch {
-        return false
-      }
-    },
-    async importEvent() {
-      if (!this.url.trim() || this.loading) return
+})
 
-      if (this.isBlockedUrl(this.url.trim())) {
-        this.error = "Not allowed to import from this URL."
-        return
-      }
+const isBlockedUrl = (urlStr: string): boolean => {
+  try {
+    const parsed = new URL(urlStr)
+    const hostname = parsed.hostname
+    if (hostname === window.location.hostname) return true
+    if (
+      /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.|169\.254\.|0\.0\.0\.0|localhost$|\[?::1\]?)/.test(
+        hostname
+      )
+    )
+      return true
+    return false
+  } catch {
+    return false
+  }
+}
 
-      this.error = ""
-      this.loading = true
+const importEvent = async () => {
+  if (!url.value.trim() || loading.value) return
 
-      try {
-        const result = await post("/events/import", { url: this.url.trim() })
-        this.dialog = false
-        this.$store.dispatch("showInfo", "Event imported successfully!")
-        this.$router.push(`/e/${result.shortId}`)
-      } catch (e) {
-        const msg = e?.parsed?.error || "Failed to import event"
-        const errorMessages = {
-          "invalid-url": "Invalid URL. Please enter a valid Timeful event URL.",
-          "remote-fetch-failed": "Could not reach the remote server.",
-          "remote-event-not-found": "Event not found on the remote server.",
-          "private-address": "Not allowed to import from this URL.",
-          "remote-responses-failed":
-            "Event found but could not fetch responses from the remote server.",
-        }
-        this.error = errorMessages[msg] || msg
-      } finally {
-        this.loading = false
-      }
-    },
-  },
+  if (isBlockedUrl(url.value.trim())) {
+    error.value = "Not allowed to import from this URL."
+    return
+  }
+
+  error.value = ""
+  loading.value = true
+
+  try {
+    const result = await post<{ shortId: string }>("/events/import", {
+      url: url.value.trim(),
+    })
+    dialog.value = false
+    mainStore.showInfo("Event imported successfully!")
+    void router.push(`/e/${result.shortId}`)
+  } catch (e: unknown) {
+    const msg =
+      (e as { parsed?: { error?: string } }).parsed?.error ??
+      "Failed to import event"
+    const errorMessages: Record<string, string> = {
+      "invalid-url": "Invalid URL. Please enter a valid Timeful event URL.",
+      "remote-fetch-failed": "Could not reach the remote server.",
+      "remote-event-not-found": "Event not found on the remote server.",
+      "private-address": "Not allowed to import from this URL.",
+      "remote-responses-failed":
+        "Event found but could not fetch responses from the remote server.",
+    }
+    error.value = errorMessages[msg] || msg
+  } finally {
+    loading.value = false
+  }
 }
 </script>

@@ -1,6 +1,11 @@
 <template>
   <!-- Google sign in not supported dialog -->
-  <v-dialog :value="value" width="400" content-class="tw-m-0">
+  <v-dialog
+    :model-value="modelValue"
+    width="400"
+    content-class="tw-m-0"
+    @update:model-value="(v: boolean) => emit('update:modelValue', v)"
+  >
     <v-card>
       <v-card-title>Google sign in not supported</v-card-title>
       <v-card-text>
@@ -15,7 +20,7 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn text class="tw-text-green" @click="$emit('input', false)">
+        <v-btn text class="tw-text-green" @click="emit('update:modelValue', false)">
           Ok
         </v-btn>
       </v-card-actions>
@@ -23,12 +28,12 @@
   </v-dialog>
 </template>
 
-<script>
-export default {
-  name: "SignInNotSupportedDialog",
+<script setup lang="ts">
+defineProps<{
+  modelValue: boolean
+}>()
 
-  props: {
-    value: { type: Boolean, required: true },
-  },
-}
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+}>()
 </script>

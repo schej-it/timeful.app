@@ -9,17 +9,17 @@
       <!-- Mark availability option dialog -->
       <MarkAvailabilityDialog
         v-model="choiceDialog"
-        :initialState="linkApple ? 'create_account_apple' : 'choices'"
-        @signInLinkApple="signInLinkApple"
-        @allowGoogleCalendar="
+        :initial-state="linkApple ? 'create_account_apple' : 'choices'"
+        @sign-in-link-apple="signInLinkApple"
+        @allow-google-calendar="
           () => setAvailabilityAutomatically(calendarTypes.GOOGLE)
         "
-        @allowOutlookCalendar="
+        @allow-outlook-calendar="
           () => setAvailabilityAutomatically(calendarTypes.OUTLOOK)
         "
-        @setAvailabilityManually="setAvailabilityManually"
-        @addedAppleCalendar="addedAppleCalendar"
-        @addedICSCalendar="addedICSCalendar"
+        @set-availability-manually="setAvailabilityManually"
+        @added-apple-calendar="addedAppleCalendar"
+        @added-i-c-s-calendar="addedICSCalendar"
       />
 
       <!-- Google sign in not supported dialog -->
@@ -28,18 +28,18 @@
       <!-- Guest dialog -->
       <GuestDialog
         v-model="guestDialog"
-        @submit="handleGuestDialogSubmit"
         :event="event"
-        :respondents="Object.keys(event.responses)"
+        :respondents="event ? Object.keys(event.responses ?? {}) : []"
+        @submit="handleGuestDialogSubmit"
       />
 
       <!-- Join sign up slot dialog-->
       <SignUpForSlotDialog
         v-if="currSignUpBlock"
         v-model="signUpForSlotDialog"
-        :signUpBlock="currSignUpBlock"
-        @submit="signUpForBlock"
         :event="event"
+        :sign-up-block="currSignUpBlock"
+        @submit="signUpForBlock"
       />
 
       <!-- Edit event dialog -->
@@ -47,7 +47,7 @@
         v-model="editEventDialog"
         :type="eventType"
         :event="event"
-        :contactsPayload="contactsPayload"
+        :contacts-payload="contactsPayload"
         edit
         no-tabs
       />
@@ -57,9 +57,9 @@
         v-if="isGroup"
         v-model="invitationDialog"
         :group="event"
-        :calendarPermissionGranted="calendarPermissionGranted"
-        @refreshEvent="refreshEvent"
-        @setAvailabilityAutomatically="setAvailabilityAutomatically"
+        :calendar-permission-granted="calendarPermissionGranted"
+        @refresh-event="refreshEvent"
+        @set-availability-automatically="setAvailabilityAutomatically"
       ></InvitationDialog>
 
       <!-- Pages Not Visited dialog -->
@@ -87,7 +87,7 @@
               @click="
                 () => {
                   saveChanges(true)
-                  this.pagesNotVisitedDialog = false
+                  pagesNotVisitedDialog = false
                 }
               "
               >Add anyways</v-btn
@@ -100,8 +100,8 @@
         class="tw-mx-auto tw-mt-4 lg:tw-flex lg:tw-items-start lg:tw-justify-center lg:tw-gap-6"
       >
         <PubliftAd
-          :showAd="showAds"
-          fuseId="meet_vrec_lhs"
+          :show-ad="showAds"
+          fuse-id="meet_vrec_lhs"
           class="tw-hidden publift-l:tw-block"
         >
           <div
@@ -133,7 +133,7 @@
                     {{ event.name }}
                   </div>
                   <v-chip
-                    v-if="event.when2meetHref?.length > 0"
+                    v-if="event.when2meetHref && event.when2meetHref.length > 0"
                     :href="`https://when2meet.com${event.when2meetHref}`"
                     :small="isPhone"
                     class="tw-cursor-pointer tw-select-none tw-rounded tw-bg-light-gray tw-px-2 tw-font-medium sm:tw-px-3"
@@ -149,7 +149,7 @@
                       >
                     </div>
                     <HelpDialog v-model="helpDialog">
-                      <template v-slot:header>Availability group</template>
+                      <template #header>Availability group</template>
                       <div class="mb-4">
                         Use availability groups to see group members' weekly
                         calendar availabilities from Google Calendar. Your
@@ -167,9 +167,9 @@
                   <template v-if="canEdit">
                     <v-btn
                       id="edit-event-btn"
-                      @click="editEvent"
-                      class="tw-px-2 tw-text-sm tw-text-green"
                       text
+                      class="tw-px-2 tw-text-sm tw-text-green"
+                      @click="editEvent"
                     >
                       Edit {{ isGroup ? "group" : "event" }}
                     </v-btn>
@@ -194,13 +194,13 @@
                   <v-btn
                     :icon="isPhone"
                     :outlined="!isPhone"
+                    :loading="loading"
                     class="tw-text-green"
                     @click="refreshCalendar"
-                    :loading="loading"
                   >
-                    <v-icon class="tw-mr-1" v-if="!isPhone">mdi-refresh</v-icon>
+                    <v-icon v-if="!isPhone" class="tw-mr-1">mdi-refresh</v-icon>
                     <span v-if="!isPhone" class="tw-mr-2">Refresh</span>
-                    <v-icon class="tw-text-green" v-else>mdi-refresh</v-icon>
+                    <v-icon v-else class="tw-text-green">mdi-refresh</v-icon>
                   </v-btn>
                 </div>
                 <div v-else>
@@ -213,10 +213,10 @@
                     <span v-if="!isPhone" class="tw-mr-2 tw-text-green"
                       >Copy link</span
                     >
-                    <v-icon class="tw-text-green" v-if="!isPhone"
+                    <v-icon v-if="!isPhone" class="tw-text-green"
                       >mdi-content-copy</v-icon
                     >
-                    <v-icon class="tw-text-green" v-else>mdi-share</v-icon>
+                    <v-icon v-else class="tw-text-green">mdi-share</v-icon>
                   </v-btn>
                 </div>
                 <div
@@ -251,9 +251,9 @@
                   </template>
                   <template v-else>
                     <v-btn
+                      outlined
                       class="tw-mr-1 tw-w-20 tw-text-red"
                       @click="cancelEditing"
-                      outlined
                     >
                       Cancel
                     </v-btn>
@@ -271,8 +271,8 @@
 
             <!-- Description -->
             <EventDescription
-              :event.sync="event"
-              :canEdit="event.ownerId != 0 && canEdit"
+              v-model:event="event"
+              :can-edit="String(event.ownerId ?? '') !== '0' && canEdit"
             />
           </div>
 
@@ -280,29 +280,29 @@
 
           <ScheduleOverlap
             ref="scheduleOverlap"
-            :event="event"
-            :ownerIsPremium="ownerIsPremium"
-            :fromEditEvent="fromEditEvent"
-            :loadingCalendarEvents="loading"
-            :calendarEventsMap="calendarEventsMap"
-            :calendarPermissionGranted="calendarPermissionGranted"
+            v-model:week-offset="weekOffset"
+            :event="scheduleOverlapEvent"
+            :owner-is-premium="ownerIsPremium"
+            :from-edit-event="fromEditEvent"
+            :loading-calendar-events="loading"
+            :calendar-events-map="calendarEventsMap"
+            :calendar-permission-granted="calendarPermissionGranted"
             :calendar-availabilities="calendarAvailabilities"
-            :weekOffset.sync="weekOffset"
-            :curGuestId="curGuestId"
-            :initial-timezone="initialTimezone"
-            :addingAvailabilityAsGuest="addingAvailabilityAsGuest"
-            @addAvailability="addAvailability"
-            @addAvailabilityAsGuest="addAvailabilityAsGuest"
-            @refreshEvent="refreshEvent"
-            @highlightAvailabilityBtn="highlightAvailabilityBtn"
-            @deleteAvailability="deleteAvailability"
-            @setCurGuestId="(id) => (curGuestId = id)"
-            @signUpForBlock="initiateSignUpFlow"
+            :cur-guest-id="curGuestId"
+            :initial-timezone="initialTimezone as unknown as Timezone"
+            :adding-availability-as-guest="addingAvailabilityAsGuest"
+            @add-availability="addAvailability"
+            @add-availability-as-guest="addAvailabilityAsGuest"
+            @refresh-event="refreshEvent"
+            @highlight-availability-btn="highlightAvailabilityBtn"
+            @delete-availability="deleteAvailability"
+            @set-cur-guest-id="(id) => (curGuestId = id)"
+            @sign-up-for-block="initiateSignUpFlow"
           />
         </div>
         <PubliftAd
-          :showAd="showAds"
-          fuseId="meet_vrec_rhs"
+          :show-ad="showAds"
+          fuse-id="meet_vrec_rhs"
           class="tw-hidden publift-l:tw-block"
         >
           <div
@@ -318,8 +318,8 @@
       </div>
 
       <PubliftAd
-        :showAd="showAds"
-        fuseId="meet_incontent_md"
+        :show-ad="showAds"
+        fuse-id="meet_incontent_md"
         class="tw-my-4 tw-hidden !tw-rounded-none sm:tw-block publift-l:tw-hidden"
       >
         <div class="tw-h-[300px] publift-m:tw-h-[90px]">
@@ -336,12 +336,12 @@
       <template v-if="showFeedbackBtn">
         <div class="tw-w-full tw-border-t tw-border-solid tw-border-gray"></div>
 
-        <div class="tw-flex tw-flex-col tw-items-center" v-if="showFeedbackBtn">
+        <div v-if="showFeedbackBtn" class="tw-flex tw-flex-col tw-items-center">
           <v-btn
-            class="tw-h-16"
-            block
             id="feedback-btn"
+            block
             text
+            class="tw-h-16"
             href="https://forms.gle/A96i4TTWeKgH3P1W6"
             target="_blank"
           >
@@ -448,8 +448,8 @@
           </template>
         </div>
         <PubliftAd
-          :showAd="showAds"
-          fuseId=""
+          :show-ad="showAds"
+          fuse-id=""
           class="tw-h-[115px] tw-w-full !tw-rounded-none !tw-p-0"
         >
           <div class="tw-h-[115px]"></div>
@@ -461,8 +461,8 @@
         class="tw-fixed tw-bottom-0 tw-left-0 tw-z-20 tw-w-full"
       >
         <PubliftAd
-          :showAd="showAds"
-          fuseId=""
+          :show-ad="showAds"
+          fuse-id=""
           class="tw-h-[115px] tw-w-full !tw-rounded-none !tw-p-0"
         >
           <div class="tw-h-[115px]"></div>
@@ -472,41 +472,36 @@
   </span>
 </template>
 
-<script>
+<script setup lang="ts">
+import {
+  ref,
+  computed,
+  watch,
+  toRef,
+  onMounted,
+  onBeforeUnmount,
+  type PropType,
+} from "vue"
+import { useRouter, useRoute } from "vue-router"
+import { storeToRefs } from "pinia"
+import { Temporal } from "temporal-polyfill"
 import {
   get,
   post,
-  signInGoogle,
-  signInOutlook,
-  isPhone,
-  processEvent,
-  getCalendarEventsMap,
   getDateRangeStringForEvent,
-  isIOS,
-  isDstObserved,
-  doesDstExist,
-  getDateDayOffset,
-  dateToDowDate,
-  getDateHoursOffset,
-  dateToTimeNum,
+  isIOS as isIOSFn,
   sendPluginError,
   sendPluginSuccess,
   isValidPluginMessage,
-  getCurrentTimezone,
-  convertToUTC,
-  isTimeWithinEventRange,
-  convertUTCSlotsToLocalISO,
   validateDOWPayload,
-  timezoneObservesDST,
+  normalizePluginSetSlots,
+  resolvePluginTimezoneValue,
 } from "@/utils"
-import { isBetween } from "@/utils/general_utils"
 import { validateEmail } from "@/utils"
-import { mapActions, mapState, mapMutations, mapGetters } from "vuex"
-import dayjs from "dayjs"
-import utcPlugin from "dayjs/plugin/utc"
-import timezonePlugin from "dayjs/plugin/timezone"
-dayjs.extend(utcPlugin)
-dayjs.extend(timezonePlugin)
+import {
+  getPluginEventTimeRange,
+  normalizePluginResponses,
+} from "@/views/event/pluginResponsesBoundary"
 
 import NewDialog from "@/components/NewDialog.vue"
 import ScheduleOverlap from "@/components/schedule_overlap/ScheduleOverlap.vue"
@@ -514,1443 +509,624 @@ import GuestDialog from "@/components/GuestDialog.vue"
 import SignUpForSlotDialog from "@/components/sign_up_form/SignUpForSlotDialog.vue"
 import {
   errors,
-  authTypes,
   eventTypes,
   calendarTypes,
-  dayIndexToDayString,
   allTimezones,
-  guestUserId,
 } from "@/constants"
-import isWebview from "is-ua-webview"
 import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
 import MarkAvailabilityDialog from "@/components/calendar_permission_dialogs/MarkAvailabilityDialog.vue"
 import InvitationDialog from "@/components/groups/InvitationDialog.vue"
 import HelpDialog from "@/components/HelpDialog.vue"
 import EventDescription from "@/components/event/EventDescription.vue"
 import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
-import CarbonAd from "@/components/event/CarbonAd.vue"
 import PubliftAd from "@/components/event/PubliftAd.vue"
-export default {
-  name: "Event",
 
-  props: {
-    eventId: { type: String, required: true },
-    fromSignIn: { type: Boolean, default: false },
-    editingMode: { type: Boolean, default: false },
-    linkApple: { type: Boolean, default: false },
-    initialTimezone: { type: Object, default: () => ({}) },
-    contactsPayload: { type: Object, default: () => ({}) },
+import { useMainStore } from "@/stores/main"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import { useEventLoader } from "@/composables/event/useEventLoader"
+import { useEventEditing } from "@/composables/event/useEventEditing"
+import { useEventRespondent } from "@/composables/event/useEventRespondent"
+import type { SerializedEventDraft } from "@/composables/event/types"
+import type { ScheduleOverlapInstance } from "@/composables/event/types"
+import {
+  toScheduleOverlapEvent,
+  type Timezone,
+} from "@/composables/schedule_overlap/types"
+import type { Event, RawResponse, User } from "@/types"
+
+defineOptions({ name: "AppEvent" })
+
+const props = defineProps({
+  eventId: { type: String, required: true as const, default: "" },
+  fromSignIn: { type: Boolean, default: false },
+  editingMode: { type: Boolean, default: false },
+  linkApple: { type: Boolean, default: false },
+  initialTimezone: { type: Object, default: () => ({}) },
+  contactsPayload: {
+    type: Object as PropType<SerializedEventDraft>,
+    default: () => ({}),
   },
+})
 
-  components: {
-    GuestDialog,
-    SignUpForSlotDialog,
-    ScheduleOverlap,
-    NewDialog,
-    SignInNotSupportedDialog,
-    MarkAvailabilityDialog,
-    InvitationDialog,
-    HelpDialog,
-    EventDescription,
-    FormerlyKnownAs,
-    CarbonAd,
-    PubliftAd,
-  },
+const router = useRouter()
+const route = useRoute()
 
-  data: () => ({
-    fromEditEvent: false,
+const mainStore = useMainStore()
+const { authUser, isPremiumUser } = storeToRefs(mainStore)
+const { isPhone } = useDisplayHelpers()
 
-    choiceDialog: false,
-    webviewDialog: false,
-    guestDialog: false,
-    signUpForSlotDialog: false,
-    editEventDialog: false,
-    invitationDialog: false,
-    pagesNotVisitedDialog: false,
-    helpDialog: false,
+const scheduleOverlap = ref<ScheduleOverlapInstance | null>(null)
+const videoAdContainer = ref<HTMLElement | null>(null)
+const weekOffset = ref(0)
 
-    loading: true,
-    calendarEventsMap: {},
-    event: null,
-    scheduleOverlapComponent: null,
-    scheduleOverlapComponentLoaded: false,
+const invitationDialog = ref(false)
+const helpDialog = ref(false)
+const scheduleOverlapLoaded = ref(false)
 
-    ownerIsPremium: false,
-    ownerPremiumChecked: false,
+const isEditing = computed(() => scheduleOverlap.value?.editing ?? false)
+const isScheduling = computed(() => scheduleOverlap.value?.scheduling ?? false)
+const allowScheduleEvent = computed(() => scheduleOverlap.value?.allowScheduleEvent ?? false)
+const areUnsavedChanges = computed(() => scheduleOverlap.value?.unsavedChanges ?? false)
+const selectedGuestRespondent = computed(() => scheduleOverlap.value?.selectedGuestRespondent)
+const numResponses = computed(() => scheduleOverlap.value?.respondents.length ?? 0)
+const isSettingSpecificTimes = computed(() => {
+  const so = scheduleOverlap.value
+  return so ? so.state === so.states.SET_SPECIFIC_TIMES : false
+})
 
-    curGuestId: "", // Id of the current guest being edited
-    calendarPermissionGranted: true,
-    addingAvailabilityAsGuest: false, // Whether a signed in user is current adding availability as a guest
+const isGroup = computed(() => (loader.event.value)?.type === eventTypes.GROUP)
+const isSignUp = computed(() => Boolean((loader.event.value)?.isSignUpForm))
+const isSpecificDates = computed(() => {
+  const t = (loader.event.value)?.type
+  return t === eventTypes.SPECIFIC_DATES || !t
+})
+const _isSpecificDates = isSpecificDates
+const isWeekly = computed(() => (loader.event.value)?.type === eventTypes.DOW)
+const _isWeekly = isWeekly
+const eventType = computed(() => {
+  if (isGroup.value) return "group"
+  else if (isSignUp.value) return "signup"
+  return "event"
+})
+const canEdit = computed(() => {
+  const ev = loader.event.value
+  return (ev?.ownerId ?? '') === '0' || authUser.value?._id === ev?.ownerId
+})
+const userHasResponded = computed(() => {
+  const ev = loader.event.value
+  return Boolean(authUser.value?._id && ev?.responses && authUser.value._id in ev.responses)
+})
+const dateString = computed(() => loader.event.value ? getDateRangeStringForEvent(loader.event.value) : "")
+const showAds = computed(() => !loader.ownerIsPremium.value && !isPremiumUser.value && !isSettingSpecificTimes.value)
+const showFeedbackBtn = computed(() => isPhone.value)
+const actionButtonText = computed(() => {
+  if (isSignUp.value) return "Edit slots"
+  else if (userHasResponded.value || isGroup.value) return "Edit availability"
+  return "Add availability"
+})
+const mobileGuestActionButtonText = computed(() => {
+  const ev = loader.event.value
+  return ev?.blindAvailabilityEnabled
+    ? "Edit availability"
+    : `Edit ${selectedGuestRespondent.value ?? ""}'s availability`
+})
+const mobileActionButtonText = computed(() => {
+  if (isSignUp.value) return "Edit slots"
+  return userHasResponded.value ? "Edit availability" : "Add availability"
+})
+const isIOS = computed(() => isIOSFn())
 
-    weekOffset: 0,
+const loader = useEventLoader({
+  eventId: toRef(props, "eventId"),
+  weekOffset,
+  authUser: authUser as ReturnType<typeof computed<User | null>>,
+  scheduleOverlapRef: scheduleOverlap,
+  isEditing,
+  userHasResponded,
+  areUnsavedChanges,
+})
 
-    availabilityBtnOpacity: 1,
-    hasRefetchedAuthUserCalendarEvents: false,
+const respondent = useEventRespondent({
+  event: loader.event,
+  authUser: authUser as ReturnType<typeof computed<User | null>>,
+  scheduleOverlapRef: scheduleOverlap,
+  refreshEvent: loader.refreshEvent,
+})
 
-    // Availability Groups
-    calendarAvailabilities: {}, // maps userId to their calendar events
+const editing = useEventEditing({
+  event: loader.event,
+  eventId: toRef(props, "eventId"),
+  authUser: authUser as ReturnType<typeof computed<User | null>>,
+  scheduleOverlapRef: scheduleOverlap,
+  isSignUp,
+  isGroup,
+  userHasResponded,
+  curGuestId: respondent.curGuestId,
+  addingAvailabilityAsGuest: respondent.addingAvailabilityAsGuest,
+  calendarPermissionGranted: loader.calendarPermissionGranted,
+  refreshEvent: loader.refreshEvent,
+})
 
-    // Sign Up Forms
-    currSignUpBlock: null,
-  }),
+const {
+  editEventDialog, choiceDialog, webviewDialog, guestDialog, pagesNotVisitedDialog,
+  availabilityBtnOpacity, addAvailability, addAvailabilityAsGuest, cancelEditing,
+  copyLink, deleteAvailability, editEvent, saveChanges,
+  setAvailabilityAutomatically, setAvailabilityManually, editGuestAvailability,
+  signInLinkApple, addedAppleCalendar, addedICSCalendar, highlightAvailabilityBtn,
+  handleGuestDialogSubmit,
+} = editing
 
-  beforeMount() {},
+const {
+  curGuestId, addingAvailabilityAsGuest, currSignUpBlock,
+  signUpForSlotDialog, initiateSignUpFlow, signUpForBlock,
+} = respondent
 
-  mounted() {
-    // If coming from enabling contacts, show the dialog. Checks if contactsPayload is not an Observer.
-    this.editEventDialog = Object.keys(this.contactsPayload).length > 0
-    // If coming from signing in to link apple calendar, show the mark availability dialog
-    if (this.linkApple) {
-      this.choiceDialog = true
-    }
-    // window.enableStickyFooter = true
-    // this.initFusetag()
-    this.loadVideoAd()
-  },
+const {
+  event, loading, ownerIsPremium, calendarEventsMap, calendarAvailabilities,
+  calendarPermissionGranted, fromEditEvent, refreshEvent, refreshCalendar,
+} = loader
 
-  computed: {
-    ...mapState(["authUser", "events"]),
-    ...mapGetters(["isPremiumUser"]),
-    showAds() {
-      return (
-        !this.ownerIsPremium &&
-        !this.isPremiumUser &&
-        !this.isSettingSpecificTimes
-      )
-    },
-    allowScheduleEvent() {
-      return this.scheduleOverlapComponent?.allowScheduleEvent
-    },
-    calendarTypes() {
-      return calendarTypes
-    },
-    dateString() {
-      return getDateRangeStringForEvent(this.event)
-    },
-    isEditing() {
-      return this.scheduleOverlapComponent?.editing
-    },
-    isScheduling() {
-      return this.scheduleOverlapComponent?.scheduling
-    },
-    canEdit() {
-      return (
-        this.event.ownerId == 0 || this.authUser?._id === this.event.ownerId
-      )
-    },
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-    isSpecificDates() {
-      return this.event?.type === eventTypes.SPECIFIC_DATES || !this.event?.type
-    },
-    isWeekly() {
-      return this.event?.type === eventTypes.DOW
-    },
-    isGroup() {
-      return this.event?.type === eventTypes.GROUP
-    },
-    isSignUp() {
-      return this.event?.isSignUpForm
-    },
-    eventType() {
-      if (this.isGroup) return "group"
-      else if (this.isSignUp) return "signup"
-      else return "event"
-    },
-    areUnsavedChanges() {
-      return this.scheduleOverlapComponent?.unsavedChanges
-    },
-    userHasResponded() {
-      return this.authUser?._id in this.event.responses
-    },
-    selectedGuestRespondent() {
-      return this.scheduleOverlapComponent?.selectedGuestRespondent
-    },
-    showFeedbackBtn() {
-      return this.isPhone
-    },
-    numResponses() {
-      return this.scheduleOverlapComponent?.respondents.length
-    },
-    actionButtonText() {
-      if (this.isSignUp) return "Edit slots"
-      else if (this.userHasResponded || this.isGroup) return "Edit availability"
-      return "Add availability"
-    },
-    mobileGuestActionButtonText() {
-      return this.event.blindAvailabilityEnabled
-        ? "Edit availability"
-        : `Edit ${this.selectedGuestRespondent}'s availability`
-    },
-    mobileActionButtonText() {
-      if (this.isSignUp) return "Edit slots"
-      return this.userHasResponded ? "Edit availability" : "Add availability"
-    },
-    isIOS() {
-      return isIOS()
-    },
-    isSettingSpecificTimes() {
-      return (
-        this.scheduleOverlapComponent?.state ===
-        this.scheduleOverlapComponent?.states.SET_SPECIFIC_TIMES
-      )
-    },
-  },
+const scheduleOverlapEvent = computed(() =>
+  toScheduleOverlapEvent(event.value as Event)
+)
 
-  methods: {
-    ...mapActions(["showError", "showInfo", "getEvents"]),
-    ...mapMutations(["setAuthUser"]),
+function resetWeekOffset() {
+  weekOffset.value = 0
+}
 
-    loadVideoAd() {
-      if (!this.isPhone && this.showAds && this.$refs.videoAdContainer) {
-        const script = document.createElement("script")
-        script.type = "text/javascript"
-        script.src =
-          "https://live.primis.tech/live/liveView.php?s=122130&schain=1.0,1!publift.com,01KF27H3XMWD7H1S0HYBGVB3BR,1"
-        this.$refs.videoAdContainer.appendChild(script)
-      }
-    },
+function loadVideoAd() {
+  if (!isPhone.value && showAds.value && videoAdContainer.value) {
+    const script = document.createElement("script")
+    script.type = "text/javascript"
+    script.src =
+      "https://live.primis.tech/live/liveView.php?s=122130&schain=1.0,1!publift.com,01KF27H3XMWD7H1S0HYBGVB3BR,1"
+    videoAdContainer.value.appendChild(script)
+  }
+}
 
-    initFusetag() {
-      console.log("initFusetag called, blockingFuseIds: ", [
+function initFusetag() {
+  console.log("initFusetag called, blockingFuseIds: ", [
+    "meet_vrec_lhs",
+    "meet_vrec_rhs",
+    "meet_incontent",
+    "meet_incontent_md",
+  ])
+  const fusetag = window.fusetag ?? (window.fusetag = { que: [] })
+  fusetag.que.push(function () {
+    fusetag.pageInit?.({
+      blockingFuseIds: [
         "meet_vrec_lhs",
         "meet_vrec_rhs",
         "meet_incontent",
         "meet_incontent_md",
-      ])
-      const fusetag = window.fusetag || (window.fusetag = { que: [] })
-      fusetag.que.push(function () {
-        fusetag.pageInit({
-          blockingFuseIds: [
-            "meet_vrec_lhs",
-            "meet_vrec_rhs",
-            "meet_incontent",
-            "meet_incontent_md",
-          ],
-        })
-      })
-    },
+      ],
+    })
+  })
+}
 
-    /** Show choice dialog if not signed in, otherwise, immediately start editing availability */
-    addAvailability() {
-      if (!this.scheduleOverlapComponent) return
+const scheduleEvent = () => { scheduleOverlap.value?.scheduleEvent() }
+const cancelScheduleEvent = () => { scheduleOverlap.value?.cancelScheduleEvent() }
+const confirmScheduleEvent = () => { scheduleOverlap.value?.confirmScheduleEvent() }
 
-      // Start editing immediately if days only
-      if (this.event?.daysOnly) {
-        this.scheduleOverlapComponent.startEditing()
-        return
-      }
+function onBeforeUnload(e: BeforeUnloadEvent) {
+  if (areUnsavedChanges.value) {
+    e.preventDefault()
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    e.returnValue = ""
+    return
+  }
+  Reflect.deleteProperty(e, "returnValue")
+}
 
-      // Start editing if calendar permission granted or user has responded, otherwise show choice dialog
-      if (
-        (this.authUser && this.calendarPermissionGranted) ||
-        this.userHasResponded
-      ) {
-        this.scheduleOverlapComponent.startEditing()
-        if (!this.userHasResponded && !this.isSignUp) {
-          this.scheduleOverlapComponent.setAvailabilityAutomatically()
-        }
-      } else {
-        this.choiceDialog = true
-      }
-    },
-    /** Add guest availability while signed in */
-    addAvailabilityAsGuest() {
-      this.addingAvailabilityAsGuest = true
-      this.setAvailabilityManually()
-    },
-    cancelEditing() {
-      /* Cancels editing and resets availability to previous */
-      if (!this.scheduleOverlapComponent) return
+interface PluginMessageData {
+  type?: string
+  requestId?: string
+  payload?: {
+    type?: string
+    guestName?: string
+    guestEmail?: string
+    slots?: SlotEntry[]
+    timezone?: string
+  }
+  command?: string
+  ok?: boolean
+  error?: { message?: string } | string
+}
 
-      if (!this.isSignUp)
-        this.scheduleOverlapComponent.resetCurUserAvailability()
-      else this.scheduleOverlapComponent.resetSignUpForm()
-      this.scheduleOverlapComponent.stopEditing()
-      this.curGuestId = ""
-      this.addingAvailabilityAsGuest = false
-    },
-    copyLink() {
-      /* Copies event link to clipboard */
-      navigator.clipboard.writeText(
-        `${window.location.origin}/e/${this.event.shortId ?? this.event._id}`
-      )
-      this.showInfo("Link copied to clipboard!")
-    },
-    async deleteAvailability() {
-      if (!this.scheduleOverlapComponent) return
+interface SlotEntry {
+  start: string
+  end: string
+  status?: string
+}
 
-      if (!this.authUser || this.addingAvailabilityAsGuest) {
-        if (this.curGuestId) {
-          await this.scheduleOverlapComponent.deleteAvailability(
-            this.curGuestId
-          )
-          this.curGuestId = ""
-        }
-      } else {
-        await this.scheduleOverlapComponent.deleteAvailability()
-      }
+function handleMessage(e: MessageEvent<PluginMessageData>) {
+  if (!isValidPluginMessage(e)) return
+  const payload = e.data.payload
+  if (payload?.type === "get-slots") {
+    void getSlots(e)
+  }
+  if (payload?.type === "set-slots") {
+    void setSlots(e)
+  }
+}
 
-      this.showInfo(this.isGroup ? "Left group!" : "Availability deleted!")
-      this.scheduleOverlapComponent.stopEditing()
-    },
-
-    editEvent() {
-      /* Show edit event dialog */
-      this.editEventDialog = true
-    },
-    /** Refresh event details */
-    async refreshEvent() {
-      let sanitizedId = this.eventId.replaceAll(".", "")
-
-      let resolvedLongId = this.event?._id || ""
-      try {
-        const ids = await get(`/events/${sanitizedId}/ids`)
-        if (ids?.longId) {
-          resolvedLongId = ids.longId
-        }
-      } catch (err) {
-        // If ID resolution fails, continue with existing fallback behavior.
-      }
-      // Try to get guest name from localStorage using resolved longId.
-      let guestName = null
-      if (typeof localStorage !== "undefined") {
-        if (resolvedLongId) {
-          guestName = localStorage[`${resolvedLongId}.guestName`]
-        }
-      }
-
-      // Build URL with guestName if available
-      let url = `/events/${sanitizedId}`
-      if (guestName && guestName.length > 0) {
-        url += `?guestName=${encodeURIComponent(guestName)}`
-      }
-
-      // Make single request with guestName if available
-      this.event = await get(url)
-      processEvent(this.event)
-    },
-
-    async checkOwnerPremium() {
-      const ownerId = this.event?.ownerId
-      if (ownerId && ownerId !== guestUserId) {
-        try {
-          const res = await get(`/users/${ownerId}/is-premium`)
-          this.ownerIsPremium = res.isPremium
-        } catch {
-          this.ownerIsPremium = false
-        }
-      }
-      this.ownerPremiumChecked = true
-    },
-
-    setAvailabilityAutomatically(calendarType = calendarTypes.GOOGLE) {
-      /* Prompts user to sign in when "set availability automatically" button clicked */
-      if (isWebview(navigator.userAgent)) {
-        // Show dialog prompting user to use a real browser
-        this.webviewDialog = true
-      } else {
-        // Or sign in if user is already using a real browser
-        let signInParams
-        if (this.authUser) {
-          // Request permission if calendar permissions not yet granted
-          signInParams = {
-            state: {
-              type: this.isGroup
-                ? authTypes.GROUP_ADD_AVAILABILITY
-                : authTypes.EVENT_ADD_AVAILABILITY,
-              eventId: this.eventId,
-            },
-            selectAccount: false,
-            requestCalendarPermission: true,
-          }
-        } else {
-          // Ask the user to select the account they want to sign in with if not logged in yet
-          signInParams = {
-            state: {
-              type: authTypes.EVENT_ADD_AVAILABILITY,
-              eventId: this.eventId,
-            },
-            selectAccount: true,
-            requestCalendarPermission: true,
-          }
-        }
-
-        if (calendarType === calendarTypes.GOOGLE) {
-          signInGoogle(signInParams)
-        } else if (calendarType === calendarTypes.OUTLOOK) {
-          signInOutlook(signInParams)
-        }
-      }
-      this.choiceDialog = false
-    },
-    setAvailabilityManually() {
-      /* Starts editing after "set availability manually" button clicked */
-      if (!this.scheduleOverlapComponent) return
-
-      this.$nextTick(() => {
-        this.scheduleOverlapComponent.startEditing()
-      })
-      this.choiceDialog = false
-    },
-    editGuestAvailability() {
-      /* Edits the selected guest's availability */
-      if (!this.scheduleOverlapComponent) return
-
-      this.curGuestId = this.selectedGuestRespondent
-      this.scheduleOverlapComponent.startEditing()
-      this.$nextTick(() => {
-        this.scheduleOverlapComponent.populateUserAvailability(
-          this.selectedGuestRespondent
+// TEMPORARY: Intercept plugin responses for debugging
+function _interceptPluginResponses(e: MessageEvent<PluginMessageData>) {
+  if (e.data.type === "FILL_CALENDAR_EVENT_RESPONSE") {
+    const { command, requestId, ok, error: errData, payload } = e.data
+    if (ok) {
+      if (command === "get-slots" && payload?.slots) {
+        const slots = payload.slots as unknown as Record<string, { name?: string; email?: string; availability?: unknown; ifNeeded?: unknown }>
+        const timeIncrement = Number((payload as Record<string, unknown>).timeIncrement ?? 0)
+        const timezoneValue = ((payload as Record<string, unknown>).timezone ?? "—") as string
+        console.log(
+          `[PLUGIN RESPONSE - SUCCESS] ${command} | timeIncrement: ${String(timeIncrement)} | timezone: ${timezoneValue}`
         )
-      })
-    },
-
-    async saveChanges(ignorePagesNotVisited = false) {
-      /* Shows guest dialog if not signed in, otherwise saves auth user's availability */
-      if (!this.scheduleOverlapComponent) return
-
-      // If user hasn't responded and they haven't gone to the next page, show pages not visited dialog
-      if (
-        !this.userHasResponded &&
-        this.curGuestId.length === 0 &&
-        !this.scheduleOverlapComponent.pageHasChanged &&
-        !ignorePagesNotVisited &&
-        this.scheduleOverlapComponent.hasPages
-      ) {
-        this.pagesNotVisitedDialog = true
-        return
-      }
-
-      if (!this.authUser || this.addingAvailabilityAsGuest) {
-        if (this.curGuestId) {
-          this.saveChangesAsGuest({
-            name: this.curGuestId,
-            email: this.event.responses[this.curGuestId].email,
-          })
-          this.curGuestId = ""
-          this.addingAvailabilityAsGuest = false
-        } else {
-          this.guestDialog = true
-        }
-        return
-      }
-
-      let changesPersisted = true
-
-      if (this.isSignUp) {
-        changesPersisted =
-          await this.scheduleOverlapComponent.submitNewSignUpBlocks()
+        Object.entries(slots).forEach(([userId, u]) => {
+          const label = [u.name, u.email].filter(Boolean).join(" ") || userId
+          console.log(`  ${label}:`, { availability: u.availability, ifNeeded: u.ifNeeded })
+        })
       } else {
-        await this.scheduleOverlapComponent.submitAvailability()
-      }
-
-      if (changesPersisted) {
-        this.showInfo("Changes saved!")
-        this.scheduleOverlapComponent.stopEditing()
-      }
-    },
-    async saveChangesAsGuest(payload) {
-      /* After guest dialog is submitted, submit availability with the given name */
-      if (!this.scheduleOverlapComponent) return
-
-      if (payload.name.length > 0) {
-        await this.scheduleOverlapComponent.submitAvailability(payload)
-
-        this.showInfo("Changes saved!")
-        this.scheduleOverlapComponent.resetCurUserAvailability()
-        this.scheduleOverlapComponent.stopEditing()
-        this.guestDialog = false
-        this.addingAvailabilityAsGuest = false
-      }
-    },
-
-    scheduleEvent() {
-      this.scheduleOverlapComponent?.scheduleEvent()
-    },
-    cancelScheduleEvent() {
-      this.scheduleOverlapComponent?.cancelScheduleEvent()
-    },
-    confirmScheduleEvent() {
-      this.scheduleOverlapComponent?.confirmScheduleEvent()
-    },
-
-    highlightAvailabilityBtn() {
-      // if (!this.isPhone) {
-      //   window.scrollTo({ top: 0, behavior: "instant" })
-      // }
-      this.availabilityBtnOpacity = 0.1
-      setTimeout(() => {
-        this.availabilityBtnOpacity = 1
-        setTimeout(() => {
-          this.availabilityBtnOpacity = 0.1
-          setTimeout(() => {
-            this.availabilityBtnOpacity = 1
-          }, 100)
-        }, 100)
-      }, 100)
-    },
-
-    /** Sign in with google to link apple calendar */
-    signInLinkApple() {
-      if (isWebview(navigator.userAgent)) {
-        // Show dialog prompting user to use a real browser
-        this.webviewDialog = true
-      } else {
-        signInGoogle({
-          state: {
-            type: authTypes.EVENT_SIGN_IN_LINK_APPLE,
-            eventId: this.eventId,
-          },
-          selectAccount: true,
-        })
-      }
-    },
-    /** Called when user adds apple calendar account */
-    addedAppleCalendar() {
-      this.choiceDialog = false
-      this.scheduleOverlapComponent?.startEditing()
-      this.scheduleOverlapComponent?.setAvailabilityAutomatically()
-    },
-    /** Called when user adds ICS calendar account */
-    addedICSCalendar() {
-      this.choiceDialog = false
-      this.scheduleOverlapComponent?.startEditing()
-      this.scheduleOverlapComponent?.setAvailabilityAutomatically()
-    },
-
-    /** Refresh calendar availabilities of everybody in the group */
-    async fetchCalendarAvailabilities() {
-      if (this.event.type !== eventTypes.GROUP) return
-
-      // this.calendarAvailabilities = {}
-      const curWeekOffset = this.weekOffset
-      return getCalendarEventsMap(this.event, {
-        weekOffset: curWeekOffset,
-        eventId: this.event._id,
-      })
-        .then((calendarAvailabilities) => {
-          // Don't update calendar availabilities if user
-          // selected a different weekoffset by the time these calendar events load
-          if (curWeekOffset !== this.weekOffset) return
-
-          this.calendarAvailabilities = calendarAvailabilities
-
-          // Fix DST bug
-          for (const userId in this.calendarAvailabilities) {
-            for (const index in this.calendarAvailabilities[userId]) {
-              const event = this.calendarAvailabilities[userId][index]
-              const startDate = new Date(event.startDate)
-              const endDate = new Date(event.endDate)
-              if (doesDstExist(startDate) && !isDstObserved(startDate)) {
-                startDate.setHours(startDate.getHours() - 1)
-                endDate.setHours(endDate.getHours() - 1)
-              }
-              this.calendarAvailabilities[userId][index].startDate =
-                startDate.toISOString()
-              this.calendarAvailabilities[userId][index].endDate =
-                endDate.toISOString()
-            }
-          }
-        })
-        .catch((err) => {
-          console.error(err)
-        })
-    },
-
-    /** Fetch current user's calendar events */
-    async fetchAuthUserCalendarEvents() {
-      if (!this.authUser) {
-        this.calendarPermissionGranted = false
-        return
-      }
-
-      // this.calendarEventsMap = {}
-      const curWeekOffset = this.weekOffset
-      return getCalendarEventsMap(this.event, { weekOffset: curWeekOffset })
-        .then((eventsMap) => {
-          // If all calendars have error, then set calendarPermissionGranted to false
-          // TODO: What happens if user signed in without enabling calendar??
-          // let noError = false
-          // for (const key in eventsMap) {
-          //   if (!eventsMap[key].error) {
-          //     noError = true
-          //     break
-          //   }
-          // }
-          // if (!noError) {
-          //   this.calendarPermissionGranted = false
-          //   return
-          // }
-
-          // Don't set calendar events / set availability if user has already
-          // selected a different weekoffset by the time these calendar events load
-          if (curWeekOffset !== this.weekOffset) return
-
-          this.calendarEventsMap = eventsMap
-
-          // Fix DST bug
-          if (
-            this.event.type === eventTypes.GROUP ||
-            this.event.type === eventTypes.DOW
-          ) {
-            for (const calendarId in this.calendarEventsMap) {
-              for (const index in this.calendarEventsMap[calendarId]
-                .calendarEvents) {
-                const event =
-                  this.calendarEventsMap[calendarId].calendarEvents[index]
-                const startDate = new Date(event.startDate)
-                const endDate = new Date(event.endDate)
-                if (doesDstExist(startDate) && !isDstObserved(startDate)) {
-                  startDate.setHours(startDate.getHours() - 1)
-                  endDate.setHours(endDate.getHours() - 1)
-                }
-                this.calendarEventsMap[calendarId].calendarEvents[
-                  index
-                ].startDate = startDate.toISOString()
-                this.calendarEventsMap[calendarId].calendarEvents[
-                  index
-                ].endDate = endDate.toISOString()
-              }
-            }
-          }
-
-          // Set user availability automatically if we're in editing mode and they haven't responded
-          if (
-            this.authUser &&
-            this.isEditing &&
-            !this.userHasResponded &&
-            !this.areUnsavedChanges &&
-            this.scheduleOverlapComponent
-          ) {
-            this.$nextTick(() => {
-              this.scheduleOverlapComponent?.setAvailabilityAutomatically()
-            })
-          }
-
-          // calendar permission granted is false when every calendar in the calendar map has an error, true otherwise
-          this.calendarPermissionGranted = !Object.values(
-            this.calendarEventsMap
-          ).every((c) => Boolean(c.error))
-
-          if (!this.hasRefetchedAuthUserCalendarEvents) {
-            const hasAtLeastOneError = Object.values(
-              this.calendarEventsMap
-            ).some((c) => Boolean(c.error))
-
-            // Refetch calendar if there is an error
-            if (hasAtLeastOneError) {
-              this.hasRefetchedAuthUserCalendarEvents = true
-              setTimeout(() => {
-                this.fetchAuthUserCalendarEvents()
-              }, 1000)
-            }
-          }
-        })
-        .catch((err) => {
-          console.error(err)
-          this.calendarPermissionGranted = false
-        })
-    },
-
-    /** Refreshes calendar avaliabilities and fetches current user calendar events */
-    refreshCalendar() {
-      const promises = []
-      promises.push(this.fetchCalendarAvailabilities())
-      promises.push(this.fetchAuthUserCalendarEvents())
-
-      const curWeekOffset = this.weekOffset
-      this.loading = true
-      Promise.allSettled(promises).then(() => {
-        // Only set loading to false if promises resolved at the same week offset they were fetched at
-        // i.e. no new promises are currently being run
-        if (curWeekOffset === this.weekOffset) {
-          this.loading = false
-        }
-      })
-    },
-
-    /** Resets week offset to 0 */
-    resetWeekOffset() {
-      if (this.event && this.event.startOnMonday) {
-        this.weekOffset = 0
-      } else {
-        this.weekOffset = 0
-      }
-    },
-
-    onBeforeUnload(e) {
-      if (this.areUnsavedChanges) {
-        e.preventDefault()
-        e.returnValue = ""
-        return
-      }
-
-      delete e["returnValue"]
-    },
-
-    handleGuestDialogSubmit(guestPayload) {
-      this.saveChangesAsGuest(guestPayload)
-    },
-
-    handleMessage(event) {
-      if (!isValidPluginMessage(event)) return
-
-      const payload = event.data.payload
-
-      if (payload?.type === "get-slots") {
-        this.getSlots(event)
-      }
-
-      if (payload?.type === "set-slots") {
-        this.setSlots(event)
-      }
-    },
-
-    // TEMPORARY: Intercept plugin responses for debugging
-    interceptPluginResponses(event) {
-      // Only intercept messages from our own window (plugin responses)
-      if (event.data?.type === "FILL_CALENDAR_EVENT_RESPONSE") {
-        const { command, requestId, ok, error, payload } = event.data
-
-        if (ok) {
-          // Flatten get-slots output so slots are easy to scan in the console
-          if (command === "get-slots" && payload?.slots) {
-            console.log(
-              `[PLUGIN RESPONSE - SUCCESS] ${command} | timeIncrement: ${
-                payload.timeIncrement
-              } | timezone: ${payload.timezone ?? "—"}`
-            )
-            Object.entries(payload.slots).forEach(([userId, u]) => {
-              const label =
-                [u.name, u.email].filter(Boolean).join(" ") || userId
-              console.log(`  ${label}:`, {
-                availability: u.availability,
-                ifNeeded: u.ifNeeded,
-              })
-            })
-          } else {
-            console.log(`[PLUGIN RESPONSE - SUCCESS] ${command}`, {
-              requestId,
-              payload,
-              timestamp: new Date().toISOString(),
-            })
-          }
-        } else {
-          console.error(`[PLUGIN RESPONSE - ERROR] ${command}`, {
-            requestId,
-            error: error?.message || error,
-            timestamp: new Date().toISOString(),
-          })
-        }
-      }
-    },
-
-    async setSlots(event) {
-      const requestId = event.data?.requestId
-      const command = "set-slots"
-      if (this.isGroup) {
-        sendPluginError(
+        console.log(`[PLUGIN RESPONSE - SUCCESS] ${command ?? ""}`, {
           requestId,
-          command,
-          "Group events are not supported yet"
-        )
-        return
+          payload,
+          timestamp: Temporal.Now.instant().toString(),
+        })
       }
+    } else {
+      const errMsg = typeof errData === "object"
+        ? errData.message ?? JSON.stringify(errData)
+        : errData ?? ""
+      console.error(`[PLUGIN RESPONSE - ERROR] ${command ?? ""}`, {
+        requestId,
+        error: errMsg,
+        timestamp: Temporal.Now.instant().toString(),
+      })
+    }
+  }
+}
 
-      // Validation: Check event exists
-      if (!this.event) {
-        sendPluginError(requestId, command, "Event not loaded yet")
-        return
-      }
-
-      // Validation: Check timeIncrement exists, default to 15 if not
-      const timeIncrement = this.event.timeIncrement ?? 15
-
-      // Security check: If blindAvailabilityEnabled is true and user is NOT the owner,
-      // reject any request with guestName parameter
-      const payloadGuestName = event.data?.payload?.guestName
-      const hasGuestName = payloadGuestName && payloadGuestName.length > 0
-
-      if (this.event.blindAvailabilityEnabled) {
-        // Check if user is owner: ownerId is only returned by backend if user is the owner
-        // So if ownerId exists and matches current user's ID, they are the owner
-        const isOwner =
-          this.event.ownerId && this.authUser?._id === this.event.ownerId
-        if (!isOwner && hasGuestName) {
+async function setSlots(e: MessageEvent<PluginMessageData>) {
+  const requestId = e.data.requestId ?? ""
+  const command = "set-slots"
+  if (!requestId) {
+    console.error("Missing requestId in plugin message")
+    return
+  }
+  if (isGroup.value) {
+    sendPluginError(requestId, command, "Group events are not supported yet")
+    return
+  }
+  if (!event.value) {
+    sendPluginError(requestId, command, "Event not loaded yet")
+    return
+  }
+  const ev = event.value
+  const timeIncrement = ev.timeIncrement ?? 15
+  const payloadGuestName = e.data.payload?.guestName
+  const hasGuestName = Boolean(payloadGuestName && payloadGuestName.length > 0)
+  if (ev.blindAvailabilityEnabled) {
+    const isOwner = ev.ownerId && authUser.value?._id === ev.ownerId
+    if (!isOwner && hasGuestName) {
+      sendPluginError(
+        requestId,
+        command,
+        "Non-owners cannot set guest availability when 'Hide responses from respondents' is enabled."
+      )
+      return
+    }
+  }
+  const forceGuestMode = hasGuestName
+  const isGuest = forceGuestMode || !authUser.value
+  let guestName = ""
+  let guestEmail = ""
+  if (isGuest) {
+    const guestNameKey = `${ev._id ?? ''}.guestName`
+    if (forceGuestMode) {
+      guestName = payloadGuestName ?? ""
+      localStorage[guestNameKey] = guestName
+      if (ev.collectEmails) {
+        guestEmail = (e.data.payload?.guestEmail) ?? ""
+        if (!guestEmail || guestEmail.length === 0) {
           sendPluginError(
             requestId,
             command,
-            "Non-owners cannot set guest availability when 'Hide responses from respondents' is enabled."
+            "Guest email is required because this event collects emails. Please provide 'guestEmail' in the payload."
           )
           return
         }
+        if (!validateEmail(guestEmail)) {
+          sendPluginError(requestId, command, `Invalid email format: ${guestEmail}`)
+          return
+        }
+      } else {
+        guestEmail = e.data.payload?.guestEmail ?? ev.responses?.[guestName]?.email ?? ""
       }
+    } else {
+      const storedGuestName = localStorage[guestNameKey] as string | undefined
+      if (!storedGuestName || storedGuestName.length === 0) {
+        sendPluginError(
+          requestId,
+          command,
+          "Guest name is required. Please provide 'guestName' in the payload or add your availability through the UI first."
+        )
+        return
+      }
+      guestName = storedGuestName
+      guestEmail = e.data.payload?.guestEmail ?? ev.responses?.[guestName]?.email ?? ""
+    }
+  }
+  let slots: SlotEntry[] = e.data.payload?.slots ?? []
+  if (!Array.isArray(slots)) {
+    sendPluginError(requestId, command, "Slots must be an array")
+    return
+  }
+  const hasTimezone = Boolean(e.data.payload?.timezone)
+  if (ev.type === eventTypes.DOW && slots.length > 0) {
+    const validationResult = validateDOWPayload(slots, hasTimezone)
+    if (validationResult) {
+      sendPluginError(requestId, command, validationResult.error)
+      return
+    }
+  }
+  const timezoneValue = e.data.payload?.timezone
+  if (timezoneValue) {
+    if (!(timezoneValue in allTimezones)) {
+      sendPluginError(
+        requestId,
+        command,
+        `Invalid timezone: "${timezoneValue}". Please provide a valid IANA timezone name from the supported timezones list.`
+      )
+      return
+    }
+  }
+  const effectiveTimezoneValue = timezoneValue ?? resolvePluginTimezoneValue()
+  const timeSlotToRowCol =
+    typeof scheduleOverlap.value?.getAllValidTimeRanges === "function"
+      ? scheduleOverlap.value.getAllValidTimeRanges()
+      : new Map()
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i]
+    if (!slot.start || !slot.end) {
+      sendPluginError(requestId, command, `Slot at index ${String(i)} is missing required 'start' or 'end' field`)
+      return
+    }
+    if (!slot.status) {
+      sendPluginError(requestId, command, `Slot at index ${String(i)} is missing required 'status' field`)
+      return
+    }
+    if (slot.status !== "available" && slot.status !== "if-needed") {
+      sendPluginError(requestId, command, `Invalid status '${slot.status}' at index ${String(i)}. Must be 'available' or 'if-needed'`)
+      return
+    }
+  }
+  const normalizedSlotsResult = normalizePluginSetSlots(
+    slots,
+    effectiveTimezoneValue,
+    ev.type
+  )
+  if (!normalizedSlotsResult.ok) {
+    sendPluginError(requestId, command, normalizedSlotsResult.error)
+    return
+  }
+  const normalizedSlots = normalizedSlotsResult.slots
+  const allAvailabilityTimestamps: number[] = []
+  const allIfNeededTimestamps: number[] = []
+  const timestampStatusMap = new Map<number, string>()
+  let isBrokenBounds = false
+  normalizedSlots.forEach((slot, i: number) => {
+    const userStartZdt = slot.parsedStart
+    const userEndZdt = slot.parsedEnd
 
-      // Check if guestName is provided in payload - if so, force guest mode
-      const forceGuestMode = hasGuestName
+    const userStartMs = userStartZdt.epochMilliseconds
+    const userEndMs = userEndZdt.epochMilliseconds
 
-      // Determine if current user is guest or logged-in
-      // If guestName is provided in payload, always treat as guest (ignore login status)
-      const isGuest = forceGuestMode || !this.authUser
-
-      // For guests, handle guest name and email
-      let guestName = ""
-      let guestEmail = ""
-      if (isGuest) {
-        const guestNameKey = `${this.event._id}.guestName`
-
-        if (forceGuestMode) {
-          // guestName provided in payload - use it and store in localStorage
-          guestName = payloadGuestName
-          // Store with event._id only (canonical guestName storage key)
-          localStorage[guestNameKey] = guestName
-
-          // If event collects emails, require guestEmail in payload
-          if (this.event.collectEmails) {
-            guestEmail = event.data?.payload?.guestEmail || ""
-            if (!guestEmail || guestEmail.length === 0) {
-              sendPluginError(
-                requestId,
-                command,
-                "Guest email is required because this event collects emails. Please provide 'guestEmail' in the payload."
-              )
-              return
-            }
-
-            // Validate email format
-            if (!validateEmail(guestEmail)) {
-              sendPluginError(
-                requestId,
-                command,
-                `Invalid email format: ${guestEmail}`
-              )
+    const intWidth = userEndMs - userStartMs
+    let coveredWidth = 0
+    timeSlotToRowCol.forEach((value: { startTime: Temporal.ZonedDateTime; endTime: Temporal.ZonedDateTime }, _key: number) => {
+      const slotStartMs = value.startTime.epochMilliseconds
+      const slotEndMs = value.endTime.epochMilliseconds
+      if (userStartMs <= slotEndMs && userEndMs >= slotStartMs) {
+        const intersectionStartMs = Math.max(userStartMs, slotStartMs)
+        const intersectionEndMs = Math.min(userEndMs, slotEndMs)
+        coveredWidth += intersectionEndMs - intersectionStartMs
+        const incrementMs = timeIncrement * 60 * 1000
+        let currentTimeMs = intersectionStartMs
+        while (currentTimeMs < intersectionEndMs) {
+          const timestampKey = currentTimeMs
+          if (timestampStatusMap.has(timestampKey)) {
+            const existingStatus = timestampStatusMap.get(timestampKey)
+            if (existingStatus !== slot.status) {
+              sendPluginError(requestId, command, `Time slot at index ${String(i)} overlaps with another time slot with different status`)
               return
             }
           } else {
-            // Email not required, but get from payload if provided, or from existing response
-            guestEmail =
-              event.data?.payload?.guestEmail ||
-              this.event.responses[guestName]?.email ||
-              ""
+            timestampStatusMap.set(timestampKey, slot.status ?? "")
           }
-        } else {
-          // No guestName in payload - use existing flow (check localStorage)
-          const storedGuestName = localStorage[guestNameKey]
-
-          // If no guest name in localStorage, require it from payload
-          if (!storedGuestName || storedGuestName.length === 0) {
-            sendPluginError(
-              requestId,
-              command,
-              "Guest name is required. Please provide 'guestName' in the payload or add your availability through the UI first."
-            )
-            return
-          }
-
-          // Use stored guest name
-          guestName = storedGuestName
-          // Get email from existing response or payload (if provided)
-          guestEmail =
-            event.data?.payload?.guestEmail ||
-            this.event.responses[guestName]?.email ||
-            ""
-        }
-      }
-
-      // Get slots from payload - new format: [{ start, end, status }]
-      let slots = event.data?.payload?.slots
-
-      if (!Array.isArray(slots)) {
-        sendPluginError(requestId, command, "Slots must be an array")
-        return
-      }
-
-      // Validate DOW payload if this is a DOW event (only if slots are provided)
-      // Check if timezone is provided - if so, skip same-day check since timezone conversion may cause day boundary crossing
-      const hasTimezone = !!event.data?.payload?.timezone
-      if (this.event.type === eventTypes.DOW && slots.length > 0) {
-        const validationResult = validateDOWPayload(slots, hasTimezone)
-        if (validationResult) {
-          sendPluginError(requestId, command, validationResult.error)
-          return
-        }
-      }
-
-      if (this.event.type === eventTypes.DOW && slots.length > 0) {
-        //need to offset for DOW cuz dow dates are in DST
-        slots = slots.map((slot) => {
-          const startDate = dayjs(slot.start)
-          const endDate = dayjs(slot.end)
-          return {
-            ...slot,
-            start: startDate.add(1, "hour").format("YYYY-MM-DDTHH:mm:ss"),
-            end: endDate.add(1, "hour").format("YYYY-MM-DDTHH:mm:ss"),
-          }
-        })
-      }
-
-      // Determine timezone for conversion
-      // Priority: 1. User-provided timezone in payload, 2. localStorage, 3. Browser's local timezone
-      let timezoneValue = null
-      if (event.data?.payload?.timezone) {
-        // User provided timezone in the message (should be IANA timezone name)
-        const providedTimezone = event.data.payload.timezone
-
-        // Validate that the provided timezone exists in allTimezones
-        if (!(providedTimezone in allTimezones)) {
-          sendPluginError(
-            requestId,
-            command,
-            `Invalid timezone: "${providedTimezone}". Please provide a valid IANA timezone name from the supported timezones list.`
-          )
-          return
-        }
-
-        timezoneValue = providedTimezone
-      } else {
-        // Use timezone from localStorage (should have IANA timezone name in .value)
-        try {
-          const timezoneObj = JSON.parse(localStorage["timezone"])
-          timezoneValue = timezoneObj.value
-        } catch (err) {
-          // If parsing fails, fall back to browser's local timezone
-          timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
-        }
-      }
-
-      // Generate all valid displayed time ranges using ScheduleOverlap's existing logic
-      // Returns a Map that maps time slot startTime.getTime() to { row, col, startTime, endTime }
-      const timeSlotToRowCol =
-        this.scheduleOverlapComponent &&
-        typeof this.scheduleOverlapComponent.getAllValidTimeRanges ===
-          "function"
-          ? this.scheduleOverlapComponent.getAllValidTimeRanges()
-          : new Map()
-
-      // Validate each slot has required fields
-      for (let i = 0; i < slots.length; i++) {
-        const slot = slots[i]
-        if (!slot.start || !slot.end) {
-          sendPluginError(
-            requestId,
-            command,
-            `Slot at index ${i} is missing required 'start' or 'end' field`
-          )
-          return
-        }
-        if (!slot.status) {
-          sendPluginError(
-            requestId,
-            command,
-            `Slot at index ${i} is missing required 'status' field`
-          )
-          return
-        }
-        if (slot.status !== "available" && slot.status !== "if-needed") {
-          sendPluginError(
-            requestId,
-            command,
-            `Invalid status '${slot.status}' at index ${i}. Must be 'available' or 'if-needed'`
-          )
-          return
-        }
-      }
-
-      // Validate that all start/end times fall within event's date range
-      const eventDates = this.event.dates.map((d) => new Date(d))
-      const eventStartTime = this.event.startTime // Hours (e.g., 9 for 9am)
-      const eventDuration = this.event.duration // Hours
-
-      // Convert all slot times from user's timezone to UTC and validate
-      const convertedSlots = []
-      for (let i = 0; i < slots.length; i++) {
-        const slot = slots[i]
-
-        // Convert timestamps from user's timezone to UTC
-        let startTime, endTime
-        try {
-          startTime = convertToUTC(slot.start, timezoneValue)
-          endTime = convertToUTC(slot.end, timezoneValue)
-        } catch (err) {
-          sendPluginError(
-            requestId,
-            command,
-            `Failed to parse time at index ${i}: ${err.message}`
-          )
-          return
-        }
-
-        if (isNaN(startTime.getTime())) {
-          sendPluginError(
-            requestId,
-            command,
-            `Invalid start time at index ${i}: ${slot.start}`
-          )
-          return
-        }
-
-        if (isNaN(endTime.getTime())) {
-          sendPluginError(
-            requestId,
-            command,
-            `Invalid end time at index ${i}: ${slot.end}`
-          )
-          return
-        }
-
-        if (endTime <= startTime) {
-          sendPluginError(
-            requestId,
-            command,
-            `End time must be after start time at index ${i}`
-          )
-          return
-        }
-      }
-
-      // Split slots into intervals based on timeIncrement
-      const allAvailabilityTimestamps = []
-      const allIfNeededTimestamps = []
-      // Track timestamps and their statuses to detect conflicts
-      const timestampStatusMap = new Map()
-
-      let isBrokenBounds = false
-      slots.forEach((slot, i) => {
-        const userStartDate = dayjs.tz(slot.start, timezoneValue)
-        const userEndDate = dayjs.tz(slot.end, timezoneValue)
-        const userStartMs = userStartDate.valueOf()
-        const userEndMs = userEndDate.valueOf()
-
-        // Calculate the width of the user's interval
-        const intWidth = userEndMs - userStartMs
-
-        // Calculate total covered width by summing all overlapping slot intersections
-        // Also generate timestamps in the same loop
-        let coveredWidth = 0
-
-        timeSlotToRowCol.forEach((value, key) => {
-          const slotStartMs = value.startTime.valueOf()
-          const slotEndMs = value.endTime.valueOf()
-
-          // Check for overlap: userStart <= slotEnd && userEnd >= slotStart
-          if (userStartMs <= slotEndMs && userEndMs >= slotStartMs) {
-            // Calculate intersection of user interval and slot
-            const intersectionStartMs = Math.max(userStartMs, slotStartMs)
-            const intersectionEndMs = Math.min(userEndMs, slotEndMs)
-
-            // Add this intersection's width to the total for bounds checking
-            coveredWidth += intersectionEndMs - intersectionStartMs
-
-            // Generate timestamps at timeIncrement intervals
-            const incrementMs = timeIncrement * 60 * 1000
-            let currentTimeMs = intersectionStartMs
-
-            // Generate timestamps for the intersection
-            // Use <= to include boundary timestamps when intersection is exactly at slot boundaries
-            while (currentTimeMs < intersectionEndMs) {
-              const timestamp = new Date(currentTimeMs)
-              const timestampKey = timestamp.getTime()
-
-              // Check for status conflicts
-              if (timestampStatusMap.has(timestampKey)) {
-                const existingStatus = timestampStatusMap.get(timestampKey)
-                if (existingStatus !== slot.status) {
-                  sendPluginError(
-                    requestId,
-                    command,
-                    `Time slot at index ${i} overlaps with another time slot with different status`
-                  )
-                  return
-                }
-              } else {
-                timestampStatusMap.set(timestampKey, slot.status)
-              }
-
-              // Add Date object (not milliseconds) to appropriate array
-              if (slot.status === "available") {
-                allAvailabilityTimestamps.push(timestamp)
-              } else {
-                allIfNeededTimestamps.push(timestamp)
-              }
-
-              currentTimeMs += incrementMs
-
-              // Stop if we've exceeded the intersection end
-              if (currentTimeMs > intersectionEndMs) {
-                break
-              }
-            }
-          }
-        })
-
-        if (coveredWidth < intWidth) {
-          sendPluginError(
-            requestId,
-            command,
-            `Time slot at index ${i} (${slot.start} to ${slot.end}) falls outside the event's date/time range.`
-          )
-          isBrokenBounds = true
-        }
-      })
-
-      if (isBrokenBounds) return
-
-      // Send new slots (overwrites existing availability)
-      try {
-        const sanitizedId = this.eventId.replaceAll(".", "")
-        const payload = {
-          availability: allAvailabilityTimestamps,
-          ifNeeded: allIfNeededTimestamps,
-        }
-
-        // Set guest flag and user identification
-        if (isGuest) {
-          // For guests: include name and email (already validated and stored above)
-          payload.guest = true
-          payload.name = guestName
-          payload.email = guestEmail
-        } else {
-          // For logged-in users: backend will use session to identify user
-          payload.guest = false
-        }
-
-        await post(`/events/${sanitizedId}/response`, payload)
-
-        // Trigger frontend refresh to update UI
-        await this.refreshEvent()
-
-        sendPluginSuccess(requestId, command)
-      } catch (err) {
-        sendPluginError(
-          requestId,
-          command,
-          `Failed to set slots: ${err.message || "Unknown error"}`
-        )
-      }
-    },
-
-    async getSlots(event) {
-      const requestId = event.data?.requestId
-      const command = "get-slots"
-
-      // Need the event to calculate timeMin and timeMax
-      if (!this.event) {
-        sendPluginError(requestId, command, "Event not loaded yet")
-        return
-      }
-
-      // Resolve timezone: same logic as set-slots (payload → localStorage → browser)
-      let timezoneValue = null
-      if (event.data?.payload?.timezone) {
-        const providedTimezone = event.data.payload.timezone
-        if (!(providedTimezone in allTimezones)) {
-          sendPluginError(
-            requestId,
-            command,
-            `Invalid timezone: "${providedTimezone}". Please provide a valid IANA timezone name from the supported timezones list.`
-          )
-          return
-        }
-        timezoneValue = providedTimezone
-      } else {
-        try {
-          const timezoneObj = JSON.parse(localStorage["timezone"])
-          timezoneValue = timezoneObj.value
-        } catch (err) {
-          timezoneValue = Intl.DateTimeFormat().resolvedOptions().timeZone
-        }
-      }
-
-      let sanitizedId = this.eventId.replaceAll(".", "")
-
-      // Calculate timeMin and timeMax using the same logic as fetchResponses in ScheduleOverlap
-      let timeMin, timeMax
-      if (this.event.type === eventTypes.GROUP) {
-        if (this.event.dates.length > 0) {
-          // Fetch the date range for the current week
-          timeMin = new Date(this.event.dates[0])
-          timeMax = new Date(this.event.dates[this.event.dates.length - 1])
-          timeMax.setDate(timeMax.getDate() + 1)
-
-          // Convert dow dates to discrete dates
-          timeMin = dateToDowDate(
-            this.event.dates,
-            timeMin,
-            this.weekOffset,
-            true
-          )
-          timeMax = dateToDowDate(
-            this.event.dates,
-            timeMax,
-            this.weekOffset,
-            true
-          )
-        }
-      } else {
-        // For non-GROUP events, use the event dates directly
-        if (this.event.dates.length > 0) {
-          // Fetch the entire time range of availabilities
-          timeMin = new Date(this.event.dates[0])
-          timeMax = new Date(this.event.dates[this.event.dates.length - 1])
-          timeMax.setDate(timeMax.getDate() + 1)
-        }
-      }
-
-      if (!timeMin || !timeMax) {
-        sendPluginError(
-          requestId,
-          command,
-          "Could not calculate timeMin and timeMax"
-        )
-        return
-      }
-
-      try {
-        // Fetch responses between timeMin and timeMax
-
-        // Try to get guest name from localStorage using long event id only.
-        let guestName = null
-        if (typeof localStorage !== "undefined" && this.event?._id) {
-          const guestNameKey = `${this.event._id}.guestName`
-          guestName = localStorage[guestNameKey]
-        }
-
-        // Build URL with guestName if available
-        let url = `/events/${sanitizedId}/responses?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
-        if (guestName && guestName.length > 0) {
-          url += `&guestName=${encodeURIComponent(guestName)}`
-        }
-
-        const responses = await get(url)
-
-        // Build response object with all users' slots
-        const allSlots = {}
-
-        for (const userId in responses) {
-          const response = responses[userId]
-
-          // Get name and email
-          let name = ""
-          let email = ""
-
-          // For guests, name and email are in the response directly
-          if (response.name && response.name.length > 0) {
-            name = response.name
-            email = response.email || ""
+          if (slot.status === "available") {
+            allAvailabilityTimestamps.push(currentTimeMs)
           } else {
-            // For logged-in users, get from this.event.responses (populated by getEvent endpoint)
-            const eventResponse = this.event.responses?.[userId]
-            if (eventResponse?.user) {
-              const user = eventResponse.user
-              name = `${user.firstName || ""} ${user.lastName || ""}`.trim()
-              email = user.email || ""
-            } else {
-              // Fallback: use userId if user info not available
-              name = userId
-              email = ""
-            }
+            allIfNeededTimestamps.push(currentTimeMs)
           }
-
-          // Convert UTC to requested timezone. For DOW events, if timezone observes DST, subtract 1 hour
-          // (hardcoded DOW dates are in DST, so conversion in DST timezones is 1 hour ahead)
-          let availability = convertUTCSlotsToLocalISO(
-            response.availability,
-            timezoneValue
-          )
-          let ifNeeded = convertUTCSlotsToLocalISO(
-            response.ifNeeded,
-            timezoneValue
-          )
-          if (
-            this.event.type === eventTypes.DOW &&
-            timezoneObservesDST(timezoneValue)
-          ) {
-            const subtractOneHour = (s) =>
-              dayjs
-                .tz(s, timezoneValue)
-                .subtract(1, "hour")
-                .format("YYYY-MM-DDTHH:mm:ss")
-            availability = availability.map(subtractOneHour)
-            ifNeeded = ifNeeded.map(subtractOneHour)
-          }
-
-          allSlots[userId] = {
-            name,
-            email,
-            availability,
-            ifNeeded,
-          }
-        }
-
-        // Get time increment (default to 15 if not set)
-        const timeIncrement = this.event.timeIncrement ?? 15
-
-        sendPluginSuccess(requestId, command, {
-          slots: allSlots,
-          timeIncrement,
-          timezone: timezoneValue,
-        })
-      } catch (err) {
-        sendPluginError(
-          requestId,
-          command,
-          `Failed to fetch responses: ${err.message || "Unknown error"}`
-        )
-      }
-    },
-
-    // -----------------------------------
-    //#region Sign Up Form
-    // -----------------------------------
-
-    initiateSignUpFlow(signUpBlock) {
-      this.currSignUpBlock = signUpBlock
-      this.signUpForSlotDialog = true
-    },
-
-    async signUpForBlock(guestPayload) {
-      let payload
-
-      if (this.authUser) {
-        payload = {
-          guest: false,
-          signUpBlockIds: [this.currSignUpBlock._id],
-        }
-      } else {
-        payload = {
-          guest: true,
-          signUpBlockIds: [this.currSignUpBlock._id],
-          ...guestPayload,
+          currentTimeMs += incrementMs
+          if (currentTimeMs > intersectionEndMs) break
         }
       }
+    })
+    if (coveredWidth < intWidth) {
+      sendPluginError(requestId, command, `Time slot at index ${String(i)} (${slot.start} to ${slot.end}) falls outside the event's date/time range.`)
+      isBrokenBounds = true
+    }
+  })
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (isBrokenBounds) return
+  try {
+    const sanitizedId = props.eventId.replaceAll(".", "")
+    const payload: Record<string, unknown> = {
+      availability: allAvailabilityTimestamps,
+      ifNeeded: allIfNeededTimestamps,
+    }
+    if (isGuest) {
+      payload.guest = true
+      payload.name = guestName
+      payload.email = guestEmail
+    } else {
+      payload.guest = false
+    }
+    await post(`/events/${sanitizedId}/response`, payload)
+    await loader.refreshEvent()
+    sendPluginSuccess(requestId, command)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    sendPluginError(requestId, command, `Failed to set slots: ${msg}`)
+  }
+}
 
-      await post(`/events/${this.event._id}/response`, payload)
-      await this.refreshEvent()
+async function getSlots(e: MessageEvent<PluginMessageData>) {
+  const requestId = e.data.requestId
+  const command = "get-slots"
+  if (!requestId) {
+    console.error("Missing requestId in plugin message")
+    return
+  }
+  if (!event.value) {
+    sendPluginError(requestId, command, "Event not loaded yet")
+    return
+  }
+  const ev = event.value
 
-      this.scheduleOverlapComponent.resetSignUpForm()
-      this.signUpForSlotDialog = false
-    },
+  let timezoneValue: string
+  if (e.data.payload?.timezone) {
+    const providedTimezone = e.data.payload.timezone
+    if (!(providedTimezone in allTimezones)) {
+      sendPluginError(requestId, command, `Invalid timezone: "${providedTimezone}". Please provide a valid IANA timezone name from the supported timezones list.`)
+      return
+    }
+    timezoneValue = providedTimezone
+  } else {
+    timezoneValue = resolvePluginTimezoneValue()
+  }
+  const sanitizedId = props.eventId.replaceAll(".", "")
+  const eventTimeRange = getPluginEventTimeRange(ev, weekOffset.value)
+  if (!eventTimeRange) {
+    sendPluginError(requestId, command, "Could not calculate timeMin and timeMax")
+    return
+  }
+  const { timeMin, timeMax } = eventTimeRange
+  try {
+    let guestName: string | null = null
+    if (typeof localStorage !== "undefined" && ev._id) {
+      const guestNameKey = `${ev._id}.guestName`
+      guestName = localStorage[guestNameKey] as string | null
+    }
+    let url = `/events/${sanitizedId}/responses?timeMin=${timeMin.toString()}&timeMax=${timeMax.toString()}`
+    if (guestName && guestName.length > 0) {
+      url += `&guestName=${encodeURIComponent(guestName)}`
+    }
+    const responses = await get<Record<string, RawResponse>>(url)
+    const allSlots = normalizePluginResponses({
+      rawResponses: responses,
+      eventResponses: ev.responses,
+      timezoneValue,
+      eventType: ev.type,
+    })
+    const timeIncrement = ev.timeIncrement ?? 15
+    sendPluginSuccess(requestId, command, { slots: allSlots, timeIncrement, timezone: timezoneValue })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error"
+    sendPluginError(requestId, command, `Failed to fetch responses: ${msg}`)
+  }
+}
 
-    //#endregion
-  },
+// Initialization — equivalent to created()
+void (async () => {
+  window.addEventListener("beforeunload", onBeforeUnload)
+  window.addEventListener("message", handleMessage)
+  // for dev:
+  // window.addEventListener("message", _interceptPluginResponses)
 
-  async created() {
-    window.addEventListener("beforeunload", this.onBeforeUnload)
-    window.addEventListener("message", this.handleMessage)
-    // for dev:
-    // window.addEventListener("message", this.interceptPluginResponses)
+  try {
+    await loader.refreshEvent()
+    await loader.checkOwnerPremium()
 
-    // Get event details
-    try {
-      await this.refreshEvent()
-      await this.checkOwnerPremium()
-
-      // Redirect if we're at the wrong route
-      if (this.event.type === eventTypes.GROUP) {
-        if (this.$route.name === "event") {
-          this.$router.replace({
-            name: "group",
-            params: {
-              groupId: this.eventId,
-              initialTimezone: this.initialTimezone,
-              fromSignIn: this.fromSignIn,
-              contactsPayload: this.contactsPayload,
-            },
-          })
-        }
-      } else {
-        if (this.$route.name === "group") {
-          this.$router.replace({
-            name: "event",
-            params: {
-              eventId: this.eventId,
-              initialTimezone: this.initialTimezone,
-              fromSignIn: this.fromSignIn,
-              contactsPayload: this.contactsPayload,
-            },
-          })
-        }
-      }
-
-      const fromEditEvent = localStorage.getItem(
-        `from-edit-event-${this.event._id}`
-      )
-      if (fromEditEvent) {
-        localStorage.removeItem(`from-edit-event-${this.event._id}`)
-        this.fromEditEvent = true
-      }
-    } catch (err) {
-      switch (err.error) {
-        case errors.EventNotFound:
-          this.showError("The specified event does not exist!")
-          this.$router.replace({ name: "home" })
+    const ev = loader.event.value
+    if (ev) {
+      if (ev.type === eventTypes.GROUP) {
+        if (route.name === "event") {
+          void router.replace({ name: "group", params: { groupId: props.eventId } })
           return
+        }
+      } else {
+        if (route.name === "group") {
+          void router.replace({ name: "event", params: { eventId: props.eventId } })
+          return
+        }
+      }
+
+      const storedFlag = localStorage.getItem(`from-edit-event-${ev._id ?? ""}`)
+      if (storedFlag) {
+        localStorage.removeItem(`from-edit-event-${ev._id ?? ""}`)
+        loader.fromEditEvent.value = true
       }
     }
+  } catch (err: unknown) {
+    const errObj = err as Record<string, unknown>
+    if (errObj.error === errors.EventNotFound) {
+      mainStore.showError("The specified event does not exist!")
+      void router.replace({ name: "home" })
+      return
+    }
+  }
 
-    const promises = []
-    promises.push(this.fetchCalendarAvailabilities())
-    promises.push(this.fetchAuthUserCalendarEvents())
+  loader.loading.value = true
+  const promises = [loader.fetchCalendarAvailabilities(), loader.fetchAuthUserCalendarEvents()]
+  Promise.allSettled(promises).then(() => { loader.loading.value = false }).catch(() => undefined)
 
-    this.loading = true
-    Promise.allSettled(promises).then(() => {
-      this.loading = false
-    })
+  get<User>("/user/profile")
+    .then((user) => { mainStore.setAuthUser(user) })
+    .catch(() => { mainStore.setAuthUser(null) })
+})()
 
-    get("/user/profile")
-      .then((authUser) => {
-        this.setAuthUser(authUser)
-      })
-      .catch(() => {
-        this.setAuthUser(null)
-      })
-  },
+onBeforeUnmount(() => {
+  window.removeEventListener("beforeunload", onBeforeUnload)
+  window.removeEventListener("message", handleMessage)
+  // for dev:
+  // window.removeEventListener("message", _interceptPluginResponses)
+})
 
-  beforeDestroy() {
-    window.removeEventListener("beforeunload", this.onBeforeUnload)
-    window.removeEventListener("message", this.handleMessage)
-    // for dev:
-    // window.removeEventListener("message", this.interceptPluginResponses)
-  },
+onMounted(() => {
+  editEventDialog.value = Object.keys(props.contactsPayload).length > 0
+  if (props.linkApple) choiceDialog.value = true
+  loadVideoAd()
+})
 
-  watch: {
-    event() {
-      if (this.event) {
-        this.resetWeekOffset()
-        this.$nextTick(() => {
-          this.scheduleOverlapComponent = this.$refs.scheduleOverlap
-        })
-        document.title = `${this.event.name} - Timeful`
-      }
-    },
-    ownerPremiumChecked(val) {
-      if (this.showAds) {
-        window.enableStickyFooter = true
-        this.initFusetag()
-      }
-    },
-    scheduleOverlapComponent() {
-      if (!this.scheduleOverlapComponentLoaded) {
-        this.scheduleOverlapComponentLoaded = true
+watch(loader.event, (ev) => {
+  if (ev) {
+    weekOffset.value = 0
+    document.title = `${ev.name ?? ""} - Timeful`
+  }
+})
 
-        // Put into editing mode if just signed in
-        if ((this.fromSignIn || this.editingMode) && !this.isGroup) {
-          this.scheduleOverlapComponent.startEditing()
-        }
+watch(loader.ownerPremiumChecked, () => {
+  if (showAds.value) {
+    window.enableStickyFooter = true
+    initFusetag()
+  }
+})
 
-        if (this.isGroup && !this.userHasResponded) {
-          this.invitationDialog = true
-        }
-      }
-    },
-    weekOffset() {
-      this.refreshCalendar()
-    },
-    [`authUser.calendarAccounts`]() {
-      this.fetchAuthUserCalendarEvents()
-    },
-  },
-}
+watch(scheduleOverlap, (so) => {
+  if (so && !scheduleOverlapLoaded.value) {
+    scheduleOverlapLoaded.value = true
+    if ((props.fromSignIn || props.editingMode) && !isGroup.value) {
+      so.startEditing()
+    }
+    if (isGroup.value && !userHasResponded.value) {
+      invitationDialog.value = true
+    }
+  }
+})
+
+watch(weekOffset, () => { loader.refreshCalendar() })
+
+watch(() => authUser.value?.calendarAccounts, () => { void loader.fetchAuthUserCalendarEvents() })
 </script>

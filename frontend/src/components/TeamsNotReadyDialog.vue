@@ -6,9 +6,9 @@
         <v-spacer />
         <v-btn
           absolute
-          @click="dialog = false"
           icon
           class="tw-right-0 tw-mr-2 tw-self-center"
+          @click="dialog = false"
         >
           <v-icon>mdi-close</v-icon>
         </v-btn>
@@ -26,31 +26,33 @@
   </v-dialog>
 </template>
 
-<script>
-export default {
-  name: "TeamsNotReadyDialog",
-  props: {
-    value: Boolean,
+<script setup lang="ts">
+import { computed } from "vue"
+import { posthog } from "@/plugins/posthog"
+
+const props = defineProps<{
+  modelValue: boolean
+}>()
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+}>()
+
+const dialog = computed({
+  get() {
+    return props.modelValue
   },
-  computed: {
-    dialog: {
-      get() {
-        return this.value
-      },
-      set(val) {
-        this.$emit("input", val)
-      },
-    },
+  set(val) {
+    emit("update:modelValue", val)
   },
-  methods: {
-    bookCall() {
-      this.$posthog?.capture("book_call_for_organization_plan_clicked")
-      window.open(
-        "https://cal.com/jonathan-liu/timeful-organization-plan",
-        "_blank"
-      )
-      this.dialog = false
-    },
-  },
+})
+
+function bookCall() {
+  posthog.capture("book_call_for_organization_plan_clicked")
+  window.open(
+    "https://cal.com/jonathan-liu/timeful-organization-plan",
+    "_blank"
+  )
+  dialog.value = false
 }
 </script>

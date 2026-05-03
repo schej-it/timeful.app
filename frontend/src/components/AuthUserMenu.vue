@@ -2,8 +2,14 @@
 <template>
   <span>
     <v-menu v-if="authUser" offset-y left>
-      <template v-slot:activator="{ on }">
-        <v-btn id="user-menu-btn" icon :width="size" :height="size" v-on="on">
+      <template #activator="{ props }">
+        <v-btn
+          id="user-menu-btn"
+          icon
+          :width="size"
+          :height="size"
+          v-bind="props"
+        >
           <v-avatar :size="size">
             <UserAvatarContent :user="authUser" :size="size" />
           </v-avatar>
@@ -53,54 +59,37 @@
   </span>
 </template>
 
-<script>
-import UserAvatarContent from "@/components/UserAvatarContent"
-import { mapState, mapMutations } from "vuex"
-import { post, isPhone } from "@/utils"
-import TeamsNotReadyDialog from "./TeamsNotReadyDialog.vue"
+<script setup lang="ts">
+import { computed, ref } from "vue"
+import { useRouter, useRoute } from "vue-router"
+import { storeToRefs } from "pinia"
+import UserAvatarContent from "@/components/UserAvatarContent.vue"
+import TeamsNotReadyDialog from "@/components/TeamsNotReadyDialog.vue"
+import { useMainStore } from "@/stores/main"
+import { post } from "@/utils"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import { posthog } from "@/plugins/posthog"
 
-export default {
-  name: "AuthUserMenu",
+const router = useRouter()
+const route = useRoute()
+const mainStore = useMainStore()
+const { authUser } = storeToRefs(mainStore)
+const { isPhone } = useDisplayHelpers()
 
-  components: {
-    UserAvatarContent,
-    TeamsNotReadyDialog,
-  },
+const showTeamsNotReadyDialog = ref(false)
 
-  data() {
-    return {
-      showTeamsNotReadyDialog: false,
-    }
-  },
+const size = computed(() => (isPhone.value ? 32 : 42))
+const showFeedbackBtn = computed(
+  () => !(!isPhone.value || route.name === "home")
+)
 
-  computed: {
-    ...mapState(["authUser"]),
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-    size() {
-      return this.isPhone ? 32 : 42
-    },
-    showFeedbackBtn() {
-      return !(!this.isPhone || this.$route.name === "home")
-    },
-  },
-
-  methods: {
-    ...mapMutations(["setAuthUser"]),
-    async signOut() {
-      await post("/auth/sign-out")
-      this.setAuthUser(null)
-      this.$posthog?.reset()
-      location.reload()
-    },
-    goToSettings() {
-      this.$router.replace({ name: "settings" })
-    },
-    addTeamMember() {
-      this.$posthog?.capture("add_team_member_clicked")
-      this.showTeamsNotReadyDialog = true
-    },
-  },
+const signOut = async () => {
+  await post("/auth/sign-out")
+  mainStore.setAuthUser(null)
+  posthog.reset()
+  location.reload()
+}
+const goToSettings = () => {
+  void router.replace({ name: "settings" })
 }
 </script>

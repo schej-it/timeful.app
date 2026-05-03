@@ -1,9 +1,9 @@
 <template>
   <v-dialog
-    :value="value"
-    @input="onDialogInput"
+    :model-value="modelValue"
     :width="400"
     content-class="tw-m-0"
+    @update:model-value="onDialogInput"
   >
     <v-card>
       <!-- Main sign-in screen -->
@@ -13,8 +13,8 @@
           <div class="tw-mb-4 tw-flex tw-w-full tw-flex-col tw-gap-y-2">
             <v-btn
               block
-              @click="signIn(calendarTypes.GOOGLE)"
               class="tw-bg-white"
+              @click="signIn(calendarTypes.GOOGLE)"
             >
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
@@ -30,8 +30,8 @@
             </v-btn>
             <v-btn
               block
-              @click="signIn(calendarTypes.OUTLOOK)"
               class="tw-bg-white"
+              @click="signIn(calendarTypes.OUTLOOK)"
             >
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
@@ -87,7 +87,7 @@
       <!-- Onboarding: name entry for new users -->
       <template v-else-if="step === 'onboarding'">
         <v-card-title class="tw-flex tw-items-center">
-          <v-btn icon small @click="step = 'select'" class="tw-mr-1">
+          <v-btn icon small class="tw-mr-1" @click="step = 'select'">
             <v-icon>mdi-arrow-left</v-icon>
           </v-btn>
           What's your name?
@@ -103,8 +103,8 @@
             solo
             hide-details="auto"
             autofocus
-            @keydown.enter="$refs.lastNameField && $refs.lastNameField.focus()"
             class="tw-mb-3"
+            @keydown.enter="lastNameField?.focus()"
           />
           <div class="tw-mb-1 tw-text-sm tw-font-medium">Last name</div>
           <v-text-field
@@ -113,12 +113,12 @@
             placeholder="Last name (optional)"
             solo
             hide-details="auto"
-            @keydown.enter="submitOnboarding"
             class="tw-mb-3"
+            @keydown.enter="submitOnboarding"
           />
           <div class="tw-mb-1 tw-text-sm tw-font-medium">Email</div>
           <v-text-field
-            :value="email"
+            :model-value="email"
             placeholder="Email..."
             solo
             hide-details="auto"
@@ -144,8 +144,8 @@
           <v-btn
             icon
             small
-            @click="step = isNewUser ? 'onboarding' : 'select'"
             class="tw-mr-1"
+            @click="step = isNewUser ? 'onboarding' : 'select'"
           >
             <v-icon>mdi-arrow-left</v-icon>
           </v-btn>
@@ -164,9 +164,9 @@
             hide-details="auto"
             maxlength="6"
             :error-messages="otpError"
-            @keydown.enter="verifyOtp"
             autofocus
             class="tw-mb-2"
+            @keydown.enter="verifyOtp"
           />
           <v-btn
             block
@@ -197,168 +197,182 @@
   </v-dialog>
 </template>
 
-<script>
-import { calendarTypes } from "@/constants"
+<script setup lang="ts">
+import { onBeforeUnmount, ref } from "vue"
+import { calendarTypes, type CalendarType } from "@/constants"
 import { post } from "@/utils"
+import { Temporal } from "temporal-polyfill"
+import type { User } from "@/types"
 
-export default {
-  name: "SignInDialog",
-  props: {
-    value: { type: Boolean, required: true },
-  },
-  data() {
-    return {
-      calendarTypes,
-      step: "select",
-      email: "",
-      firstName: "",
-      lastName: "",
-      otpCode: "",
-      emailError: "",
-      otpError: "",
-      sending: false,
-      verifying: false,
-      isNewUser: false,
-      resendCooldown: 0,
-      resendTimer: null,
-    }
-  },
-  methods: {
-    signIn(provider) {
-      this.$emit("signIn", provider)
-    },
-    validateEmail() {
-      const email = this.email.trim()
-      if (!email) {
-        this.emailError = "Please enter an email address."
-        return false
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        this.emailError = "Please enter a valid email address."
-        return false
-      }
-      if (email.includes("+")) {
-        this.emailError = "Email aliases with '+' are not allowed."
-        return false
-      }
-      return true
-    },
-    async submitEmail() {
-      if (this.sending) return
-      this.emailError = ""
-      if (!this.validateEmail()) return
-      this.sending = true
-      try {
-        const res = await post("/auth/otp/check-email", { email: this.email })
-        this.isNewUser = res.isNewUser
-        if (this.isNewUser) {
-          this.step = "onboarding"
-        } else {
-          await this.sendOtpEmail()
-          this.step = "otp"
-          this.otpCode = ""
-          this.otpError = ""
-        }
-      } catch (err) {
-        this.emailError = "Something went wrong. Please try again."
-      } finally {
-        this.sending = false
-      }
-    },
-    async submitOnboarding() {
-      if (!this.firstName.trim() || this.sending) return
-      this.sending = true
-      try {
-        await this.sendOtpEmail()
-        this.step = "otp"
-        this.otpCode = ""
-        this.otpError = ""
-      } catch (err) {
-        this.otpError = "Failed to send code. Please try again."
-      } finally {
-        this.sending = false
-      }
-    },
-    async sendOtpEmail() {
-      await post("/auth/otp/send", { email: this.email })
-      this.startResendCooldown()
-    },
-    async resendOtp() {
-      if (this.sending || this.resendCooldown > 0) return
-      this.sending = true
-      try {
-        await this.sendOtpEmail()
-        this.otpCode = ""
-        this.otpError = ""
-      } catch (err) {
-        this.otpError = "Failed to resend code. Please try again."
-      } finally {
-        this.sending = false
-      }
-    },
-    async verifyOtp() {
-      if (this.otpCode.length !== 6 || this.verifying) return
-      this.otpError = ""
-      this.verifying = true
-      try {
-        const body = {
-          email: this.email,
-          code: this.otpCode,
-          timezoneOffset: new Date().getTimezoneOffset(),
-        }
-        if (this.isNewUser) {
-          body.firstName = this.firstName.trim()
-          body.lastName = this.lastName.trim()
-        }
-        const user = await post("/auth/otp/verify", body)
-        this.$emit("emailSignIn", user)
-        this.reset()
-        this.$emit("input", false)
-      } catch (err) {
-        const errorCode = err?.parsed?.error
-        if (errorCode === "otp-expired") {
-          this.otpError = "Code has expired. Please request a new one."
-        } else if (errorCode === "otp-too-many-attempts") {
-          this.otpError = "Too many attempts. Please request a new code."
-        } else {
-          this.otpError = "Invalid code. Please try again."
-        }
-      } finally {
-        this.verifying = false
-      }
-    },
-    startResendCooldown() {
-      this.resendCooldown = 30
-      if (this.resendTimer) clearInterval(this.resendTimer)
-      this.resendTimer = setInterval(() => {
-        this.resendCooldown--
-        if (this.resendCooldown <= 0) {
-          clearInterval(this.resendTimer)
-          this.resendTimer = null
-        }
-      }, 1000)
-    },
-    reset() {
-      this.step = "select"
-      this.email = ""
-      this.firstName = ""
-      this.lastName = ""
-      this.otpCode = ""
-      this.emailError = ""
-      this.otpError = ""
-      this.sending = false
-      this.verifying = false
-      this.isNewUser = false
-      this.resendCooldown = 0
-      if (this.resendTimer) clearInterval(this.resendTimer)
-    },
-    onDialogInput(e) {
-      this.$emit("input", e)
-      if (!e) this.reset()
-    },
-  },
-  beforeDestroy() {
-    if (this.resendTimer) clearInterval(this.resendTimer)
-  },
+defineProps<{ modelValue: boolean }>()
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+  signIn: [provider: CalendarType]
+  emailSignIn: [user: User]
+}>()
+
+type Step = "select" | "onboarding" | "otp"
+
+const step = ref<Step>("select")
+const email = ref("")
+const firstName = ref("")
+const lastName = ref("")
+const otpCode = ref("")
+const emailError = ref("")
+const otpError = ref("")
+const sending = ref(false)
+const verifying = ref(false)
+const isNewUser = ref(false)
+const resendCooldown = ref(0)
+let resendTimer: ReturnType<typeof setInterval> | null = null
+const lastNameField = ref<{ focus: () => void } | null>(null)
+
+const signIn = (provider: CalendarType) => {
+  emit("signIn", provider)
 }
+
+const validateEmail = () => {
+  const e = email.value.trim()
+  if (!e) {
+    emailError.value = "Please enter an email address."
+    return false
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+    emailError.value = "Please enter a valid email address."
+    return false
+  }
+  if (e.includes("+")) {
+    emailError.value = "Email aliases with '+' are not allowed."
+    return false
+  }
+  return true
+}
+
+const sendOtpEmail = async () => {
+  await post("/auth/otp/send", { email: email.value })
+  startResendCooldown()
+}
+
+const submitEmail = async () => {
+  if (sending.value) return
+  emailError.value = ""
+  if (!validateEmail()) return
+  sending.value = true
+  try {
+    const res = await post<{ isNewUser: boolean }>("/auth/otp/check-email", {
+      email: email.value,
+    })
+    isNewUser.value = res.isNewUser
+    if (isNewUser.value) {
+      step.value = "onboarding"
+    } else {
+      await sendOtpEmail()
+      step.value = "otp"
+      otpCode.value = ""
+      otpError.value = ""
+    }
+  } catch {
+    emailError.value = "Something went wrong. Please try again."
+  } finally {
+    sending.value = false
+  }
+}
+
+const submitOnboarding = async () => {
+  if (!firstName.value.trim() || sending.value) return
+  sending.value = true
+  try {
+    await sendOtpEmail()
+    step.value = "otp"
+    otpCode.value = ""
+    otpError.value = ""
+  } catch {
+    otpError.value = "Failed to send code. Please try again."
+  } finally {
+    sending.value = false
+  }
+}
+
+const resendOtp = async () => {
+  if (sending.value || resendCooldown.value > 0) return
+  sending.value = true
+  try {
+    await sendOtpEmail()
+    otpCode.value = ""
+    otpError.value = ""
+  } catch {
+    otpError.value = "Failed to resend code. Please try again."
+  } finally {
+    sending.value = false
+  }
+}
+
+const verifyOtp = async () => {
+  if (otpCode.value.length !== 6 || verifying.value) return
+  otpError.value = ""
+  verifying.value = true
+  try {
+    const body: Record<string, unknown> = {
+      email: email.value,
+      code: otpCode.value,
+      timezoneOffset: Temporal.Now.zonedDateTimeISO().offsetNanoseconds / (1000 * 1000 * 1000) / 60 * -1,
+    }
+    if (isNewUser.value) {
+      body.firstName = firstName.value.trim()
+      body.lastName = lastName.value.trim()
+    }
+    const user = await post<User>("/auth/otp/verify", body)
+    emit("emailSignIn", user)
+    reset()
+    emit("update:modelValue", false)
+  } catch (err: unknown) {
+    const errorCode = (err as { parsed?: { error?: string } }).parsed?.error
+    if (errorCode === "otp-expired") {
+      otpError.value = "Code has expired. Please request a new one."
+    } else if (errorCode === "otp-too-many-attempts") {
+      otpError.value = "Too many attempts. Please request a new code."
+    } else {
+      otpError.value = "Invalid code. Please try again."
+    }
+  } finally {
+    verifying.value = false
+  }
+}
+
+const startResendCooldown = () => {
+  resendCooldown.value = 30
+  if (resendTimer) clearInterval(resendTimer)
+  resendTimer = setInterval(() => {
+    resendCooldown.value--
+    if (resendCooldown.value <= 0) {
+      if (resendTimer) clearInterval(resendTimer)
+      resendTimer = null
+    }
+  }, 1000)
+}
+
+const reset = () => {
+  step.value = "select"
+  email.value = ""
+  firstName.value = ""
+  lastName.value = ""
+  otpCode.value = ""
+  emailError.value = ""
+  otpError.value = ""
+  sending.value = false
+  verifying.value = false
+  isNewUser.value = false
+  resendCooldown.value = 0
+  if (resendTimer) clearInterval(resendTimer)
+}
+
+const onDialogInput = (e: boolean) => {
+  emit("update:modelValue", e)
+  if (!e) reset()
+}
+
+onBeforeUnmount(() => {
+  if (resendTimer) clearInterval(resendTimer)
+})
 </script>

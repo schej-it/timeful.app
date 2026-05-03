@@ -6,8 +6,6 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "Header",
-}
+<script setup lang="ts">
+defineOptions({ name: "AppHeader" })
 </script>

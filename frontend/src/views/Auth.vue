@@ -1,164 +1,185 @@
-<template></template>
+<template><span></span></template>
 
-<script>
+<script setup lang="ts">
+import { useRouter, useRoute } from "vue-router"
+import { storeToRefs } from "pinia"
 import { get, post, getEventsCreated, deleteEventsCreated } from "@/utils"
-import { mapMutations, mapState } from "vuex"
 import { authTypes, calendarTypes } from "@/constants"
+import { useMainStore } from "@/stores/main"
+import { posthog } from "@/plugins/posthog"
+import { Temporal } from "temporal-polyfill"
+import type { SerializedEventDraft } from "@/composables/event/types"
+import { serializeRouteContactsPayload } from "@/router/routeProps"
+import type { User } from "@/types"
 
-export default {
-  name: "Auth",
+defineOptions({ name: 'AppAuth' })
 
-  computed: {
-    ...mapState(["authUser"]),
-  },
+interface AuthState {
+  type?: string
+  calendarType?: string
+  scope?: string
+  eventId?: string
+  groupId?: string
+  payload?: SerializedEventDraft
+  openNewGroup?: boolean
+  upgradeParams?: string
+}
 
-  methods: {
-    ...mapMutations(["setAuthUser"]),
-  },
+interface UpgradeParams {
+  priceId: string
+  isSubscription: boolean
+  originUrl: string
+}
 
-  async created() {
-    let { error, code, scope, state } = this.$route.query
-    if (error) this.$router.replace({ name: "home" })
+const router = useRouter()
+const route = useRoute()
+const mainStore = useMainStore()
+const { authUser } = storeToRefs(mainStore)
 
-    if (state) state = JSON.parse(decodeURIComponent(state))
+void (async () => {
+  let { error, code, scope, state: rawState } = route.query
+  if (error) void router.replace({ name: "home" })
 
-    // Sign in and set auth user
-    try {
-      if (
-        state?.type === authTypes.ADD_CALENDAR_ACCOUNT ||
-        state?.type === authTypes.ADD_CALENDAR_ACCOUNT_FROM_EDIT
-      ) {
-        if (state.calendarType === calendarTypes.GOOGLE) {
-          await post("/user/add-google-calendar-account", { code, scope })
-        } else if (state.calendarType === calendarTypes.OUTLOOK) {
-          await post("/user/add-outlook-calendar-account", {
-            code,
-            scope: state.scope,
-          })
-        } else {
-          throw new Error("Invalid calendar type")
-        }
-      } else {
-        const user = await post("/auth/sign-in", {
+  let state: AuthState | null = null
+  if (rawState) state = JSON.parse(decodeURIComponent(rawState as string)) as AuthState
+
+  try {
+    if (
+      state?.type === authTypes.ADD_CALENDAR_ACCOUNT ||
+      state?.type === authTypes.ADD_CALENDAR_ACCOUNT_FROM_EDIT
+    ) {
+      if (state.calendarType === calendarTypes.GOOGLE) {
+        await post("/user/add-google-calendar-account", { code, scope })
+      } else if (state.calendarType === calendarTypes.OUTLOOK) {
+        await post("/user/add-outlook-calendar-account", {
           code,
-          scope: scope ?? state.scope,
-          calendarType: state.calendarType,
-          timezoneOffset: new Date().getTimezoneOffset(),
-          eventsToLink: getEventsCreated(),
+          scope: state.scope,
         })
-        deleteEventsCreated()
-
-        this.setAuthUser(user)
-
-        this.$posthog?.identify(user._id, {
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-        })
+      } else {
+        throw new Error("Invalid calendar type")
       }
+    } else {
+      const user = await post<User>("/auth/sign-in", {
+        code,
+        scope: scope ?? state?.scope,
+        calendarType: state?.calendarType,
+        timezoneOffset: Temporal.Now.zonedDateTimeISO().offsetNanoseconds / (1000 * 1000 * 1000) / 60 * -1,
+        eventsToLink: getEventsCreated(),
+      })
+      deleteEventsCreated()
 
-      // Redirect to the correct place based on "state", otherwise, just redirect to home
-      if (state) {
-        let authUser
-        switch (state.type) {
-          case authTypes.EVENT_ADD_AVAILABILITY:
-            this.$router.replace({
-              name: "event",
-              params: { eventId: state.eventId, fromSignIn: true },
-            })
-            break
-          case authTypes.EVENT_SIGN_IN:
-            this.$router.replace({
-              name: "event",
-              params: { eventId: state.eventId },
-            })
-            break
-          case authTypes.EVENT_SIGN_IN_LINK_APPLE:
-            this.$router.replace({
-              name: "event",
-              params: { eventId: state.eventId, linkApple: true },
-            })
-            break
-          case authTypes.GROUP_CREATE:
-            this.$router.replace({
+      mainStore.setAuthUser(user)
+
+      posthog.identify(user._id, {
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      })
+    }
+
+    if (state) {
+      let authUserRefreshed
+      switch (state.type) {
+        case authTypes.EVENT_ADD_AVAILABILITY:
+          void router.replace({
+            name: "event",
+            params: { eventId: state.eventId, fromSignIn: "true" },
+          })
+          break
+        case authTypes.EVENT_SIGN_IN:
+          void router.replace({
+            name: "event",
+            params: { eventId: state.eventId },
+          })
+          break
+        case authTypes.EVENT_SIGN_IN_LINK_APPLE:
+          void router.replace({
+            name: "event",
+            params: { eventId: state.eventId, linkApple: "true" },
+          })
+          break
+        case authTypes.GROUP_CREATE:
+          void router.replace({
+            name: "home",
+            params: {
+              openNewGroup: "true",
+            },
+          })
+          break
+        case authTypes.GROUP_SIGN_IN:
+          void router.replace({
+            name: "group",
+            params: { groupId: state.groupId },
+          })
+          break
+        case authTypes.GROUP_ADD_AVAILABILITY:
+          void router.replace({
+            name: "group",
+            params: { groupId: state.eventId, fromSignIn: "true" },
+          })
+          authUserRefreshed = await get<User>("/user/profile")
+          mainStore.setAuthUser(authUserRefreshed)
+          break
+        case authTypes.ADD_CALENDAR_ACCOUNT:
+          void router.replace({
+            name: "settings",
+          })
+          authUserRefreshed = await get<User>("/user/profile")
+          mainStore.setAuthUser(authUserRefreshed)
+          break
+        case authTypes.ADD_CALENDAR_ACCOUNT_FROM_EDIT:
+          void router.replace({
+            name: "event",
+            params: { eventId: state.eventId, fromSignIn: "true" },
+          })
+          authUserRefreshed = await get<User>("/user/profile")
+          mainStore.setAuthUser(authUserRefreshed)
+          break
+        case authTypes.EVENT_CONTACTS:
+          if (state.eventId == "") {
+            void router.replace({
               name: "home",
               params: {
-                openNewGroup: true,
+                contactsPayload: serializeRouteContactsPayload(state.payload),
+                openNewGroup: String(state.openNewGroup ?? false),
               },
             })
-            break
-          case authTypes.GROUP_SIGN_IN:
-            this.$router.replace({
-              name: "group",
-              params: { groupId: state.groupId },
-            })
-            break
-          case authTypes.GROUP_ADD_AVAILABILITY:
-            this.$router.replace({
-              name: "group",
-              params: { groupId: state.eventId, fromSignIn: true },
-            })
-            authUser = await get("/user/profile")
-            this.setAuthUser(authUser)
-            break
-          case authTypes.ADD_CALENDAR_ACCOUNT:
-            this.$router.replace({
-              name: "settings",
-            })
-            authUser = await get("/user/profile")
-            this.setAuthUser(authUser)
-            break
-          case authTypes.ADD_CALENDAR_ACCOUNT_FROM_EDIT:
-            this.$router.replace({
+          } else {
+            void router.replace({
               name: "event",
-              params: { eventId: state.eventId, fromSignIn: true },
+              params: {
+                eventId: state.eventId,
+                contactsPayload: serializeRouteContactsPayload(state.payload),
+              },
             })
-            authUser = await get("/user/profile")
-            this.setAuthUser(authUser)
-            break
-          case authTypes.EVENT_CONTACTS:
-            if (state.eventId == "") {
-              this.$router.replace({
-                name: "home",
-                params: {
-                  contactsPayload: state.payload,
-                  openNewGroup: state.openNewGroup,
-                },
-              })
-            } else {
-              this.$router.replace({
-                name: "event",
-                params: {
-                  eventId: state.eventId,
-                  contactsPayload: state.payload,
-                },
-              })
-            }
-            break
-          case authTypes.UPGRADE:
-            try {
-              const params = JSON.parse(state.upgradeParams)
-              const res = await post("/stripe/create-checkout-session", {
+          }
+          break
+        case authTypes.UPGRADE:
+          try {
+            const params = JSON.parse(state.upgradeParams ?? "") as UpgradeParams
+            const res = await post<{ url: string }>(
+              "/stripe/create-checkout-session",
+              {
                 priceId: params.priceId,
-                userId: this.authUser._id,
+                userId: authUser.value?._id ?? "",
                 isSubscription: params.isSubscription,
                 originUrl: params.originUrl,
-              })
-              window.location.href = res.url
-            } catch (e) {
-              console.error(e)
-              this.$router.replace({ name: "home" })
-            }
-            break
-          default:
-            this.$router.replace({ name: "home" })
-        }
-      } else {
-        this.$router.replace({ name: "home" })
+              }
+            )
+            window.location.href = res.url
+          } catch (e) {
+            console.error(e)
+            void router.replace({ name: "home" })
+          }
+          break
+        default:
+          void router.replace({ name: "home" })
       }
-    } catch (err) {
-      console.error(err)
+    } else {
+      void router.replace({ name: "home" })
     }
-  },
-}
+  } catch (err) {
+    console.error(err)
+  }
+})()
 </script>

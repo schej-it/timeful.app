@@ -29,16 +29,16 @@
       <v-btn
         v-if="eventType.header === 'Events I created'"
         text
-        @click="createFolder"
         class="tw-hidden tw-text-very-dark-gray sm:tw-block"
+        @click="createFolder"
       >
         <v-icon class="tw-mr-2 tw-text-lg">mdi-folder-plus</v-icon>
         New folder
       </v-btn>
       <div
         v-if="eventType.events.length > defaultNumEventsToShow"
-        @click="toggleShowAll"
         class="tw-mt-2 tw-cursor-pointer tw-text-sm tw-font-normal tw-text-very-dark-gray sm:tw-hidden"
+        @click="toggleShowAll"
       >
         Show {{ showAll ? "less" : "more"
         }}<v-icon :class="showAll && 'tw-rotate-180'">mdi-chevron-down</v-icon>
@@ -56,9 +56,9 @@
       class="tw-gr id-cols-1 tw-my-3 tw-grid tw-gap-3 sm:tw-grid-cols-2 lg:tw-grid-cols-3"
     >
       <EventItem
-        class="tw-cursor-pointer"
         v-for="(event, i) in sortedEvents.slice(0, defaultNumEventsToShow)"
         :key="i"
+        class="tw-cursor-pointer"
         :event="event"
       />
     </div>
@@ -82,8 +82,8 @@
         </div>
       </v-expand-transition>
       <div
-        @click="toggleShowAll"
         class="tw-mt-4 tw-hidden tw-cursor-pointer tw-text-sm tw-text-very-dark-gray sm:tw-block"
+        @click="toggleShowAll"
       >
         Show {{ showAll ? "less" : "more"
         }}<v-icon :class="showAll && 'tw-rotate-180'">mdi-chevron-down</v-icon>
@@ -93,69 +93,45 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { computed, ref } from "vue"
+import { useDisplay } from "vuetify"
 import EventItem from "@/components/EventItem.vue"
 import FeatureNotReadyDialog from "@/components/FeatureNotReadyDialog.vue"
+import { storeToRefs } from "pinia"
+import { posthog } from "@/plugins/posthog"
 import { numFreeEvents, upgradeDialogTypes } from "@/constants"
-import { mapState, mapActions } from "vuex"
-import { isPremiumUser } from "@/utils"
+import { useMainStore } from "@/stores/main"
+import { isPremiumUser as isPremiumUserUtil } from "@/utils/general_utils"
+import type { Event } from "@/types"
 
-export default {
-  name: "EventType",
+const props = withDefaults(
+  defineProps<{
+    eventType: { header: string; events: Event[] }
+    emptyText?: string
+  }>(),
+  { emptyText: "" }
+)
 
-  components: {
-    EventItem,
-    FeatureNotReadyDialog,
-  },
+const display = useDisplay()
+const showFeatureNotReadyDialog = ref(false)
+const showAll = ref(false)
 
-  props: {
-    eventType: { type: Object, required: true },
-    emptyText: { type: String, default: "" },
-  },
+const defaultNumEventsToShow = computed(() => (display.lgAndUp.value ? 6 : 4))
+const sortedEvents = computed(() => props.eventType.events)
 
-  data() {
-    return {
-      showFeatureNotReadyDialog: false,
-      showAll: false,
-    }
-  },
+const mainStore = useMainStore()
+const { authUser, enablePaywall } = storeToRefs(mainStore)
+const isPremiumUser = computed(() => isPremiumUserUtil(authUser.value))
 
-  computed: {
-    ...mapState(["authUser", "enablePaywall"]),
-    defaultNumEventsToShow() {
-      return this.$vuetify.breakpoint.lgAndUp ? 6 : 4
-    },
-    numEventsToShow() {
-      return this.showAll
-        ? this.eventType.events.length
-        : this.defaultNumEventsToShow
-    },
-    sortedEvents() {
-      // Events are sorted serverside, so no need to sort here
-      return this.eventType.events
-    },
-    numFreeEvents() {
-      return numFreeEvents
-    },
-    isPremiumUser() {
-      return isPremiumUser(this.authUser)
-    },
-  },
-
-  methods: {
-    ...mapActions(["showUpgradeDialog"]),
-    toggleShowAll() {
-      this.showAll = !this.showAll
-    },
-    openUpgradeDialog() {
-      this.showUpgradeDialog({
-        type: upgradeDialogTypes.UPGRADE_MANUALLY,
-      })
-    },
-    createFolder() {
-      this.showFeatureNotReadyDialog = true
-      this.$posthog?.capture("create_folder_clicked")
-    },
-  },
+const toggleShowAll = () => {
+  showAll.value = !showAll.value
+}
+const openUpgradeDialog = () => {
+  mainStore.showUpgradeDialog({ type: upgradeDialogTypes.UPGRADE_MANUALLY })
+}
+const createFolder = () => {
+  showFeatureNotReadyDialog.value = true
+  posthog.capture("create_folder_clicked")
 }
 </script>
