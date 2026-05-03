@@ -20,7 +20,7 @@ import {
   zdtSetHas,
   zdtMapGetOrInsert,
 } from "@/utils"
-import { durations, eventTypes, UTC } from "@/constants"
+import { durations, eventTypes, UTC, type EventTypeValue } from "@/constants"
 import {
   getNumCurRespondentsForDay,
   useAvailabilityData,
@@ -165,10 +165,18 @@ const makeCalendarEventsHarness = ({
 
 const makeEventSchedulingHarness = ({
   slotStart,
+  eventType = eventTypes.SPECIFIC_DATES,
+  dates = [zdt("2026-01-01T00:00:00Z")],
+  weekOffset = 0,
+  startOnMonday = false,
   curTimezoneValue = UTC,
   curTimezoneOffset = durations.ZERO,
 }: {
   slotStart: Temporal.ZonedDateTime
+  eventType?: EventTypeValue
+  dates?: Temporal.ZonedDateTime[]
+  weekOffset?: number
+  startOnMonday?: boolean
   curTimezoneValue?: string
   curTimezoneOffset?: Temporal.Duration
 }) => {
@@ -180,11 +188,12 @@ const makeEventSchedulingHarness = ({
       shortId: "abc123",
       name: "Planning Session",
       location: "Room 42",
-      type: eventTypes.SPECIFIC_DATES,
-      dates: [zdt("2026-01-01T00:00:00Z")],
+      type: eventType,
+      dates,
       duration: durations.ONE_HOUR,
+      startOnMonday,
     }),
-    weekOffset: ref(0),
+    weekOffset: ref(weekOffset),
     curTimezone: ref({
       value: curTimezoneValue,
       offset: curTimezoneOffset,
@@ -197,8 +206,8 @@ const makeEventSchedulingHarness = ({
     timeslotDuration: computed(() => durations.ONE_HOUR),
     timeslotHeight: computed(() => 16),
     timezoneOffset: computed(() => durations.ZERO),
-    isWeekly: computed(() => false),
-    isGroup: computed(() => false),
+    isWeekly: computed(() => eventType === eventTypes.DOW),
+    isGroup: computed(() => eventType === eventTypes.GROUP),
     isSpecificTimes: computed(() => true),
     getDateFromRowCol: (row: number, col: number) =>
       row === 0 && col === 0 ? slotStart : null,
@@ -805,6 +814,34 @@ describe("Temporal regressions", () => {
     expect(new URL(String(outlookUrl)).searchParams.get("timezone")).toBe(
       "+05:45"
     )
+  })
+
+  it("exports weekly DOW schedules from the displayed week instead of the seed week", () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-01-11T12:00:00Z"))
+
+    const openMock = vi
+      .fn<(url?: string | URL, target?: string) => Window | null>()
+      .mockReturnValue(null)
+    vi.stubGlobal("window", { open: openMock })
+
+    const scheduling = makeEventSchedulingHarness({
+      slotStart: zdt("2026-01-05T09:00:00Z"),
+      eventType: eventTypes.DOW,
+      dates: [zdt("2026-01-05T09:00:00Z"), zdt("2026-01-07T09:00:00Z")],
+      weekOffset: 1,
+    })
+    scheduling.curScheduledEvent.value = { row: 0, col: 0, numRows: 1 }
+
+    scheduling.confirmScheduleEvent(true)
+
+    const url = openMock.mock.calls[0]?.[0]
+    expect(typeof url).toBe("string")
+    expect(new URL(String(url)).searchParams.get("dates")).toBe(
+      "20260119T090000Z/20260119T100000Z"
+    )
+
+    vi.useRealTimers()
   })
 
   it("keeps specific-times day labels on the intended civil date across DST changes", () => {

@@ -30,6 +30,8 @@ const emit = defineEmits<{
 
 const weekText = computed(() => {
   const dates = props.event.dates ?? []
+  if (dates.length === 0) return "unknown date"
+
   const renderedWeekStart = getRenderedWeekStart(
     props.weekOffset,
     props.startOnMonday
