@@ -158,22 +158,7 @@
             :delete-availability-dialog="deleteAvailabilityDialog"
             :show-ads="showAds"
             :right-side-width="rightSideWidth"
-            :days="allDays"
-            :times="times"
-            :cur-date="getDateFromRowCol(curTimeslot.row, curTimeslot.col) ?? undefined"
-            :cur-respondent="curRespondent"
-            :cur-respondents="curRespondents"
-            :cur-timeslot="{ dayIndex: curTimeslot.col, timeIndex: curTimeslot.row }"
-            :cur-timeslot-availability="curTimeslotAvailability"
-            :respondents="respondents"
-            :parsed-responses="parsedResponses"
-            :attendees="formattedAttendees"
-            :responses-formatted="responsesFormatted"
-            :show-calendar-events="showCalendarEvents"
-            :show-best-times="showBestTimes"
-            :hide-if-needed="hideIfNeeded"
-            :show-event-options="showEventOptions"
-            :guest-added-availability="guestAddedAvailability"
+            :respondents-panel="respondentsPanel"
             :sign-up-blocks-list-ref-setter="setSignUpBlocksListRef"
             :options-section-ref-setter="setOptionsSectionRef"
             :respondents-list-ref-setter="setRespondentsListRef"
@@ -235,113 +220,39 @@
           @confirm-schedule-event="confirmScheduleEvent"
         />
 
-        <!-- Fixed bottom section for mobile -->
-        <div
+        <ScheduleOverlapMobileOverlay
           v-if="isPhone && !calendarOnly"
-          class="tw-fixed tw-z-20 tw-w-full"
-          :style="{ bottom: showAds ? 'calc(4rem + 115px)' : '4rem' }"
-        >
-          <!-- Hint text (mobile) -->
-          <v-expand-transition>
-            <template v-if="hintTextShown">
-              <div :key="hintText">
-                <div
-                  :class="`tw-flex tw-w-full tw-items-center tw-justify-between tw-gap-1 tw-bg-light-gray tw-px-2 tw-py-2 tw-text-sm tw-text-very-dark-gray`"
-                >
-                  <div
-                    :class="`tw-flex tw-gap-${hintText.length > 60 ? 2 : 1}`"
-                  >
-                    <v-icon small>mdi-information-outline</v-icon>
-                    <div>
-                      {{ hintText }}
-                    </div>
-                  </div>
-                  <v-icon small @click="closeHint">mdi-close</v-icon>
-                </div>
-              </div>
-            </template>
-          </v-expand-transition>
-
-          <!-- Fixed pos availability toggle (mobile) -->
-          <v-expand-transition>
-            <div v-if="!isGroup && editing && !isSignUp">
-              <div class="tw-bg-white tw-p-4">
-                <AvailabilityTypeToggle
-                  v-model="availabilityType"
-                  class="tw-w-full"
-                />
-              </div>
-            </div>
-          </v-expand-transition>
-
-          <!-- GCal week selector -->
-          <v-expand-transition>
-            <div v-if="isWeekly && editing && calendarPermissionGranted">
-              <div class="tw-h-16 tw-text-sm">
-                <GCalWeekSelector
-                  :week-offset="weekOffset"
-                  :event="event"
-                  :start-on-monday="event.startOnMonday"
-                  @update:week-offset="(val) => $emit('update:weekOffset', val)"
-                />
-              </div>
-            </div>
-          </v-expand-transition>
-
-          <!-- Respondents list -->
-          <v-expand-transition>
-            <div v-if="delayedShowStickyRespondents">
-              <div class="tw-bg-white tw-p-4">
-                <ScheduleOverlapRespondentsPanel
-                  v-model:show-calendar-events="showCalendarEvents"
-                  v-model:show-best-times="showBestTimes"
-                  v-model:hide-if-needed="hideIfNeeded"
-                  :max-height="100"
-                  :event="event"
-                  :event-id="event._id ?? ''"
-                  :days="allDays"
-                  :times="times"
-                  :cur-date="getDateFromRowCol(curTimeslot.row, curTimeslot.col) ?? undefined"
-                  :cur-respondent="curRespondent"
-                  :cur-respondents="curRespondents"
-                  :cur-timeslot="{ dayIndex: curTimeslot.col, timeIndex: curTimeslot.row }"
-                  :cur-timeslot-availability="curTimeslotAvailability"
-                  :respondents="respondents"
-                  :parsed-responses="parsedResponses"
-                  :is-owner="isOwner"
-                  :is-group="isGroup"
-                  :attendees="formattedAttendees"
-                  :responses-formatted="responsesFormatted"
-                  :timezone="curTimezone"
-                  :show-event-options="showEventOptions"
-                  :guest-added-availability="guestAddedAvailability"
-                  :adding-availability-as-guest="addingAvailabilityAsGuest"
-                  @toggle-show-event-options="toggleShowEventOptions"
-                  @add-availability="$emit('addAvailability')"
-                  @add-availability-as-guest="$emit('addAvailabilityAsGuest')"
-                  @mouse-over-respondent="mouseOverRespondent"
-                  @mouse-leave-respondent="mouseLeaveRespondent"
-                  @click-respondent="clickRespondent"
-                  @edit-guest-availability="editGuestAvailability"
-                  @refresh-event="refreshEvent"
-                />
-              </div>
-            </div>
-          </v-expand-transition>
-
-          <!-- Specific times instructions -->
-          <v-expand-transition>
-            <div
-              v-if="state === states.SET_SPECIFIC_TIMES"
-              class="-tw-mb-16 tw-bg-white tw-p-4"
-            >
-              <SpecificTimesInstructions
-                :num-temp-times="tempTimes.size"
-                @save-temp-times="saveTempTimes"
-              />
-            </div>
-          </v-expand-transition>
-        </div>
+          :bottom-offset="showAds ? 'calc(4rem + 115px)' : '4rem'"
+          :hint-text-shown="hintTextShown"
+          :hint-text="hintText"
+          :is-group="isGroup"
+          :editing="editing"
+          :is-sign-up="isSignUp"
+          :availability-type="availabilityType"
+          :is-weekly="isWeekly"
+          :calendar-permission-granted="calendarPermissionGranted"
+          :week-offset="weekOffset"
+          :event="event"
+          :show-sticky-respondents="delayedShowStickyRespondents"
+          :respondents-panel="respondentsPanel"
+          :state="state"
+          :num-temp-times="tempTimes.size"
+          @close-hint="closeHint"
+          @update:availability-type="availabilityType = $event"
+          @update:week-offset="(val) => $emit('update:weekOffset', val)"
+          @update:show-calendar-events="showCalendarEvents = $event"
+          @update:show-best-times="showBestTimes = $event"
+          @update:hide-if-needed="hideIfNeeded = $event"
+          @toggle-show-event-options="toggleShowEventOptions"
+          @add-availability="$emit('addAvailability')"
+          @add-availability-as-guest="$emit('addAvailabilityAsGuest')"
+          @mouse-over-respondent="mouseOverRespondent"
+          @mouse-leave-respondent="mouseLeaveRespondent"
+          @click-respondent="clickRespondent"
+          @edit-guest-availability="editGuestAvailability"
+          @refresh-event="refreshEvent"
+          @save-temp-times="saveTempTimes"
+        />
       </div>
     </Tooltip>
   </span>
@@ -362,14 +273,11 @@ import {
 } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import ScheduleOverlapDaysOnlyGrid from "./ScheduleOverlapDaysOnlyGrid.vue"
-import ScheduleOverlapRespondentsPanel from "./ScheduleOverlapRespondentsPanel.vue"
+import ScheduleOverlapMobileOverlay from "./ScheduleOverlapMobileOverlay.vue"
 import ScheduleOverlapSidebar from "./ScheduleOverlapSidebar.vue"
 import ScheduleOverlapTimeGrid from "./ScheduleOverlapTimeGrid.vue"
 import ToolRow from "./ToolRow.vue"
-import GCalWeekSelector from "./GCalWeekSelector.vue"
 import Tooltip from "../Tooltip.vue"
-import AvailabilityTypeToggle from "./AvailabilityTypeToggle.vue"
-import SpecificTimesInstructions from "./SpecificTimesInstructions.vue"
 import {
   buildDayGridTimeslotClassStyles,
   buildOverlaidAvailability,
@@ -393,6 +301,7 @@ import type {
   FetchedResponse, RowCol, Timezone, ScheduleOverlapState, EventLike, CalendarEventLite, CalendarEventsByDay, CalendarEventsMap,
   SignUpBlockLite,
 } from "@/composables/schedule_overlap/types"
+import type { ScheduleOverlapRespondentsPanelViewModel } from "./respondentsPanelTypes"
 
 // ── Props / Emits ──────────────────────────────────────────────────────
 const props = withDefaults(
@@ -835,6 +744,34 @@ const curRespondentsMax = computed(() =>
 const formattedAttendees = computed(() =>
   props.event.attendees as { email: string; declined?: boolean }[] | undefined
 )
+
+const respondentsPanel = computed<ScheduleOverlapRespondentsPanelViewModel>(() => ({
+  event: props.event,
+  eventId: props.event._id ?? "",
+  days: allDays.value,
+  times: times.value,
+  curDate: getDateFromRowCol(curTimeslot.value.row, curTimeslot.value.col) ?? undefined,
+  curRespondent: curRespondent.value,
+  curRespondents: curRespondents.value,
+  curTimeslot: {
+    dayIndex: curTimeslot.value.col,
+    timeIndex: curTimeslot.value.row,
+  },
+  curTimeslotAvailability: curTimeslotAvailability.value,
+  respondents: respondents.value,
+  parsedResponses: parsedResponses.value,
+  isOwner: isOwner.value,
+  isGroup: isGroup.value,
+  attendees: formattedAttendees.value,
+  responsesFormatted: responsesFormatted.value,
+  timezone: curTimezone.value,
+  showCalendarEvents: showCalendarEvents.value,
+  showBestTimes: showBestTimes.value,
+  hideIfNeeded: hideIfNeeded.value,
+  showEventOptions: showEventOptions.value,
+  guestAddedAvailability: guestAddedAvailability.value,
+  addingAvailabilityAsGuest: props.addingAvailabilityAsGuest,
+}))
 
 const overlaidAvailability = computed(() => {
   return buildOverlaidAvailability({
