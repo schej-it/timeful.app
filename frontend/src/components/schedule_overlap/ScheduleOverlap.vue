@@ -324,7 +324,11 @@
                                 :key="(calendarEvent.id as string | number)"
                               >
                                 <CalendarEventBlock
-                                  :block-style="getTimeBlockStyle(calendarEvent)"
+                                  :block-style="
+                                    getRenderedTimeBlockStyleForTemplate(
+                                      calendarEvent
+                                    )
+                                  "
                                   :calendar-event="calendarEvent"
                                   :is-group="isGroup"
                                   :is-editing-availability="
@@ -387,10 +391,7 @@
                               >
                                 <div
                                   class="tw-absolute tw-w-full tw-select-none tw-p-px"
-                                  :style="{
-                                    top: `calc(${block.hoursOffset} * 4 * 1rem)`,
-                                    height: `calc(${block.hoursLength} * 4 * 1rem)`,
-                                  }"
+                                  :style="getSignUpBlockStyle(block)"
                                   @click="handleSignUpBlockClick(block, (b) => $emit('signUpForBlock', b))"
                                 >
                                   <SignUpCalendarBlock :sign-up-block="block" />
@@ -406,10 +407,7 @@
                               >
                                 <div
                                   class="tw-absolute tw-w-full tw-select-none tw-p-px"
-                                  :style="{
-                                    top: `calc(${block.hoursOffset} * 4 * 1rem)`,
-                                    height: `calc(${block.hoursLength} * 4 * 1rem)`,
-                                  }"
+                                  :style="getSignUpBlockStyle(block)"
                                 >
                                   <SignUpCalendarBlock
                                     :title="block.name"
@@ -428,7 +426,11 @@
                                 ]"
                                 :key="tb"
                                 class="tw-absolute tw-w-full tw-select-none tw-p-px"
-                                :style="getTimeBlockStyle(timeBlock)"
+                                :style="
+                                  getRenderedTimeBlockStyleForTemplate(
+                                    timeBlock
+                                  )
+                                "
                                 style="pointer-events: none"
                               >
                                 <div
@@ -995,23 +997,16 @@
 
 <script setup lang="ts">
 import {
-  ref, computed, watch, nextTick, shallowRef, onMounted, onBeforeUnmount,
+  ref, computed, watch, nextTick, shallowRef,
 } from "vue"
 import { useDisplay } from "vuetify"
 import type { Temporal } from "temporal-polyfill"
 import {
-  getDateInTimezone,
   post,
-  lightOrDark,
-  removeTransparencyFromHex,
-  isTouchEnabled,
-  compareDuration,
   ZdtSet,
-  zdtMapGet,
-  zdtSetHas,
 } from "@/utils"
 import {
-  availabilityTypes, calendarOptionsDefaults, eventTypes, guestUserId, timeTypes, durations
+  availabilityTypes, calendarOptionsDefaults, eventTypes, guestUserId
 } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
@@ -1031,6 +1026,14 @@ import AvailabilityTypeToggle from "./AvailabilityTypeToggle.vue"
 import BufferTimeSwitch from "./BufferTimeSwitch.vue"
 import CalendarEventBlock from "./CalendarEventBlock.vue"
 import SpecificTimesInstructions from "./SpecificTimesInstructions.vue"
+import {
+  buildDayGridTimeslotClassStyles,
+  buildOverlaidAvailability,
+  buildTimeGridTimeslotClassStyles,
+  formatTooltipContent,
+  getSignUpBlockStyle,
+  getTimeBlockStyle,
+} from "./scheduleOverlapRendering"
 import { useCalendarGrid } from "@/composables/schedule_overlap/useCalendarGrid"
 import { useCalendarEvents } from "@/composables/schedule_overlap/useCalendarEvents"
 import type { UseCalendarEventsReturn } from "@/composables/schedule_overlap/useCalendarEvents"
@@ -1041,12 +1044,13 @@ import { useEventScheduling } from "@/composables/schedule_overlap/useEventSched
 import { useSignUpForm } from "@/composables/schedule_overlap/useSignUpForm"
 import { useScheduleOverlapUI } from "@/composables/schedule_overlap/useScheduleOverlapUI"
 import type { UseScheduleOverlapUIReturn } from "@/composables/schedule_overlap/useScheduleOverlapUI"
+import { useScheduleOverlapController } from "./useScheduleOverlapController"
 import {
-  states, DRAG_TYPES, SPLIT_GAP_HEIGHT, SPLIT_GAP_WIDTH, HOUR_HEIGHT, normalizeCalendarOptions,
+  states, SPLIT_GAP_HEIGHT, SPLIT_GAP_WIDTH,
 } from "@/composables/schedule_overlap/types"
 import type {
   RowCol, Timezone, ScheduleOverlapState, EventLike, CalendarEventLite, CalendarEventsByDay, CalendarEventsMap,
-  ScheduledEvent, SignUpBlockLite, TimeItem,
+  SignUpBlockLite,
 } from "@/composables/schedule_overlap/types"
 
 // ── Props / Emits ──────────────────────────────────────────────────────
@@ -1403,104 +1407,50 @@ const {
   updateOverlayAvailability, closeHint,
 } = ui
 
-// ── Watchers ────────────────────────────────────────────────────────────
-watch(
-  ui.showStickyRespondents,
-  (cur) => {
-    if (delayedShowStickyRespondentsTimeout.value != null) {
-      clearTimeout(delayedShowStickyRespondentsTimeout.value)
-    }
-    delayedShowStickyRespondentsTimeout.value = setTimeout(() => {
-      delayedShowStickyRespondents.value = cur
-    }, 100)
-  },
-  { immediate: true }
-)
-
-watch(showBestTimes, () => { onShowBestTimesChange(); })
-
-watch(availability, () => {
-  if (state.value === states.EDIT_AVAILABILITY) unsavedChanges.value = true
-})
-
-watch(calEvents.calendarEventsByDay, (val, oldVal) => {
-  if (JSON.stringify(val) !== JSON.stringify(oldVal)) reanimateAvailability()
-})
-
-watch(calEvents.bufferTime, (cur, prev) => {
-  if (cur.enabled !== prev.enabled || cur.enabled) reanimateAvailability()
-})
-watch(calEvents.workingHours, (cur, prev) => {
-  if (cur.enabled !== prev.enabled || cur.enabled) reanimateAvailability()
-})
-
-watch(eventRef, () => {
-  initSharedCalendarAccounts()
-  fetchResponses()
-}, { immediate: true })
-
-watch(weekOffsetRef, () => {
-  if (props.event.type === eventTypes.GROUP) fetchResponses()
-})
-
-watch(hideIfNeeded, () => { getResponsesFormatted(); })
-
-watch(parsedResponses, () => {
-  getResponsesFormatted()
-  if (
-    props.event.type === eventTypes.GROUP &&
-    state.value === states.EDIT_AVAILABILITY &&
-    mainStore.authUser?._id
-  ) {
-    availability.value = new ZdtSet()
-    populateUserAvailability(mainStore.authUser._id)
-  }
-})
-
-watch(state, (nextState, prevState) => {
-  void nextTick(() => { checkElementsVisible(); })
-  if (prevState === states.SCHEDULE_EVENT) {
-    curScheduledEvent.value = null
-  } else if (prevState === states.EDIT_AVAILABILITY) {
-    unsavedChanges.value = false
-  }
-  if (nextState === states.SET_SPECIFIC_TIMES) {
-    void nextTick(() => {
-      const time9 = document.getElementById("time-9")
-      if (time9) {
-        const y = time9.getBoundingClientRect().top + window.scrollY - 150
-        window.scrollTo({ top: y, behavior: "smooth" })
-      }
-    })
-  }
-})
-
-watch(page, () => nextTick(() => { setTimeslotSize(); }))
-watch(allDays, () => nextTick(() => { setTimeslotSize(); }))
-watch(mobileNumDays, () => nextTick(() => { setTimeslotSize(); }))
-
-watch(
-  () => props.fromEditEvent,
-  () => {
-    if (props.fromEditEvent && isSpecificTimes.value) {
-      tempTimes.value = new ZdtSet(
-        (props.event.times ?? [])
-      )
-      state.value = states.SET_SPECIFIC_TIMES
-    }
-  }
-)
-
-watch(
+useScheduleOverlapController({
+  event: eventRef,
+  fromEditEvent: computed(() => props.fromEditEvent),
+  calendarOnly: computed(() => props.calendarOnly),
+  weekOffset: weekOffsetRef,
+  isGroup,
+  isSpecificTimes,
+  showBestTimes,
+  state,
+  availability,
+  parsedResponses,
   respondents,
-  () => {
-    curTimeslotAvailability.value = {}
-    for (const r of respondents.value) {
-      if (r._id) curTimeslotAvailability.value[r._id] = true
-    }
-  },
-  { immediate: true }
-)
+  curTimeslotAvailability,
+  unsavedChanges,
+  hideIfNeeded,
+  page,
+  allDays,
+  mobileNumDays,
+  tempTimes,
+  calendarEventsByDay,
+  bufferTime,
+  workingHours,
+  curScheduledEvent,
+  delayedShowStickyRespondents,
+  delayedShowStickyRespondentsTimeout,
+  showStickyRespondents: ui.showStickyRespondents,
+  authUser,
+  setTimeslotSize,
+  onResize,
+  onScroll,
+  startDrag,
+  moveDrag,
+  endDrag,
+  deselectRespondents,
+  resetSignUpForm: _resetSignUpForm,
+  resetCurUserAvailability,
+  initSharedCalendarAccounts,
+  fetchResponses,
+  reanimateAvailability,
+  getResponsesFormatted,
+  populateUserAvailability,
+  checkElementsVisible,
+  onShowBestTimesChange,
+})
 
 // ── Local computed ──────────────────────────────────────────────────────
 const showAds = computed(
@@ -1533,68 +1483,92 @@ const formattedAttendees = computed(() =>
 )
 
 const overlaidAvailability = computed(() => {
-  const result: { hoursOffset: Temporal.Duration; hoursLength: Temporal.Duration; type: string }[][] = []
-  days.value.forEach((_day, d) => {
-    result.push([])
-    let idx = 0
-    const addBlock = (time: TimeItem, t: number) => {
-      const date = getDateFromRowCol(t, d)
-      if (!date) return
-      const dAdd =
-        dragging.value && inDragRange(t, d) && dragType.value === DRAG_TYPES.ADD
-      const dRemove =
-        dragging.value && inDragRange(t, d) && dragType.value === DRAG_TYPES.REMOVE
-      if (
-        dAdd ||
-        (!dRemove &&
-          (zdtSetHas(availability.value, date) || zdtSetHas(ifNeeded.value, date)))
-      ) {
-        const type = dAdd
-          ? availabilityType.value
-          : zdtSetHas(availability.value, date)
-            ? availabilityTypes.AVAILABLE
-            : availabilityTypes.IF_NEEDED
-        if (idx in result[d]) {
-          if (result[d][idx].type === type) {
-            result[d][idx].hoursLength.add(durations.FIFTEEN_MINUTES)
-          } else {
-            result[d].push({ hoursOffset: time.hoursOffset, hoursLength: durations.FIFTEEN_MINUTES, type })
-            idx++
-          }
-        } else {
-          result[d].push({ hoursOffset: time.hoursOffset, hoursLength: durations.FIFTEEN_MINUTES, type })
-        }
-      } else if (idx in result[d]) {
-        idx++
-      }
-    }
-    for (let t = 0; t < splitTimes.value[0].length; ++t)
-      addBlock(splitTimes.value[0][t], t)
-    if (idx in result[d]) idx++
-    for (let t = 0; t < splitTimes.value[1].length; ++t)
-      addBlock(splitTimes.value[1][t], t + splitTimes.value[0].length)
+  return buildOverlaidAvailability({
+    daysLength: days.value.length,
+    firstSplitTimes: splitTimes.value[0],
+    secondSplitTimes: splitTimes.value[1],
+    getDateFromRowCol,
+    dragging: dragging.value,
+    inDragRange,
+    dragType: dragType.value,
+    availabilityType: availabilityType.value,
+    availability: availability.value,
+    ifNeeded: ifNeeded.value,
   })
-  return result
 })
 
 const timeslotClassStyle = computed(() => {
-  const out: { class: string; style: Record<string, string> }[] = []
-  for (let d = 0; d < days.value.length; ++d) {
-    const day = days.value[d]
-    for (let t = 0; t < splitTimes.value[0].length; ++t)
-      out.push(getTimeTimeslotClassStyle(day as unknown as Record<string, unknown>, splitTimes.value[0][t], d, t))
-    for (let t = 0; t < splitTimes.value[1].length; ++t)
-      out.push(
-        getTimeTimeslotClassStyle(
-          day as unknown as Record<string, unknown>, splitTimes.value[1][t], d, t + splitTimes.value[0].length
-        )
-      )
+  if (isSignUp.value) {
+    return Array.from(
+      { length: days.value.length * times.value.length },
+      () => ({ class: "tw-bg-light-gray ", style: {} })
+    )
   }
-  return out
+
+  return buildTimeGridTimeslotClassStyles({
+    firstSplitTimes: splitTimes.value[0],
+    secondSplitTimes: splitTimes.value[1],
+    getDateFromRowCol,
+    state: state.value,
+    overlayAvailability: overlayAvailability.value,
+    dragType: dragType.value,
+    availabilityType: availabilityType.value,
+    availability: availability.value,
+    ifNeeded: ifNeeded.value,
+    tempTimes: tempTimes.value,
+    responsesFormatted: responsesFormatted.value,
+    parsedResponses: parsedResponses.value,
+    curRespondent: curRespondent.value,
+    curRespondents: curRespondents.value,
+    curRespondentsSet: curRespondentsSet.value,
+    respondents: respondents.value,
+    curRespondentsMax: curRespondentsMax.value,
+    max: max.value,
+    defaultState: defaultState.value,
+    userHasResponded: userHasResponded.value,
+    curGuestId: props.curGuestId,
+    authUserId: mainStore.authUser?._id,
+    inDragRange,
+    animateTimeslotAlways: props.animateTimeslotAlways,
+    availabilityAnimEnabled: availabilityAnimEnabled.value,
+    timeslotHeight: timeslotHeight.value,
+    timezoneOffset: timezoneOffset.value,
+    curTimeslot: curTimeslot.value,
+    editing: editing.value,
+    isColConsecutive,
+    daysLength: days.value.length,
+    firstSplitLength: splitTimes.value[0].length,
+    lastRow: splitTimes.value[0].length + splitTimes.value[1].length - 1,
+  })
 })
 
 const dayTimeslotClassStyle = computed(() =>
-  monthDays.value.map((day, i) => getDayTimeslotClassStyle(day.dateObject, i))
+  buildDayGridTimeslotClassStyles({
+    monthDays: monthDays.value.map((day) => day.dateObject),
+    state: state.value,
+    overlayAvailability: overlayAvailability.value,
+    dragType: dragType.value,
+    availabilityType: availabilityType.value,
+    availability: availability.value,
+    ifNeeded: ifNeeded.value,
+    tempTimes: tempTimes.value,
+    responsesFormatted: responsesFormatted.value,
+    parsedResponses: parsedResponses.value,
+    curRespondent: curRespondent.value,
+    curRespondents: curRespondents.value,
+    curRespondentsSet: curRespondentsSet.value,
+    respondents: respondents.value,
+    curRespondentsMax: curRespondentsMax.value,
+    max: max.value,
+    defaultState: defaultState.value,
+    userHasResponded: userHasResponded.value,
+    curGuestId: props.curGuestId,
+    authUserId: mainStore.authUser?._id,
+    inDragRange,
+    monthDayIncluded: monthDayIncluded.value,
+    curTimeslot: curTimeslot.value,
+    lastMonthRow: Math.floor(monthDays.value.length / 7),
+  })
 )
 
 const timeslotVon = computed(() => {
@@ -1608,281 +1582,6 @@ const timeslotVon = computed(() => {
 const dayTimeslotVon = computed(() =>
   monthDays.value.map((_day, i) => getTimeslotVon(Math.floor(i / 7), i % 7))
 )
-
-// ── Local helper functions ──────────────────────────────────────────────
-function getTimeslotClassStyle(
-  date: Temporal.ZonedDateTime | null,
-  row: number,
-  col: number
-): { class: string; style: Record<string, string> } {
-  let c = ""
-  const s: Record<string, string> = {}
-  if (!date) return { class: c, style: s }
-
-  const timeslotRespondents =
-    zdtMapGet(responsesFormatted.value, date) ?? new Set<string>()
-
-  if (isSignUp.value) {
-    c += "tw-bg-light-gray "
-    return { class: c, style: s }
-  }
-
-  if (
-    (!overlayAvailability.value && state.value === states.EDIT_AVAILABILITY) ||
-    state.value === states.SET_SPECIFIC_TIMES
-  ) {
-    s.backgroundColor = "#E523230D"
-    const inRange = inDragRange(row, col)
-    if (inRange) {
-      if (dragType.value === DRAG_TYPES.ADD) {
-        if (state.value === states.SET_SPECIFIC_TIMES) {
-          c += "tw-bg-white "
-        } else if (availabilityType.value === availabilityTypes.AVAILABLE) {
-          s.backgroundColor = "#00994C77"
-        } else {
-          c += "tw-bg-yellow "
-        }
-      } else if (state.value === states.SET_SPECIFIC_TIMES) {
-        c += "tw-bg-gray "
-      }
-    } else {
-      if (state.value === states.SET_SPECIFIC_TIMES) {
-        c += zdtSetHas(tempTimes.value, date) ? "tw-bg-white " : "tw-bg-gray "
-      } else {
-        if (zdtSetHas(availability.value, date)) s.backgroundColor = "#00994C77"
-        else if (zdtSetHas(ifNeeded.value, date)) c += "tw-bg-yellow "
-      }
-    }
-  }
-
-  if (state.value === states.SINGLE_AVAILABILITY) {
-    const respondent = curRespondent.value
-    if (timeslotRespondents.has(respondent)) {
-      if (
-        parsedResponses.value[respondent].ifNeeded &&
-        zdtSetHas(parsedResponses.value[respondent].ifNeeded, date)
-      ) {
-        c += "tw-bg-yellow "
-      } else {
-        s.backgroundColor = "#00994C77"
-      }
-    } else {
-      s.backgroundColor = "#E523230D"
-    }
-    return { class: c, style: s }
-  }
-
-  if (
-    overlayAvailability.value ||
-    state.value === states.BEST_TIMES ||
-    state.value === states.HEATMAP ||
-    state.value === states.SCHEDULE_EVENT ||
-    state.value === states.SUBSET_AVAILABILITY
-  ) {
-    let numRespondents = 0
-    let maxVal = 0
-    if (
-      state.value === states.BEST_TIMES ||
-      state.value === states.HEATMAP ||
-      state.value === states.SCHEDULE_EVENT
-    ) {
-      numRespondents = timeslotRespondents.size
-      maxVal = max.value
-    } else if (state.value === states.SUBSET_AVAILABILITY) {
-      numRespondents = [...timeslotRespondents].filter((r) =>
-        curRespondentsSet.value.has(r)
-      ).length
-      maxVal = curRespondentsMax.value
-    } else if (overlayAvailability.value) {
-      if (
-        (userHasResponded.value || props.curGuestId.length > 0) &&
-        timeslotRespondents.has(mainStore.authUser?._id ?? props.curGuestId)
-      ) {
-        numRespondents = timeslotRespondents.size - 1
-        maxVal = max.value
-      } else {
-        numRespondents = timeslotRespondents.size
-        maxVal = max.value
-      }
-    }
-
-    const totalRespondents =
-      state.value === states.SUBSET_AVAILABILITY
-        ? curRespondents.value.length
-        : respondents.value.length
-
-    if (defaultState.value === states.BEST_TIMES) {
-      if (maxVal > 0 && numRespondents === maxVal) {
-        s.backgroundColor =
-          totalRespondents === 1 || overlayAvailability.value
-            ? "#00994C88"
-            : "#00994C"
-      }
-    } else if (defaultState.value === states.HEATMAP) {
-      if (numRespondents > 0) {
-        if (totalRespondents === 1) {
-          const rid =
-            state.value === states.SUBSET_AVAILABILITY
-              ? curRespondents.value[0]
-              : respondents.value[0]._id
-          if (
-            rid &&
-            parsedResponses.value[rid].ifNeeded &&
-            zdtSetHas(parsedResponses.value[rid].ifNeeded, date)
-          ) {
-
-            c += "tw-bg-yellow "
-          } else {
-            s.backgroundColor = "#00994C88"
-          }
-        } else {
-          const frac = numRespondents / maxVal
-          let alpha: string
-          if (!overlayAvailability.value) {
-            alpha = Math.floor(frac * (255 - 30))
-              .toString(16)
-              .toUpperCase()
-              .substring(0, 2)
-              .padStart(2, "0")
-            if (
-              frac === 1 &&
-              ((curRespondents.value.length > 0 &&
-                maxVal === curRespondents.value.length) ||
-                (curRespondents.value.length === 0 &&
-                  maxVal === respondents.value.length))
-            ) {
-              alpha = "FF"
-            }
-          } else {
-            alpha = Math.floor(frac * (255 - 85))
-              .toString(16)
-              .toUpperCase()
-              .substring(0, 2)
-              .padStart(2, "0")
-          }
-          s.backgroundColor = "#00994C" + alpha
-        }
-      } else if (totalRespondents === 1) {
-        s.backgroundColor = "#E523230D"
-      }
-    }
-  }
-  return { class: c, style: s }
-}
-
-function getTimeTimeslotClassStyle(
-  _day: Record<string, unknown>,
-  _time: TimeItem,
-  d: number,
-  t: number
-): { class: string; style: Record<string, string> } {
-  const row = t
-  const col = d
-  const date = getDateFromRowCol(row, col)
-  const cs = getTimeslotClassStyle(date, row, col)
-  const isFirstSplit = t < splitTimes.value[0].length
-  const isDisabled = !date
-
-  if (props.animateTimeslotAlways || availabilityAnimEnabled.value) {
-    cs.class += "animate-bg-color "
-  }
-  cs.style.height = `${String(timeslotHeight.value)}px`
-
-  if (
-    (respondents.value.length > 0 ||
-      editing.value ||
-      state.value === states.SET_SPECIFIC_TIMES) &&
-    curTimeslot.value.row === row &&
-    curTimeslot.value.col === col &&
-    !isDisabled
-  ) {
-    cs.class += "tw-border tw-border-dashed tw-border-black tw-z-10 "
-  } else {
-    if (date) {
-      // Convert Duration to minutes for subtraction
-      const offsetMinutes = timezoneOffset.value.total("minutes")
-      const localDate = date.subtract({ minutes: offsetMinutes })
-      const frac = localDate.minute
-      if (frac === 0) cs.class += "tw-border-t "
-      else if (frac === 30) {
-        cs.class += "tw-border-t "
-        cs.style.borderTopStyle = "dashed"
-      }
-    }
-    cs.class += "tw-border-r "
-    if (col === 0 || !isColConsecutive(col)) cs.class += "tw-border-l tw-border-l-gray "
-    if (col === days.value.length - 1 || !isColConsecutive(col + 1))
-      cs.class += "tw-border-r-gray "
-    if (isFirstSplit && row === 0) cs.class += "tw-border-t tw-border-t-gray "
-    if (!isFirstSplit && row === splitTimes.value[0].length)
-      cs.class += "tw-border-t tw-border-t-gray "
-    if (isFirstSplit && row === splitTimes.value[0].length - 1)
-      cs.class += "tw-border-b tw-border-b-gray "
-    if (
-      !isFirstSplit &&
-      row === splitTimes.value[0].length + splitTimes.value[1].length - 1
-    )
-      cs.class += "tw-border-b tw-border-b-gray "
-
-    const total =
-      state.value === states.SUBSET_AVAILABILITY
-        ? curRespondents.value.length
-        : respondents.value.length
-    if (
-      state.value === states.EDIT_AVAILABILITY ||
-      state.value === states.SINGLE_AVAILABILITY ||
-      total === 1
-    ) {
-      cs.class += "tw-border-[#999999] "
-    } else {
-      cs.class += "tw-border-[#DDDDDD99] "
-    }
-  }
-
-  if (isDisabled) cs.class += "tw-bg-light-gray-stroke tw-border-light-gray-stroke "
-  if (cs.style.backgroundColor === "#E523230D") cs.style.backgroundColor = "#E5232333"
-  return cs
-}
-
-function getDayTimeslotClassStyle(
-  date: Temporal.ZonedDateTime,
-  i: number
-): { class: string; style: Record<string, string> } {
-  const row = Math.floor(i / 7)
-  const col = i % 7
-  let cs: { class: string; style: Record<string, string> }
-
-  if (zdtMapGet(monthDayIncluded.value, date)) {
-    cs = getTimeslotClassStyle(date, row, col)
-    if (state.value === states.EDIT_AVAILABILITY) cs.class += "tw-cursor-pointer "
-    const bg = cs.style.backgroundColor
-    if (bg && lightOrDark(removeTransparencyFromHex(bg)) === "dark") {
-      cs.class += "tw-text-white "
-    }
-  } else {
-    cs = { class: "tw-bg-off-white tw-text-gray ", style: {} }
-  }
-
-  if (cs.style.backgroundColor === "#E523230D") cs.style.backgroundColor = "#E523233B"
-
-  if (
-    (respondents.value.length > 0 || state.value === states.EDIT_AVAILABILITY) &&
-    curTimeslot.value.row === row &&
-    curTimeslot.value.col === col &&
-    zdtMapGet(monthDayIncluded.value, date)
-  ) {
-    cs.class += "tw-outline-2 tw-outline-dashed tw-outline-black tw-z-10 "
-  } else {
-    if (col === 0) cs.class += "tw-border-l tw-border-l-gray "
-    cs.class += "tw-border-r tw-border-r-gray "
-    if (col !== 6) cs.style.borderRightStyle = "dashed"
-    if (row === 0) cs.class += "tw-border-t tw-border-t-gray "
-    cs.class += "tw-border-b tw-border-b-gray "
-    if (row !== Math.floor(monthDays.value.length / 7))
-      cs.style.borderBottomStyle = "dashed"
-  }
-  return cs
-}
 
 function getTimeslotVon(row: number, col: number): Record<string, () => void> {
   if (!props.interactable) return {}
@@ -1916,23 +1615,13 @@ function getTimeslotVon(row: number, col: number): Record<string, () => void> {
         if (!props.event.daysOnly) {
           const date = getDateFromRowCol(row, col)
           if (date) {
-            const localDate = getDateInTimezone(date, curTimezone.value)
-            const start = localDate
-            const end = start.add(timeslotDuration.value)
-
-            const timeFormat: Intl.DateTimeFormatOptions = timeType.value === timeTypes.HOUR12
-              ? { hour: "numeric", minute: "2-digit" }
-              : { hour: "2-digit", minute: "2-digit", hour12: false }
-
-            const dateFormat: Intl.DateTimeFormatOptions = grid.isSpecificDates.value
-              ? { weekday: "short", month: "short", day: "numeric", year: "numeric" }
-              : { weekday: "short" }
-
-            const startDateStr = start.toLocaleString("en-US", dateFormat)
-            const startTimeStr = start.toLocaleString("en-US", timeFormat)
-            const endTimeStr = end.toLocaleString("en-US", timeFormat)
-
-            tooltipContent.value = `${startDateStr} ${startTimeStr} to ${endTimeStr}`
+            tooltipContent.value = formatTooltipContent({
+              date,
+              curTimezone: curTimezone.value,
+              timeslotDuration: timeslotDuration.value,
+              timeType: timeType.value,
+              isSpecificDates: grid.isSpecificDates.value,
+            })
           }
         }
       }
@@ -1943,34 +1632,15 @@ function getTimeslotVon(row: number, col: number): Record<string, () => void> {
   }
 }
 
-function getIsTimeBlockInFirstSplit(timeBlock: { hoursOffset: Temporal.Duration }): boolean {
-  const s0 = splitTimes.value[0]
-  return (
-    s0.length > 0 &&
-    compareDuration(timeBlock.hoursOffset, s0[0].hoursOffset) >= 0 &&
-    compareDuration(timeBlock.hoursOffset, s0[s0.length - 1].hoursOffset) <= 0
-  )
-}
-
-function getTimeBlockStyle(
+function getRenderedTimeBlockStyleForTemplate(
   timeBlock: { hoursOffset?: Temporal.Duration; hoursLength?: Temporal.Duration }
 ): Record<string, string> {
-  const style: Record<string, string> = {}
-  const s0 = splitTimes.value[0]
-  const hasSecondSplit = splitTimes.value[1].length > 0
-  const hoursOffset = timeBlock.hoursOffset ?? durations.ZERO
-  const hoursLength = timeBlock.hoursLength ?? durations.ZERO
-  if (!hasSecondSplit || getIsTimeBlockInFirstSplit(timeBlock as { hoursOffset: Temporal.Duration; hoursLength: Temporal.Duration })) {
-    style.top = `calc(${String(hoursOffset.subtract(s0[0]?.hoursOffset ?? durations.ZERO).total('hours'))} * ${String(HOUR_HEIGHT)}px)`
-    style.height = `calc(${String(hoursLength)} * ${String(HOUR_HEIGHT)}px)`
-  } else {
-    const s1 = splitTimes.value[1]
-    style.top = `calc(${String(s0.length)} * ${String(timeslotHeight.value)}px + ${String(SPLIT_GAP_HEIGHT)}px + ${String(
-      hoursOffset.subtract(s1[0]?.hoursOffset ?? durations.ZERO).total('hours')
-    )} * ${String(HOUR_HEIGHT)}px)`
-    style.height = `calc(${String(hoursLength)} * ${String(HOUR_HEIGHT)}px)`
-  }
-  return style
+  return getTimeBlockStyle({
+    timeBlock,
+    firstSplitTimes: splitTimes.value[0],
+    secondSplitTimes: splitTimes.value[1],
+    timeslotHeight: timeslotHeight.value,
+  })
 }
 
 function startEditing() {
@@ -2043,84 +1713,6 @@ async function saveGuestName() {
     mainStore.showError(e.parsed?.error ?? e.message ?? "Failed to update guest name")
   }
 }
-
-// ── Lifecycle ────────────────────────────────────────────────────────────
-resetCurUserAvailability(initSharedCalendarAccounts)
-
-let _resizeObserver: ResizeObserver | null = null
-
-onMounted(() => {
-  const urlParams = new URLSearchParams(window.location.search)
-
-  if (
-    props.event.hasSpecificTimes &&
-    (props.fromEditEvent || !props.event.times || props.event.times.length === 0)
-  ) {
-    state.value = states.SET_SPECIFIC_TIMES
-  } else if (urlParams.get("scheduled_event")) {
-    const se = JSON.parse(urlParams.get("scheduled_event") ?? "") as ScheduledEvent
-    curScheduledEvent.value = se
-    state.value = states.SCHEDULE_EVENT
-    const newUrl = new URL(window.location.href)
-    newUrl.searchParams.delete("scheduled_event")
-    window.history.replaceState({}, document.title, newUrl.toString())
-  } else if (showBestTimes.value) {
-    state.value = states.BEST_TIMES
-  } else {
-    state.value = states.HEATMAP
-  }
-
-  const authUser = mainStore.authUser
-  if (authUser) {
-    const userCalendarOptions = normalizeCalendarOptions(authUser.calendarOptions)
-    bufferTime.value = userCalendarOptions.bufferTime
-    workingHours.value = userCalendarOptions.workingHours
-    if (isGroup.value) {
-      const groupCalendarOptions = props.event.responses?.[authUser._id ?? ""]
-        ?.calendarOptions
-      if (groupCalendarOptions) {
-        const normalizedGroupOptions = normalizeCalendarOptions(groupCalendarOptions)
-        bufferTime.value = normalizedGroupOptions.bufferTime
-        workingHours.value = normalizedGroupOptions.workingHours
-      } else {
-        bufferTime.value = { enabled: false, time: 15 }
-        workingHours.value = { enabled: false, startTime: 9, endTime: 17 }
-      }
-    }
-  }
-
-  setTimeslotSize()
-  addEventListener("resize", onResize)
-  addEventListener("scroll", onScroll)
-
-  const dragSection = document.getElementById("drag-section")
-  if (dragSection) {
-    _resizeObserver = new ResizeObserver(() => { setTimeslotSize(); })
-    _resizeObserver.observe(dragSection)
-  }
-
-  if (!props.calendarOnly && dragSection) {
-    if (isTouchEnabled()) {
-      dragSection.addEventListener("touchstart", startDrag)
-      dragSection.addEventListener("touchmove", moveDrag)
-      dragSection.addEventListener("touchend", endDrag)
-      dragSection.addEventListener("touchcancel", endDrag)
-    }
-    dragSection.addEventListener("mousedown", startDrag)
-    dragSection.addEventListener("mousemove", moveDrag)
-    dragSection.addEventListener("mouseup", endDrag)
-  }
-
-  signUpForm.resetSignUpForm()
-  addEventListener("click", deselectRespondents)
-})
-
-onBeforeUnmount(() => {
-  removeEventListener("click", deselectRespondents)
-  removeEventListener("resize", onResize)
-  removeEventListener("scroll", onScroll)
-  _resizeObserver?.disconnect()
-})
 
 defineExpose({
   editing,
