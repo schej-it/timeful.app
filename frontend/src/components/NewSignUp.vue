@@ -263,6 +263,7 @@ import { Temporal } from "temporal-polyfill"
 import {
   post,
   put,
+  getWrappedTimeRangeDuration,
   getDateWithTimezone,
   getTimeOptions,
   resolveTimezoneValue,
@@ -430,8 +431,7 @@ const submit = async () => {
 
   selectedDays.value.sort()
 
-  let duration = endTime.value.since(startTime.value, { largestUnit: "hours" })
-  if (duration.total("hours") <= 0) duration = duration.add({ hours: 24 })
+  let duration = getWrappedTimeRangeDuration(startTime.value, endTime.value)
 
   const dates: Temporal.ZonedDateTime[] = []
   let type: string

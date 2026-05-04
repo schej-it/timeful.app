@@ -9,6 +9,7 @@ import {
   dateLt,
   doesDstExist,
   getCalendarEventsMap,
+  getWrappedTimeRangeDuration,
   getRenderedWeekStart,
   getScheduleTimezoneOffset,
   getSpecificTimesDayStarts,
@@ -391,6 +392,33 @@ describe("Temporal migration regression", () => {
     expect(isTimeNumBetweenDates(Temporal.PlainTime.from("23:00"), start, end)).toBe(true)
     expect(isTimeNumBetweenDates(Temporal.PlainTime.from("01:00"), start, end)).toBe(true)
     expect(isTimeNumBetweenDates(Temporal.PlainTime.from("12:00"), start, end)).toBe(false)
+  })
+
+  it("treats equal create-flow start and end times as a 24-hour duration", () => {
+    expect(
+      getWrappedTimeRangeDuration(
+        Temporal.PlainTime.from("09:00"),
+        Temporal.PlainTime.from("09:00")
+      ).toString()
+    ).toBe("PT24H")
+  })
+
+  it("preserves overnight create-flow durations", () => {
+    expect(
+      getWrappedTimeRangeDuration(
+        Temporal.PlainTime.from("23:30"),
+        Temporal.PlainTime.from("01:00")
+      ).toString()
+    ).toBe("PT1H30M")
+  })
+
+  it("preserves same-day create-flow durations", () => {
+    expect(
+      getWrappedTimeRangeDuration(
+        Temporal.PlainTime.from("09:15"),
+        Temporal.PlainTime.from("10:45")
+      ).toString()
+    ).toBe("PT1H30M")
   })
 
   it("processes Temporal time blocks without JSON-cloning them into strings", () => {

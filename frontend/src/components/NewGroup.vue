@@ -169,6 +169,7 @@ import { storeToRefs } from "pinia"
 import {
   post,
   put,
+  getWrappedTimeRangeDuration,
   plainTimeToTimeNum,
   resolveTimezoneValue,
   signInGoogle,
@@ -325,10 +326,7 @@ const submit = async () => {
   if (!valid) return
   const timezoneValue = resolveTimezoneValue(timezone.value.value)
 
-  let duration = endTime.value.since(startTime.value, { largestUnit: "hours" })
-  if (duration.total("hours") <= 0) {
-    duration = duration.add({ hours: 24 })
-  }
+  const duration = getWrappedTimeRangeDuration(startTime.value, endTime.value)
 
   const dates: Temporal.ZonedDateTime[] = []
   selectedDaysOfWeek.value.sort((a, b) => a - b)

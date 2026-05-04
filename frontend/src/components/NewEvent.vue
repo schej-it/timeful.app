@@ -460,6 +460,7 @@ import {
   getTimeOptions,
   addEventToCreatedList,
   prefersStartOnMonday,
+  getWrappedTimeRangeDuration,
   plainTimeToTimeNum,
   resolveTimezoneValue,
   timeNumToPlainTime,
@@ -663,12 +664,7 @@ const submit = async () => {
 
   selectedDays.value.sort()
 
-  // Calculate duration using Temporal.Duration
-  let duration = endTime.value.since(startTime.value, { largestUnit: "hours" })
-  // Handle case where endTime is before startTime (crosses midnight)
-  if (duration.total("hours") <= 0) {
-    duration = duration.add({ hours: 24 })
-  }
+  let duration = getWrappedTimeRangeDuration(startTime.value, endTime.value)
   const durationHoursNum = duration.total("hours")
 
   const dates: Temporal.ZonedDateTime[] = []

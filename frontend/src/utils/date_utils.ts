@@ -406,6 +406,21 @@ export const timeNumToPlainTime = (timeNum: number): Temporal.PlainTime => {
   return Temporal.PlainTime.from({ hour: hours, minute: minutes })
 }
 
+/**
+ * Create-flow time ranges treat equal start/end selections as a full next-day span.
+ * This keeps event, sign-up, and group creation on one explicit duration rule.
+ */
+export const getWrappedTimeRangeDuration = (
+  startTime: Temporal.PlainTime,
+  endTime: Temporal.PlainTime
+): Temporal.Duration => {
+  let duration = endTime.since(startTime, { largestUnit: "hours" })
+  if (Temporal.PlainTime.compare(endTime, startTime) <= 0) {
+    duration = duration.add({ hours: 24 })
+  }
+  return duration
+}
+
 // TODO
 /** Returns the specified date offset by the given number of days (can be positive or negative) */
 export const getDateDayOffset = (
