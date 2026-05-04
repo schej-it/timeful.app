@@ -457,6 +457,8 @@ import {
   put,
   signInGoogle,
   getDateWithTimezone,
+  getEventMembershipDayOfWeekValues,
+  getEventMembershipPlainDates,
   getTimeOptions,
   addEventToCreatedList,
   prefersStartOnMonday,
@@ -885,28 +887,16 @@ const updateFieldsFromEvent = () => {
 
     if (props.event.daysOnly) {
       selectedDateOption.value = dateOptions.SPECIFIC
-      selectedDays.value = (props.event.dates ?? []).map((date) =>
-        date.toPlainDate()
-      )
+      selectedDays.value = getEventMembershipPlainDates(props.event.dates)
     } else {
       if (props.event.type === eventTypes.SPECIFIC_DATES) {
         selectedDateOption.value = dateOptions.SPECIFIC
-        const days: Temporal.PlainDate[] = []
-        for (let date of props.event.dates ?? []) {
-          const d = getDateWithTimezone(date)
-          days.push(d.toPlainDate())
-        }
-        selectedDays.value = days
+        selectedDays.value = getEventMembershipPlainDates(props.event.dates)
       } else if (props.event.type === eventTypes.DOW) {
         selectedDateOption.value = dateOptions.DOW
-        const dows: number[] = []
-        for (let date of props.event.dates ?? []) {
-          const d = getDateWithTimezone(date)
-          // Temporal dayOfWeek returns 1-7 (Mon-Sun), convert to 1-7 where Sunday is 7
-          const dayOfWeek = d.dayOfWeek // Already 1-7 (Mon-Sun) in Temporal
-          dows.push(dayOfWeek)
-        }
-        selectedDaysOfWeek.value = dows
+        selectedDaysOfWeek.value = getEventMembershipDayOfWeekValues(
+          props.event.dates
+        )
         if (props.event.startOnMonday) startOnMonday.value = true
       }
     }

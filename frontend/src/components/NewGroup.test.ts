@@ -157,6 +157,43 @@ describe("NewGroup", () => {
     expect(vm.endTime.toString()).toBe("10:45:00")
   })
 
+  it("keeps DOW edit membership stable when the saved timezone would shift the seed instant to a different weekday", () => {
+    vi.stubGlobal(
+      "localStorage",
+      createLocalStorageMock({
+        timezone: JSON.stringify({
+          value: "America/Los_Angeles",
+          label: "Pacific Time",
+          gmtString: "GMT-8",
+          offset: "-PT8H",
+        }),
+      })
+    )
+
+    const wrapper = shallowMount(NewGroup, {
+      props: {
+        edit: true,
+        event: {
+          _id: "group-2",
+          name: "Weekly group",
+          dates: [
+            Temporal.ZonedDateTime.from("2026-01-05T00:30:00+00:00[UTC]"),
+          ],
+          duration: Temporal.Duration.from({ hours: 1 }),
+        },
+      },
+      global: {
+        stubs: globalStubs,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      selectedDaysOfWeek: number[]
+    }
+
+    expect(vm.selectedDaysOfWeek).toEqual([1])
+  })
+
   it("does not throw when editing a group whose dates array is empty", () => {
     expect(() =>
       shallowMount(NewGroup, {

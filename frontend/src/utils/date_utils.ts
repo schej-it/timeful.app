@@ -360,6 +360,22 @@ export const getDateWithTimezone = (
   return zdt.withTimeZone(timezoneValue)
 }
 
+/**
+ * Event date membership should stay stable across viewers and saved timezone
+ * changes, so reconstruct civil dates directly from the stored event seeds.
+ */
+export const getEventMembershipPlainDates = (
+  dates?: ZonedDateTime[]
+): Temporal.PlainDate[] => (dates ?? []).map((date) => date.toPlainDate())
+
+/**
+ * Weekly/group edit flows use the stored seed weekday rather than the current
+ * viewer timezone, which could otherwise shift the selected day.
+ */
+export const getEventMembershipDayOfWeekValues = (
+  dates?: ZonedDateTime[]
+): number[] => (dates ?? []).map((date) => date.dayOfWeek)
+
 export const fromEpochMillisecondsToZDT = fromEpochMilliseconds
 export const parseTemporalEpochKey = parseEpochKey
 

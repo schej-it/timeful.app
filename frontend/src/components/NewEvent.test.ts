@@ -224,6 +224,45 @@ describe("NewEvent", () => {
     ).toBe("09:00:00")
   })
 
+  it("keeps specific-date edit membership stable when the saved timezone would shift the instant to the prior day", () => {
+    localStorage.setItem(
+      "timezone",
+      JSON.stringify({
+        value: "America/Los_Angeles",
+        offset: "-PT8H",
+        label: "Pacific Time",
+        gmtString: "GMT-8",
+      })
+    )
+
+    const wrapper = shallowMount(NewEvent, {
+      props: {
+        edit: true,
+        event: {
+          _id: "evt-4",
+          name: "Membership-stable event",
+          type: "specific_dates",
+          dates: [Temporal.ZonedDateTime.from("2026-01-02T00:30:00+00:00[UTC]")],
+          duration: Temporal.Duration.from({ hours: 1 }),
+        },
+      },
+      global: {
+        stubs: defaultStubs,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      selectedDays?: Temporal.PlainDate[]
+      $: { setupState?: { selectedDays?: Temporal.PlainDate[] } }
+    }
+
+    expect(
+      (vm.selectedDays ?? vm.$.setupState?.selectedDays)?.map((day) =>
+        day.toString()
+      )
+    ).toEqual(["2026-01-02"])
+  })
+
   it("normalizes restored draft selectedDays into Temporal.PlainDate values", () => {
     const wrapper = shallowMount(NewEvent, {
       props: {

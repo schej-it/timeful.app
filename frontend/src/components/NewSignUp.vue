@@ -265,6 +265,8 @@ import {
   put,
   getWrappedTimeRangeDuration,
   getDateWithTimezone,
+  getEventMembershipDayOfWeekValues,
+  getEventMembershipPlainDates,
   getTimeOptions,
   resolveTimezoneValue,
   timeNumToPlainTime,
@@ -606,29 +608,16 @@ const updateFieldsFromEvent = () => {
 
     if (props.event.daysOnly) {
       selectedDateOption.value = dateOptions.SPECIFIC
-      const days: Temporal.PlainDate[] = []
-      for (const date of props.event.dates ?? []) {
-        days.push(date.toPlainDate())
-      }
-      selectedDays.value = days
+      selectedDays.value = getEventMembershipPlainDates(props.event.dates)
     } else {
       if (props.event.type === eventTypes.SPECIFIC_DATES) {
         selectedDateOption.value = dateOptions.SPECIFIC
-        const days: Temporal.PlainDate[] = []
-        for (let date of props.event.dates ?? []) {
-          const d = getDateWithTimezone(date)
-          days.push(d.toPlainDate())
-        }
-        selectedDays.value = days
+        selectedDays.value = getEventMembershipPlainDates(props.event.dates)
       } else if (props.event.type === eventTypes.DOW) {
         selectedDateOption.value = dateOptions.DOW
-        const dows: number[] = []
-        for (let date of props.event.dates ?? []) {
-          const d = getDateWithTimezone(date)
-          // Temporal dayOfWeek returns 1-7 (Mon-Sun), which is what we need
-          dows.push(d.dayOfWeek)
-        }
-        selectedDaysOfWeek.value = dows
+        selectedDaysOfWeek.value = getEventMembershipDayOfWeekValues(
+          props.event.dates
+        )
         if (props.event.startOnMonday) startOnMonday.value = true
       }
     }

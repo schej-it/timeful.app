@@ -170,6 +170,7 @@ import {
   post,
   put,
   getWrappedTimeRangeDuration,
+  getEventMembershipDayOfWeekValues,
   plainTimeToTimeNum,
   resolveTimezoneValue,
   signInGoogle,
@@ -468,13 +469,9 @@ const updateFieldsFromEvent = () => {
     }
     startOnMonday.value = props.event.startOnMonday ?? false
 
-    const days: number[] = []
-    for (let date of props.event.dates ?? []) {
-      const d = getDateWithTimezone(date)
-      // Temporal dayOfWeek returns 1-7 (Mon-Sun), which is what we need
-      days.push(d.dayOfWeek)
-    }
-    selectedDaysOfWeek.value = days
+    selectedDaysOfWeek.value = getEventMembershipDayOfWeekValues(
+      props.event.dates
+    )
 
     emails.value = otherEventAttendees.value
   }
