@@ -7,7 +7,9 @@ import {
   fromRawEvent,
   fromRawResponse,
   fromRawSignUpBlock,
-} from "@/types"
+  fromRawUser,
+  toRawUser,
+} from "@/types/transport"
 import {
   getDateWithTimezone,
   normalizePluginSetSlots,
@@ -258,6 +260,37 @@ describe("Temporal regressions", () => {
         endDate: 60 * 60 * 1000,
       })
     ).not.toThrow()
+  })
+
+  it("keeps user transport decoding at an explicit boundary", () => {
+    const rawUser = {
+      _id: "user-1",
+      email: "ada@example.com",
+      calendarAccounts: {
+        "ada@example.com_google": {
+          email: "ada@example.com",
+          enabled: true,
+          subCalendars: {
+            primary: {
+              enabled: true,
+              name: "Primary",
+            },
+          },
+        },
+      },
+      calendarOptions: {
+        bufferTime: { enabled: true, time: 30 },
+        workingHours: { enabled: true, startTime: 8, endTime: 18 },
+      },
+    }
+
+    const user = fromRawUser(rawUser)
+    const roundTrip = toRawUser(user)
+
+    expect(user).not.toBe(rawUser)
+    expect(user.calendarAccounts).not.toBe(rawUser.calendarAccounts)
+    expect(user.calendarOptions).not.toBe(rawUser.calendarOptions)
+    expect(roundTrip).toEqual(rawUser)
   })
 
   it("revives a saved timezone whose Temporal.Duration was serialized through JSON", () => {

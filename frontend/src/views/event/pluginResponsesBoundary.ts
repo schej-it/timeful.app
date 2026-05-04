@@ -1,6 +1,7 @@
 import { eventTypes } from "@/constants"
-import type { Event, RawResponse } from "@/types"
-import { fromRawResponse } from "@/types"
+import type { Event } from "@/types"
+import type { RawResponse } from "@/types/transport"
+import { fromRawResponse } from "@/types/transport"
 import {
   convertUTCSlotsToLocalISO,
   dateToDowDate,

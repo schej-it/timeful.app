@@ -105,7 +105,8 @@ import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { posthog } from "@/plugins/posthog"
 import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
 import type { SerializedEventDraft } from "@/composables/event/types"
-import type { User } from "@/types"
+import type { RawUser } from "@/types/transport"
+import { fromRawUser } from "@/types/transport"
 
 defineOptions({ name: 'AppHome' })
 
@@ -163,9 +164,9 @@ if (eventsPromise) {
 } else {
   loading.value = false
 }
-get<User>("/user/profile")
+get<RawUser>("/user/profile")
   .then((user) => {
-    mainStore.setAuthUser(user)
+    mainStore.setAuthUser(fromRawUser(user))
   })
   .catch(() => {
     mainStore.setAuthUser(null)

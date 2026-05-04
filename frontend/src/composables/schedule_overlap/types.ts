@@ -4,11 +4,10 @@ import type {
   CalendarEvent,
   Event,
   Response,
-  RawEvent,
-  RawSignUpBlock,
   SignUpBlock,
 } from "@/types"
-import { fromRawSignUpBlock } from "@/types"
+import type { RawEvent, RawSignUpBlock } from "@/types/transport"
+import { fromRawSignUpBlock } from "@/types/transport"
 import type { ZdtMap, ZdtSet } from "@/utils"
 
 export const states = {

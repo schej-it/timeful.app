@@ -10,8 +10,9 @@ import {
   updateFolder as updateFolderService,
 } from "@/utils/services/FolderService"
 import { archiveEvent as archiveEventService } from "@/utils/services/EventService"
-import type { Event, Folder, NewDialogOptions, User, RawEvent } from "@/types"
-import { fromRawEvent } from "@/types"
+import type { Event, Folder, NewDialogOptions, User } from "@/types"
+import type { RawEvent, RawFolder, RawUser } from "@/types/transport"
+import { fromRawEvent, fromRawFolder, fromRawUser } from "@/types/transport"
 
 export const useMainStore = defineStore("main", () => {
   const error = ref("")
@@ -151,8 +152,8 @@ export const useMainStore = defineStore("main", () => {
   }
 
   const refreshAuthUser = async () => {
-    const user = await get<User>("/user/profile")
-    setAuthUser(user)
+    const user = await get<RawUser>("/user/profile")
+    setAuthUser(fromRawUser(user))
   }
 
   const showUpgradeDialog = ({
@@ -201,7 +202,7 @@ export const useMainStore = defineStore("main", () => {
   const getEvents = () => {
     if (authUser.value) {
       return Promise.allSettled([
-        get<Folder[]>("/user/folders"),
+        get<RawFolder[]>("/user/folders"),
         get<RawEvent[]>("/user/events"),
       ])
         .then(([foldersResult, eventsResult]) => {
@@ -209,7 +210,7 @@ export const useMainStore = defineStore("main", () => {
             foldersResult.status === "fulfilled" &&
             eventsResult.status === "fulfilled"
           ) {
-            setFolders(foldersResult.value)
+            setFolders(foldersResult.value.map(fromRawFolder))
             // Convert raw events to Temporal-based events
             const convertedEvents = eventsResult.value.map(fromRawEvent)
             setEvents(convertedEvents)

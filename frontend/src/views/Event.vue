@@ -532,7 +532,9 @@ import {
   toScheduleOverlapEvent,
   type Timezone,
 } from "@/composables/schedule_overlap/types"
-import type { Event, RawResponse, User } from "@/types"
+import type { Event, User } from "@/types"
+import type { RawResponse, RawUser } from "@/types/transport"
+import { fromRawUser } from "@/types/transport"
 
 defineOptions({ name: "AppEvent" })
 
@@ -1082,8 +1084,8 @@ void (async () => {
   const promises = [loader.fetchCalendarAvailabilities(), loader.fetchAuthUserCalendarEvents()]
   Promise.allSettled(promises).then(() => { loader.loading.value = false }).catch(() => undefined)
 
-  get<User>("/user/profile")
-    .then((user) => { mainStore.setAuthUser(user) })
+  get<RawUser>("/user/profile")
+    .then((user) => { mainStore.setAuthUser(fromRawUser(user)) })
     .catch(() => { mainStore.setAuthUser(null) })
 })()
 

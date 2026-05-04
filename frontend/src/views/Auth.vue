@@ -10,7 +10,8 @@ import { posthog } from "@/plugins/posthog"
 import { Temporal } from "temporal-polyfill"
 import type { SerializedEventDraft } from "@/composables/event/types"
 import { serializeRouteContactsPayload } from "@/router/routeProps"
-import type { User } from "@/types"
+import type { RawUser } from "@/types/transport"
+import { fromRawUser } from "@/types/transport"
 
 defineOptions({ name: 'AppAuth' })
 
@@ -59,13 +60,13 @@ void (async () => {
         throw new Error("Invalid calendar type")
       }
     } else {
-      const user = await post<User>("/auth/sign-in", {
+      const user = fromRawUser(await post<RawUser>("/auth/sign-in", {
         code,
         scope: scope ?? state?.scope,
         calendarType: state?.calendarType,
         timezoneOffset: Temporal.Now.zonedDateTimeISO().offsetNanoseconds / (1000 * 1000 * 1000) / 60 * -1,
         eventsToLink: getEventsCreated(),
-      })
+      }))
       deleteEventsCreated()
 
       mainStore.setAuthUser(user)
@@ -117,14 +118,14 @@ void (async () => {
             name: "group",
             params: { groupId: state.eventId, fromSignIn: "true" },
           })
-          authUserRefreshed = await get<User>("/user/profile")
+          authUserRefreshed = fromRawUser(await get<RawUser>("/user/profile"))
           mainStore.setAuthUser(authUserRefreshed)
           break
         case authTypes.ADD_CALENDAR_ACCOUNT:
           void router.replace({
             name: "settings",
           })
-          authUserRefreshed = await get<User>("/user/profile")
+          authUserRefreshed = fromRawUser(await get<RawUser>("/user/profile"))
           mainStore.setAuthUser(authUserRefreshed)
           break
         case authTypes.ADD_CALENDAR_ACCOUNT_FROM_EDIT:
@@ -132,7 +133,7 @@ void (async () => {
             name: "event",
             params: { eventId: state.eventId, fromSignIn: "true" },
           })
-          authUserRefreshed = await get<User>("/user/profile")
+          authUserRefreshed = fromRawUser(await get<RawUser>("/user/profile"))
           mainStore.setAuthUser(authUserRefreshed)
           break
         case authTypes.EVENT_CONTACTS:

@@ -5,8 +5,9 @@ import {
   processEvent,
 } from "@/utils"
 import { eventTypes, guestUserId } from "@/constants"
-import type { Event, User, RawEvent } from "@/types"
-import { fromRawEvent } from "@/types"
+import type { Event, User } from "@/types"
+import type { RawEvent } from "@/types/transport"
+import { fromRawEvent } from "@/types/transport"
 import type {
   CalendarEventLite,
   CalendarEventsMap,

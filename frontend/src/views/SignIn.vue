@@ -257,6 +257,8 @@ import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import { Temporal } from "temporal-polyfill"
 import type { User } from "@/types"
+import type { RawUser } from "@/types/transport"
+import { fromRawUser } from "@/types/transport"
 
 const props = defineProps<{
   initialIsSignUp?: boolean
@@ -395,7 +397,7 @@ async function verifyOtp() {
       body.firstName = firstName.value.trim()
       body.lastName = lastName.value.trim()
     }
-    const user = await post<User>("/auth/otp/verify", body)
+    const user = fromRawUser(await post<RawUser>("/auth/otp/verify", body))
     mainStore.setAuthUser(user)
     posthog.identify(user._id, {
       email: user.email,

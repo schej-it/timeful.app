@@ -1,8 +1,8 @@
 import type {
-  RawCalendarEvent,
   components,
 } from "@/types"
-import { fromRawCalendarEvent } from "@/types"
+import type { RawCalendarEvent } from "@/types/transport"
+import { fromRawCalendarEvent } from "@/types/transport"
 import type {
   CalendarEventLite,
   CalendarEventsMap,

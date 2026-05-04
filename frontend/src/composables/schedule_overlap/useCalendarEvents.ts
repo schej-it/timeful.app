@@ -15,8 +15,8 @@ import {
 } from "@/utils"
 import { calendarOptionsDefaults, eventTypes } from "@/constants"
 import { useMainStore } from "@/stores/main"
-import type { RawResponse } from "@/types"
-import { fromRawResponse } from "@/types"
+import type { RawResponse } from "@/types/transport"
+import { fromRawResponse } from "@/types/transport"
 import {
   type CalendarEventLite,
   type CalendarEventsByDay,

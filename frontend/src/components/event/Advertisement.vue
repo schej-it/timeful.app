@@ -24,6 +24,8 @@ import { get } from "@/utils"
 import { guestUserId } from "@/constants"
 import { posthog } from "@/plugins/posthog"
 import type { User } from "@/types"
+import type { RawUser } from "@/types/transport"
+import { fromRawUser } from "@/types/transport"
 
 defineOptions({ name: 'EventAdvertisement' })
 
@@ -47,7 +49,7 @@ const adImageUrl = computed(() => {
 
 async function loadOwner() {
   if (props.ownerId && props.ownerId !== guestUserId) {
-    owner.value = await get<User>(`/users/${props.ownerId}`)
+    owner.value = fromRawUser(await get<RawUser>(`/users/${props.ownerId}`))
   }
 }
 

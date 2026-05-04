@@ -41,7 +41,8 @@ import { get, post } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import confetti from "canvas-confetti"
-import type { User } from "@/types"
+import type { RawUser } from "@/types/transport"
+import { fromRawUser } from "@/types/transport"
 
 const router = useRouter()
 const mainStore = useMainStore()
@@ -97,7 +98,7 @@ async function handleRedirect() {
   try {
     if (upgradeStatus === "success" && sessionId) {
       await post("/stripe/fulfill-checkout", { sessionId })
-      const user = await get<User>("/user/profile")
+      const user = fromRawUser(await get<RawUser>("/user/profile"))
       mainStore.setAuthUser(user)
       fulfillmentComplete.value = true
       fireConfetti()
