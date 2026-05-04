@@ -974,7 +974,15 @@ export const getTimeOptions = (): {
 */
 export const getCalendarEventsMap = async (
   event: EventLike,
-  { weekOffset = 0, eventId = "" }: { weekOffset?: number; eventId?: string }
+  {
+    weekOffset = 0,
+    eventId = "",
+    renderedWeekStart,
+  }: {
+    weekOffset?: number
+    eventId?: string
+    renderedWeekStart?: Temporal.ZonedDateTime
+  }
 ): Promise<unknown> => {
   let timeMin: Temporal.ZonedDateTime | undefined
   let timeMax: Temporal.ZonedDateTime | undefined
@@ -989,17 +997,15 @@ export const getCalendarEventsMap = async (
     timeMax = event.dates[event.dates.length - 1].add({ days: 2 })
   } else if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
     // Get all calendar events for the current week offsetted by weekOffset
-    const renderedWeekStart = getRenderedWeekStart(
-      weekOffset,
-      event.startOnMonday
-    )
+    const projectedWeekStart =
+      renderedWeekStart ?? getRenderedWeekStart(weekOffset, event.startOnMonday)
     const firstDate = dateToDowDate(
       event.dates,
       event.dates[0],
       weekOffset,
       true,
       event.startOnMonday,
-      renderedWeekStart
+      projectedWeekStart
     )
     const lastDate = dateToDowDate(
       event.dates,
@@ -1007,7 +1013,7 @@ export const getCalendarEventsMap = async (
       weekOffset,
       true,
       event.startOnMonday,
-      renderedWeekStart
+      projectedWeekStart
     )
     timeMin = firstDate.subtract({ days: 2 })
     timeMax = lastDate.add({ days: 2 })
@@ -1063,7 +1069,8 @@ export const splitTimeBlocksByDay = <
   event: EventLike,
   timeBlocks: T[],
   weekOffset = 0,
-  timezoneOffset?: Temporal.Duration
+  timezoneOffset?: Temporal.Duration,
+  renderedWeekStart?: Temporal.ZonedDateTime
 ): T[][] => {
   return processTimeBlocks(
     event.dates ?? [],
@@ -1072,7 +1079,8 @@ export const splitTimeBlocksByDay = <
     event.type,
     weekOffset,
     event.startOnMonday,
-    timezoneOffset
+    timezoneOffset,
+    renderedWeekStart
   )
 }
 
@@ -1090,15 +1098,16 @@ export const processTimeBlocks = <
   eventType: string = eventTypes.SPECIFIC_DATES,
   weekOffset = 0,
   startOnMonday = false,
-  timezoneOffset: Temporal.Duration = durations.ZERO
+  timezoneOffset: Temporal.Duration = durations.ZERO,
+  renderedWeekStart?: Temporal.ZonedDateTime
 ): T[][] => {
   const tzOffset = timezoneOffset
   // Convert duration to Temporal.Duration if it's a number
 
   // Put timeBlocks into the correct format
-  const renderedWeekStart =
+  const projectedWeekStart =
     eventType === eventTypes.DOW || eventType === eventTypes.GROUP
-      ? getRenderedWeekStart(weekOffset, startOnMonday)
+      ? renderedWeekStart ?? getRenderedWeekStart(weekOffset, startOnMonday)
       : undefined
   let blocks: T[] = timeBlocks.map((timeBlock) => ({ ...timeBlock }))
   blocks = blocks.map((e) => {
@@ -1109,7 +1118,7 @@ export const processTimeBlocks = <
         weekOffset,
         false,
         startOnMonday,
-        renderedWeekStart
+        projectedWeekStart
       )
       const endDate = dateToDowDate(
         dates,
@@ -1117,7 +1126,7 @@ export const processTimeBlocks = <
         weekOffset,
         false,
         startOnMonday,
-        renderedWeekStart
+        projectedWeekStart
       )
       e.startDate = startDate
       e.endDate = endDate

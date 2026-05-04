@@ -2,6 +2,7 @@ import { ref, nextTick, type Ref, type ComputedRef } from "vue"
 import {
   get,
   getCalendarEventsMap,
+  getRenderedWeekStart,
   processEvent,
 } from "@/utils"
 import { eventTypes, guestUserId } from "@/constants"
@@ -41,6 +42,20 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
   const fromEditEvent = ref(false)
   const hasRefetchedAuthUserCalendarEvents = ref(false)
 
+  const getEventRenderedWeekStart = () => {
+    if (
+      event.value?.type !== eventTypes.DOW &&
+      event.value?.type !== eventTypes.GROUP
+    ) {
+      return undefined
+    }
+
+    return getRenderedWeekStart(
+      opts.weekOffset.value,
+      event.value.startOnMonday
+    )
+  }
+
   async function refreshEvent() {
     const sanitizedId = opts.eventId.value.replaceAll(".", "")
     let resolvedLongId = event.value?._id ?? ""
@@ -59,7 +74,7 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     const rawEvent = await get<RawEvent>(url)
     // Convert raw event to Temporal-based event
     event.value = fromRawEvent(rawEvent)
-    processEvent(event.value)
+    processEvent(event.value, getEventRenderedWeekStart())
   }
 
   async function checkOwnerPremium() {
@@ -79,7 +94,12 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     if (event.value?.type !== eventTypes.GROUP) return
     const curWeekOffset = opts.weekOffset.value
     const ev = event.value as Event & { _id: string; type: string }
-    return getCalendarEventsMap(ev, { weekOffset: curWeekOffset, eventId: ev._id })
+    const renderedWeekStart = getEventRenderedWeekStart()
+    return getCalendarEventsMap(ev, {
+      weekOffset: curWeekOffset,
+      eventId: ev._id,
+      renderedWeekStart,
+    })
       .then((result) => {
         if (curWeekOffset !== opts.weekOffset.value) return
         calendarAvailabilities.value = fromCalendarAvailabilitiesTransportMap(
@@ -97,7 +117,11 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     }
     const curWeekOffset = opts.weekOffset.value
     if (!event.value) return
-    return getCalendarEventsMap(event.value, { weekOffset: curWeekOffset })
+    const renderedWeekStart = getEventRenderedWeekStart()
+    return getCalendarEventsMap(event.value, {
+      weekOffset: curWeekOffset,
+      renderedWeekStart,
+    })
       .then((result) => {
         if (curWeekOffset !== opts.weekOffset.value) return
         calendarEventsMap.value = fromCalendarEventsTransportMap(

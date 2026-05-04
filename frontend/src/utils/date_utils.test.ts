@@ -8,6 +8,8 @@ import {
   dateLeq,
   dateLt,
   doesDstExist,
+  getCalendarEventsMap,
+  getRenderedWeekStart,
   getScheduleTimezoneOffset,
   getSpecificTimesDayStarts,
   isDstObserved,
@@ -489,6 +491,85 @@ describe("Temporal migration regression", () => {
     expect(result[0][0].endDate.toInstant().toString()).toBe("2026-01-01T17:00:00Z")
     expect(result[0][0].hoursOffset).toBe(0)
     expect(result[0][0].hoursLength).toBe(8)
+  })
+
+  it("projects weekly time blocks from an explicit rendered week instead of the ambient clock", () => {
+    interface TestBlock {
+      id: string
+      startDate: Temporal.ZonedDateTime
+      endDate: Temporal.ZonedDateTime
+      hoursOffset?: number
+      hoursLength?: number
+      [key: string]: unknown
+    }
+
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-03-18T12:00:00Z"))
+
+    const weeklyDates = [zdt("2018-06-17T09:00:00Z")]
+    const renderedWeekStart = getRenderedWeekStart(
+      0,
+      false,
+      zdt("2026-04-05T12:00:00Z")
+    )
+    const timeBlocks: TestBlock[] = [
+      {
+        id: "visible-week",
+        startDate: zdt("2026-04-05T10:00:00Z"),
+        endDate: zdt("2026-04-05T11:00:00Z"),
+      },
+    ]
+
+    const result = processTimeBlocks(
+      weeklyDates,
+      Temporal.Duration.from({ hours: 8 }),
+      timeBlocks,
+      eventTypes.DOW,
+      0,
+      false,
+      durations.ZERO,
+      renderedWeekStart
+    )
+
+    expect(result).toHaveLength(1)
+    expect(result[0]).toHaveLength(1)
+    expect(result[0][0].startDate.toInstant().toString()).toBe("2018-06-17T10:00:00Z")
+    expect(result[0][0].endDate.toInstant().toString()).toBe("2018-06-17T11:00:00Z")
+  })
+
+  it("fetches weekly calendar events using an explicit rendered week", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-03-18T12:00:00Z"))
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      headers: new Headers(),
+      text: () => Promise.resolve("{}"),
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    const renderedWeekStart = getRenderedWeekStart(
+      0,
+      false,
+      zdt("2026-04-05T12:00:00Z")
+    )
+
+    await getCalendarEventsMap(
+      {
+        type: eventTypes.DOW,
+        dates: [zdt("2018-06-17T09:00:00Z")],
+        startOnMonday: false,
+      },
+      { weekOffset: 0, renderedWeekStart }
+    )
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [url] = fetchMock.mock.calls[0] as [string]
+    expect(url).toContain(
+      "/user/calendars?timeMin=2026-04-03T09:00:00+00:00[UTC]&timeMax=2026-04-07T09:00:00+00:00[UTC]"
+    )
   })
 
   it("converts UTC slots into another timezone without using invalid Temporal bags", () => {

@@ -197,11 +197,20 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
     }
 
     const eventsCopy = JSON.parse(JSON.stringify(events)) as CalendarEventLite[]
+    const renderedWeekStart =
+      opts.event.value.type === eventTypes.DOW ||
+      opts.event.value.type === eventTypes.GROUP
+        ? getRenderedWeekStart(
+            opts.weekOffset.value,
+            opts.event.value.startOnMonday
+          )
+        : undefined
     return splitTimeBlocksByDay(
       opts.event.value,
       eventsCopy,
       opts.weekOffset.value,
-      opts.timezoneOffset.value
+      opts.timezoneOffset.value,
+      renderedWeekStart
     )
   })
 
@@ -214,6 +223,10 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
     const out: Record<string, CalendarEventsByDay> = {}
     const responses = opts.event.value.responses
     if (!responses) return out
+    const renderedWeekStart = getRenderedWeekStart(
+      opts.weekOffset.value,
+      opts.event.value.startOnMonday
+    )
 
     for (const userId in responses) {
       if (userId === authUser?._id) {
@@ -223,7 +236,8 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
           opts.event.value,
           opts.calendarAvailabilities.value[userId],
           opts.weekOffset.value,
-          opts.timezoneOffset.value
+          opts.timezoneOffset.value,
+          renderedWeekStart
         )
       }
     }

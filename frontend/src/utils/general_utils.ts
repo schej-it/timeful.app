@@ -114,7 +114,10 @@ export const dataURItoBlob = (dataURI: string): Blob => {
 }
 
 /** Reformats the given event object to the format we want */
-export const processEvent = (event: Event): void => {
+export const processEvent = (
+  event: Event,
+  renderedWeekStart?: ZonedDateTime
+): void => {
   if (!event.dates?.length || event.duration == null) return
   let startDate: ZonedDateTime = event.dates[0]
   if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
@@ -124,7 +127,7 @@ export const processEvent = (event: Event): void => {
       0,
       true,
       event.startOnMonday,
-      getRenderedWeekStart(0, event.startOnMonday)
+      renderedWeekStart ?? getRenderedWeekStart(0, event.startOnMonday)
     )
   }
 
