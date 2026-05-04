@@ -23,17 +23,6 @@
     :show-event-options="panel.showEventOptions"
     :guest-added-availability="panel.guestAddedAvailability"
     :adding-availability-as-guest="panel.addingAvailabilityAsGuest"
-    @update:show-calendar-events="$emit('update:showCalendarEvents', $event)"
-    @update:show-best-times="$emit('update:showBestTimes', $event)"
-    @update:hide-if-needed="$emit('update:hideIfNeeded', $event)"
-    @toggle-show-event-options="$emit('toggleShowEventOptions')"
-    @add-availability="$emit('addAvailability')"
-    @add-availability-as-guest="$emit('addAvailabilityAsGuest')"
-    @mouse-over-respondent="(e, userId) => $emit('mouseOverRespondent', e, userId)"
-    @mouse-leave-respondent="$emit('mouseLeaveRespondent')"
-    @click-respondent="(e, userId) => $emit('clickRespondent', e, userId)"
-    @edit-guest-availability="$emit('editGuestAvailability', $event)"
-    @refresh-event="$emit('refreshEvent')"
   />
 </template>
 
@@ -44,19 +33,5 @@ import type { ScheduleOverlapRespondentsPanelViewModel } from "./scheduleOverlap
 defineProps<{
   maxHeight?: number
   panel: ScheduleOverlapRespondentsPanelViewModel
-}>()
-
-defineEmits<{
-  "update:showBestTimes": [value: boolean]
-  "update:showCalendarEvents": [value: boolean]
-  "update:hideIfNeeded": [value: boolean]
-  toggleShowEventOptions: []
-  addAvailabilityAsGuest: []
-  addAvailability: []
-  mouseOverRespondent: [e: MouseEvent, userId: string]
-  mouseLeaveRespondent: []
-  clickRespondent: [e: MouseEvent, userId: string]
-  editGuestAvailability: [userId: string]
-  refreshEvent: []
 }>()
 </script>
