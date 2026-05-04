@@ -168,9 +168,12 @@ export function toRawFolder(folder: Folder): RawFolder {
 }
 
 export function fromRawEvent(raw: RawEvent): Event {
+  const dates = raw.dates?.map((ms) => fromEpochMillisecondsToZDT(ms))
+
   return {
     ...raw,
-    dates: raw.dates?.map((ms) => fromEpochMillisecondsToZDT(ms)),
+    dates,
+    timeSeed: dates?.[0],
     times: raw.times?.map((ms) => fromEpochMillisecondsToZDT(ms)),
     duration:
       raw.duration != null

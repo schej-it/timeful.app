@@ -369,6 +369,15 @@ export const getEventMembershipPlainDates = (
 ): Temporal.PlainDate[] => (dates ?? []).map((date) => date.toPlainDate())
 
 /**
+ * Edit flows should read time-of-day reconstruction from an explicit seed
+ * rather than reaching into membership dates directly.
+ */
+export const getEventTimeSeed = (event: {
+  timeSeed?: ZonedDateTime
+  dates?: ZonedDateTime[]
+}): ZonedDateTime | undefined => event.timeSeed ?? event.dates?.[0]
+
+/**
  * Weekly/group edit flows use the stored seed weekday rather than the current
  * viewer timezone, which could otherwise shift the selected day.
  */

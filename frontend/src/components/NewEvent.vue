@@ -459,6 +459,7 @@ import {
   getDateWithTimezone,
   getEventMembershipDayOfWeekValues,
   getEventMembershipPlainDates,
+  getEventTimeSeed,
   getTimeOptions,
   addEventToCreatedList,
   prefersStartOnMonday,
@@ -859,7 +860,7 @@ const requestContactsAccess = ({ emails: requestEmails }: { emails: (string | { 
 const updateFieldsFromEvent = () => {
   if (props.event) {
     name.value = props.event.name ?? ""
-    const eventDate = props.event.dates?.at(0)
+    const eventDate = getEventTimeSeed(props.event)
     if (eventDate != null) {
       const zdt = getDateWithTimezone(eventDate)
       startTime.value = zdt.toPlainTime()

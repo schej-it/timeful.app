@@ -198,6 +198,46 @@ describe("NewSignUp", () => {
     expect(vm.endTime.toString()).toBe("10:45:00")
   })
 
+  it("prefers the explicit event time seed over membership dates when editing", () => {
+    vi.stubGlobal(
+      "localStorage",
+      createLocalStorageMock({
+        timezone: JSON.stringify({
+          value: "UTC",
+          label: "UTC",
+          gmtString: "GMT",
+          offset: "PT0S",
+        }),
+      })
+    )
+
+    const wrapper = shallowMount(NewSignUp, {
+      props: {
+        edit: true,
+        event: {
+          _id: "evt-1b",
+          name: "Seeded sign up",
+          dates: [Temporal.ZonedDateTime.from("2026-01-02T00:00:00+00:00[UTC]")],
+          timeSeed: Temporal.ZonedDateTime.from(
+            "2026-01-02T09:30:00+00:00[UTC]"
+          ),
+          duration: Temporal.Duration.from({ hours: 1, minutes: 15 }),
+        },
+      },
+      global: {
+        stubs: defaultStubs,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      startTime: Temporal.PlainTime
+      endTime: Temporal.PlainTime
+    }
+
+    expect(vm.startTime.toString()).toBe("09:30:00")
+    expect(vm.endTime.toString()).toBe("10:45:00")
+  })
+
   it("does not throw when editing an event whose dates array is empty", () => {
     expect(() =>
       shallowMount(NewSignUp, {

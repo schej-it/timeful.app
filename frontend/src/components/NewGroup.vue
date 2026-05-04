@@ -171,6 +171,7 @@ import {
   put,
   getWrappedTimeRangeDuration,
   getEventMembershipDayOfWeekValues,
+  getEventTimeSeed,
   plainTimeToTimeNum,
   resolveTimezoneValue,
   signInGoogle,
@@ -460,7 +461,7 @@ const updateFieldsFromEvent = () => {
   if (props.event) {
     name.value = props.event.name ?? ""
 
-    const eventDate = props.event.dates?.at(0)
+    const eventDate = getEventTimeSeed(props.event)
     if (eventDate != null) {
       startTime.value = getDateWithTimezone(eventDate).toPlainTime()
 

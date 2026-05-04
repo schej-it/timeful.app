@@ -25,13 +25,11 @@ describe("transport and timezone regression boundaries", () => {
   })
 
   it("reconstructs epoch-millisecond API fields without invalid ZonedDateTime bags", () => {
-    expect(() =>
-      fromRawEvent({
-        dates: [0],
-        times: [60 * 60 * 1000],
-        duration: 1,
-      })
-    ).not.toThrow()
+    expect(() => fromRawEvent({
+      dates: [0],
+      times: [60 * 60 * 1000],
+      duration: 1,
+    })).not.toThrow()
 
     expect(() =>
       fromRawResponse({
@@ -54,6 +52,16 @@ describe("transport and timezone regression boundaries", () => {
         endDate: 60 * 60 * 1000,
       })
     ).not.toThrow()
+  })
+
+  it("exposes an explicit time seed alongside decoded event dates", () => {
+    const event = fromRawEvent({
+      dates: [Date.parse("2026-01-02T09:30:00Z")],
+      duration: 1,
+    })
+
+    expect(event.timeSeed?.toString()).toBe("2026-01-02T09:30:00+00:00[UTC]")
+    expect(event.dates?.[0].toString()).toBe("2026-01-02T09:30:00+00:00[UTC]")
   })
 
   it("keeps user transport decoding at an explicit boundary", () => {

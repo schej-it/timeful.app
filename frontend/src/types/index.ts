@@ -29,6 +29,7 @@ export type Event = Omit<
 > & {
   // TODO PlainDate?
   dates?: Temporal.ZonedDateTime[]
+  timeSeed?: Temporal.ZonedDateTime
   times?: Temporal.ZonedDateTime[]
   startTime?: Temporal.PlainTime
   endTime?: Temporal.PlainTime

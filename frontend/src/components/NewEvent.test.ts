@@ -224,6 +224,55 @@ describe("NewEvent", () => {
     ).toBe("09:00:00")
   })
 
+  it("prefers the explicit event time seed over membership dates when editing", () => {
+    localStorage.setItem(
+      "timezone",
+      JSON.stringify({
+        value: "UTC",
+        offset: "PT0S",
+        label: "UTC",
+        gmtString: "GMT",
+      })
+    )
+
+    const wrapper = shallowMount(NewEvent, {
+      props: {
+        edit: true,
+        event: {
+          _id: "evt-3b",
+          name: "Seeded event",
+          type: "specific_dates",
+          dates: [Temporal.ZonedDateTime.from("2026-01-02T00:00:00+00:00[UTC]")],
+          timeSeed: Temporal.ZonedDateTime.from(
+            "2026-01-02T09:30:00+00:00[UTC]"
+          ),
+          duration: Temporal.Duration.from({ hours: 1, minutes: 15 }),
+        },
+      },
+      global: {
+        stubs: defaultStubs,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      startTime?: Temporal.PlainTime
+      endTime?: Temporal.PlainTime
+      $: {
+        setupState?: {
+          startTime?: Temporal.PlainTime
+          endTime?: Temporal.PlainTime
+        }
+      }
+    }
+
+    expect(
+      (vm.startTime ?? vm.$.setupState?.startTime)?.toString()
+    ).toBe("09:30:00")
+    expect(
+      (vm.endTime ?? vm.$.setupState?.endTime)?.toString()
+    ).toBe("10:45:00")
+  })
+
   it("keeps specific-date edit membership stable when the saved timezone would shift the instant to the prior day", () => {
     localStorage.setItem(
       "timezone",
