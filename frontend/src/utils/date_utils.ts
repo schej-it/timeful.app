@@ -21,16 +21,11 @@ import { get } from "./fetch_utils"
 import { Temporal } from "temporal-polyfill"
 import type { Event } from "@/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
+import { getFixedOffsetTimeZoneId, resolveTimezoneValue } from "./timezone_utils"
 
 /*
   Date utils
 */
-
-interface RawTimezone {
-  value?: string
-  // TODO only duration or only string?
-  offset: Temporal.Duration | string
-}
 
 // Use the application Event type which already has Temporal.ZonedDateTime[] dates
 export type EventLike = Pick<
@@ -255,13 +250,6 @@ const parseEpochKey = (value: string): Temporal.ZonedDateTime => {
   return Temporal.Instant.from(value).toZonedDateTimeISO(UTC)
 }
 
-const reviveTimezoneOffset = (
-  offset: RawTimezone["offset"] | undefined
-): Temporal.Duration | undefined => {
-  if (!offset) return undefined
-  return typeof offset === "string" ? Temporal.Duration.from(offset) : offset
-}
-
 /** Helper: Convert Temporal.ZonedDateTime or ZonedDateTime to ZonedDateTime in specified timezone */
 export const toZDT = (
   date: ZonedDateTime,
@@ -361,26 +349,15 @@ export const getDateWithTimezone = (
   date: ZonedDateTime
 ): Temporal.ZonedDateTime => {
   const zdt = toZDT(date)
+  const storage =
+    typeof globalThis.localStorage === "undefined" ? undefined : globalThis.localStorage
+  const timezoneValue = resolveTimezoneValue(
+    undefined,
+    storage,
+    Temporal.Now.timeZoneId()
+  )
 
-  const rawTz = localStorage.getItem("timezone")
-  let timezone: RawTimezone | undefined
-
-  try {
-    timezone = rawTz ? (JSON.parse(rawTz) as RawTimezone) : undefined
-  } catch {
-    timezone = undefined
-  }
-
-  if (timezone?.value && typeof timezone.value === "string") {
-    return zdt.withTimeZone(timezone.value)
-  }
-
-  const timezoneOffset = reviveTimezoneOffset(timezone?.offset)
-  if (timezoneOffset) {
-    return zdt.withTimeZone(getFixedOffsetTimeZoneId(timezoneOffset))
-  }
-
-  return zdt.withTimeZone(Temporal.Now.timeZoneId())
+  return zdt.withTimeZone(timezoneValue)
 }
 
 export const fromEpochMillisecondsToZDT = fromEpochMilliseconds
@@ -522,20 +499,7 @@ export const getDateInTimezone = (
   return toZDT(date, localTz)
 }
 
-export const getFixedOffsetTimeZoneId = (
-  offset: Temporal.Duration
-): string => {
-  const offsetMinutes = offset.total("minutes")
-  const sign = offsetMinutes >= 0 ? "+" : "-"
-  const absMinutes = Math.abs(offsetMinutes)
-  const hours = Math.floor(absMinutes / 60)
-  const minutes = absMinutes % 60
-
-  return `${sign}${String(hours).padStart(2, "0")}:${String(minutes).padStart(
-    2,
-    "0"
-  )}`
-}
+export { getFixedOffsetTimeZoneId } from "./timezone_utils"
 
 /** Returns the unique day-start datetimes for specific-times events */
 export const getSpecificTimesDayStarts = (

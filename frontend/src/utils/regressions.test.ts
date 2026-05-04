@@ -325,6 +325,24 @@ describe("Temporal regressions", () => {
     expect(reconstructed.toPlainDate().toString()).toBe("2026-06-15")
   })
 
+  it("reconstructs edit-flow times for offset-only saved timezones through the shared boundary", () => {
+    localStorage.setItem(
+      "timezone",
+      JSON.stringify({
+        value: "",
+        offset: "PT5H45M",
+        label: "Nepal Time",
+        gmtString: "GMT+5:45",
+      })
+    )
+
+    const reconstructed = getDateWithTimezone(zdt("2026-06-15T12:00:00Z"))
+
+    expect(reconstructed.timeZoneId).toBe("+05:45")
+    expect(reconstructed.toPlainTime().toString()).toBe("17:45:00")
+    expect(reconstructed.toPlainDate().toString()).toBe("2026-06-15")
+  })
+
   it("matches equal Temporal.Duration values when sizing schedule rows", () => {
     const grid = useCalendarGrid({
       event: ref({

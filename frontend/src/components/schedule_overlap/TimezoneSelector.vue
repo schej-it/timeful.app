@@ -45,8 +45,9 @@ import { Temporal } from "temporal-polyfill"
 import { allTimezones } from "@/constants"
 import type { Timezone } from "@/composables/schedule_overlap/types"
 import {
+  readSavedTimezone,
+  reviveSavedTimezoneOffset,
   resolveSavedTimezoneValue,
-  type SavedTimezoneShape,
 } from "@/utils/timezone_utils"
 
 const props = withDefaults(
@@ -170,12 +171,11 @@ function getSavedTimezone(): Timezone | undefined {
   }
 
   try {
-    const savedTimezone = storage.getItem("timezone")
-    if (!savedTimezone) {
+    const parsedSavedTimezone = readSavedTimezone(storage)
+    if (!parsedSavedTimezone) {
       return undefined
     }
 
-    const parsedSavedTimezone = JSON.parse(savedTimezone) as SavedTimezoneShape
     const savedTimezoneValue = resolveSavedTimezoneValue(
       parsedSavedTimezone
     )
@@ -198,10 +198,10 @@ function getSavedTimezone(): Timezone | undefined {
       return undefined
     }
 
-    const offset =
-      typeof parsedSavedTimezone.offset === "string"
-        ? Temporal.Duration.from(parsedSavedTimezone.offset)
-        : parsedSavedTimezone.offset
+    const offset = reviveSavedTimezoneOffset(parsedSavedTimezone.offset)
+    if (!offset) {
+      return undefined
+    }
 
     return createFixedOffsetTimezone(offset)
   } catch {
