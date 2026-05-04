@@ -533,9 +533,9 @@ const startTime = ref<Temporal.PlainTime>(hoursPlainTime.NINE)
 const endTime = ref<Temporal.PlainTime>(hoursPlainTime.SEVENTEEN)
 const specificTimesEnabled = ref(false)
 const loading = ref(false)
-const selectedDays = ref<Temporal.ZonedDateTime[]>([])
+const selectedDays = ref<Temporal.PlainDate[]>([])
 const selectedDaysStr = computed(() => {
-  return selectedDays.value.map(x => x.toPlainDate().toString())
+  return selectedDays.value.map(x => x.toString())
 })
 const selectedDaysOfWeek = ref<number[]>([])
 const startOnMonday = ref(prefersStartOnMonday())
@@ -608,6 +608,12 @@ const normalizeDraftTime = (
   return Temporal.PlainTime.from(time)
 }
 
+const normalizeSelectedDays = (
+  selectedDays: SerializedEventDraft["selectedDays"]
+): Temporal.PlainDate[] => {
+  return (selectedDays ?? []).map((day) => Temporal.PlainDate.from(day))
+}
+
 onMounted(() => {
   if (Object.keys(props.contactsPayload).length > 0) {
     toggleEmailReminders(true)
@@ -618,7 +624,7 @@ onMounted(() => {
     daysOnly.value = props.contactsPayload.daysOnly ?? false
     selectedDateOption.value = (props.contactsPayload.selectedDateOption ?? dateOptions.SPECIFIC) as DateOptionType
     selectedDaysOfWeek.value = props.contactsPayload.selectedDaysOfWeek ?? []
-    selectedDays.value = (props.contactsPayload.selectedDays ?? []).map(x => Temporal.ZonedDateTime.from(x))
+    selectedDays.value = normalizeSelectedDays(props.contactsPayload.selectedDays)
     notificationsEnabled.value = props.contactsPayload.notificationsEnabled ?? true
     timezone.value = (props.contactsPayload.timezone as Timezone | undefined) ?? { value: "", label: "", gmtString: "", offset: durations.ZERO }
     specificTimesEnabled.value = props.contactsPayload.specificTimesEnabled ?? false
@@ -662,7 +668,7 @@ const submit = async () => {
   if (!valid) return
   const timezoneValue = resolveTimezoneValue(timezone.value.value)
 
-  selectedDays.value.sort()
+  selectedDays.value.sort((a, b) => Temporal.PlainDate.compare(a, b))
 
   let duration = getWrappedTimeRangeDuration(startTime.value, endTime.value)
   const durationHoursNum = duration.total("hours")
@@ -674,16 +680,14 @@ const submit = async () => {
     type = eventTypes.SPECIFIC_DATES
 
     for (const day of selectedDays.value) {
-      const zdt = day.withTimeZone(UTC).withPlainTime("00:00")
+      const zdt = day.toZonedDateTime({ timeZone: UTC, plainTime: "00:00" })
       dates.push(zdt)
     }
     specificTimesEnabled.value = false
   } else {
     if (selectedDateOption.value === dateOptions.SPECIFIC) {
       type = eventTypes.SPECIFIC_DATES
-      for (const day of selectedDays.value) {
-        // Parse the date string and create a ZonedDateTime in the specified timezone
-        const plainDate = Temporal.PlainDate.from(day)
+      for (const plainDate of selectedDays.value) {
         const plainTime = startTime.value
         const zdt = plainDate.toZonedDateTime({ 
           timeZone: timezoneValue,
@@ -833,7 +837,7 @@ const requestContactsAccess = ({ emails: requestEmails }: { emails: (string | { 
     startTime: plainTimeToTimeNum(startTime.value),
     endTime: plainTimeToTimeNum(endTime.value),
     daysOnly: daysOnly.value,
-    selectedDays: selectedDays.value,
+    selectedDays: selectedDays.value.map((day) => day.toString()),
     selectedDaysOfWeek: selectedDaysOfWeek.value,
     selectedDateOption: selectedDateOption.value,
     notificationsEnabled: notificationsEnabled.value,
@@ -881,14 +885,16 @@ const updateFieldsFromEvent = () => {
 
     if (props.event.daysOnly) {
       selectedDateOption.value = dateOptions.SPECIFIC
-      selectedDays.value = props.event.dates ?? []
+      selectedDays.value = (props.event.dates ?? []).map((date) =>
+        date.toPlainDate()
+      )
     } else {
       if (props.event.type === eventTypes.SPECIFIC_DATES) {
         selectedDateOption.value = dateOptions.SPECIFIC
-        const days: Temporal.ZonedDateTime[] = []
+        const days: Temporal.PlainDate[] = []
         for (let date of props.event.dates ?? []) {
           const d = getDateWithTimezone(date)
-          days.push(d.with({ timeZone: UTC }))
+          days.push(d.toPlainDate())
         }
         selectedDays.value = days
       } else if (props.event.type === eventTypes.DOW) {

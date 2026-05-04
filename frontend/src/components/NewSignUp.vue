@@ -429,7 +429,7 @@ const submit = async () => {
   if (!valid) return
   const timezoneValue = resolveTimezoneValue(timezone.value.value)
 
-  selectedDays.value.sort()
+  selectedDays.value.sort((a, b) => Temporal.PlainDate.compare(a, b))
 
   let duration = getWrappedTimeRangeDuration(startTime.value, endTime.value)
 

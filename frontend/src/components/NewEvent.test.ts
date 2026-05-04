@@ -224,6 +224,43 @@ describe("NewEvent", () => {
     ).toBe("09:00:00")
   })
 
+  it("normalizes restored draft selectedDays into Temporal.PlainDate values", () => {
+    const wrapper = shallowMount(NewEvent, {
+      props: {
+        contactsPayload: {
+          name: "Legacy draft",
+          startTime: 9,
+          endTime: 10,
+          daysOnly: true,
+          selectedDateOption: "Specific dates",
+          selectedDays: ["2026-01-02", "2026-01-03"],
+          notificationsEnabled: false,
+          timezone: {
+            value: "UTC",
+            label: "UTC",
+            gmtString: "GMT",
+            offset: durations.ZERO,
+          },
+        },
+      },
+      global: {
+        stubs: defaultStubs,
+      },
+    })
+
+    const selectedDays = (wrapper.vm as unknown as {
+      selectedDays: Temporal.PlainDate[]
+    }).selectedDays
+
+    expect(selectedDays.map((day) => day.toString())).toEqual([
+      "2026-01-02",
+      "2026-01-03",
+    ])
+    expect(selectedDays.every((day) => day instanceof Temporal.PlainDate)).toBe(
+      true
+    )
+  })
+
   it("treats equal start and end times as a 24-hour event duration", async () => {
     const wrapper = shallowMount(NewEvent, {
       props: {
@@ -233,7 +270,7 @@ describe("NewEvent", () => {
           endTime: 9,
           daysOnly: false,
           selectedDateOption: "Specific dates",
-          selectedDays: ["2026-01-02T09:00:00+00:00[UTC]"],
+          selectedDays: ["2026-01-02"],
           notificationsEnabled: false,
           timezone: {
             value: "UTC",
