@@ -5,22 +5,22 @@
     >
       <div
         :class="
-          state === states.EDIT_AVAILABILITY
+          toolRow.state === toolRow.states.EDIT_AVAILABILITY
             ? 'tw-justify-center'
             : 'tw-justify-between'
         "
         class="tw-flex tw-flex-1 tw-flex-wrap tw-gap-x-4 tw-gap-y-2 tw-py-4 sm:tw-justify-start sm:tw-gap-x-4"
       >
         <!-- Select timezone -->
-        <div v-if="!event.daysOnly" class="tw-flex tw-items-center tw-gap-2">
+        <div v-if="!toolRow.event.daysOnly" class="tw-flex tw-items-center tw-gap-2">
           <TimezoneSelector
             class="tw-w-full sm:tw-w-[unset]"
-            :model-value="curTimezone"
-            :reference-date="timezoneReferenceDate"
+            :model-value="toolRow.curTimezone"
+            :reference-date="toolRow.timezoneReferenceDate"
             @update:model-value="(val) => $emit('update:curTimezone', val)"
           />
           <v-select
-            :value="timeType"
+            :value="toolRow.timeType"
             :items="timeTypeOptions"
             item-text="label"
             item-value="value"
@@ -31,12 +31,12 @@
           />
         </div>
         <div
-          v-if="isPhone && !event.daysOnly"
+          v-if="isPhone && !toolRow.event.daysOnly"
           class="tw-flex tw-basis-full tw-items-center tw-gap-x-2 tw-py-4"
         >
           Show
           <v-select
-            :value="mobileNumDays"
+            :value="toolRow.mobileNumDays"
             :items="mobileNumDaysOptions"
             item-text="label"
             item-value="value"
@@ -48,15 +48,17 @@
           at a time
         </div>
 
-        <template v-if="state !== states.EDIT_AVAILABILITY && isPhone">
+        <template
+          v-if="toolRow.state !== toolRow.states.EDIT_AVAILABILITY && isPhone"
+        >
           <EventOptions
             class="tw-mt-2 tw-w-full"
-            :event="event"
-            :show-best-times="showBestTimes"
-            :hide-if-needed="hideIfNeeded"
-            :show-event-options="showEventOptions"
-            :start-calendar-on-monday="startCalendarOnMonday"
-            :num-responses="numResponses"
+            :event="toolRow.event"
+            :show-best-times="toolRow.showBestTimes"
+            :hide-if-needed="toolRow.hideIfNeeded"
+            :show-event-options="toolRow.showEventOptions"
+            :start-calendar-on-monday="toolRow.startCalendarOnMonday"
+            :num-responses="toolRow.numResponses"
             @update:show-best-times="(val) => $emit('update:showBestTimes', val)"
             @update:hide-if-needed="(val) => $emit('update:hideIfNeeded', val)"
             @toggle-show-event-options="$emit('toggleShowEventOptions')"
@@ -66,15 +68,19 @@
           />
         </template>
         <template
-          v-if="state === states.EDIT_AVAILABILITY && isWeekly && !isPhone"
+          v-if="
+            toolRow.state === toolRow.states.EDIT_AVAILABILITY &&
+            toolRow.isWeekly &&
+            !isPhone
+          "
         >
           <v-spacer />
           <div class="tw-min-w-fit">
             <GCalWeekSelector
-              v-if="calendarPermissionGranted"
-              :week-offset="weekOffset"
-              :event="event"
-              :start-on-monday="event.startOnMonday"
+              v-if="toolRow.calendarPermissionGranted"
+              :week-offset="toolRow.weekOffset"
+              :event="toolRow.event"
+              :start-on-monday="toolRow.event.startOnMonday"
               @update:week-offset="(val) => $emit('update:weekOffset', val)"
             />
           </div>
@@ -86,7 +92,7 @@
         style="width: 181.5px"
         class="tw-hidden sm:tw-flex"
       >
-        <template v-if="state !== states.SCHEDULE_EVENT">
+        <template v-if="toolRow.state !== toolRow.states.SCHEDULE_EVENT">
           <v-btn
             outlined
             class="tw-w-full tw-text-blue"
@@ -107,7 +113,7 @@
           <v-menu offset-y class="tw-z-20">
             <template #activator="{ props: activatorProps }">
               <v-btn
-                :disabled="!allowScheduleEvent"
+                :disabled="!toolRow.allowScheduleEvent"
                 class="tw-bg-blue tw-text-white"
                 v-bind="activatorProps"
               >
@@ -164,40 +170,18 @@
 <script setup lang="ts">
 import { computed } from "vue"
 import { storeToRefs } from "pinia"
-import type { Temporal } from "temporal-polyfill"
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import TimezoneSelector from "./TimezoneSelector.vue"
 import GCalWeekSelector from "./GCalWeekSelector.vue"
 import EventOptions from "./EventOptions.vue"
-import { timeTypes, guestUserId } from "@/constants"
-import type { EventLike, Timezone } from "@/composables/schedule_overlap/types"
+import { guestUserId, timeTypes } from "@/constants"
+import type { Timezone } from "@/composables/schedule_overlap/types"
+import type { ScheduleOverlapToolRowViewModel } from "./scheduleOverlapViewModels"
 
-const props = withDefaults(
-  defineProps<{
-    event: EventLike
-    state: string
-    states: Record<string, string>
-    curTimezone: Timezone
-    startCalendarOnMonday?: boolean
-    showBestTimes: boolean
-    hideIfNeeded: boolean
-    isWeekly: boolean
-    calendarPermissionGranted: boolean
-    weekOffset: number
-    timezoneReferenceDate?: Temporal.ZonedDateTime | null
-    numResponses: number
-    mobileNumDays?: number
-    allowScheduleEvent: boolean
-    showEventOptions: boolean
-    timeType: string
-  }>(),
-  {
-    startCalendarOnMonday: false,
-    timezoneReferenceDate: null,
-    mobileNumDays: 3,
-  }
-)
+const props = defineProps<{
+  toolRow: ScheduleOverlapToolRowViewModel
+}>()
 
 defineEmits<{
   "update:curTimezone": [value: Timezone]
@@ -227,13 +211,13 @@ const timeTypeOptions = [
   { label: "24h", value: timeTypes.HOUR24 },
 ]
 
-const guestEvent = computed(() => props.event.ownerId == guestUserId)
-const isOwner = computed(() => props.event.ownerId == authUser.value?._id)
+const guestEvent = computed(() => props.toolRow.event.ownerId == guestUserId)
+const isOwner = computed(() => props.toolRow.event.ownerId == authUser.value?._id)
 const showScheduleEventButton = computed(
   () =>
-    !props.event.daysOnly &&
-    props.numResponses > 0 &&
-    props.state !== props.states.EDIT_AVAILABILITY &&
+    !props.toolRow.event.daysOnly &&
+    props.toolRow.numResponses > 0 &&
+    props.toolRow.state !== props.toolRow.states.EDIT_AVAILABILITY &&
     (guestEvent.value || isOwner.value)
 )
 </script>

@@ -9,11 +9,6 @@
           >
             <ScheduleOverlapDaysOnlyGrid
               v-if="event.daysOnly"
-              v-model:cur-timezone="curTimezone"
-              v-model:show-best-times="showBestTimes"
-              v-model:hide-if-needed="hideIfNeeded"
-              v-model:mobile-num-days="mobileNumDays"
-              v-model:time-type="timeType"
               :event="event"
               :cur-month-text="curMonthText"
               :has-prev-page="hasPrevPage"
@@ -26,15 +21,7 @@
               :hint-text-shown="hintTextShown"
               :hint-text="hintText"
               :calendar-only="calendarOnly"
-              :state="state"
-              :states="states"
-              :timezone-reference-date="timezoneReferenceDate"
-              :is-weekly="isWeekly"
-              :calendar-permission-granted="calendarPermissionGranted"
-              :week-offset="weekOffset"
-              :num-responses="respondents.length"
-              :allow-schedule-event="allowScheduleEvent"
-              :show-event-options="showEventOptions"
+              :tool-row="toolRowViewModel"
               @prev-page="prevPage"
               @next-page="nextPage"
               @reset-cur-timeslot="resetCurTimeslot"
@@ -47,11 +34,6 @@
             />
             <template v-else>
               <ScheduleOverlapTimeGrid
-                v-model:cur-timezone="curTimezone"
-                v-model:show-best-times="showBestTimes"
-                v-model:hide-if-needed="hideIfNeeded"
-                v-model:mobile-num-days="mobileNumDays"
-                v-model:time-type="timeType"
                 :event="event"
                 :calendar-only="calendarOnly"
                 :has-prev-page="hasPrevPage"
@@ -93,13 +75,7 @@
                 :respondents-length="respondents.length"
                 :fetched-responses="fetchedResponses"
                 :loading-responses-loading="loadingResponses.loading"
-                :timezone-reference-date="timezoneReferenceDate"
-                :is-weekly="isWeekly"
-                :calendar-permission-granted="calendarPermissionGranted"
-                :week-offset="weekOffset"
-                :num-responses="respondents.length"
-                :allow-schedule-event="allowScheduleEvent"
-                :show-event-options="showEventOptions"
+                :tool-row="toolRowViewModel"
                 :get-rendered-time-block-style="getRenderedTimeBlockStyleForTemplate"
                 :get-sign-up-block-style="getSignUpBlockStyle"
                 @prev-page="prevPage"
@@ -162,23 +138,14 @@
 
         <ToolRow
           v-if="isPhone && !calendarOnly"
-          v-model:cur-timezone="curTimezone"
-          v-model:show-best-times="showBestTimes"
-          v-model:hide-if-needed="hideIfNeeded"
-          v-model:start-calendar-on-monday="startCalendarOnMonday"
-          v-model:mobile-num-days="mobileNumDays"
-          v-model:time-type="timeType"
           class="tw-px-4"
-          :event="event"
-          :state="state"
-          :states="states"
-          :timezone-reference-date="timezoneReferenceDate"
-          :is-weekly="isWeekly"
-          :calendar-permission-granted="calendarPermissionGranted"
-          :week-offset="weekOffset"
-          :num-responses="respondents.length"
-          :allow-schedule-event="allowScheduleEvent"
-          :show-event-options="showEventOptions"
+          :tool-row="toolRowViewModel"
+          @update:cur-timezone="curTimezone = $event"
+          @update:show-best-times="showBestTimes = $event"
+          @update:hide-if-needed="hideIfNeeded = $event"
+          @update:start-calendar-on-monday="startCalendarOnMonday = $event"
+          @update:mobile-num-days="mobileNumDays = $event"
+          @update:time-type="updateTimeType"
           @toggle-show-event-options="toggleShowEventOptions"
           @update:week-offset="(val) => $emit('update:weekOffset', val)"
           @schedule-event="scheduleEvent"
@@ -255,6 +222,7 @@ import type {
   ScheduleOverlapMobileOverlayViewModel,
   ScheduleOverlapRespondentsPanelViewModel,
   ScheduleOverlapSidebarViewModel,
+  ScheduleOverlapToolRowViewModel,
 } from "./scheduleOverlapViewModels"
 
 // ── Props / Emits ──────────────────────────────────────────────────────
@@ -770,6 +738,25 @@ const mobileOverlayViewModel = computed<ScheduleOverlapMobileOverlayViewModel>(
   })
 )
 
+const toolRowViewModel = computed<ScheduleOverlapToolRowViewModel>(() => ({
+  event: props.event,
+  state: state.value,
+  states,
+  curTimezone: curTimezone.value,
+  startCalendarOnMonday: startCalendarOnMonday.value,
+  showBestTimes: showBestTimes.value,
+  hideIfNeeded: hideIfNeeded.value,
+  isWeekly: isWeekly.value,
+  calendarPermissionGranted: props.calendarPermissionGranted,
+  weekOffset: props.weekOffset,
+  timezoneReferenceDate: timezoneReferenceDate.value,
+  numResponses: respondents.value.length,
+  mobileNumDays: mobileNumDays.value,
+  allowScheduleEvent: allowScheduleEvent.value,
+  showEventOptions: showEventOptions.value,
+  timeType: timeType.value,
+}))
+
 const overlaidAvailability = computed(() => {
   return buildOverlaidAvailability({
     daysLength: days.value.length,
@@ -870,6 +857,10 @@ const timeslotVon = computed(() => {
 const dayTimeslotVon = computed(() =>
   monthDays.value.map((_day, i) => getTimeslotVon(Math.floor(i / 7), i % 7))
 )
+
+function updateTimeType(value: string) {
+  timeType.value = value as typeof timeType.value
+}
 
 function getTimeslotVon(row: number, col: number): Record<string, () => void> {
   if (!props.interactable) return {}

@@ -79,21 +79,7 @@
 
     <ToolRow
       v-if="!isPhone && !calendarOnly"
-      :cur-timezone="curTimezone"
-      :show-best-times="showBestTimes"
-      :hide-if-needed="hideIfNeeded"
-      :mobile-num-days="mobileNumDays"
-      :time-type="timeType"
-      :event="event"
-      :state="state"
-      :states="states"
-      :timezone-reference-date="timezoneReferenceDate"
-      :is-weekly="isWeekly"
-      :calendar-permission-granted="calendarPermissionGranted"
-      :week-offset="weekOffset"
-      :num-responses="numResponses"
-      :allow-schedule-event="allowScheduleEvent"
-      :show-event-options="showEventOptions"
+      :tool-row="toolRow"
       @update:cur-timezone="$emit('update:curTimezone', $event)"
       @update:show-best-times="$emit('update:showBestTimes', $event)"
       @update:hide-if-needed="$emit('update:hideIfNeeded', $event)"
@@ -109,14 +95,13 @@
 </template>
 
 <script setup lang="ts">
-import type { Temporal } from "temporal-polyfill"
 import type {
   EventLike,
   MonthDayItem,
-  ScheduleOverlapState,
   Timezone,
 } from "@/composables/schedule_overlap/types"
 import type { ClassStyle } from "./scheduleOverlapRendering"
+import type { ScheduleOverlapToolRowViewModel } from "./scheduleOverlapViewModels"
 import ToolRow from "./ToolRow.vue"
 import ZigZag from "./ZigZag.vue"
 
@@ -137,20 +122,7 @@ defineProps<{
   hintTextShown: boolean
   hintText: string
   calendarOnly: boolean
-  curTimezone: Timezone
-  showBestTimes: boolean
-  hideIfNeeded: boolean
-  mobileNumDays: number
-  timeType: string
-  state: ScheduleOverlapState
-  states: Record<string, ScheduleOverlapState>
-  timezoneReferenceDate: Temporal.ZonedDateTime
-  isWeekly: boolean
-  calendarPermissionGranted: boolean
-  weekOffset: number
-  numResponses: number
-  allowScheduleEvent: boolean
-  showEventOptions: boolean
+  toolRow: ScheduleOverlapToolRowViewModel
 }>()
 
 defineEmits<{

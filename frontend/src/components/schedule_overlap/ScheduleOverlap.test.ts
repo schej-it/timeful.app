@@ -2,7 +2,10 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { createLocalStorageMock } from "@/test/localStorage"
-import { mountScheduleOverlap } from "./scheduleOverlapTestUtils"
+import {
+  buildScheduleOverlapProps,
+  mountScheduleOverlap,
+} from "./scheduleOverlapTestUtils"
 
 const smAndDown = { value: false }
 
@@ -106,5 +109,66 @@ describe("ScheduleOverlap", () => {
     expect(sidebarViewModel.respondentsPanel.eventId).toBe("evt-1")
     expect(overlayViewModel.event._id).toBe("evt-1")
     expect(overlayViewModel.respondentsPanel.eventId).toBe("evt-1")
+  })
+
+  it("passes a cohesive tool-row view model to timed and days-only grid boundaries", () => {
+    const timedWrapper = mountScheduleOverlap({
+      global: {
+        stubs: {
+          ScheduleOverlapTimeGrid: {
+            name: "ScheduleOverlapTimeGrid",
+            props: {
+              toolRow: {
+                type: Object,
+                required: true,
+              },
+            },
+            template: "<div />",
+          },
+        },
+      },
+    })
+
+    const timedToolRow = timedWrapper.findComponent({ name: "ScheduleOverlapTimeGrid" })
+      .props("toolRow") as {
+      event: { _id?: string }
+      numResponses: number
+    }
+
+    expect(timedToolRow.event._id).toBe("evt-1")
+    expect(timedToolRow.numResponses).toBe(0)
+
+    const daysOnlyWrapper = mountScheduleOverlap({
+      props: {
+        event: {
+          ...buildScheduleOverlapProps().event,
+          daysOnly: true,
+        },
+      },
+      global: {
+        stubs: {
+          ScheduleOverlapDaysOnlyGrid: {
+            name: "ScheduleOverlapDaysOnlyGrid",
+            props: {
+              toolRow: {
+                type: Object,
+                required: true,
+              },
+            },
+            template: "<div />",
+          },
+        },
+      },
+    })
+
+    const daysOnlyToolRow = daysOnlyWrapper.findComponent({
+      name: "ScheduleOverlapDaysOnlyGrid",
+    }).props("toolRow") as {
+      event: { daysOnly?: boolean }
+      numResponses: number
+    }
+
+    expect(daysOnlyToolRow.event.daysOnly).toBe(true)
+    expect(daysOnlyToolRow.numResponses).toBe(0)
   })
 })

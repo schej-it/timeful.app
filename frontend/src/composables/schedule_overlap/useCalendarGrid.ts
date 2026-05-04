@@ -442,18 +442,13 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     if (eventDates.length === 0) return monthDays
 
     const date = eventDates[0]
-    const monthIndex = date.month + page.value - 1
-    const year = date.year
-
-    // Use Temporal to get last day of months
-    const lastDayOfPrevMonth = Temporal.PlainDate.from({
-      year,
-      month: monthIndex,
-    }).add({ days: -1 })
-    const lastDayOfCurMonthPlain = Temporal.PlainDate.from({
-      year,
-      month: monthIndex + 1,
-    }).add({ days: -1 })
+    const firstDayOfCurMonthPlain = date.toPlainDate().with({ day: 1 }).add({
+      months: page.value,
+    })
+    const lastDayOfPrevMonth = firstDayOfCurMonthPlain.subtract({ days: 1 })
+    const lastDayOfCurMonthPlain = firstDayOfCurMonthPlain
+      .add({ months: 1 })
+      .subtract({ days: 1 })
 
     let curDate = lastDayOfPrevMonth.add({ days: 1 })
     let numDaysFromPrevMonth = 0
@@ -523,14 +518,11 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     const eventDates = event.value.dates ?? []
     if (eventDates.length === 0) return ""
     const date = eventDates[0]
-    const monthIndex = date.month + page.value
-    const year = date.year
-    const lastDayOfCurMonthPlain = Temporal.PlainDate.from({
-      year,
-      month: monthIndex + 1,
-    }).add({ days: -1 })
-    const monthText = months[lastDayOfCurMonthPlain.month - 1]
-    const yearText = lastDayOfCurMonthPlain.year
+    const curMonthPlainDate = date.toPlainDate().with({ day: 1 }).add({
+      months: page.value,
+    })
+    const monthText = months[curMonthPlainDate.month - 1]
+    const yearText = curMonthPlainDate.year
     return `${monthText} ${String(yearText)}`
   })
 
@@ -556,12 +548,11 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       if (eventDates.length === 0) return false
       const lastDay = eventDates[eventDates.length - 1]
       const curDate = eventDates[0]
-      const monthIndex = curDate.month + page.value
-      const year = curDate.year
-      const lastDayOfCurMonthPlain = Temporal.PlainDate.from({
-        year,
-        month: monthIndex + 1,
-      }).add({ days: -1 })
+      const lastDayOfCurMonthPlain = curDate
+        .toPlainDate()
+        .with({ day: 1 })
+        .add({ months: page.value + 1 })
+        .subtract({ days: 1 })
       const lastDayOfCurMonth = lastDayOfCurMonthPlain
         .toZonedDateTime({ timeZone: UTC })
       return (

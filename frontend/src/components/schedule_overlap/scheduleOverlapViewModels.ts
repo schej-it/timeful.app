@@ -94,3 +94,22 @@ export interface ScheduleOverlapMobileOverlayViewModel {
   state: ScheduleOverlapState
   numTempTimes: number
 }
+
+export interface ScheduleOverlapToolRowViewModel {
+  event: EventLike
+  state: ScheduleOverlapState
+  states: Record<string, ScheduleOverlapState>
+  curTimezone: Timezone
+  startCalendarOnMonday: boolean
+  showBestTimes: boolean
+  hideIfNeeded: boolean
+  isWeekly: boolean
+  calendarPermissionGranted: boolean
+  weekOffset: number
+  timezoneReferenceDate: Temporal.ZonedDateTime
+  numResponses: number
+  mobileNumDays: number
+  allowScheduleEvent: boolean
+  showEventOptions: boolean
+  timeType: string
+}
