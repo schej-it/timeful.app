@@ -829,6 +829,49 @@ describe("Temporal regressions", () => {
     expect(boundaryAvailability.has(atWorkingHoursStart)).toBe(true)
   })
 
+  it("keeps fractional-offset working-hours boundaries on the intended civil date", () => {
+    const beforeWorkingHours = zdt("2026-01-01T03:00:00Z")
+    const atWorkingHoursStart = zdt("2026-01-01T03:15:00Z")
+    const calendarOptions = {
+      bufferTime: { enabled: false, time: 15 },
+      workingHours: {
+        enabled: true,
+        startTime: 9,
+        endTime: 17,
+      },
+    }
+
+    const beforeBoundaryCalendarEvents = makeCalendarEventsHarness({
+      slotStart: beforeWorkingHours,
+      timeslotDuration: Temporal.Duration.from({ minutes: 15 }),
+      curTimezoneValue: "Asia/Kathmandu",
+      curTimezoneOffset: Temporal.Duration.from({ hours: 5, minutes: 45 }),
+    })
+
+    const beforeAvailability =
+      beforeBoundaryCalendarEvents.getAvailabilityFromCalendarEvents({
+        calendarEventsByDay: [[]],
+        calendarOptions,
+      })
+
+    expect(beforeAvailability.has(beforeWorkingHours)).toBe(false)
+
+    const startBoundaryCalendarEvents = makeCalendarEventsHarness({
+      slotStart: atWorkingHoursStart,
+      timeslotDuration: Temporal.Duration.from({ minutes: 15 }),
+      curTimezoneValue: "Asia/Kathmandu",
+      curTimezoneOffset: Temporal.Duration.from({ hours: 5, minutes: 45 }),
+    })
+
+    const boundaryAvailability =
+      startBoundaryCalendarEvents.getAvailabilityFromCalendarEvents({
+        calendarEventsByDay: [[]],
+        calendarOptions,
+      })
+
+    expect(boundaryAvailability.has(atWorkingHoursStart)).toBe(true)
+  })
+
   it("preserves offset-only schedule timezones in calendar export URLs", () => {
     const slot = zdt("2026-01-01T09:00:00Z")
     const scheduleTimezoneOffset = Temporal.Duration.from({
