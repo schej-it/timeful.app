@@ -5,7 +5,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { durations } from "@/constants"
 import { Temporal } from "temporal-polyfill"
 import { createLocalStorageMock } from "@/test/localStorage"
+import type * as UtilsModule from "@/utils"
 import NewEvent from "./NewEvent.vue"
+
+const { postMock, putMock } = vi.hoisted(() => ({
+  postMock: vi.fn(),
+  putMock: vi.fn(),
+}))
+
+vi.mock("@/utils", async () => {
+  const actual = await vi.importActual<typeof UtilsModule>("@/utils")
+
+  return {
+    ...actual,
+    post: postMock,
+    put: putMock,
+  }
+})
 
 vi.mock("vue-router", () => ({
   useRouter: () => ({
@@ -37,9 +53,75 @@ vi.mock("@/plugins/posthog", () => ({
   },
 }))
 
+const formRefMethods = {
+  validate: vi.fn<() => Promise<{ valid: boolean }>>(() =>
+    Promise.resolve({ valid: true })
+  ),
+  resetValidation: vi.fn<() => void>(() => undefined),
+}
+
+const VBtnStub = {
+  emits: ["click"],
+  template: '<button @click="$emit(\'click\')"><slot /></button>',
+}
+
+const PassThroughStub = {
+  inheritAttrs: false,
+  template: "<div><slot /></div>",
+}
+
+const NullStub = {
+  inheritAttrs: false,
+  template: "<div />",
+}
+
+const VFormStub = {
+  methods: {
+    validate(): Promise<{ valid: boolean }> {
+      return formRefMethods.validate()
+    },
+    resetValidation(): void {
+      formRefMethods.resetValidation()
+    },
+  },
+  template: "<form><slot /></form>",
+}
+
+const defaultStubs = {
+  "v-btn": VBtnStub,
+  "v-btn-toggle": NullStub,
+  "v-card": PassThroughStub,
+  "v-card-actions": PassThroughStub,
+  "v-card-text": PassThroughStub,
+  "v-card-title": PassThroughStub,
+  "v-checkbox": NullStub,
+  "v-expand-transition": PassThroughStub,
+  "v-form": VFormStub,
+  "v-icon": NullStub,
+  "v-input": PassThroughStub,
+  "v-select": NullStub,
+  "v-spacer": NullStub,
+  "v-text-field": NullStub,
+  "v-tooltip": NullStub,
+  AlertText: NullStub,
+  DatePicker: NullStub,
+  EmailInput: NullStub,
+  ExpandableSection: PassThroughStub,
+  HelpDialog: PassThroughStub,
+  OverflowGradient: NullStub,
+  SlideToggle: NullStub,
+  TimezoneSelector: NullStub,
+}
+
 describe("NewEvent", () => {
   beforeEach(() => {
     vi.stubGlobal("localStorage", createLocalStorageMock())
+    postMock.mockReset()
+    putMock.mockReset()
+    postMock.mockResolvedValue({ eventId: "evt-created" })
+    putMock.mockResolvedValue(undefined)
+    formRefMethods.validate.mockClear()
+    formRefMethods.resetValidation.mockClear()
   })
 
   it("does not throw when editing an event whose dates array is empty", () => {
@@ -55,31 +137,7 @@ describe("NewEvent", () => {
           },
         },
         global: {
-          stubs: {
-            "v-btn": true,
-            "v-btn-toggle": true,
-            "v-card": true,
-            "v-card-actions": true,
-            "v-card-text": true,
-            "v-card-title": true,
-            "v-checkbox": true,
-            "v-expand-transition": true,
-            "v-form": true,
-            "v-icon": true,
-            "v-input": true,
-            "v-select": true,
-            "v-spacer": true,
-            "v-text-field": true,
-            "v-tooltip": true,
-            AlertText: true,
-            DatePicker: true,
-            EmailInput: true,
-            ExpandableSection: true,
-            HelpDialog: true,
-            OverflowGradient: true,
-            SlideToggle: true,
-            TimezoneSelector: true,
-          },
+          stubs: defaultStubs,
         },
       })
     ).not.toThrow()
@@ -107,31 +165,7 @@ describe("NewEvent", () => {
         },
       },
       global: {
-        stubs: {
-          "v-btn": true,
-          "v-btn-toggle": true,
-          "v-card": true,
-          "v-card-actions": true,
-          "v-card-text": true,
-          "v-card-title": true,
-          "v-checkbox": true,
-          "v-expand-transition": true,
-          "v-form": true,
-          "v-icon": true,
-          "v-input": true,
-          "v-select": true,
-          "v-spacer": true,
-          "v-text-field": true,
-          "v-tooltip": true,
-          AlertText: true,
-          DatePicker: true,
-          EmailInput: true,
-          ExpandableSection: true,
-          HelpDialog: true,
-          OverflowGradient: true,
-          SlideToggle: true,
-          TimezoneSelector: true,
-        },
+        stubs: defaultStubs,
       },
     })
 
@@ -167,31 +201,7 @@ describe("NewEvent", () => {
         },
       },
       global: {
-        stubs: {
-          "v-btn": true,
-          "v-btn-toggle": true,
-          "v-card": true,
-          "v-card-actions": true,
-          "v-card-text": true,
-          "v-card-title": true,
-          "v-checkbox": true,
-          "v-expand-transition": true,
-          "v-form": true,
-          "v-icon": true,
-          "v-input": true,
-          "v-select": true,
-          "v-spacer": true,
-          "v-text-field": true,
-          "v-tooltip": true,
-          AlertText: true,
-          DatePicker: true,
-          EmailInput: true,
-          ExpandableSection: true,
-          HelpDialog: true,
-          OverflowGradient: true,
-          SlideToggle: true,
-          TimezoneSelector: true,
-        },
+        stubs: defaultStubs,
       },
     })
 
@@ -212,5 +222,48 @@ describe("NewEvent", () => {
     expect(
       (vm.endTime ?? vm.$.setupState?.endTime)?.toString()
     ).toBe("09:00:00")
+  })
+
+  it("treats equal start and end times as a 24-hour event duration", async () => {
+    const wrapper = shallowMount(NewEvent, {
+      props: {
+        contactsPayload: {
+          name: "All day event",
+          startTime: 9,
+          endTime: 9,
+          daysOnly: false,
+          selectedDateOption: "Specific dates",
+          selectedDays: ["2026-01-02T09:00:00+00:00[UTC]"],
+          notificationsEnabled: false,
+          timezone: {
+            value: "UTC",
+            label: "UTC",
+            gmtString: "GMT",
+            offset: durations.ZERO,
+          },
+        },
+      },
+      global: {
+        stubs: defaultStubs,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      submit?: () => Promise<void>
+      $: { setupState?: { submit?: () => Promise<void> } }
+    }
+
+    await (vm.submit ?? vm.$.setupState?.submit)?.()
+    await Promise.resolve()
+
+    expect(postMock).toHaveBeenCalledTimes(1)
+    expect(postMock.mock.calls[0]?.[0]).toBe("/events")
+    expect(
+      (
+        postMock.mock.calls[0]?.[1] as {
+          duration: number
+        }
+      ).duration
+    ).toBe(24)
   })
 })

@@ -84,7 +84,8 @@ void (async () => {
         case authTypes.EVENT_ADD_AVAILABILITY:
           void router.replace({
             name: "event",
-            params: { eventId: state.eventId, fromSignIn: "true" },
+            params: { eventId: state.eventId },
+            query: { fromSignIn: "true" },
           })
           break
         case authTypes.EVENT_SIGN_IN:
@@ -96,13 +97,14 @@ void (async () => {
         case authTypes.EVENT_SIGN_IN_LINK_APPLE:
           void router.replace({
             name: "event",
-            params: { eventId: state.eventId, linkApple: "true" },
+            params: { eventId: state.eventId },
+            query: { linkApple: "true" },
           })
           break
         case authTypes.GROUP_CREATE:
           void router.replace({
             name: "home",
-            params: {
+            query: {
               openNewGroup: "true",
             },
           })
@@ -116,7 +118,8 @@ void (async () => {
         case authTypes.GROUP_ADD_AVAILABILITY:
           void router.replace({
             name: "group",
-            params: { groupId: state.eventId, fromSignIn: "true" },
+            params: { groupId: state.eventId },
+            query: { fromSignIn: "true" },
           })
           authUserRefreshed = fromRawUser(await get<RawUser>("/user/profile"))
           mainStore.setAuthUser(authUserRefreshed)
@@ -131,7 +134,8 @@ void (async () => {
         case authTypes.ADD_CALENDAR_ACCOUNT_FROM_EDIT:
           void router.replace({
             name: "event",
-            params: { eventId: state.eventId, fromSignIn: "true" },
+            params: { eventId: state.eventId },
+            query: { fromSignIn: "true" },
           })
           authUserRefreshed = fromRawUser(await get<RawUser>("/user/profile"))
           mainStore.setAuthUser(authUserRefreshed)
@@ -140,7 +144,7 @@ void (async () => {
           if (state.eventId == "") {
             void router.replace({
               name: "home",
-              params: {
+              query: {
                 contactsPayload: serializeRouteContactsPayload(state.payload),
                 openNewGroup: String(state.openNewGroup ?? false),
               },
@@ -150,6 +154,8 @@ void (async () => {
               name: "event",
               params: {
                 eventId: state.eventId,
+              },
+              query: {
                 contactsPayload: serializeRouteContactsPayload(state.payload),
               },
             })

@@ -68,6 +68,8 @@ void (async () => {
         name: "event",
         params: {
           eventId: props.groupId,
+        },
+        query: {
           initialTimezone: serializeRouteTimezone(props.initialTimezone),
           fromSignIn: String(props.fromSignIn),
           contactsPayload: serializeRouteContactsPayload(props.contactsPayload),

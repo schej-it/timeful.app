@@ -2,7 +2,7 @@ import type { RouteLocationNormalizedLoaded } from "vue-router"
 import type { SerializedEventDraft } from "@/composables/event/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
 
-type RouteWithParams = Pick<RouteLocationNormalizedLoaded, "params">
+type RouteWithRestoreState = Pick<RouteLocationNormalizedLoaded, "params" | "query">
 
 type JsonRecord = Record<string, unknown>
 
@@ -82,59 +82,66 @@ export function serializeRouteTimezone(
   return JSON.stringify(timezone ?? {})
 }
 
-export function getHomeRouteProps(route: RouteWithParams): HomeRouteProps {
+function getRouteTransportValue(
+  route: RouteWithRestoreState,
+  key: string
+): unknown {
+  return route.query[key] ?? route.params[key]
+}
+
+export function getHomeRouteProps(route: RouteWithRestoreState): HomeRouteProps {
   return {
     contactsPayload: parseJsonRecord<SerializedEventDraft>(
-      route.params.contactsPayload,
+      getRouteTransportValue(route, "contactsPayload"),
       {}
     ),
-    openNewGroup: parseBooleanParam(route.params.openNewGroup),
+    openNewGroup: parseBooleanParam(getRouteTransportValue(route, "openNewGroup")),
   }
 }
 
-export function getEventRouteProps(route: RouteWithParams): EventRouteProps {
+export function getEventRouteProps(route: RouteWithRestoreState): EventRouteProps {
   return {
     eventId: parseStringParam(route.params.eventId),
-    fromSignIn: parseBooleanParam(route.params.fromSignIn),
-    editingMode: parseBooleanParam(route.params.editingMode),
-    linkApple: parseBooleanParam(route.params.linkApple),
+    fromSignIn: parseBooleanParam(getRouteTransportValue(route, "fromSignIn")),
+    editingMode: parseBooleanParam(getRouteTransportValue(route, "editingMode")),
+    linkApple: parseBooleanParam(getRouteTransportValue(route, "linkApple")),
     initialTimezone: parseJsonRecord<Timezone | Record<string, never>>(
-      route.params.initialTimezone,
+      getRouteTransportValue(route, "initialTimezone"),
       {}
     ),
     contactsPayload: parseJsonRecord<SerializedEventDraft>(
-      route.params.contactsPayload,
+      getRouteTransportValue(route, "contactsPayload"),
       {}
     ),
   }
 }
 
-export function getGroupRouteProps(route: RouteWithParams): GroupRouteProps {
+export function getGroupRouteProps(route: RouteWithRestoreState): GroupRouteProps {
   return {
     groupId: parseStringParam(route.params.groupId),
-    fromSignIn: parseBooleanParam(route.params.fromSignIn),
+    fromSignIn: parseBooleanParam(getRouteTransportValue(route, "fromSignIn")),
     initialTimezone: parseJsonRecord<Timezone | Record<string, never>>(
-      route.params.initialTimezone,
+      getRouteTransportValue(route, "initialTimezone"),
       {}
     ),
     contactsPayload: parseJsonRecord<SerializedEventDraft>(
-      route.params.contactsPayload,
+      getRouteTransportValue(route, "contactsPayload"),
       {}
     ),
   }
 }
 
-export function getSignUpRouteProps(route: RouteWithParams): SignUpRouteProps {
+export function getSignUpRouteProps(route: RouteWithRestoreState): SignUpRouteProps {
   return {
     signUpId: parseStringParam(route.params.signUpId),
-    fromSignIn: parseBooleanParam(route.params.fromSignIn),
-    editingMode: parseBooleanParam(route.params.editingMode),
+    fromSignIn: parseBooleanParam(getRouteTransportValue(route, "fromSignIn")),
+    editingMode: parseBooleanParam(getRouteTransportValue(route, "editingMode")),
     initialTimezone: parseJsonRecord<Timezone | Record<string, never>>(
-      route.params.initialTimezone,
+      getRouteTransportValue(route, "initialTimezone"),
       {}
     ),
     contactsPayload: parseJsonRecord<SerializedEventDraft>(
-      route.params.contactsPayload,
+      getRouteTransportValue(route, "contactsPayload"),
       {}
     ),
   }

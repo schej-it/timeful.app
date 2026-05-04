@@ -6,16 +6,21 @@ import {
   getSignUpRouteProps,
 } from "./routeProps"
 
-function makeRoute(params: Record<string, unknown>) {
+function makeRoute(
+  params: Record<string, unknown>,
+  query: Record<string, unknown> = {}
+) {
   return {
     params: params as RouteLocationNormalizedLoaded["params"],
+    query: query as RouteLocationNormalizedLoaded["query"],
   }
 }
 
 describe("route props boundary adapters", () => {
-  it("parses serialized route params into normalized event props", () => {
+  it("parses serialized route query into normalized event props", () => {
     const props = getEventRouteProps(makeRoute({
         eventId: "evt-1",
+      }, {
         fromSignIn: "true",
         editingMode: "false",
         linkApple: "true",
@@ -53,6 +58,24 @@ describe("route props boundary adapters", () => {
     })
   })
 
+  it("prefers query restore state over legacy params when both exist", () => {
+    const props = getEventRouteProps(makeRoute({
+        eventId: "evt-1",
+        fromSignIn: "true",
+        contactsPayload: JSON.stringify({
+          name: "legacy",
+        }),
+      }, {
+        fromSignIn: "false",
+        contactsPayload: JSON.stringify({
+          name: "query",
+        }),
+      }))
+
+    expect(props.fromSignIn).toBe(false)
+    expect(props.contactsPayload).toEqual({ name: "query" })
+  })
+
   it("accepts already-decoded params without widening component props", () => {
     const contactsPayload = {
       name: "Existing object",
@@ -71,6 +94,7 @@ describe("route props boundary adapters", () => {
   it("falls back safely for malformed serialized objects", () => {
     const props = getSignUpRouteProps(makeRoute({
       signUpId: "signup-1",
+    }, {
       fromSignIn: "true",
       editingMode: "true",
       initialTimezone: "{not-json",

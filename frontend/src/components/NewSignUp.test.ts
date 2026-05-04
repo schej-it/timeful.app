@@ -259,4 +259,47 @@ describe("NewSignUp", () => {
       ).duration.toString()
     ).toBe("PT1H30M")
   })
+
+  it("treats equal start and end times as a 24-hour sign-up duration", async () => {
+    const wrapper = shallowMount(NewSignUp, {
+      props: {
+        contactsPayload: {
+          name: "All day sign up",
+          startTime: 9,
+          endTime: 9,
+          daysOnly: false,
+          selectedDateOption: "Specific dates",
+          selectedDays: ["2026-01-02"],
+          notificationsEnabled: false,
+          timezone: {
+            value: "UTC",
+            label: "UTC",
+            gmtString: "GMT",
+            offset: durations.ZERO,
+          },
+        },
+      },
+      global: {
+        stubs: defaultStubs,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      submit?: () => Promise<void>
+      $: { setupState?: { submit?: () => Promise<void> } }
+    }
+
+    await (vm.submit ?? vm.$.setupState?.submit)?.()
+    await Promise.resolve()
+
+    expect(postMock).toHaveBeenCalledTimes(1)
+    expect(postMock.mock.calls[0]?.[0]).toBe("/events")
+    expect(
+      (
+        postMock.mock.calls[0]?.[1] as {
+          duration: Temporal.Duration
+        }
+      ).duration.toString()
+    ).toBe("PT24H")
+  })
 })
