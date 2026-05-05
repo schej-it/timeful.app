@@ -1,6 +1,6 @@
 import { durations, eventTypes, UTC } from "@/constants"
 import type { Timezone } from "@/composables/schedule_overlap/types"
-import type { EventScheduleFields } from "@/types"
+import type { Event } from "@/types"
 import { Temporal } from "temporal-polyfill"
 import {
   dateCompare,
@@ -143,6 +143,8 @@ export const getTimeBlock = (
   }
 }
 
+type ScheduleDateRulesEvent = Pick<Event, "dates" | "duration" | "type" | "startOnMonday">
+
 /**
   Returns an array of a user's calendar events split by date for a given event
 */
@@ -153,7 +155,7 @@ export const splitTimeBlocksByDay = <
     endDate: Temporal.ZonedDateTime
   }
 >(
-  event: EventScheduleFields,
+  event: ScheduleDateRulesEvent,
   timeBlocks: T[],
   weekOffset = 0,
   timezoneOffset?: Temporal.Duration,

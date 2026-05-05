@@ -1,6 +1,6 @@
 import { UTC } from "@/constants"
 import type { Timezone } from "@/composables/schedule_overlap/types"
-import type { EventScheduleFields } from "@/types"
+import type { Event } from "@/types"
 import { Temporal } from "temporal-polyfill"
 import { compareDuration, type ZonedDateTime } from "./temporalPrimitives"
 import { getTimezoneReferenceDateForEvent } from "./eventDateRules"
@@ -45,7 +45,7 @@ export const getTimezoneOffsetForDate = (
 }
 
 export const getScheduleTimezoneOffset = (
-  event: EventScheduleFields,
+  event: Pick<Event, "dates" | "type">,
   curTimezone: Timezone,
   weekOffset = 0
 ): Temporal.Duration => {

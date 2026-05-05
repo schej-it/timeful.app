@@ -1,5 +1,5 @@
 import { eventTypes } from "@/constants"
-import type { EventScheduleFields } from "@/types"
+import type { Event } from "@/types"
 import { Temporal } from "temporal-polyfill"
 import type { ZonedDateTime } from "./temporalPrimitives"
 import { toZDT } from "./timezoneDateRules"
@@ -57,7 +57,7 @@ export const getDateRangeString = (
 }
 
 /** Returns a string representing the date range for the provided event. */
-export const getDateRangeStringForEvent = (event: EventScheduleFields): string => {
+export const getDateRangeStringForEvent = (event: Pick<Event, "dates" | "daysOnly" | "type">): string => {
   if (!event.dates || event.dates.length === 0) return ""
 
   if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {

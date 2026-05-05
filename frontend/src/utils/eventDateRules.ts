@@ -1,5 +1,5 @@
 import { eventTypes, UTC } from "@/constants"
-import type { EventScheduleFields } from "@/types"
+import type { Event } from "@/types"
 import { Temporal } from "temporal-polyfill"
 import type { ZonedDateTime } from "./temporalPrimitives"
 
@@ -29,7 +29,7 @@ export const getEventMembershipDayOfWeekValues = (
 ): number[] => (dates ?? []).map((date) => date.dayOfWeek)
 
 export const getTimezoneReferenceDateForEvent = (
-  event: EventScheduleFields,
+  event: Pick<Event, "dates" | "type">,
   weekOffset = 0
 ): Temporal.ZonedDateTime => {
   if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
