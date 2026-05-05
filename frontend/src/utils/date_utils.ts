@@ -12,34 +12,30 @@
 
 import {
   eventTypes,
-  timeTypes,
   dayIndexToDayString,
   durations,
   UTC,
 } from "@/constants"
 import { get } from "./fetch_utils"
 import { Temporal } from "temporal-polyfill"
-import type { Event } from "@/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
-import { compareDuration, zdtKey } from "./temporalPrimitives"
+import { zdtKey } from "./temporalPrimitives"
 import type { ZonedDateTime } from "./temporalPrimitives"
+import type { EventLike as EventDateRulesEventLike } from "./eventDateRules"
+import { toZDT, getDateInTimezone } from "./timezoneDateRules"
 import {
   dateCompare,
   dateGt,
   isDateBetweenInclusive,
   rangeContainsInclusive,
 } from "./dateRanges"
-import { getFixedOffsetTimeZoneId, resolveTimezoneValue } from "./timezone_utils"
 
 /*
   Date utils
 */
 
 // Use the application Event type which already has Temporal.ZonedDateTime[] dates
-export type EventLike = Pick<
-  Event,
-  "type" | "dates" | "daysOnly" | "startOnMonday" | "duration"
->
+export type EventLike = EventDateRulesEventLike
 
 export type { PlainDate, PlainTime, ZonedDateTime } from "./temporalPrimitives"
 export {
@@ -85,19 +81,38 @@ export {
   utcTimeToLocalTimeNum,
 } from "./timeConversions"
 
+// Extracted timezone/date rules.
+export type { EventLike as TimezoneEventLike } from "./timezoneDateRules"
+export {
+  getEventMembershipDayOfWeekValues,
+  getEventMembershipPlainDates,
+  getEventTimeSeed,
+  getTimezoneReferenceDateForEvent,
+} from "./eventDateRules"
+
+export {
+  doesDstExist,
+  getCurrentTimezone,
+  getDateInTimezone,
+  getDateWithTimezone,
+  getFixedOffsetTimeZoneId,
+  getScheduleTimezoneOffset,
+  getTimezoneOffset,
+  getTimezoneOffsetForDate,
+  isDstObserved,
+  stdTimezoneOffset,
+  timezoneObservesDST,
+  toZDT,
+} from "./timezoneDateRules"
+
+// Extracted browser preference boundary helpers.
+export { getLocale, getTimeOptions, userPrefers12h } from "./browserDatePreferences"
+
 export interface TimeBlock {
   startDate: Temporal.ZonedDateTime
   endDate: Temporal.ZonedDateTime
   id?: string
   [key: string]: unknown
-}
-
-/** Helper: Convert Temporal.ZonedDateTime or ZonedDateTime to ZonedDateTime in specified timezone */
-export const toZDT = (
-  date: ZonedDateTime,
-  timezone = UTC
-): Temporal.ZonedDateTime => {
-  return date.withTimeZone(timezone)
 }
 
 /** Returns a string representation of the given date, i.e. May 14th is "5/14" */
@@ -183,50 +198,6 @@ export const getDateRangeStringForEvent = (event: EventLike): string => {
   return ""
 }
 
-/** Returns a a new ZonedDateTime,
- * offset by the timezone in local storage if it exists,
- * offset by local timezone if not
- */
-export const getDateWithTimezone = (
-  date: ZonedDateTime
-): Temporal.ZonedDateTime => {
-  const zdt = toZDT(date)
-  const storage =
-    typeof globalThis.localStorage === "undefined" ? undefined : globalThis.localStorage
-  const timezoneValue = resolveTimezoneValue(
-    undefined,
-    storage,
-    Temporal.Now.timeZoneId()
-  )
-
-  return zdt.withTimeZone(timezoneValue)
-}
-
-/**
- * Event date membership should stay stable across viewers and saved timezone
- * changes, so reconstruct civil dates directly from the stored event seeds.
- */
-export const getEventMembershipPlainDates = (
-  dates?: ZonedDateTime[]
-): Temporal.PlainDate[] => (dates ?? []).map((date) => date.toPlainDate())
-
-/**
- * Edit flows should read time-of-day reconstruction from an explicit seed
- * rather than reaching into membership dates directly.
- */
-export const getEventTimeSeed = (event: {
-  timeSeed?: ZonedDateTime
-  dates?: ZonedDateTime[]
-}): ZonedDateTime | undefined => event.timeSeed ?? event.dates?.[0]
-
-/**
- * Weekly/group edit flows use the stored seed weekday rather than the current
- * viewer timezone, which could otherwise shift the selected day.
- */
-export const getEventMembershipDayOfWeekValues = (
-  dates?: ZonedDateTime[]
-): number[] => (dates ?? []).map((date) => date.dayOfWeek)
-
 /** Returns a Temporal.ZonedDateTime from the given mongodb objectId */
 export const dateFromObjectId = function (
   objectId: string
@@ -253,82 +224,6 @@ export const getDateHoursOffset = (
   const zdt = toZDT(date)
   return zdt.add(hoursOffset)
 }
-
-/** Returns the date used to derive timezone offsets for the current event view */
-export const getTimezoneReferenceDateForEvent = (
-  event: EventLike,
-  weekOffset = 0
-): Temporal.ZonedDateTime => {
-  if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
-    // Get current date in local timezone
-    const now = Temporal.Now.plainDateISO()
-    const nowWithTime = now.toZonedDateTime({
-      timeZone: Temporal.Now.timeZoneId(),
-      plainTime: "12:00:00",
-    })
-    const referenceDate = nowWithTime.add({ weeks: weekOffset })
-    return referenceDate
-  }
-
-  if (event.dates && event.dates.length > 0) {
-    return event.dates[0]
-  }
-
-  return Temporal.Now.zonedDateTimeISO(UTC)
-}
-
-/** Returns the timezone offset for a timezone at a specific date */
-export const getTimezoneOffsetForDate = (
-  curTimezone: Timezone,
-  referenceDate: ZonedDateTime
-): Temporal.Duration => {
-  if (!("offset" in curTimezone)) {
-    const zdt = toZDT(referenceDate)
-    // Convert nanoseconds to Duration
-    return Temporal.Duration.from({ nanoseconds: zdt.offsetNanoseconds * -1 })
-  }
-  if (!curTimezone.value) {
-    // curTimezone.offset is already a Duration
-    return curTimezone.offset.negated()
-  }
-
-  // Use Temporal to get accurate offset for the specific date in the timezone
-  const zdt = toZDT(referenceDate, curTimezone.value)
-  return Temporal.Duration.from({ nanoseconds: zdt.offsetNanoseconds * -1 })
-}
-
-/** Returns the timezone offset used by ScheduleOverlap for the current event view */
-export const getScheduleTimezoneOffset = (
-  event: EventLike,
-  curTimezone: Timezone,
-  weekOffset = 0
-): Temporal.Duration => {
-  return getTimezoneOffsetForDate(
-    curTimezone,
-    getTimezoneReferenceDateForEvent(event, weekOffset)
-  )
-}
-
-export const getDateInTimezone = (
-  date: ZonedDateTime,
-  curTimezone: Timezone
-): Temporal.ZonedDateTime => {
-  if (curTimezone.value) {
-    return toZDT(date, curTimezone.value)
-  }
-
-  if ("offset" in curTimezone) {
-    const zdt = toZDT(date, UTC)
-    const timeZone = getFixedOffsetTimeZoneId(curTimezone.offset)
-    return zdt.withTimeZone(timeZone)
-  }
-
-  // Fall back to browser's local timezone
-  const localTz = Temporal.Now.timeZoneId()
-  return toZDT(date, localTz)
-}
-
-export { getFixedOffsetTimeZoneId } from "./timezone_utils"
 
 /** Returns the unique day-start datetimes for specific-times events */
 export const getSpecificTimesDayStarts = (
@@ -576,62 +471,6 @@ export const convertUTCSlotsToLocalISO = (
   })
 }
 
-/** Returns a string representing the current timezone */
-export const getCurrentTimezone = (): string => {
-  const now = Temporal.Now.zonedDateTimeISO()
-  return now.timeZoneId
-}
-
-/** Returns the preferred locale of the user
- * Source: https://stackoverflow.com/questions/673905/how-can-i-determine-a-users-locale-within-the-browser
- */
-export const getLocale = (): string => {
-  return navigator.languages[0] ?? navigator.language
-}
-
-/** Returns whether the user prefers 12h time */
-export const userPrefers12h = (): boolean => {
-  return (
-    Intl.DateTimeFormat(getLocale(), { hour: "numeric" }).resolvedOptions()
-      .hour12 ?? true
-  )
-}
-
-/** Returns an array of time options based on whether user prefers 12h or 24h */
-export const getTimeOptions = (): {
-  text: string
-  // TODO
-  time: number
-  value: number
-}[] => {
-  const prefers12h = !localStorage.timeType
-    ? userPrefers12h()
-    : localStorage.timeType === timeTypes.HOUR12
-
-  const times: { text: string; time: number; value: number }[] = []
-  if (prefers12h) {
-    times.push({ text: "12 am", time: 0, value: 0 })
-    for (let h = 1; h < 12; ++h) {
-      times.push({ text: `${String(h)} am`, time: h, value: h })
-    }
-    for (let h = 0; h < 12; ++h) {
-      times.push({
-        text: `${String(h == 0 ? 12 : h)} pm`,
-        time: h + 12,
-        value: h + 12,
-      })
-    }
-    times.push({ text: "12 am", time: 0, value: 24 })
-
-    return times
-  }
-
-  for (let h = 0; h < 24; ++h) {
-    times.push({ text: `${String(h)}:00`, time: h, value: h })
-  }
-  times.push({ text: "0:00", time: 0, value: 24 })
-  return times
-}
 
 /**
   Returns an object of the users' calendar events for each calendar account for the given event, filtering for events
@@ -1011,82 +850,6 @@ export const getCalendarAccountKey = (
   return `${email}_${calendarType}`
 }
 
-export const getTimezoneOffset = (
-  time: Temporal.ZonedDateTime
-): Temporal.Duration => {
-  return Temporal.Duration.from({
-    nanoseconds: time.offsetNanoseconds,
-  }).negated()
-}
-
-export const stdTimezoneOffset = (date: ZonedDateTime): Temporal.Duration => {
-  const zdt = date
-  const jan = Temporal.ZonedDateTime.from({
-    year: zdt.year,
-    month: 1,
-    day: 1,
-    hour: 12,
-    timeZone: zdt.timeZoneId,
-  })
-  const jul = Temporal.ZonedDateTime.from({
-    year: zdt.year,
-    month: 7,
-    day: 1,
-    hour: 12,
-    timeZone: zdt.timeZoneId,
-  })
-  return Temporal.Duration.from({
-    nanoseconds: Math.max(
-      jan.offsetNanoseconds * -1,
-      jul.offsetNanoseconds * -1
-    ),
-  })
-}
-
-export const doesDstExist = (date: ZonedDateTime): boolean => {
-  const zdt = date
-  const jan = Temporal.ZonedDateTime.from({
-    year: zdt.year,
-    month: 1,
-    day: 1,
-    hour: 12,
-    timeZone: zdt.timeZoneId,
-  })
-  const jul = Temporal.ZonedDateTime.from({
-    year: zdt.year,
-    month: 7,
-    day: 1,
-    hour: 12,
-    timeZone: zdt.timeZoneId,
-  })
-  return jan.offsetNanoseconds !== jul.offsetNanoseconds
-}
-
-export const isDstObserved = (date: ZonedDateTime): boolean => {
-  const zdt = date
-  return compareDuration(getTimezoneOffset(zdt), stdTimezoneOffset(zdt)) < 0
-}
-
-/** Returns true if the given IANA timezone observes daylight saving time */
-export const timezoneObservesDST = (ianaTimezone: string): boolean => {
-  if (!ianaTimezone) return false
-
-  const jan = Temporal.ZonedDateTime.from({
-    year: 2024,
-    month: 1,
-    day: 15,
-    hour: 12,
-    timeZone: ianaTimezone,
-  })
-  const jul = Temporal.ZonedDateTime.from({
-    year: 2024,
-    month: 7,
-    day: 15,
-    hour: 12,
-    timeZone: ianaTimezone,
-  })
-  return jan.offsetNanoseconds !== jul.offsetNanoseconds
-}
 
 interface DOWSlot {
   start: string
