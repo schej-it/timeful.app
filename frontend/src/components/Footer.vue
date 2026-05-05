@@ -192,7 +192,7 @@ void contractAddressTruncated.value
 void copyContractAddress
 </script>
 
-<style scoped>
+<style scoped lang="postcss">
 div:has(a) {
   @apply tw-leading-none;
 }
