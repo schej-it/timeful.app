@@ -22,35 +22,7 @@
             v-if="!calendarOnly"
             ref="sidebarRef"
             :sidebar="sidebarViewModel"
-            @save-temp-times="saveTempTimes"
-            @open-edit-guest-name-dialog="openEditGuestNameDialog"
-            @save-guest-name="saveGuestName"
-            @update:new-guest-name="newGuestName = $event"
-            @update:edit-guest-name-dialog="editGuestNameDialog = $event"
-            @update:availability-type="availabilityType = $event"
-            @toggle-calendar-account="toggleCalendarAccount"
-            @toggle-sub-calendar-account="toggleSubCalendarAccount"
-            @update-overlay-availability="updateOverlayAvailability"
-            @toggle-show-edit-options="toggleShowEditOptions"
-            @update:calendar-options-dialog="calendarOptionsDialog = $event"
-            @update:buffer-time="bufferTime = $event"
-            @update:working-hours="workingHours = $event"
-            @update:delete-availability-dialog="deleteAvailabilityDialog = $event"
-            @delete-availability="handleDeleteAvailability"
-            @update-sign-up-block="editSignUpBlock"
-            @delete-sign-up-block="deleteSignUpBlock"
-            @sign-up-for-block="$emit('signUpForBlock', $event)"
-            @update:show-calendar-events="showCalendarEvents = $event"
-            @update:show-best-times="showBestTimes = $event"
-            @update:hide-if-needed="hideIfNeeded = $event"
-            @toggle-show-event-options="toggleShowEventOptions"
-            @add-availability="$emit('addAvailability')"
-            @add-availability-as-guest="$emit('addAvailabilityAsGuest')"
-            @mouse-over-respondent="mouseOverRespondent"
-            @mouse-leave-respondent="mouseLeaveRespondent"
-            @click-respondent="clickRespondent"
-            @edit-guest-availability="editGuestAvailability"
-            @refresh-event="refreshEvent"
+            v-on="sidebarListeners"
           />
         </div>
 
@@ -63,21 +35,7 @@
         <ScheduleOverlapMobileOverlay
           v-if="isPhone && !calendarOnly"
           :overlay="mobileOverlayViewModel"
-          @close-hint="closeHint"
-          @update:availability-type="availabilityType = $event"
-          @update:week-offset="(val) => $emit('update:weekOffset', val)"
-          @update:show-calendar-events="showCalendarEvents = $event"
-          @update:show-best-times="showBestTimes = $event"
-          @update:hide-if-needed="hideIfNeeded = $event"
-          @toggle-show-event-options="toggleShowEventOptions"
-          @add-availability="$emit('addAvailability')"
-          @add-availability-as-guest="$emit('addAvailabilityAsGuest')"
-          @mouse-over-respondent="mouseOverRespondent"
-          @mouse-leave-respondent="mouseLeaveRespondent"
-          @click-respondent="clickRespondent"
-          @edit-guest-availability="editGuestAvailability"
-          @refresh-event="refreshEvent"
-          @save-temp-times="saveTempTimes"
+          v-on="mobileOverlayListeners"
         />
       </div>
     </Tooltip>
@@ -869,6 +827,92 @@ const toolRowActions = computed<ScheduleOverlapToolRowActions>(() => ({
   scheduleEvent,
   cancelScheduleEvent,
   confirmScheduleEvent,
+}))
+
+const sidebarListeners = computed(() => ({
+  "save-temp-times": saveTempTimes,
+  "open-edit-guest-name-dialog": openEditGuestNameDialog,
+  "save-guest-name": saveGuestName,
+  "update:new-guest-name": (value: string) => {
+    newGuestName.value = value
+  },
+  "update:edit-guest-name-dialog": (value: boolean) => {
+    editGuestNameDialog.value = value
+  },
+  "update:availability-type": (value: AvailabilityType) => {
+    availabilityType.value = value
+  },
+  "toggle-calendar-account": toggleCalendarAccount,
+  "toggle-sub-calendar-account": toggleSubCalendarAccount,
+  "update-overlay-availability": updateOverlayAvailability,
+  "toggle-show-edit-options": toggleShowEditOptions,
+  "update:calendar-options-dialog": (value: boolean) => {
+    calendarOptionsDialog.value = value
+  },
+  "update:buffer-time": (value: typeof bufferTime.value) => {
+    bufferTime.value = value
+  },
+  "update:working-hours": (value: typeof workingHours.value) => {
+    workingHours.value = value
+  },
+  "update:delete-availability-dialog": (value: boolean) => {
+    deleteAvailabilityDialog.value = value
+  },
+  "delete-availability": handleDeleteAvailability,
+  "update-sign-up-block": editSignUpBlock,
+  "delete-sign-up-block": deleteSignUpBlock,
+  "sign-up-for-block": emitSignUpForBlock,
+  "update:show-calendar-events": (value: boolean) => {
+    showCalendarEvents.value = value
+  },
+  "update:show-best-times": (value: boolean) => {
+    showBestTimes.value = value
+  },
+  "update:hide-if-needed": (value: boolean) => {
+    hideIfNeeded.value = value
+  },
+  "toggle-show-event-options": toggleShowEventOptions,
+  "add-availability": () => {
+    emit("addAvailability")
+  },
+  "add-availability-as-guest": () => {
+    emit("addAvailabilityAsGuest")
+  },
+  "mouse-over-respondent": mouseOverRespondent,
+  "mouse-leave-respondent": mouseLeaveRespondent,
+  "click-respondent": clickRespondent,
+  "edit-guest-availability": editGuestAvailability,
+  "refresh-event": refreshEvent,
+}))
+
+const mobileOverlayListeners = computed(() => ({
+  "close-hint": closeHint,
+  "update:availability-type": (value: AvailabilityType) => {
+    availabilityType.value = value
+  },
+  "update:week-offset": emitWeekOffsetUpdate,
+  "update:show-calendar-events": (value: boolean) => {
+    showCalendarEvents.value = value
+  },
+  "update:show-best-times": (value: boolean) => {
+    showBestTimes.value = value
+  },
+  "update:hide-if-needed": (value: boolean) => {
+    hideIfNeeded.value = value
+  },
+  "toggle-show-event-options": toggleShowEventOptions,
+  "add-availability": () => {
+    emit("addAvailability")
+  },
+  "add-availability-as-guest": () => {
+    emit("addAvailabilityAsGuest")
+  },
+  "mouse-over-respondent": mouseOverRespondent,
+  "mouse-leave-respondent": mouseLeaveRespondent,
+  "click-respondent": clickRespondent,
+  "edit-guest-availability": editGuestAvailability,
+  "refresh-event": refreshEvent,
+  "save-temp-times": saveTempTimes,
 }))
 
 const daysOnlyGridActions = computed<ScheduleOverlapDaysOnlyGridActions>(() => ({
