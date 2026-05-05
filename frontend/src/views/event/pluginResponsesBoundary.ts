@@ -7,7 +7,6 @@ import {
   dateToDowDate,
   getEventDateSeeds,
   getRenderedWeekStart,
-  timezoneObservesDST,
 } from "@/utils"
 import type { Temporal } from "temporal-polyfill"
 
@@ -108,7 +107,7 @@ export const normalizePluginResponses = (input: {
     )
     let ifNeeded = convertUTCSlotsToLocalISO(response.ifNeeded, timezoneValue)
 
-    if (eventType === eventTypes.DOW && timezoneObservesDST(timezoneValue)) {
+    if (eventType === eventTypes.DOW) {
       const subtractOneHour = (slot: Temporal.ZonedDateTime) =>
         slot.withTimeZone(timezoneValue).subtract({ hours: 1 })
       availability = availability.map(subtractOneHour)

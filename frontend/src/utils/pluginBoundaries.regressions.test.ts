@@ -106,6 +106,47 @@ describe("plugin boundary regressions", () => {
     expect(result.slots[0].parsedStart.toPlainDate().toString()).toBe("2018-06-19")
   })
 
+  it("round-trips DOW plugin slots for non-DST timezones", () => {
+    const inputSlots = [
+      {
+        start: "2018-06-18T09:00:00",
+        end: "2018-06-18T10:00:00",
+        status: "available" as const,
+      },
+    ]
+
+    const normalizedSetSlots = normalizePluginSetSlots(
+      inputSlots,
+      "Asia/Tokyo",
+      eventTypes.DOW
+    )
+
+    expect(normalizedSetSlots.ok).toBe(true)
+    if (!normalizedSetSlots.ok) {
+      throw new Error(normalizedSetSlots.error)
+    }
+
+    const roundTrippedSlots = normalizePluginResponses({
+      rawResponses: {
+        "user-1": {
+          availability: [normalizedSetSlots.slots[0].parsedStart.epochMilliseconds],
+          ifNeeded: [],
+        },
+      },
+      eventResponses: {
+        "user-1": {
+          name: "Ada",
+          email: "ada@example.com",
+        },
+      },
+      timezoneValue: "Asia/Tokyo",
+      eventType: eventTypes.DOW,
+    })
+
+    expect(roundTrippedSlots["user-1"].availability[0].timeZoneId).toBe("Asia/Tokyo")
+    expect(roundTrippedSlots["user-1"].availability[0].hour).toBe(9)
+  })
+
   it("reports malformed plugin local timestamps as structured parse errors", () => {
     const result = normalizePluginSetSlots(
       [
