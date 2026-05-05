@@ -92,8 +92,5 @@ export interface NewDialogOptions {
   folderId: string | null
 }
 
-export type {
-  EventScheduleFields,
-  EventWeekProjectionFields,
-} from "./eventSchedule"
+export type { EventScheduleFields } from "./eventSchedule"
 export type { components, paths, operations } from "./api"

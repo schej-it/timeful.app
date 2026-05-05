@@ -1,5 +1,5 @@
 import { eventTypes } from "@/constants"
-import type { EventWeekProjectionFields } from "@/types"
+import type { Event } from "@/types"
 import type { Temporal } from "temporal-polyfill"
 import { get } from "../fetch_utils"
 import { dateToDowDate, getRenderedWeekStart } from "../scheduleDateRules"
@@ -14,7 +14,10 @@ export interface CalendarAvailabilityRequestOptions
   eventId?: string
 }
 
-type CalendarAvailabilityEvent = EventWeekProjectionFields
+type CalendarAvailabilityQueryEvent = Pick<
+  Event,
+  "type" | "dates" | "startOnMonday"
+>
 
 export interface CalendarAvailabilityQueryWindow {
   timeMin: Temporal.ZonedDateTime
@@ -22,7 +25,7 @@ export interface CalendarAvailabilityQueryWindow {
 }
 
 export const getCalendarAvailabilityQueryWindow = (
-  event: CalendarAvailabilityEvent,
+  event: CalendarAvailabilityQueryEvent,
   {
     weekOffset = 0,
     renderedWeekStart,
@@ -69,7 +72,7 @@ export const getCalendarAvailabilityQueryWindow = (
 }
 
 export const getCalendarEventsMap = async (
-  event: CalendarAvailabilityEvent,
+  event: CalendarAvailabilityQueryEvent,
   options: CalendarAvailabilityRequestOptions = {}
 ): Promise<unknown> => {
   const queryWindow = getCalendarAvailabilityQueryWindow(event, options)
