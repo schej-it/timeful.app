@@ -21,6 +21,7 @@ interface AuthState {
   scope?: string
   eventId?: string
   groupId?: string
+  signUpId?: string
   payload?: SerializedEventDraft
   openNewGroup?: boolean
   upgradeParams?: string
@@ -113,6 +114,12 @@ void (async () => {
           void router.replace({
             name: "group",
             params: { groupId: state.groupId },
+          })
+          break
+        case authTypes.SIGN_UP_SIGN_IN:
+          void router.replace({
+            name: "signUp",
+            params: { signUpId: state.signUpId },
           })
           break
         case authTypes.GROUP_ADD_AVAILABILITY:

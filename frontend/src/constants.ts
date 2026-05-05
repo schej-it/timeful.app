@@ -26,6 +26,7 @@ export const authTypes = {
   EVENT_CONTACTS: "event-contacts", // Enable contacts
   GROUP_ADD_AVAILABILITY: "group-add-availability",
   GROUP_SIGN_IN: "group-sign-in",
+  SIGN_UP_SIGN_IN: "sign-up-sign-in",
   GROUP_CREATE: "group-create",
   ADD_CALENDAR_ACCOUNT: "add-calendar-account",
   ADD_CALENDAR_ACCOUNT_FROM_EDIT: "add-calendar-account-from-edit",

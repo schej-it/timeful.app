@@ -164,18 +164,25 @@ function signIn() {
 }
 
 function _signIn(calendarType: string) {
-  if (route.name === "event" || route.name === "group" || route.name === "signUp") {
-    let state: Record<string, unknown> | undefined
-    if (route.name === "event") {
+  let state: Record<string, unknown> | undefined
+  switch (route.name) {
+    case "event":
       state = { eventId: route.params.eventId, type: authTypes.EVENT_SIGN_IN }
-    } else if (route.name === "group") {
+      break
+    case "group":
       state = { groupId: route.params.groupId, type: authTypes.GROUP_SIGN_IN }
-    }
-    if (calendarType === calendarTypes.GOOGLE) {
-      signInGoogle({ state, selectAccount: true })
-    } else if (calendarType === calendarTypes.OUTLOOK) {
-      signInOutlook({ state, selectAccount: true })
-    }
+      break
+    case "signUp":
+      state = { signUpId: route.params.signUpId, type: authTypes.SIGN_UP_SIGN_IN }
+      break
+    default:
+      return
+  }
+
+  if (calendarType === calendarTypes.GOOGLE) {
+    signInGoogle({ state, selectAccount: true })
+  } else if (calendarType === calendarTypes.OUTLOOK) {
+    signInOutlook({ state, selectAccount: true })
   }
 }
 
