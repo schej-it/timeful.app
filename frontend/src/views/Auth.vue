@@ -9,7 +9,11 @@ import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import { Temporal } from "temporal-polyfill"
 import type { SerializedEventDraft } from "@/composables/event/types"
-import { serializeRouteContactsPayload } from "@/router/routeProps"
+import type { AuthRestoreQueryState } from "@/router/authRestoreState"
+import {
+  serializeRouteContactsPayload,
+  serializeRouteTimezone,
+} from "@/router/routeProps"
 import type { RawUser } from "@/types/transport"
 import { fromRawUser } from "@/types/transport"
 
@@ -23,6 +27,7 @@ interface AuthState {
   groupId?: string
   signUpId?: string
   payload?: SerializedEventDraft
+  restoreQuery?: AuthRestoreQueryState
   openNewGroup?: boolean
   upgradeParams?: string
 }
@@ -93,6 +98,11 @@ void (async () => {
           void router.replace({
             name: "event",
             params: { eventId: state.eventId },
+            query: {
+              editingMode: String(state.restoreQuery?.editingMode ?? false),
+              initialTimezone: serializeRouteTimezone(state.restoreQuery?.initialTimezone),
+              contactsPayload: serializeRouteContactsPayload(state.restoreQuery?.contactsPayload),
+            },
           })
           break
         case authTypes.EVENT_SIGN_IN_LINK_APPLE:
@@ -114,12 +124,21 @@ void (async () => {
           void router.replace({
             name: "group",
             params: { groupId: state.groupId },
+            query: {
+              initialTimezone: serializeRouteTimezone(state.restoreQuery?.initialTimezone),
+              contactsPayload: serializeRouteContactsPayload(state.restoreQuery?.contactsPayload),
+            },
           })
           break
         case authTypes.SIGN_UP_SIGN_IN:
           void router.replace({
             name: "signUp",
             params: { signUpId: state.signUpId },
+            query: {
+              editingMode: String(state.restoreQuery?.editingMode ?? false),
+              initialTimezone: serializeRouteTimezone(state.restoreQuery?.initialTimezone),
+              contactsPayload: serializeRouteContactsPayload(state.restoreQuery?.contactsPayload),
+            },
           })
           break
         case authTypes.GROUP_ADD_AVAILABILITY:

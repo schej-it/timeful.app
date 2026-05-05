@@ -112,6 +112,7 @@ import { authTypes, calendarTypes } from "@/constants"
 import isWebview from "is-ua-webview"
 import { posthog } from "@/plugins/posthog"
 import { useMainStore } from "@/stores/main"
+import { getSignInRestoreQuery } from "@/router/authRestoreState"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import type { User } from "@/types"
 
@@ -159,6 +160,8 @@ function signIn() {
       webviewDialog.value = true
       return
     }
+    void router.push({ name: "sign-in", query: getSignInRestoreQuery(route) })
+    return
   }
   void router.push({ name: "sign-in" })
 }

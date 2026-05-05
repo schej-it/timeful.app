@@ -74,6 +74,18 @@ describe("Auth sign-up restore", () => {
           type: authTypes.SIGN_UP_SIGN_IN,
           signUpId: "signup-1",
           calendarType: calendarTypes.GOOGLE,
+          restoreQuery: {
+            editingMode: true,
+            initialTimezone: {
+              value: "Asia/Kathmandu",
+              label: "Kathmandu",
+              gmtString: "GMT+5:45",
+              offset: "PT5H45M",
+            },
+            contactsPayload: {
+              name: "Draft",
+            },
+          },
         })
       ),
     }
@@ -93,6 +105,18 @@ describe("Auth sign-up restore", () => {
     expect(routerReplaceMock).toHaveBeenCalledWith({
       name: "signUp",
       params: { signUpId: "signup-1" },
+      query: {
+        editingMode: "true",
+        initialTimezone: JSON.stringify({
+          value: "Asia/Kathmandu",
+          label: "Kathmandu",
+          gmtString: "GMT+5:45",
+          offset: "PT5H45M",
+        }),
+        contactsPayload: JSON.stringify({
+          name: "Draft",
+        }),
+      },
     })
   })
 })

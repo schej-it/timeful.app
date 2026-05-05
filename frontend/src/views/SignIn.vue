@@ -252,6 +252,10 @@ import { ref, computed, onBeforeUnmount } from "vue"
 import { useRouter, useRoute } from "vue-router"
 import { useHead } from "@unhead/vue"
 import { authTypes, calendarTypes } from "@/constants"
+import {
+  getAuthRestoreRouteLocation,
+  getAuthRestoreState,
+} from "@/router/authRestoreState"
 import { post, signInGoogle, signInOutlook } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
@@ -297,9 +301,23 @@ const upgradeRedirect = computed(
 )
 
 function signIn(provider: string) {
+  const restoreState = getAuthRestoreState(route)
   const state = upgradeRedirect.value
     ? { type: authTypes.UPGRADE, upgradeParams: route.query.upgradeParams }
-    : null
+    : restoreState
+      ? {
+          type:
+            restoreState.routeName === "event"
+              ? authTypes.EVENT_SIGN_IN
+              : restoreState.routeName === "group"
+                ? authTypes.GROUP_SIGN_IN
+                : authTypes.SIGN_UP_SIGN_IN,
+          eventId: restoreState.routeName === "event" ? restoreState.routeId : undefined,
+          groupId: restoreState.routeName === "group" ? restoreState.routeId : undefined,
+          signUpId: restoreState.routeName === "signUp" ? restoreState.routeId : undefined,
+          restoreQuery: restoreState.routeQuery,
+        }
+      : null
   if (provider === calendarTypes.GOOGLE) {
     signInGoogle({ state, selectAccount: true })
   } else if (provider === calendarTypes.OUTLOOK) {
@@ -426,6 +444,8 @@ interface UpgradeParams {
 }
 
 async function handlePostAuthRedirect(user: User) {
+  const restoreState = getAuthRestoreState(route)
+
   if (upgradeRedirect.value) {
     try {
       const params = JSON.parse(route.query.upgradeParams as string) as UpgradeParams
@@ -444,6 +464,12 @@ async function handlePostAuthRedirect(user: User) {
       console.error(e)
     }
   }
+
+  if (restoreState) {
+    void router.replace(getAuthRestoreRouteLocation(restoreState))
+    return
+  }
+
   void router.replace({ name: "home" })
 }
 

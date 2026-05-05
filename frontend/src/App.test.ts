@@ -163,4 +163,67 @@ describe("App auth restore state", () => {
     })
     expect(signInOutlookMock).not.toHaveBeenCalled()
   })
+
+  it("preserves sign-up restore query when routing into the dedicated sign-in page", async () => {
+    routeState.query = {
+      editingMode: "true",
+      initialTimezone: JSON.stringify({
+        value: "Asia/Kathmandu",
+        label: "Kathmandu",
+        gmtString: "GMT+5:45",
+        offset: "PT5H45M",
+      }),
+      contactsPayload: JSON.stringify({
+        name: "Draft",
+      }),
+    }
+
+    const wrapper = shallowMount(App, {
+      global: {
+        mocks: {
+          $route: routeState,
+        },
+        stubs: {
+          SignInDialog: true,
+          DiscordBanner: true,
+          AutoSnackbar: true,
+          SignInNotSupportedDialog: true,
+          NewDialog: true,
+          UpgradeDialog: true,
+          UpvoteRedditSnackbar: true,
+          Logo: true,
+          AuthUserMenu: true,
+          "router-link": true,
+          "router-view": true,
+          "v-app": { template: "<div><slot /></div>" },
+          "v-main": { template: "<div><slot /></div>" },
+          "v-btn": {
+            template: "<button @click=\"$emit('click')\"><slot /></button>",
+          },
+          "v-expand-x-transition": { template: "<div><slot /></div>" },
+          "v-spacer": true,
+        },
+      },
+    })
+
+    await Promise.resolve()
+    await wrapper.get("#top-right-sign-in-btn").trigger("click")
+
+    expect(routerPushMock).toHaveBeenCalledWith({
+      name: "sign-in",
+      query: {
+        signUpId: "signup-1",
+        editingMode: "true",
+        initialTimezone: JSON.stringify({
+          value: "Asia/Kathmandu",
+          label: "Kathmandu",
+          gmtString: "GMT+5:45",
+          offset: "PT5H45M",
+        }),
+        contactsPayload: JSON.stringify({
+          name: "Draft",
+        }),
+      },
+    })
+  })
 })
