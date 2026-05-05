@@ -241,6 +241,49 @@ describe("plugin boundary regressions", () => {
     expect(slots["user-1"].ifNeeded[0].hour).toBe(10)
   })
 
+  it("keeps plugin get-slots output on the saved fixed offset when no payload timezone is provided", () => {
+    localStorage.setItem(
+      "timezone",
+      JSON.stringify({
+        value: "",
+        offset: "PT5H45M",
+      })
+    )
+
+    const timezoneValue = resolvePluginTimezoneValue(
+      undefined,
+      localStorage,
+      "America/New_York"
+    )
+    const slots = normalizePluginResponses({
+      rawResponses: {
+        "user-1": {
+          availability: [Date.parse("2026-01-07T03:15:00Z")],
+          ifNeeded: [Date.parse("2026-01-07T04:15:00Z")],
+        },
+      },
+      eventResponses: {
+        "user-1": {
+          user: {
+            firstName: "Ada",
+            lastName: "Lovelace",
+            email: "ada@example.com",
+          },
+        },
+      },
+      timezoneValue,
+      eventType: eventTypes.SPECIFIC_DATES,
+    })
+
+    expect(timezoneValue).toBe("+05:45")
+    expect(slots["user-1"].name).toBe("Ada Lovelace")
+    expect(slots["user-1"].email).toBe("ada@example.com")
+    expect(slots["user-1"].availability[0].timeZoneId).toBe("+05:45")
+    expect(slots["user-1"].availability[0].hour).toBe(9)
+    expect(slots["user-1"].ifNeeded[0].timeZoneId).toBe("+05:45")
+    expect(slots["user-1"].ifNeeded[0].hour).toBe(10)
+  })
+
   it("derives plugin get-slots time ranges from normalized event dates", () => {
     const rawEvent: Parameters<typeof fromRawEvent>[0] = {
       _id: "evt-1",
