@@ -133,9 +133,7 @@
           class="tw-flex tw-items-center tw-gap-2"
         >
           <NumberBullet>{{ i + 1 }}</NumberBullet>
-          <div class="tw-text-base tw-font-medium md:tw-text-xl">
-            <div v-html="step"></div>
-          </div>
+          <div class="tw-text-base tw-font-medium md:tw-text-xl">{{ step }}</div>
         </div>
       </div>
       <div
@@ -191,10 +189,16 @@
               }"
             >
               <div class="tw-flex tw-flex-1 tw-items-center">
-                <div
-                  class="reddit-comment tw-text-left tw-text-sm tw-text-very-dark-gray"
-                  v-html="comment.text.replace(/\n/g, '<br />')"
-                ></div>
+                <div class="reddit-comment tw-text-left tw-text-sm tw-text-very-dark-gray">
+                  <template v-for="(paragraph, paragraphIndex) in comment.paragraphs" :key="paragraphIndex">
+                    <p :class="{ 'tw-mb-4': paragraphIndex < comment.paragraphs.length - 1 }">
+                      <template v-for="(part, partIndex) in paragraph" :key="partIndex">
+                        <span v-if="part.highlight" class="rdt-h">{{ part.text }}</span>
+                        <template v-else>{{ part.text }}</template>
+                      </template>
+                    </p>
+                  </template>
+                </div>
               </div>
               <div
                 class="tw-my-4 tw-h-px tw-w-full tw-bg-light-gray-stroke"
@@ -287,6 +291,25 @@ import type { User } from "@/types"
 
 defineOptions({ name: 'AppLanding' })
 
+interface HighlightedTextPart {
+  text: string
+  highlight?: boolean
+}
+
+interface RedditComment {
+  paragraphs: HighlightedTextPart[][]
+  author: string
+  link: string
+  picture: string
+}
+
+interface FaqEntry {
+  question: string
+  answerParagraphs?: string[]
+  points?: string[]
+  authRequired?: boolean
+}
+
 useHead({ title: "Timeful (formerly Schej) - Find a time to meet" })
 
 const router = useRouter()
@@ -302,36 +325,42 @@ const howItWorksSteps = [
   "Share the Timeful link with your group for them to fill out",
   "See where everybody's availability overlaps!",
 ]
-const faqs = [
+const faqs: FaqEntry[] = [
   {
     question: "Does Timeful support timezones?",
-    answer:
+    answerParagraphs: [
       "Yes! Timeful automatically converts all times to the viewer's local timezone. There's also a timezone selector at the bottom of every meeting poll if you would like to manually change it.",
+    ],
   },
   {
     question: "How many people can respond to an event?",
-    answer:
+    answerParagraphs: [
       "Unlimited! We've tested events with over 500+ responses and it works great.",
+    ],
   },
   {
     question: "What calendars does Timeful integrate with?",
-    answer:
+    answerParagraphs: [
       "Timeful allows you to autofill your availability from your Google Calendar, Outlook, Apple Calendar, or an ICS feed URL. We are working on adding more calendar types soon!",
+    ],
   },
   {
     question: "Is calendar access required in order to use Timeful?",
-    answer:
+    answerParagraphs: [
       "Nope! You can manually input your availability, but we highly recommend allowing calendar access in order to view your calendar events while doing so.",
+    ],
   },
   {
     question: "Will other people be able to see my calendar events?",
-    answer:
+    answerParagraphs: [
       "Nope! All other users will be able to see is the availability that you enter for an event.",
+    ],
   },
   {
     question: "How do I edit my availability?",
-    answer:
+    answerParagraphs: [
       'If you are signed in, simply click the "Edit availability" button. If you entered your availability as a guest, hover over your name and click the pencil icon next to it.',
+    ],
   },
   {
     question: "How is Timeful different from Lettucemeet or When2meet?",
@@ -343,51 +372,79 @@ const faqs = [
   },
   {
     question: `I want it so that only I can see people's responses.`,
-    answer: `Just check "Only show responses to event creator" under Advanced Options when creating your event! Other respondees will not be able to see each other's names or availability.`,
+    answerParagraphs: [
+      `Just check "Only show responses to event creator" under Advanced Options when creating your event! Other respondees will not be able to see each other's names or availability.`,
+    ],
     authRequired: true,
   },
   {
     question: `Can I receive emails when someone fills out my event?`,
-    answer: `Absolutely! Check "Email me each time someone joins my event" when creating an event. <br><br>To receive email notifications after a specific number (X) of responses are added, check "Email me after X responses" in Advanced Options.`,
+    answerParagraphs: [
+      `Absolutely! Check "Email me each time someone joins my event" when creating an event.`,
+      `To receive email notifications after a specific number (X) of responses are added, check "Email me after X responses" in Advanced Options.`,
+    ],
     authRequired: true,
   },
   {
     question: `How do I send reminders to people to fill out an event?`,
-    answer: `Open the "Email Reminders" section when creating an event and input everybody's email address. Reminder emails will be sent the day of event creation, one day after, and three days after. <br><br>You will also receive an email once everybody has filled out the Timeful.`,
+    answerParagraphs: [
+      `Open the "Email Reminders" section when creating an event and input everybody's email address. Reminder emails will be sent the day of event creation, one day after, and three days after.`,
+      `You will also receive an email once everybody has filled out the Timeful.`,
+    ],
     authRequired: true,
   },
 ]
-const redditComments = [
+const redditComments: RedditComment[] = [
   {
-    text: "Genuinely the <span class='rdt-h'>best lightweight version of this kind of website</span> that I've come across so far, exceptional.",
+    paragraphs: [[
+      { text: "Genuinely the " },
+      { text: "best lightweight version of this kind of website", highlight: true },
+      { text: " that I've come across so far, exceptional." },
+    ]],
     author: "u/voipClock",
     link: "https://www.reddit.com/r/opensource/comments/1klu471/comment/mt4l2ab",
     picture:
       "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_1.png",
   },
   {
-    text: "It's almost <span class='rdt-h'>comically easy</span> to schedule meetings with Timeful.",
+    paragraphs: [[
+      { text: "It's almost " },
+      { text: "comically easy", highlight: true },
+      { text: " to schedule meetings with Timeful." },
+    ]],
     author: "u/stuffingmybrain",
     link: "https://www.reddit.com/r/schej/comments/1drs26z/comment/lb8rvty",
     picture:
       "https://styles.redditmedia.com/t5_qqojf/styles/profileIcon_snooa54a8eae-bc7f-406f-9778-b3b9dfb818e5-headshot.png?width=64&height=64&frame=1&auto=webp&crop=&s=a0a91575ff7cfc3b6698cac69da6c012c7deb8d6",
   },
   {
-    text: "Timeful is everything I've ever wanted and more. On top of that, <span class='rdt-h'>community support is the best I've seen</span> of any app or software, ever.",
+    paragraphs: [[
+      { text: "Timeful is everything I've ever wanted and more. On top of that, " },
+      { text: "community support is the best I've seen", highlight: true },
+      { text: " of any app or software, ever." },
+    ]],
     author: "u/DMODD",
     link: "https://www.reddit.com/r/schej/comments/1drs26z/comment/lb8udud",
     picture:
       "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_6.png",
   },
   {
-    text: "With Timeful, <span class='rdt-h'>I'm very quickly able to figure out the optimal time</span> to schedule online extra help sessions before an exam.",
+    paragraphs: [[
+      { text: "With Timeful, " },
+      { text: "I'm very quickly able to figure out the optimal time", highlight: true },
+      { text: " to schedule online extra help sessions before an exam." },
+    ]],
     author: "u/crackwurst",
     link: "https://www.reddit.com/r/schej/comments/1drs26z/comment/lb9dmbe",
     picture:
       "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_3.png",
   },
   {
-    text: "Exactly what I was looking for! Clear and clean interface, also on mobile (<span class='rdt-h'>Doodle is a disaster</span>).",
+    paragraphs: [[
+      { text: "Exactly what I was looking for! Clear and clean interface, also on mobile (" },
+      { text: "Doodle is a disaster", highlight: true },
+      { text: ")." },
+    ]],
     author: "u/Willem1976",
     link: "https://www.reddit.com/r/opensource/comments/1dlol7r/comment/lkn7sle",
     picture:

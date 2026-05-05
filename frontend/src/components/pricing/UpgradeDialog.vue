@@ -410,7 +410,12 @@
               <v-icon small class="tw-mr-2 tw-mt-0.5 tw-text-light-green"
                 >mdi-check</v-icon
               >
-              <span v-html="item.html"></span>
+              <span>
+                <template v-for="(part, partIndex) in item.parts" :key="partIndex">
+                  <span v-if="part.highlight" class="rdt-h">{{ part.text }}</span>
+                  <template v-else>{{ part.text }}</template>
+                </template>
+              </span>
             </li>
           </ul>
 
@@ -471,6 +476,16 @@ interface StripePrice {
   recurring?: {
     interval: string
   } | null
+}
+
+interface HighlightedTextPart {
+  text: string
+  highlight?: boolean
+}
+
+interface PremiumFeature {
+  text: string
+  parts: HighlightedTextPart[]
 }
 
 const props = defineProps<{
@@ -540,17 +555,27 @@ const freeFeatures = computed(() => {
 })
 
 const premiumFeatures = computed(() => {
-  const events = {
+  const events: PremiumFeature = {
     text: "events",
-    html: 'Create <span class="rdt-h">unlimited events</span> per month',
+    parts: [
+      { text: "Create " },
+      { text: "unlimited events", highlight: true },
+      { text: " per month" },
+    ],
   }
-  const noAdsOwn = {
+  const noAdsOwn: PremiumFeature = {
     text: "no-ads-own",
-    html: '<span class="rdt-h">No ads</span> displayed on your events',
+    parts: [
+      { text: "No ads", highlight: true },
+      { text: " displayed on your events" },
+    ],
   }
-  const noAdsOthers = {
+  const noAdsOthers: PremiumFeature = {
     text: "no-ads-others",
-    html: "<span class=\"rdt-h\">Don't see ads</span> on other people's events",
+    parts: [
+      { text: "Don't see ads", highlight: true },
+      { text: " on other people's events" },
+    ],
   }
   return isRemoveAdsMode.value
     ? [noAdsOwn, noAdsOthers, events]

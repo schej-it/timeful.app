@@ -10,7 +10,7 @@
     <div
       class="tw-flex tw-flex-row tw-content-center tw-justify-between tw-text-base"
     >
-      <div class="tw-mr-4 tw-font-medium" v-html="question"></div>
+      <div class="tw-mr-4 tw-font-medium">{{ question }}</div>
       <v-icon
         size="x-large"
         :class="`${
@@ -23,7 +23,13 @@
     <v-expand-transition>
       <div v-if="toggled">
         <div class="tw-pt-4 tw-text-sm sm:tw-pt-6">
-          <div v-html="answer"></div>
+          <p
+            v-for="(paragraph, index) in answerParagraphs"
+            :key="index"
+            class="tw-mb-4 last:tw-mb-0"
+          >
+            {{ paragraph }}
+          </p>
           <div class="tw-flex tw-flex-col tw-gap-2">
             <div
               v-for="(point, index) in points"
@@ -60,14 +66,14 @@ import { ref } from "vue"
 withDefaults(
   defineProps<{
     question: string
-    answer?: string
+    answerParagraphs?: string[]
     points?: string[]
     authRequired?: boolean
   }>(),
-  { 
-    answer: "",
+  {
+    answerParagraphs: () => [],
     points: () => [],
-    authRequired: false 
+    authRequired: false,
   }
 )
 
