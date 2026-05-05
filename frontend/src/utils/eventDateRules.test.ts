@@ -7,6 +7,7 @@ import {
   getEventMembershipPlainDates,
   getEventTimeSeed,
   getTimezoneReferenceDateForEvent,
+  isTimeWithinEventRange,
 } from "./eventDateRules"
 
 describe("eventDateRules", () => {
@@ -77,5 +78,51 @@ describe("eventDateRules", () => {
     })
 
     expect(referenceInstant.toInstant().toString()).toBe("2026-11-02T09:00:00Z")
+  })
+
+  it("matches slots against the event membership day and includes the end boundary", () => {
+    const eventDates = [Temporal.Instant.from("2026-06-15T00:00:00Z").toZonedDateTimeISO(UTC)]
+
+    expect(
+      isTimeWithinEventRange(
+        Temporal.Instant.from("2026-06-15T09:30:00Z").toZonedDateTimeISO(UTC),
+        eventDates,
+        9,
+        Temporal.Duration.from({ minutes: 30 })
+      )
+    ).toBe(true)
+
+    expect(
+      isTimeWithinEventRange(
+        Temporal.Instant.from("2026-06-15T09:00:00Z").toZonedDateTimeISO(UTC),
+        eventDates,
+        9,
+        Temporal.Duration.from({ minutes: 30 })
+      )
+    ).toBe(true)
+  })
+
+  it("normalizes slots and event seeds to UTC before checking event range membership", () => {
+    const eventDates = [
+      Temporal.ZonedDateTime.from("2026-06-15T00:00:00-04:00[America/New_York]"),
+    ]
+
+    expect(
+      isTimeWithinEventRange(
+        Temporal.ZonedDateTime.from("2026-06-15T13:15:00Z[UTC]"),
+        eventDates,
+        13,
+        Temporal.Duration.from({ hours: 1 })
+      )
+    ).toBe(true)
+
+    expect(
+      isTimeWithinEventRange(
+        Temporal.ZonedDateTime.from("2026-06-16T13:15:00Z[UTC]"),
+        eventDates,
+        8,
+        Temporal.Duration.from({ hours: 1 })
+      )
+    ).toBe(false)
   })
 })

@@ -74,6 +74,7 @@ export {
   getEventMembershipPlainDates,
   getEventTimeSeed,
   getTimezoneReferenceDateForEvent,
+  isTimeWithinEventRange,
 } from "./eventDateRules"
 
 export {
@@ -283,48 +284,6 @@ export const convertToUTC = (
       { cause: err }
     )
   }
-}
-
-/** Checks if a date/time falls within an event's date and time range */
-export const isTimeWithinEventRange = (
-  dateTime: ZonedDateTime,
-  eventDates: ZonedDateTime[],
-  // TODO
-  eventStartTime: number,
-  // TODO
-  eventDuration: Temporal.Duration
-): boolean => {
-  const slotZDT = toZDT(dateTime, UTC)
-  const slotPlainDate = slotZDT.toPlainDate()
-
-  // Check if slot's date matches any event date
-  let matchingEventDate: Temporal.ZonedDateTime | null = null
-  for (const eventDate of eventDates) {
-    const eventZDT = toZDT(eventDate, UTC)
-    const eventPlainDate = eventZDT.toPlainDate()
-    if (slotPlainDate.equals(eventPlainDate)) {
-      matchingEventDate = eventZDT
-      break
-    }
-  }
-
-  if (!matchingEventDate) {
-    return false
-  }
-
-  // Check if slot's time falls within event's time range for this date
-  const eventStartZDT = matchingEventDate.with({
-    hour: Math.floor(eventStartTime),
-    minute: Math.floor((eventStartTime % 1) * 60),
-  })
-
-  const eventEndZDT = eventStartZDT.add(eventDuration)
-
-  const slotInstant = slotZDT.toInstant()
-  return (
-    slotInstant >= eventStartZDT.toInstant() &&
-    slotInstant <= eventEndZDT.toInstant()
-  )
 }
 
 /** Converts an array of UTC date slots to ISO string format in a specified timezone */

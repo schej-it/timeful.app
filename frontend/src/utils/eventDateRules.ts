@@ -52,3 +52,33 @@ export const getTimezoneReferenceDateForEvent = (
 
   return Temporal.Now.zonedDateTimeISO(UTC)
 }
+
+/** Checks if a slot falls within an event membership date and time range. */
+export const isTimeWithinEventRange = (
+  dateTime: ZonedDateTime,
+  eventDates: ZonedDateTime[],
+  eventStartTime: number,
+  eventDuration: Temporal.Duration
+): boolean => {
+  const slotZDT = dateTime.withTimeZone(UTC)
+  const slotPlainDate = slotZDT.toPlainDate()
+
+  const matchingEventDate = eventDates
+    .map((eventDate) => eventDate.withTimeZone(UTC))
+    .find((eventDate) => slotPlainDate.equals(eventDate.toPlainDate()))
+
+  if (!matchingEventDate) {
+    return false
+  }
+
+  const eventStartZDT = matchingEventDate.with({
+    hour: Math.floor(eventStartTime),
+    minute: Math.floor((eventStartTime % 1) * 60),
+  })
+  const eventEndZDT = eventStartZDT.add(eventDuration)
+
+  return (
+    Temporal.Instant.compare(slotZDT.toInstant(), eventStartZDT.toInstant()) >= 0 &&
+    Temporal.Instant.compare(slotZDT.toInstant(), eventEndZDT.toInstant()) <= 0
+  )
+}
