@@ -3,6 +3,7 @@ import ObjectID from "bson-objectid"
 import { getTimeBlock, put, splitTimeBlocksByDay } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import type { Temporal } from "temporal-polyfill"
+import { toEventDateStrings } from "@/types/transport"
 import {
   type DayItem,
   type RowCol,
@@ -170,7 +171,7 @@ export function useSignUpForm(opts: UseSignUpFormOptions) {
     const payload = {
       name: opts.event.value.name,
       duration: opts.event.value.duration,
-      dates: opts.event.value.dates,
+      dates: toEventDateStrings(opts.event.value),
       type: opts.event.value.type,
       signUpBlocks: signUpBlocksByDay.value.flat().map((block) => ({
         _id: block._id,

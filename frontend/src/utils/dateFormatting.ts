@@ -1,7 +1,8 @@
 import { eventTypes } from "@/constants"
 import type { Event } from "@/types"
 import { Temporal } from "temporal-polyfill"
-import type { ZonedDateTime } from "./temporalPrimitives"
+import type { PlainDate, ZonedDateTime } from "./temporalPrimitives"
+import { getEventDateSeeds } from "./eventDateRules"
 import { toZDT } from "./timezoneDateRules"
 
 /** Returns a string representation of the given date, i.e. May 14th is "5/14". */
@@ -40,6 +41,9 @@ export const getISODateString = (date: ZonedDateTime, utc = false): string => {
   return zdt.toPlainDate().toString()
 }
 
+const getPlainDateString = (date: PlainDate): string =>
+  `${String(date.month)}/${String(date.day)}`
+
 /** Returns a string representing date range from date1 to date2, i.e. "5/14 - 5/27". */
 export const getDateRangeString = (
   date1: ZonedDateTime,
@@ -57,25 +61,30 @@ export const getDateRangeString = (
 }
 
 /** Returns a string representing the date range for the provided event. */
-export const getDateRangeStringForEvent = (event: Pick<Event, "dates" | "daysOnly" | "type">): string => {
+export const getDateRangeStringForEvent = (event: Pick<Event, "dates" | "daysOnly" | "timeSeed" | "type">): string => {
   if (!event.dates || event.dates.length === 0) return ""
 
   if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
     const dayAbbreviations = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     return event.dates
-      .map((zdt) => dayAbbreviations[zdt.dayOfWeek % 7])
+      .map((date) => dayAbbreviations[date.dayOfWeek % 7])
       .join(", ")
   }
 
   if (event.daysOnly) {
     return (
-      `${getDateString(event.dates[0], true)} - ` +
-      getDateString(event.dates[event.dates.length - 1], true)
+      `${getPlainDateString(event.dates[0])} - ` +
+      getPlainDateString(event.dates[event.dates.length - 1])
     )
   }
 
   if (event.type === eventTypes.SPECIFIC_DATES) {
-    return getDateRangeString(event.dates[0], event.dates[event.dates.length - 1], true)
+    const eventDateSeeds = getEventDateSeeds(event)
+    return getDateRangeString(
+      eventDateSeeds[0],
+      eventDateSeeds[eventDateSeeds.length - 1],
+      true
+    )
   }
 
   return ""

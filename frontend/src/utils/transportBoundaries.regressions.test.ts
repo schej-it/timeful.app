@@ -61,7 +61,7 @@ describe("transport and timezone regression boundaries", () => {
     })
 
     expect(event.timeSeed?.toString()).toBe("2026-01-02T09:30:00+00:00[UTC]")
-    expect(event.dates?.[0].toString()).toBe("2026-01-02T09:30:00+00:00[UTC]")
+    expect(event.dates?.[0].toString()).toBe("2026-01-02")
   })
 
   it("keeps user transport decoding at an explicit boundary", () => {

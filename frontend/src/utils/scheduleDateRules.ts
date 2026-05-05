@@ -8,6 +8,7 @@ import {
   isDateBetweenInclusive,
   rangeContainsInclusive,
 } from "./dateRanges"
+import { getEventDateSeeds } from "./eventDateRules"
 import type { ZonedDateTime } from "./temporalPrimitives"
 import { zdtKey } from "./temporalPrimitives"
 import { getDateInTimezone, toZDT } from "./timezoneDateRules"
@@ -162,7 +163,7 @@ export const splitTimeBlocksByDay = <
   renderedWeekStart?: Temporal.ZonedDateTime
 ): T[][] => {
   return processTimeBlocks(
-    event.dates ?? [],
+    getEventDateSeeds(event),
     event.duration ?? durations.ZERO,
     timeBlocks,
     event.type,

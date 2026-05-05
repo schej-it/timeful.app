@@ -5,6 +5,7 @@ export * from "./location_utils"
 export * from "./timezone_utils"
 export * from "./plugin_utils"
 export {
+  getEventDateSeeds,
   getEventMembershipDayOfWeekValues,
   getEventMembershipPlainDates,
   getEventTimeSeed,

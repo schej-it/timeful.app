@@ -3,6 +3,7 @@ import { Temporal } from "temporal-polyfill"
 import {
   clamp,
   dateToDowDate,
+  getEventDateSeeds,
   getRenderedWeekStart,
   isBetween,
   ZdtMap,
@@ -318,7 +319,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
           }
 
           if (eventValue.type === eventTypes.GROUP) {
-            const eventDates = eventValue.dates ?? []
+            const eventDates = getEventDateSeeds(eventValue)
             const renderedWeekStart = getRenderedWeekStart(
               opts.weekOffset.value,
               eventValue.startOnMonday

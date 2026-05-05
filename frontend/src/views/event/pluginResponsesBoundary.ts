@@ -5,6 +5,7 @@ import { fromRawResponse } from "@/types/transport"
 import {
   convertUTCSlotsToLocalISO,
   dateToDowDate,
+  getEventDateSeeds,
   getRenderedWeekStart,
   timezoneObservesDST,
 } from "@/utils"
@@ -44,7 +45,7 @@ export const getPluginEventTimeRange = (
   weekOffset: number,
   renderedWeekStart?: Temporal.ZonedDateTime
 ): PluginEventTimeRange | null => {
-  const eventDates = event.dates ?? []
+  const eventDates = getEventDateSeeds(event)
   if (eventDates.length === 0) return null
 
   let timeMin = eventDates[0]

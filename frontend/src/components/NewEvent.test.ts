@@ -160,7 +160,8 @@ describe("NewEvent", () => {
         event: {
           _id: "evt-2",
           name: "Late event",
-          dates: [Temporal.ZonedDateTime.from("2026-01-02T23:30:00+00:00[UTC]")],
+          dates: [Temporal.PlainDate.from("2026-01-02")],
+          timeSeed: Temporal.ZonedDateTime.from("2026-01-02T23:30:00+00:00[UTC]"),
           duration: Temporal.Duration.from({ minutes: 90 }),
         },
       },
@@ -196,7 +197,8 @@ describe("NewEvent", () => {
         event: {
           _id: "evt-3",
           name: "Summer event",
-          dates: [Temporal.ZonedDateTime.from("2026-06-15T12:00:00+00:00[UTC]")],
+          dates: [Temporal.PlainDate.from("2026-06-15")],
+          timeSeed: Temporal.ZonedDateTime.from("2026-06-15T12:00:00+00:00[UTC]"),
           duration: Temporal.Duration.from({ hours: 1 }),
         },
       },
@@ -242,7 +244,7 @@ describe("NewEvent", () => {
           _id: "evt-3b",
           name: "Seeded event",
           type: "specific_dates",
-          dates: [Temporal.ZonedDateTime.from("2026-01-02T00:00:00+00:00[UTC]")],
+          dates: [Temporal.PlainDate.from("2026-01-02")],
           timeSeed: Temporal.ZonedDateTime.from(
             "2026-01-02T09:30:00+00:00[UTC]"
           ),
@@ -291,7 +293,8 @@ describe("NewEvent", () => {
           _id: "evt-4",
           name: "Membership-stable event",
           type: "specific_dates",
-          dates: [Temporal.ZonedDateTime.from("2026-01-02T00:30:00+00:00[UTC]")],
+          dates: [Temporal.PlainDate.from("2026-01-02")],
+          timeSeed: Temporal.ZonedDateTime.from("2026-01-02T00:30:00+00:00[UTC]"),
           duration: Temporal.Duration.from({ hours: 1 }),
         },
       },

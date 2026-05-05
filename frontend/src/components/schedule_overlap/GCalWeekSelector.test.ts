@@ -8,7 +8,10 @@ import GCalWeekSelector from "./GCalWeekSelector.vue"
 
 const zdt = (iso: string) => Temporal.Instant.from(iso).toZonedDateTimeISO(UTC)
 
-const mountWeekSelector = (dates: Temporal.ZonedDateTime[] = []) =>
+const mountWeekSelector = (
+  dates: Temporal.PlainDate[] = [],
+  timeSeed?: Temporal.ZonedDateTime
+) =>
   shallowMount(GCalWeekSelector, {
     props: {
       weekOffset: 0,
@@ -17,6 +20,7 @@ const mountWeekSelector = (dates: Temporal.ZonedDateTime[] = []) =>
         name: "Weekly event",
         type: eventTypes.DOW,
         dates,
+        timeSeed,
       },
     },
     global: {
@@ -37,7 +41,10 @@ describe("GCalWeekSelector", () => {
   })
 
   it("renders the projected displayed week label for weekly events", () => {
-    const wrapper = mountWeekSelector([zdt("2026-01-05T09:00:00Z")])
+    const wrapper = mountWeekSelector(
+      [Temporal.PlainDate.from("2026-01-05")],
+      zdt("2026-01-05T09:00:00Z")
+    )
 
     expect(wrapper.text()).toContain("Showing calendar for week of")
   })

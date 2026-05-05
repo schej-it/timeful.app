@@ -2,6 +2,7 @@ import { computed, ref, type ComputedRef, type Ref } from "vue"
 import { Temporal } from "temporal-polyfill"
 import {
   dateToDowDate,
+  getEventDateSeeds,
   getFixedOffsetTimeZoneId,
   getRenderedWeekStart,
   put,
@@ -9,6 +10,7 @@ import {
 } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
+import { toEventDateStrings } from "@/types/transport"
 import {
   HOUR_HEIGHT,
   SPLIT_GAP_HEIGHT,
@@ -128,7 +130,7 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
     })
 
     if (opts.isWeekly.value || opts.isGroup.value) {
-      const eventDates = opts.event.value.dates ?? []
+      const eventDates = getEventDateSeeds(opts.event.value)
       const renderedWeekStart = getRenderedWeekStart(
         opts.weekOffset.value,
         opts.event.value.startOnMonday
@@ -200,7 +202,8 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
   const saveTempTimes = () => {
     interface EventWithTimes {
       _id?: string
-      dates?: Temporal.ZonedDateTime[]
+      dates?: Temporal.PlainDate[]
+      timeSeed?: Temporal.ZonedDateTime
       times?: Temporal.ZonedDateTime[]
       duration?: Temporal.Duration
       remindees?: (string | { email?: string })[]
@@ -216,8 +219,7 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
       eventValue.times
     )
 
-    const eventDateInstants = (opts.event.value.dates ?? []).map((d) => {
-      const zdt = d
+    const eventDateInstants = getEventDateSeeds(opts.event.value).map((zdt) => {
       // Convert Duration to minutes for subtraction
       const offsetMinutes = opts.timezoneOffset.value.total("minutes")
       const adjustedZDT = zdt.subtract({ minutes: offsetMinutes })
@@ -228,7 +230,8 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
       })
       return withTime
     })
-    eventValue.dates = eventDateInstants
+    eventValue.dates = eventDateInstants.map((date) => date.toPlainDate())
+    eventValue.timeSeed = eventDateInstants[0]
 
     eventValue.duration = maxHours.since(minHours).add({ hours: 1 })
 
@@ -239,7 +242,10 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
     }
 
     const eventId = eventValue._id ?? ""
-    void put(`/events/${eventId}`, eventValue)
+    void put(`/events/${eventId}`, {
+      ...eventValue,
+      dates: toEventDateStrings(eventValue),
+    })
       .then(() => {
         opts.state.value = opts.defaultState.value
       })

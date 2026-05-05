@@ -12,7 +12,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue"
-import { dateToDowDate, getRenderedWeekStart } from "@/utils"
+import { dateToDowDate, getEventDateSeeds, getRenderedWeekStart } from "@/utils"
 import type { ScheduleOverlapEvent } from "@/composables/schedule_overlap/types"
 
 const props = withDefaults(
@@ -29,7 +29,7 @@ const emit = defineEmits<{
 }>()
 
 const weekText = computed(() => {
-  const dates = props.event.dates ?? []
+  const dates = getEventDateSeeds(props.event)
   if (dates.length === 0) return "unknown date"
 
   const renderedWeekStart = getRenderedWeekStart(

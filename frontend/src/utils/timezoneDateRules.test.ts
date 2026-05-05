@@ -60,7 +60,8 @@ describe("timezoneDateRules", () => {
     const result = getScheduleTimezoneOffset(
       {
         type: eventTypes.DOW,
-        dates: [Temporal.Instant.from("2018-06-17T09:00:00Z").toZonedDateTimeISO(UTC)],
+        dates: [Temporal.PlainDate.from("2018-06-17")],
+        timeSeed: Temporal.Instant.from("2018-06-17T09:00:00Z").toZonedDateTimeISO(UTC),
       },
       {
         value: "Europe/Vienna",

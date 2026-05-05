@@ -25,14 +25,15 @@ describe("dateFormatting", () => {
     expect(
       getDateRangeStringForEvent({
         type: eventTypes.DOW,
-        dates: [zdt("2026-05-03T09:00:00Z"), zdt("2026-05-04T09:00:00Z")],
+        dates: [Temporal.PlainDate.from("2026-05-03"), Temporal.PlainDate.from("2026-05-04")],
       })
     ).toBe("Sun, Mon")
 
     expect(
       getDateRangeStringForEvent({
         type: eventTypes.SPECIFIC_DATES,
-        dates: [zdt("2026-05-01T00:00:00Z"), zdt("2026-05-03T00:00:00Z")],
+        dates: [Temporal.PlainDate.from("2026-05-01"), Temporal.PlainDate.from("2026-05-03")],
+        timeSeed: zdt("2026-05-01T00:00:00Z"),
       })
     ).toBe("5/1 - 5/2")
   })

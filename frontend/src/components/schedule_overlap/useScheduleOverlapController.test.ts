@@ -20,7 +20,8 @@ const baseEvent = (): ScheduleOverlapEvent => ({
   ownerId: "owner-1",
   name: "Controller test event",
   type: eventTypes.SPECIFIC_DATES,
-  dates: [zdt("2026-01-01T09:00:00Z")],
+  dates: [Temporal.PlainDate.from("2026-01-01")],
+  timeSeed: zdt("2026-01-01T09:00:00Z"),
   daysOnly: false,
   hasSpecificTimes: false,
 })

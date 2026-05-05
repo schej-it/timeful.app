@@ -45,7 +45,7 @@ export const getTimezoneOffsetForDate = (
 }
 
 export const getScheduleTimezoneOffset = (
-  event: Pick<Event, "dates" | "type">,
+  event: Pick<Event, "dates" | "timeSeed" | "type">,
   curTimezone: Timezone,
   weekOffset = 0
 ): Temporal.Duration => {

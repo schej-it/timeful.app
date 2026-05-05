@@ -135,11 +135,10 @@ describe("NewGroup", () => {
         event: {
           _id: "group-1",
           name: "Minute-sensitive group",
-          dates: [
-            Temporal.Instant.from("2026-01-02T09:30:00Z").toZonedDateTimeISO(
-              "UTC"
-            ),
-          ],
+          dates: [Temporal.PlainDate.from("2026-01-02")],
+          timeSeed: Temporal.Instant.from("2026-01-02T09:30:00Z").toZonedDateTimeISO(
+            "UTC"
+          ),
           duration: Temporal.Duration.from({ hours: 1, minutes: 15 }),
         },
       },
@@ -176,7 +175,7 @@ describe("NewGroup", () => {
         event: {
           _id: "group-1b",
           name: "Seeded group",
-          dates: [Temporal.ZonedDateTime.from("2026-01-02T00:00:00+00:00[UTC]")],
+          dates: [Temporal.PlainDate.from("2026-01-02")],
           timeSeed: Temporal.ZonedDateTime.from(
             "2026-01-02T09:30:00+00:00[UTC]"
           ),
@@ -216,9 +215,8 @@ describe("NewGroup", () => {
         event: {
           _id: "group-2",
           name: "Weekly group",
-          dates: [
-            Temporal.ZonedDateTime.from("2026-01-05T00:30:00+00:00[UTC]"),
-          ],
+          dates: [Temporal.PlainDate.from("2026-01-05")],
+          timeSeed: Temporal.ZonedDateTime.from("2026-01-05T00:30:00+00:00[UTC]"),
           duration: Temporal.Duration.from({ hours: 1 }),
         },
       },

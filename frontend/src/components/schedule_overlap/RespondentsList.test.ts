@@ -50,7 +50,8 @@ const mountRespondentsList = ({
       event: {
         blindAvailabilityEnabled: false,
         collectEmails: false,
-        dates: [curDate],
+        dates: [curDate.toPlainDate()],
+        timeSeed: curDate,
         duration: durations.ONE_HOUR,
         daysOnly: false,
       },

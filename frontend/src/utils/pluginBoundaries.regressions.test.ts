@@ -251,14 +251,13 @@ describe("plugin boundary regressions", () => {
       ],
     }
     const event = fromRawEvent(rawEvent)
-    const secondDate = event.dates?.[1]
-    if (!secondDate) throw new Error("Expected normalized event dates")
+    if (!event.dates?.[1]) throw new Error("Expected normalized event dates")
 
     const range = getPluginEventTimeRange(event, 0)
     if (!range) throw new Error("Expected plugin event time range")
 
-    expect(range.timeMin).toBe(event.dates?.[0])
-    expect(range.timeMax.equals(secondDate.add({ days: 1 }))).toBe(true)
+    expect(range.timeMin.equals(event.timeSeed ?? range.timeMin)).toBe(true)
+    expect(range.timeMax.toInstant().toString()).toBe("2026-01-09T17:00:00Z")
   })
 
   it("derives plugin get-slots time ranges from an explicit displayed week for DOW events", () => {

@@ -1,6 +1,7 @@
 import { eventTypes } from "@/constants"
 import type { Event } from "@/types"
 import type { Temporal } from "temporal-polyfill"
+import { getEventDateSeeds } from "../eventDateRules"
 import { get } from "../fetch_utils"
 import { dateToDowDate, getRenderedWeekStart } from "../scheduleDateRules"
 
@@ -16,7 +17,7 @@ export interface CalendarAvailabilityRequestOptions
 
 type CalendarAvailabilityQueryEvent = Pick<
   Event,
-  "type" | "dates" | "startOnMonday"
+  "type" | "dates" | "timeSeed" | "startOnMonday"
 >
 
 export interface CalendarAvailabilityQueryWindow {
@@ -31,14 +32,15 @@ export const getCalendarAvailabilityQueryWindow = (
     renderedWeekStart,
   }: CalendarAvailabilityQueryOptions = {}
 ): CalendarAvailabilityQueryWindow | null => {
-  if (!event.dates || event.dates.length === 0) {
+  const eventDateSeeds = getEventDateSeeds(event)
+  if (eventDateSeeds.length === 0) {
     return null
   }
 
   if (event.type === eventTypes.SPECIFIC_DATES) {
     return {
-      timeMin: event.dates[0],
-      timeMax: event.dates[event.dates.length - 1].add({ days: 2 }),
+      timeMin: eventDateSeeds[0],
+      timeMax: eventDateSeeds[eventDateSeeds.length - 1].add({ days: 2 }),
     }
   }
 
@@ -46,16 +48,16 @@ export const getCalendarAvailabilityQueryWindow = (
     const projectedWeekStart =
       renderedWeekStart ?? getRenderedWeekStart(weekOffset, event.startOnMonday)
     const firstDate = dateToDowDate(
-      event.dates,
-      event.dates[0],
+      eventDateSeeds,
+      eventDateSeeds[0],
       weekOffset,
       true,
       event.startOnMonday,
       projectedWeekStart
     )
     const lastDate = dateToDowDate(
-      event.dates,
-      event.dates[event.dates.length - 1],
+      eventDateSeeds,
+      eventDateSeeds[eventDateSeeds.length - 1],
       weekOffset,
       true,
       event.startOnMonday,

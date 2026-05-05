@@ -25,7 +25,8 @@ describe("CalendarAvailabilityService", () => {
     const result = getCalendarAvailabilityQueryWindow(
       {
         type: eventTypes.DOW,
-        dates: [zdt("2018-06-17T09:00:00Z")],
+        dates: [Temporal.PlainDate.from("2018-06-17")],
+        timeSeed: zdt("2018-06-17T09:00:00Z"),
         startOnMonday: false,
       },
       { weekOffset: 0, renderedWeekStart }
@@ -54,7 +55,8 @@ describe("CalendarAvailabilityService", () => {
     await getCalendarEventsMap(
       {
         type: eventTypes.DOW,
-        dates: [zdt("2018-06-17T09:00:00Z")],
+        dates: [Temporal.PlainDate.from("2018-06-17")],
+        timeSeed: zdt("2018-06-17T09:00:00Z"),
         startOnMonday: false,
       },
       { weekOffset: 0, renderedWeekStart }

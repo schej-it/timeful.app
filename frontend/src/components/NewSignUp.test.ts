@@ -176,11 +176,10 @@ describe("NewSignUp", () => {
         event: {
           _id: "evt-1",
           name: "Minute-sensitive event",
-          dates: [
-            Temporal.Instant.from("2026-01-02T09:30:00Z").toZonedDateTimeISO(
-              "UTC"
-            ),
-          ],
+          dates: [Temporal.PlainDate.from("2026-01-02")],
+          timeSeed: Temporal.Instant.from("2026-01-02T09:30:00Z").toZonedDateTimeISO(
+            "UTC"
+          ),
           duration: Temporal.Duration.from({ hours: 1, minutes: 15 }),
         },
       },
@@ -217,7 +216,7 @@ describe("NewSignUp", () => {
         event: {
           _id: "evt-1b",
           name: "Seeded sign up",
-          dates: [Temporal.ZonedDateTime.from("2026-01-02T00:00:00+00:00[UTC]")],
+          dates: [Temporal.PlainDate.from("2026-01-02")],
           timeSeed: Temporal.ZonedDateTime.from(
             "2026-01-02T09:30:00+00:00[UTC]"
           ),

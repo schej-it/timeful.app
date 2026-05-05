@@ -4,6 +4,7 @@
 
 import { eventTypes, UTC } from "@/constants"
 import type { Event, User } from "@/types"
+import { getEventDateSeeds } from "./eventDateRules"
 import {
   dateToDowDate,
   getRenderedWeekStart,
@@ -119,10 +120,12 @@ export const processEvent = (
   renderedWeekStart?: ZonedDateTime
 ): void => {
   if (!event.dates?.length || event.duration == null) return
-  let startDate: ZonedDateTime = event.dates[0]
+  const eventDateSeeds = getEventDateSeeds(event)
+  if (eventDateSeeds.length === 0) return
+  let startDate: ZonedDateTime = eventDateSeeds[0]
   if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
     startDate = dateToDowDate(
-      event.dates,
+      eventDateSeeds,
       startDate,
       0,
       true,

@@ -17,8 +17,8 @@ describe("eventDateRules", () => {
 
   it("reconstructs civil-date membership directly from the stored event seeds", () => {
     const dates = [
-      Temporal.ZonedDateTime.from("2026-03-08T00:00:00[America/Los_Angeles]"),
-      Temporal.ZonedDateTime.from("2026-03-09T00:00:00[America/Los_Angeles]"),
+      Temporal.PlainDate.from("2026-03-08"),
+      Temporal.PlainDate.from("2026-03-09"),
     ]
 
     expect(getEventMembershipPlainDates(dates).map((date) => date.toString())).toEqual([
@@ -36,15 +36,15 @@ describe("eventDateRules", () => {
     expect(
       getEventTimeSeed({
         timeSeed,
-        dates: [membershipDate],
+        dates: [membershipDate.toPlainDate()],
       })
     ).toBe(timeSeed)
   })
 
   it("keeps weekly edit selections on the stored weekday values", () => {
     const dates = [
-      Temporal.Instant.from("2018-06-17T09:00:00Z").toZonedDateTimeISO(UTC),
-      Temporal.Instant.from("2018-06-18T09:00:00Z").toZonedDateTimeISO(UTC),
+      Temporal.PlainDate.from("2018-06-17"),
+      Temporal.PlainDate.from("2018-06-18"),
     ]
 
     expect(getEventMembershipDayOfWeekValues(dates)).toEqual([7, 1])
@@ -57,7 +57,8 @@ describe("eventDateRules", () => {
     const referenceZDT = getTimezoneReferenceDateForEvent(
       {
         type: eventTypes.DOW,
-        dates: [Temporal.Instant.from("2018-06-17T09:00:00Z").toZonedDateTimeISO(UTC)],
+        dates: [Temporal.PlainDate.from("2018-06-17")],
+        timeSeed: Temporal.Instant.from("2018-06-17T09:00:00Z").toZonedDateTimeISO(UTC),
       },
       3
     ).withTimeZone(UTC)
@@ -72,16 +73,17 @@ describe("eventDateRules", () => {
     const referenceInstant = getTimezoneReferenceDateForEvent({
       type: eventTypes.SPECIFIC_DATES,
       dates: [
-        Temporal.Instant.from("2026-11-02T09:00:00Z").toZonedDateTimeISO(UTC),
-        Temporal.Instant.from("2026-11-03T09:00:00Z").toZonedDateTimeISO(UTC),
+        Temporal.PlainDate.from("2026-11-02"),
+        Temporal.PlainDate.from("2026-11-03"),
       ],
+      timeSeed: Temporal.Instant.from("2026-11-02T09:00:00Z").toZonedDateTimeISO(UTC),
     })
 
     expect(referenceInstant.toInstant().toString()).toBe("2026-11-02T09:00:00Z")
   })
 
   it("matches slots against the event membership day and includes the end boundary", () => {
-    const eventDates = [Temporal.Instant.from("2026-06-15T00:00:00Z").toZonedDateTimeISO(UTC)]
+    const eventDates = [Temporal.PlainDate.from("2026-06-15")]
 
     expect(
       isTimeWithinEventRange(
@@ -104,7 +106,7 @@ describe("eventDateRules", () => {
 
   it("normalizes slots and event seeds to UTC before checking event range membership", () => {
     const eventDates = [
-      Temporal.ZonedDateTime.from("2026-06-15T00:00:00-04:00[America/New_York]"),
+      Temporal.PlainDate.from("2026-06-15"),
     ]
 
     expect(

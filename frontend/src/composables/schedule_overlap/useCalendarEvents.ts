@@ -4,6 +4,7 @@ import {
   dateToDowDate,
   get,
   getCalendarAccountKey,
+  getEventDateSeeds,
   getDateHoursOffset,
   getDateInTimezone,
   getFixedOffsetTimeZoneId,
@@ -414,7 +415,7 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
 
     let timeMin: Temporal.ZonedDateTime | undefined
     let timeMax: Temporal.ZonedDateTime | undefined
-    const eventDates = opts.event.value.dates ?? []
+    const eventDates = getEventDateSeeds(opts.event.value)
     if (opts.event.value.type === eventTypes.GROUP) {
       if (eventDates.length > 0) {
         timeMin = eventDates[0]

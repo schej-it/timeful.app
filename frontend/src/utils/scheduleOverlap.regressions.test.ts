@@ -85,7 +85,8 @@ describe("schedule-overlap Temporal regressions", () => {
       event: ref({
         _id: "evt-1",
         type: eventTypes.SPECIFIC_DATES,
-        dates: [zdt("2026-01-01T00:00:00Z")],
+        dates: [Temporal.PlainDate.from("2026-01-01")],
+        timeSeed: zdt("2026-01-01T00:00:00Z"),
         duration: durations.ONE_HOUR,
       }),
       weekOffset: ref(0),
@@ -393,7 +394,11 @@ describe("schedule-overlap Temporal regressions", () => {
     const scheduling = makeEventSchedulingHarness({
       slotStart: zdt("2026-01-05T09:00:00Z"),
       eventType: eventTypes.DOW,
-      dates: [zdt("2026-01-05T09:00:00Z"), zdt("2026-01-07T09:00:00Z")],
+      dates: [
+        Temporal.PlainDate.from("2026-01-05"),
+        Temporal.PlainDate.from("2026-01-07"),
+      ],
+      timeSeed: zdt("2026-01-05T09:00:00Z"),
       weekOffset: 1,
     })
     scheduling.curScheduledEvent.value = { row: 0, col: 0, numRows: 1 }
@@ -416,8 +421,9 @@ describe("schedule-overlap Temporal regressions", () => {
         type: eventTypes.SPECIFIC_DATES,
         hasSpecificTimes: true,
         dates: ["2026-03-07", "2026-03-08", "2026-03-09", "2026-03-10"].map((day) =>
-          Temporal.ZonedDateTime.from(`${day}T00:00:00[${timezone}]`)
+          Temporal.PlainDate.from(day)
         ),
+        timeSeed: Temporal.ZonedDateTime.from(`2026-03-07T00:00:00[${timezone}]`),
         duration: durations.ONE_HOUR,
       } as never),
       weekOffset: ref(0),

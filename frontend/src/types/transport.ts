@@ -41,6 +41,28 @@ export type RawAttendee = Schemas["models.Attendee"]
 export type RawBufferTimeOptions = Schemas["models.BufferTimeOptions"]
 export type RawWorkingHoursOptions = Schemas["models.WorkingHoursOptions"]
 
+const toEventMembershipTimeSeed = (
+  dates?: Temporal.PlainDate[],
+  timeSeed?: Temporal.ZonedDateTime
+): string[] | undefined => {
+  if (!dates || dates.length === 0) {
+    return undefined
+  }
+
+  if (!timeSeed) {
+    return dates.map((date) =>
+      date.toZonedDateTime({ timeZone: "UTC", plainTime: "00:00:00" }).toString()
+    )
+  }
+
+  const plainTime = timeSeed.toPlainTime()
+  const timeZone = timeSeed.timeZoneId
+
+  return dates.map((date) =>
+    date.toZonedDateTime({ timeZone, plainTime }).toString()
+  )
+}
+
 export function fromRawBufferTimeOptions(
   raw?: RawBufferTimeOptions
 ): BufferTimeOptions | undefined {
@@ -168,12 +190,12 @@ export function toRawFolder(folder: Folder): RawFolder {
 }
 
 export function fromRawEvent(raw: RawEvent): Event {
-  const dates = raw.dates?.map((ms) => fromEpochMillisecondsToZDT(ms))
+  const dateSeeds = raw.dates?.map((ms) => fromEpochMillisecondsToZDT(ms))
 
   return {
     ...raw,
-    dates,
-    timeSeed: dates?.[0],
+    dates: dateSeeds?.map((seed) => seed.toPlainDate()),
+    timeSeed: dateSeeds?.[0],
     times: raw.times?.map((ms) => fromEpochMillisecondsToZDT(ms)),
     duration:
       raw.duration != null
@@ -189,7 +211,9 @@ export function fromRawEvent(raw: RawEvent): Event {
 export function toRawEvent(event: Event): RawEvent {
   return {
     ...event,
-    dates: event.dates?.map((instant) => instant.epochMilliseconds),
+    dates: toEventMembershipTimeSeed(event.dates, event.timeSeed)?.map((date) =>
+      Date.parse(date)
+    ),
     times: event.times?.map((instant) => instant.epochMilliseconds),
     duration: event.duration?.total("hours"),
     scheduledEvent: event.scheduledEvent
@@ -198,6 +222,9 @@ export function toRawEvent(event: Event): RawEvent {
     signUpBlocks: event.signUpBlocks?.map((block) => toRawSignUpBlock(block)),
   }
 }
+
+export const toEventDateStrings = (event: Pick<Event, "dates" | "timeSeed">): string[] | undefined =>
+  toEventMembershipTimeSeed(event.dates, event.timeSeed)
 
 export function fromRawResponse(raw: RawResponse): Response {
   return {

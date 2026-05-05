@@ -55,7 +55,8 @@ const startTime = computed(() => {
 const endTime = computed(() => (startTime.value.add(duration.value)))
 
 const event = computed(() => ({
-  dates: dates.value,
+  dates: dates.value.map((date) => date.toPlainDate()),
+  timeSeed: dates.value[0],
   duration: duration.value,
   startTime: startTime.value.toPlainTime(),
   endTime: endTime.value.toPlainTime(),

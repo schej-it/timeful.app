@@ -11,6 +11,7 @@ import {
   dateToDowDate,
   dateCompare,
   fromEpochMillisecondsToZDT,
+  getEventDateSeeds,
   getDateDayOffset,
   getDateHoursOffset,
   getRenderedWeekStart,
@@ -425,7 +426,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       },
     })
 
-    const eventDates = opts.event.value.dates ?? []
+    const eventDates = getEventDateSeeds(opts.event.value)
     if (eventDates.length === 0) return
     const pageStartDate = getDateDayOffset(
       eventDates[0],
@@ -488,7 +489,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   function getManualAvailabilityDow(
     fromManualAvailability: ZdtMap<ZdtSet> = manualAvailability.value
   ): Record<string, ZdtSet> {
-    const eventDates = opts.event.value.dates ?? []
+    const eventDates = getEventDateSeeds(opts.event.value)
     const renderedWeekStart = getRenderedWeekStart(
       opts.weekOffset.value,
       opts.event.value.startOnMonday
@@ -525,7 +526,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   ): Record<string, ZdtSet> {
     if (!fromManualAvailability) return {}
 
-    const eventDates = opts.event.value.dates ?? []
+    const eventDates = getEventDateSeeds(opts.event.value)
     const renderedWeekStart = getRenderedWeekStart(
       opts.weekOffset.value,
       opts.event.value.startOnMonday
@@ -574,7 +575,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
         if (num > maxLocal) maxLocal = num
       }
     } else {
-      const eventDates = opts.event.value.dates ?? []
+      const eventDates = getEventDateSeeds(opts.event.value)
       for (const date of eventDates) {
         for (const time of opts.times.value) {
           const num = [

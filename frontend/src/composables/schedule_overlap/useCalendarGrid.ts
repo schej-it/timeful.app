@@ -3,6 +3,7 @@ import { Temporal } from "temporal-polyfill"
 import {
   compareDuration,
   dateToDowDate,
+  getEventDateSeeds,
   getDateInTimezone,
   getDateHoursOffset,
   getRenderedWeekStart,
@@ -327,7 +328,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
           event.value.startOnMonday
         )
         const tmpDate = dateToDowDate(
-          event.value.dates ?? [],
+          getEventDateSeeds(event.value),
           offsetZDT,
           weekOffset.value,
           true,
@@ -340,7 +341,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       return { dateString, dayString }
     }
 
-    const eventDates = event.value.dates ?? []
+    const eventDates = getEventDateSeeds(event.value)
     const eventTimes = (event.value as { times?: Temporal.ZonedDateTime[] })
       .times
 
@@ -437,7 +438,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     const allDaysSet = new ZdtSet(
       allDays.value.map((d) => d.dateObject)
     )
-    const eventDates = event.value.dates ?? []
+    const eventDates = getEventDateSeeds(event.value)
     if (eventDates.length === 0) return monthDays
 
     const date = eventDates[0]
@@ -514,7 +515,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
   )
 
   const curMonthText = computed(() => {
-    const eventDates = event.value.dates ?? []
+    const eventDates = getEventDateSeeds(event.value)
     if (eventDates.length === 0) return ""
     const date = eventDates[0]
     const curMonthPlainDate = date.toPlainDate().with({ day: 1 }).add({
@@ -543,7 +544,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
 
   const hasNextPage = computed(() => {
     if (event.value.daysOnly) {
-      const eventDates = event.value.dates ?? []
+      const eventDates = getEventDateSeeds(event.value)
       if (eventDates.length === 0) return false
       const lastDay = eventDates[eventDates.length - 1]
       const curDate = eventDates[0]
@@ -690,7 +691,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
   }
 
   const getLocalTimezone = (): string => {
-    const eventDates = event.value.dates ?? []
+    const eventDates = getEventDateSeeds(event.value)
     if (eventDates.length === 0) return ""
     // Use Temporal to get timezone information
     return eventDates[0].timeZoneId

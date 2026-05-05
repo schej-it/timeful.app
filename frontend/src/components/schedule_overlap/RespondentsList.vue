@@ -422,7 +422,7 @@ import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } 
 import { storeToRefs } from "pinia"
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
-import { _delete, getLocale, zdtSetHas } from "@/utils"
+import { _delete, getEventDateSeeds, getLocale, zdtSetHas } from "@/utils"
 import { posthog } from "@/plugins/posthog"
 import UserAvatarContent from "../UserAvatarContent.vue"
 import EventOptions from "./EventOptions.vue"
@@ -678,7 +678,7 @@ function exportCsv() {
       b.user.firstName ?? ""
     )
   )
-  const eventDates = props.event.dates ?? []
+  const eventDates = getEventDateSeeds(props.event)
 
   if (exportCsvDialog.type === "datesToAvailable") {
     const header = ["Date / Time"]

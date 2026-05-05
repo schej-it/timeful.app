@@ -27,8 +27,7 @@ export type Event = Omit<
   RawEvent,
   "dates" | "times" | "duration" | "scheduledEvent" | "signUpBlocks"
 > & {
-  // TODO PlainDate?
-  dates?: Temporal.ZonedDateTime[]
+  dates?: Temporal.PlainDate[]
   timeSeed?: Temporal.ZonedDateTime
   times?: Temporal.ZonedDateTime[]
   startTime?: Temporal.PlainTime

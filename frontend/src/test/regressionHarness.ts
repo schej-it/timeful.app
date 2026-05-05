@@ -29,7 +29,8 @@ export const makeAvailabilityData = (
     event: ref({
       _id: "evt-1",
       type: eventType,
-      dates: [day],
+      dates: [day.toPlainDate()],
+      timeSeed: day,
       duration: durations.ONE_HOUR,
     } as never),
     weekOffset: ref(0),
@@ -81,7 +82,8 @@ export const makeCalendarEventsHarness = ({
     event: ref({
       _id: "evt-1",
       type: eventTypes.SPECIFIC_DATES,
-      dates: [zdt("2026-01-01T00:00:00Z")],
+      dates: [Temporal.PlainDate.from("2026-01-01")],
+      timeSeed: zdt("2026-01-01T00:00:00Z"),
       duration: durations.ONE_HOUR,
     }),
     weekOffset: ref(0),
@@ -121,7 +123,8 @@ export const makeCalendarEventsHarness = ({
 export const makeEventSchedulingHarness = ({
   slotStart,
   eventType = eventTypes.SPECIFIC_DATES,
-  dates = [zdt("2026-01-01T00:00:00Z")],
+  dates = [Temporal.PlainDate.from("2026-01-01")],
+  timeSeed = zdt("2026-01-01T00:00:00Z"),
   weekOffset = 0,
   startOnMonday = false,
   curTimezoneValue = UTC,
@@ -129,7 +132,8 @@ export const makeEventSchedulingHarness = ({
 }: {
   slotStart: Temporal.ZonedDateTime
   eventType?: EventTypeValue
-  dates?: Temporal.ZonedDateTime[]
+  dates?: Temporal.PlainDate[]
+  timeSeed?: Temporal.ZonedDateTime
   weekOffset?: number
   startOnMonday?: boolean
   curTimezoneValue?: string
@@ -145,6 +149,7 @@ export const makeEventSchedulingHarness = ({
       location: "Room 42",
       type: eventType,
       dates,
+      timeSeed,
       duration: durations.ONE_HOUR,
       startOnMonday,
     }),

@@ -73,6 +73,7 @@ import { put } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import type { Event } from "@/types"
+import { toEventDateStrings } from "@/types/transport"
 
 const props = defineProps<{
   event: Event
@@ -100,7 +101,7 @@ const saveDescription = () => {
   const eventPayload = {
     name: props.event.name,
     duration: props.event.duration,
-    dates: props.event.dates,
+    dates: toEventDateStrings(props.event),
     type: props.event.type,
     description: newDescription.value,
   }
