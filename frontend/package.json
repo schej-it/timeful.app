@@ -11,8 +11,8 @@
     "gen:api": "swagger2openapi ../server/docs/swagger.yaml -o src/types/.swagger-v3.yaml --yaml && openapi-typescript src/types/.swagger-v3.yaml -o src/types/api.ts && rm src/types/.swagger-v3.yaml",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
-    "lint": "eslint src --cache --concurrency 8",
-    "lint:fix": "eslint src --fix --cache --concurrency 8"
+    "lint": "eslint src --cache --concurrency auto",
+    "lint:fix": "eslint src --fix --cache --concurrency auto"
   },
   "dependencies": {
     "@gtm-support/vue-gtm": "^3.1.0",
