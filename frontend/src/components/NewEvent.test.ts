@@ -226,6 +226,58 @@ describe("NewEvent", () => {
     ).toBe("09:00:00")
   })
 
+  it("preserves non-hour-aligned edit times after saved timezone reconstruction", () => {
+    localStorage.setItem(
+      "timezone",
+      JSON.stringify({
+        value: "Asia/Kathmandu",
+        offset: "PT5H45M",
+        label: "Nepal Time",
+        gmtString: "GMT+5:45",
+      })
+    )
+
+    const wrapper = shallowMount(NewEvent, {
+      props: {
+        edit: true,
+        event: {
+          _id: "evt-3a",
+          name: "Quarter-hour event",
+          dates: [Temporal.PlainDate.from("2026-06-15")],
+          timeSeed: Temporal.ZonedDateTime.from("2026-06-15T12:00:00+00:00[UTC]"),
+          duration: Temporal.Duration.from({ hours: 1, minutes: 30 }),
+        },
+      },
+      global: {
+        stubs: defaultStubs,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      startTime?: Temporal.PlainTime
+      endTime?: Temporal.PlainTime
+      startTimeNum?: number
+      endTimeNum?: number
+      $: {
+        setupState?: {
+          startTime?: Temporal.PlainTime
+          endTime?: Temporal.PlainTime
+          startTimeNum?: number
+          endTimeNum?: number
+        }
+      }
+    }
+
+    expect(
+      (vm.startTime ?? vm.$.setupState?.startTime)?.toString()
+    ).toBe("17:45:00")
+    expect(
+      (vm.endTime ?? vm.$.setupState?.endTime)?.toString()
+    ).toBe("19:15:00")
+    expect(vm.startTimeNum ?? vm.$.setupState?.startTimeNum).toBe(17.75)
+    expect(vm.endTimeNum ?? vm.$.setupState?.endTimeNum).toBe(19.25)
+  })
+
   it("prefers the explicit event time seed over membership dates when editing", () => {
     localStorage.setItem(
       "timezone",
