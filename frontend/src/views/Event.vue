@@ -520,6 +520,7 @@ import HelpDialog from "@/components/HelpDialog.vue"
 import EventDescription from "@/components/event/EventDescription.vue"
 import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
 import PubliftAd from "@/components/event/PubliftAd.vue"
+import { adsEnabled } from "@/utils/ads"
 
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
@@ -599,7 +600,13 @@ const userHasResponded = computed(() => {
   return Boolean(authUser.value?._id && ev?.responses && authUser.value._id in ev.responses)
 })
 const dateString = computed(() => loader.event.value ? getDateRangeStringForEvent(loader.event.value) : "")
-const showAds = computed(() => !loader.ownerIsPremium.value && !isPremiumUser.value && !isSettingSpecificTimes.value)
+const showAds = computed(
+  () =>
+    adsEnabled &&
+    !loader.ownerIsPremium.value &&
+    !isPremiumUser.value &&
+    !isSettingSpecificTimes.value
+)
 const showFeedbackBtn = computed(() => isPhone.value)
 const actionButtonText = computed(() => {
   if (isSignUp.value) return "Edit slots"

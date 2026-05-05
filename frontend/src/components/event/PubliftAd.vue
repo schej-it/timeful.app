@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="showAd"
+    v-if="shouldShowAd"
     class="tw-relative tw-rounded-lg tw-bg-light-gray tw-p-3 tw-pt-5"
   >
     <span
@@ -23,9 +23,10 @@
 </template>
 
 <script setup lang="ts">
-import { watch, onMounted } from "vue"
+import { computed, watch, onMounted } from "vue"
 import { useMainStore } from "@/stores/main"
 import { upgradeDialogTypes } from "@/constants"
+import { adsEnabled } from "@/utils/ads"
 
 const props = defineProps<{
   showAd?: boolean
@@ -33,6 +34,7 @@ const props = defineProps<{
 }>()
 
 const mainStore = useMainStore()
+const shouldShowAd = computed(() => adsEnabled && props.showAd)
 
 function removeAds() {
   mainStore.showUpgradeDialog({ type: upgradeDialogTypes.REMOVE_ADS })
@@ -50,7 +52,7 @@ function registerZone() {
 }
 
 watch(
-  () => props.showAd,
+  shouldShowAd,
   (val) => {
     if (val && props.fuseId) {
       setTimeout(() => {
@@ -61,7 +63,7 @@ watch(
 )
 
 onMounted(() => {
-  if (props.showAd && props.fuseId) {
+  if (shouldShowAd.value && props.fuseId) {
     setTimeout(() => {
       registerZone()
     }, 0)
