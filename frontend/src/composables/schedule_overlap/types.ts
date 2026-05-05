@@ -151,9 +151,7 @@ export const normalizeCalendarOptions = (
   },
 })
 
-// TODO rename to CalendarEventLike
-
-export interface CalendarEventLite
+export interface NormalizedCalendarEvent
   extends Omit<CalendarEvent, "startDate" | "endDate"> {
   startDate: Temporal.ZonedDateTime
   endDate: Temporal.ZonedDateTime
@@ -163,15 +161,15 @@ export interface CalendarEventLite
 
 // Type for processed calendar events where dates are guaranteed to be ZonedDateTime objects
 export interface ProcessedCalendarEvent
-  extends Omit<CalendarEventLite, "startDate" | "endDate"> {
+  extends Omit<NormalizedCalendarEvent, "startDate" | "endDate"> {
   startDate: Temporal.ZonedDateTime
   endDate: Temporal.ZonedDateTime
 }
 
-export type CalendarEventsByDay = CalendarEventLite[][]
+export type CalendarEventsByDay = NormalizedCalendarEvent[][]
 
 export interface CalendarEventsMapEntry {
-  calendarEvents?: CalendarEventLite[]
+  calendarEvents?: NormalizedCalendarEvent[]
   error?: string
 }
 

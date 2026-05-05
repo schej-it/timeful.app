@@ -10,7 +10,7 @@ import type { Event, User } from "@/types"
 import type { RawEvent } from "@/types/transport"
 import { fromRawEvent } from "@/types/transport"
 import type {
-  CalendarEventLite,
+  NormalizedCalendarEvent,
   CalendarEventsMap,
 } from "@/composables/schedule_overlap/types"
 import type { ScheduleOverlapInstance } from "./types"
@@ -37,7 +37,7 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
   const ownerIsPremium = ref(false)
   const ownerPremiumChecked = ref(false)
   const calendarEventsMap = ref<CalendarEventsMap>({})
-  const calendarAvailabilities = ref<Record<string, CalendarEventLite[]>>({})
+  const calendarAvailabilities = ref<Record<string, NormalizedCalendarEvent[]>>({})
   const calendarPermissionGranted = ref(true)
   const fromEditEvent = ref(false)
   const hasRefetchedAuthUserCalendarEvents = ref(false)

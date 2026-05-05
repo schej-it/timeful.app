@@ -215,7 +215,7 @@ import {
   states,
 } from "@/composables/schedule_overlap/types"
 import type {
-  FetchedResponse, RowCol, Timezone, ScheduleOverlapState, ScheduleOverlapEvent, CalendarEventLite, CalendarEventsByDay, CalendarEventsMap,
+  FetchedResponse, RowCol, Timezone, ScheduleOverlapState, ScheduleOverlapEvent, NormalizedCalendarEvent, CalendarEventsByDay, CalendarEventsMap,
   SignUpBlockLite,
 } from "@/composables/schedule_overlap/types"
 import type {
@@ -246,7 +246,7 @@ const props = withDefaults(
     curGuestId?: string
     addingAvailabilityAsGuest?: boolean
     initialTimezone?: Timezone
-    calendarAvailabilities?: Record<string, CalendarEventLite[]>
+    calendarAvailabilities?: Record<string, NormalizedCalendarEvent[]>
   }>(),
   {
     ownerIsPremium: false,

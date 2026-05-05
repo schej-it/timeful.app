@@ -333,7 +333,7 @@ import {
   SPLIT_GAP_WIDTH,
 } from "@/composables/schedule_overlap/types"
 import type {
-  CalendarEventLite,
+  NormalizedCalendarEvent,
   CalendarEventsByDay,
   DayItem,
   FetchedResponse,
@@ -403,7 +403,7 @@ defineProps<{
   loadingResponsesLoading: boolean
   toolRow: ScheduleOverlapToolRowViewModel
   getRenderedTimeBlockStyle: (
-    block: CalendarEventLite | OverlaidAvailabilityBlock
+    block: NormalizedCalendarEvent | OverlaidAvailabilityBlock
   ) => Record<string, string>
   getSignUpBlockStyle: (block: SignUpBlockLite) => Record<string, string>
 }>()

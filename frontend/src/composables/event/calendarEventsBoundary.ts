@@ -4,7 +4,7 @@ import type {
 import type { RawCalendarEvent } from "@/types/transport"
 import { fromRawCalendarEvent } from "@/types/transport"
 import type {
-  CalendarEventLite,
+  NormalizedCalendarEvent,
   CalendarEventsMap,
   CalendarEventsMapEntry,
 } from "@/composables/schedule_overlap/types"
@@ -40,9 +40,9 @@ const normalizeCalendarEventError = (error: unknown): string | undefined => {
   return "Unknown calendar error"
 }
 
-const toCalendarEventLite = (
+const toNormalizedCalendarEvent = (
   rawEvent: RawCalendarEvent
-): CalendarEventLite | null => {
+): NormalizedCalendarEvent | null => {
   const event = fromRawCalendarEvent(rawEvent)
   if (!event.startDate || !event.endDate) return null
 
@@ -57,7 +57,7 @@ export const fromCalendarEventsTransportEntry = (
   entry?: CalendarEventsTransportEntry
 ): CalendarEventsMapEntry => ({
   calendarEvents: entry?.calendarEvents?.flatMap((event) => {
-    const normalizedEvent = toCalendarEventLite(event)
+    const normalizedEvent = toNormalizedCalendarEvent(event)
     return normalizedEvent ? [normalizedEvent] : []
   }),
   error: normalizeCalendarEventError(entry?.error),
@@ -75,12 +75,12 @@ export const fromCalendarEventsTransportMap = (
 
 export const fromCalendarAvailabilitiesTransportMap = (
   map: CalendarAvailabilitiesTransportMap
-): Record<string, CalendarEventLite[]> =>
+): Record<string, NormalizedCalendarEvent[]> =>
   Object.fromEntries(
     Object.entries(map).map(([userId, events]) => [
       userId,
       (events ?? []).flatMap((event) => {
-        const normalizedEvent = toCalendarEventLite(event)
+        const normalizedEvent = toNormalizedCalendarEvent(event)
         return normalizedEvent ? [normalizedEvent] : []
       }),
     ])

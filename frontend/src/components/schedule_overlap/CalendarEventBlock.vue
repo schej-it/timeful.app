@@ -19,12 +19,12 @@
 
 <script setup lang="ts">
 import { computed } from "vue"
-import type { CalendarEventLite } from "@/composables/schedule_overlap/types"
+import type { NormalizedCalendarEvent } from "@/composables/schedule_overlap/types"
 
 const props = withDefaults(
   defineProps<{
     blockStyle?: Record<string, string>
-    calendarEvent: CalendarEventLite
+    calendarEvent: NormalizedCalendarEvent
     isGroup: boolean
     isEditingAvailability: boolean
     noEventNames: boolean

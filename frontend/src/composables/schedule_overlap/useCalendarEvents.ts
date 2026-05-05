@@ -18,7 +18,7 @@ import { useMainStore } from "@/stores/main"
 import type { RawResponse } from "@/types/transport"
 import { fromRawResponse } from "@/types/transport"
 import {
-  type CalendarEventLite,
+  type NormalizedCalendarEvent,
   type CalendarEventsByDay,
   type CalendarEventsMap,
   type CalendarOptions,
@@ -43,7 +43,7 @@ export interface UseCalendarEventsOptions {
   curTimezone: Ref<Timezone>
   calendarEventsMap: Ref<CalendarEventsMap>
   sampleCalendarEventsByDay?: Ref<CalendarEventsByDay | undefined>
-  calendarAvailabilities: Ref<Record<string, CalendarEventLite[]>>
+  calendarAvailabilities: Ref<Record<string, NormalizedCalendarEvent[]>>
   addingAvailabilityAsGuest: Ref<boolean>
   calendarOnly: Ref<boolean>
 
@@ -165,7 +165,7 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
     const authUser = mainStore.authUser
     if (!authUser || opts.addingAvailabilityAsGuest.value) return []
 
-    const events: CalendarEventLite[] = []
+    const events: NormalizedCalendarEvent[] = []
     const calendarAccounts = opts.isGroup.value
       ? sharedCalendarAccounts.value
       : ((authUser.calendarAccounts ?? {}) as SharedCalendarAccounts)
@@ -196,7 +196,7 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
       }
     }
 
-    const eventsCopy = JSON.parse(JSON.stringify(events)) as CalendarEventLite[]
+    const eventsCopy = JSON.parse(JSON.stringify(events)) as NormalizedCalendarEvent[]
     const renderedWeekStart =
       opts.event.value.type === eventTypes.DOW ||
       opts.event.value.type === eventTypes.GROUP
