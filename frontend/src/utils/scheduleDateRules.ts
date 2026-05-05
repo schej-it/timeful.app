@@ -17,6 +17,13 @@ export type EventLike = Pick<
   "type" | "dates" | "daysOnly" | "startOnMonday" | "duration"
 >
 
+export interface TimeBlock {
+  startDate: Temporal.ZonedDateTime
+  endDate: Temporal.ZonedDateTime
+  id?: string
+  [key: string]: unknown
+}
+
 /** Returns the unique day-start datetimes for specific-times events */
 export const getSpecificTimesDayStarts = (
   eventDates: ZonedDateTime[],
