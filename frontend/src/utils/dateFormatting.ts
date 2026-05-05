@@ -1,11 +1,8 @@
 import { eventTypes } from "@/constants"
+import type { EventScheduleFields } from "@/types"
 import { Temporal } from "temporal-polyfill"
-
-import type { EventLike as EventDateRulesEventLike } from "./eventDateRules"
 import type { ZonedDateTime } from "./temporalPrimitives"
 import { toZDT } from "./timezoneDateRules"
-
-export type EventLike = EventDateRulesEventLike
 
 /** Returns a string representation of the given date, i.e. May 14th is "5/14". */
 export const getDateString = (date: ZonedDateTime, utc = false): string => {
@@ -60,7 +57,7 @@ export const getDateRangeString = (
 }
 
 /** Returns a string representing the date range for the provided event. */
-export const getDateRangeStringForEvent = (event: EventLike): string => {
+export const getDateRangeStringForEvent = (event: EventScheduleFields): string => {
   if (!event.dates || event.dates.length === 0) return ""
 
   if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {

@@ -1,5 +1,5 @@
 import { eventTypes } from "@/constants"
-import type { Event } from "@/types"
+import type { Event, EventWeekProjectionFields } from "@/types"
 import type { RawResponse } from "@/types/transport"
 import { fromRawResponse } from "@/types/transport"
 import {
@@ -38,7 +38,7 @@ export interface PluginSlotEntry {
 }
 
 export const getPluginEventTimeRange = (
-  event: Pick<PluginEvent, "type" | "dates" | "startOnMonday">,
+  event: EventWeekProjectionFields,
   weekOffset: number,
   renderedWeekStart?: Temporal.ZonedDateTime
 ): PluginEventTimeRange | null => {

@@ -4,7 +4,6 @@ export * from "./sign_in_utils"
 export * from "./location_utils"
 export * from "./timezone_utils"
 export * from "./plugin_utils"
-export type { EventLike } from "./eventDateRules"
 export {
   getEventMembershipDayOfWeekValues,
   getEventMembershipPlainDates,
@@ -70,7 +69,6 @@ export {
   convertUTCSlotsToLocalISO,
   dateFromObjectId,
 } from "./dateBoundaryAdapters"
-export type { EventLike as TimezoneEventLike } from "./timezoneDateRules"
 export {
   doesDstExist,
   getCurrentTimezone,

@@ -1,5 +1,6 @@
 import { computed, ref, watch, type Ref } from "vue"
 import { Temporal } from "temporal-polyfill"
+import type { EventScheduleFields } from "@/types"
 import {
   compareDuration,
   dateToDowDate,
@@ -18,7 +19,6 @@ import {
   ZdtMap,
   ZdtSet,
   zdtSetHas,
-  type EventLike as DateUtilsEventLike,
 } from "@/utils"
 import {
   eventTypes,
@@ -122,7 +122,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
 
   const timezoneReferenceDate = computed(() =>
     getTimezoneReferenceDateForEvent(
-      event.value as DateUtilsEventLike,
+      event.value as EventScheduleFields,
       weekOffset.value
     )
   )
