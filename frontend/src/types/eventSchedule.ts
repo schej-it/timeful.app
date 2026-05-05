@@ -6,6 +6,6 @@ export type EventScheduleFields = Pick<
 >
 
 export type EventWeekProjectionFields = Pick<
-  EventScheduleFields,
+  Event,
   "type" | "dates" | "startOnMonday"
 >
