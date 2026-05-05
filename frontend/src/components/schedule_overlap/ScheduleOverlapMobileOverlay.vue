@@ -55,17 +55,7 @@
           <ScheduleOverlapRespondentsPanel
             :max-height="100"
             :panel="overlay.respondentsPanel"
-            @update:show-calendar-events="emit('update:showCalendarEvents', $event)"
-            @update:show-best-times="emit('update:showBestTimes', $event)"
-            @update:hide-if-needed="emit('update:hideIfNeeded', $event)"
-            @toggle-show-event-options="emit('toggleShowEventOptions')"
-            @add-availability="emit('addAvailability')"
-            @add-availability-as-guest="emit('addAvailabilityAsGuest')"
-            @mouse-over-respondent="(e, userId) => emit('mouseOverRespondent', e, userId)"
-            @mouse-leave-respondent="emit('mouseLeaveRespondent')"
-            @click-respondent="(e, userId) => emit('clickRespondent', e, userId)"
-            @edit-guest-availability="emit('editGuestAvailability', $event)"
-            @refresh-event="emit('refreshEvent')"
+            v-bind="respondentsPanelListeners"
           />
         </div>
       </div>
@@ -115,4 +105,40 @@ const emit = defineEmits<{
   refreshEvent: []
   saveTempTimes: []
 }>()
+
+const respondentsPanelListeners = {
+  "onUpdate:showCalendarEvents": (value: boolean) => {
+    emit("update:showCalendarEvents", value)
+  },
+  "onUpdate:showBestTimes": (value: boolean) => {
+    emit("update:showBestTimes", value)
+  },
+  "onUpdate:hideIfNeeded": (value: boolean) => {
+    emit("update:hideIfNeeded", value)
+  },
+  onToggleShowEventOptions: () => {
+    emit("toggleShowEventOptions")
+  },
+  onAddAvailability: () => {
+    emit("addAvailability")
+  },
+  onAddAvailabilityAsGuest: () => {
+    emit("addAvailabilityAsGuest")
+  },
+  onMouseOverRespondent: (e: MouseEvent, userId: string) => {
+    emit("mouseOverRespondent", e, userId)
+  },
+  onMouseLeaveRespondent: () => {
+    emit("mouseLeaveRespondent")
+  },
+  onClickRespondent: (e: MouseEvent, userId: string) => {
+    emit("clickRespondent", e, userId)
+  },
+  onEditGuestAvailability: (userId: string) => {
+    emit("editGuestAvailability", userId)
+  },
+  onRefreshEvent: () => {
+    emit("refreshEvent")
+  },
+} as const
 </script>
