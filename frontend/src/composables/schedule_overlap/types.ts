@@ -170,10 +170,6 @@ export interface ProcessedCalendarEvent
 
 export type CalendarEventsByDay = CalendarEventLite[][]
 
-// Legacy type aliases for compatibility during migration
-export type CalendarEntry = CalendarEventLite
-export type CalendarEventsEntry = CalendarEventsMapEntry
-
 export interface CalendarEventsMapEntry {
   calendarEvents?: CalendarEventLite[]
   error?: string
