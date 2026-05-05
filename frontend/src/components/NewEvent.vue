@@ -674,7 +674,6 @@ const submit = async () => {
   selectedDays.value.sort((a, b) => Temporal.PlainDate.compare(a, b))
 
   let duration = getWrappedTimeRangeDuration(startTime.value, endTime.value)
-  const durationHoursNum = duration.total("hours")
 
   const dates: Temporal.ZonedDateTime[] = []
   let type: string
@@ -732,7 +731,7 @@ const submit = async () => {
 
   const payload = {
     name: name.value,
-    duration: durationHoursNum,
+    duration: duration.total("hours"),
     dates,
     hasSpecificTimes: specificTimesEnabled.value,
     notificationsEnabled: !authUser.value ? false : notificationsEnabled.value,

@@ -352,6 +352,49 @@ describe("NewEvent", () => {
     )
   })
 
+  it("submits day-only events with a zero duration payload", async () => {
+    const wrapper = shallowMount(NewEvent, {
+      props: {
+        contactsPayload: {
+          name: "Day only event",
+          startTime: 9,
+          endTime: 11,
+          daysOnly: true,
+          selectedDateOption: "Specific dates",
+          selectedDays: ["2026-01-02"],
+          notificationsEnabled: false,
+          timezone: {
+            value: "UTC",
+            label: "UTC",
+            gmtString: "GMT",
+            offset: durations.ZERO,
+          },
+        },
+      },
+      global: {
+        stubs: defaultStubs,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      submit?: () => Promise<void>
+      $: { setupState?: { submit?: () => Promise<void> } }
+    }
+
+    await (vm.submit ?? vm.$.setupState?.submit)?.()
+    await Promise.resolve()
+
+    expect(postMock).toHaveBeenCalledTimes(1)
+    expect(postMock.mock.calls[0]?.[0]).toBe("/events")
+    expect(
+      (
+        postMock.mock.calls[0]?.[1] as {
+          duration: number
+        }
+      ).duration
+    ).toBe(0)
+  })
+
   it("submits an overnight event with the next-day duration", async () => {
     const wrapper = shallowMount(NewEvent, {
       props: {
