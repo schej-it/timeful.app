@@ -2,9 +2,9 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { nextTick } from "vue"
-import { createLocalStorageMock } from "@/test/localStorage"
 import {
   buildScheduleOverlapProps,
+  installScheduleOverlapTestGlobals,
   mountScheduleOverlap,
 } from "./scheduleOverlapTestUtils"
 
@@ -34,19 +34,7 @@ vi.mock("@/plugins/posthog", () => ({
 describe("ScheduleOverlap", () => {
   beforeEach(() => {
     smAndDown.value = false
-    vi.stubGlobal("localStorage", createLocalStorageMock())
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() =>
-        Promise.resolve({
-          ok: true,
-          status: 200,
-          statusText: "OK",
-          headers: new Headers(),
-          text: () => Promise.resolve("{}"),
-        })
-      )
-    )
+    installScheduleOverlapTestGlobals()
   })
 
   it("renders overnight split calendar events without comparing Temporal.Duration via valueOf", () => {
