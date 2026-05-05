@@ -11,7 +11,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from "vue"
 import { storeToRefs } from "pinia"
 import { useMainStore } from "@/stores/main"
 import { get } from "@/utils"
-import { adsEnabled } from "@/utils/ads"
+import { freemiumEnabled } from "@/utils/freemium"
 import { guestUserId } from "@/constants"
 
 const props = defineProps<{
@@ -19,7 +19,7 @@ const props = defineProps<{
 }>()
 
 const mainStore = useMainStore()
-const { isPremiumUser } = storeToRefs(mainStore)
+const { viewerHasPremiumAccess } = storeToRefs(mainStore)
 
 const adContainer = ref<HTMLDivElement>()
 const ownerIsPremium = ref(false)
@@ -60,10 +60,10 @@ function loadCarbonAd() {
 
 const showAd = computed(() => {
   return (
-    adsEnabled &&
+    freemiumEnabled &&
     ownerLoaded.value &&
     !ownerIsPremium.value &&
-    !isPremiumUser.value
+    !viewerHasPremiumAccess.value
   )
 })
 

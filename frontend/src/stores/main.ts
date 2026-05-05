@@ -4,6 +4,10 @@ import { numFreeEvents, upgradeDialogTypes } from "@/constants"
 import type { UpgradeDialogType } from "@/constants"
 import { get, isPremiumUser as isPremiumUserUtil } from "@/utils"
 import {
+  freemiumEnabled,
+  viewerHasPremiumAccess as viewerHasPremiumAccessUtil,
+} from "@/utils/freemium"
+import {
   createFolder as createFolderService,
   deleteFolder as deleteFolderService,
   setEventFolder as setEventFolderService,
@@ -30,7 +34,7 @@ export const useMainStore = defineStore("main", () => {
   const signUpFormEnabled = ref(false)
   const daysOnlyEnabled = ref(true)
   const overlayAvailabilitiesEnabled = ref(true)
-  const enablePaywall = ref(true)
+  const enablePaywall = ref(freemiumEnabled)
 
   // Experiments
   const pricingPageConversion = ref("control")
@@ -41,6 +45,9 @@ export const useMainStore = defineStore("main", () => {
   const upgradeDialogData = ref<unknown>(null)
 
   const isPremiumUser = computed(() => isPremiumUserUtil(authUser.value))
+  const viewerHasPremiumAccess = computed(() =>
+    viewerHasPremiumAccessUtil(authUser.value)
+  )
 
   // New dialog
   const newDialogOptions = ref<NewDialogOptions>({
@@ -88,7 +95,7 @@ export const useMainStore = defineStore("main", () => {
     pricingPageConversion.value = conversion
   }
   const setEnablePaywall = (enabled: boolean) => {
-    enablePaywall.value = enabled
+    enablePaywall.value = freemiumEnabled && enabled
   }
   const setUpgradeDialogVisible = (visible: boolean) => {
     upgradeDialogVisible.value = visible
@@ -163,6 +170,8 @@ export const useMainStore = defineStore("main", () => {
     type: UpgradeDialogType
     data?: unknown
   }) => {
+    if (!freemiumEnabled) return
+
     setUpgradeDialogVisible(true)
     setUpgradeDialogType(type)
     setUpgradeDialogData(data)
@@ -182,7 +191,7 @@ export const useMainStore = defineStore("main", () => {
   }) => {
     if (
       enablePaywall.value &&
-      !isPremiumUser.value &&
+      !viewerHasPremiumAccess.value &&
       (authUser.value?.numEventsCreated ?? 0) >= numFreeEvents
     ) {
       showUpgradeDialog({ type: upgradeDialogTypes.CREATE_EVENT })
@@ -342,6 +351,7 @@ export const useMainStore = defineStore("main", () => {
     newDialogOptions,
     // getters
     isPremiumUser,
+    viewerHasPremiumAccess,
     // mutations (kept as discrete fns for 1:1 parity with Vuex commit sites)
     setError,
     setInfo,

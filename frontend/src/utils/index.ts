@@ -4,6 +4,7 @@ export * from "./sign_in_utils"
 export * from "./location_utils"
 export * from "./timezone_utils"
 export * from "./plugin_utils"
+export * from "./freemium"
 export {
   getEventDateSeeds,
   getEventMembershipDayOfWeekValues,

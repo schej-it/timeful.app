@@ -21,7 +21,7 @@ import { storeToRefs } from "pinia"
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { get } from "@/utils"
-import { adsEnabled } from "@/utils/ads"
+import { freemiumEnabled } from "@/utils/freemium"
 import { guestUserId } from "@/constants"
 import { posthog } from "@/plugins/posthog"
 import type { User } from "@/types"
@@ -67,7 +67,7 @@ function isEduEmail(email: string): boolean {
 }
 
 const showAd = computed(() => {
-  if (!adsEnabled) {
+  if (!freemiumEnabled) {
     return false
   }
 

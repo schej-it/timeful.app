@@ -520,7 +520,7 @@ import HelpDialog from "@/components/HelpDialog.vue"
 import EventDescription from "@/components/event/EventDescription.vue"
 import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
 import PubliftAd from "@/components/event/PubliftAd.vue"
-import { adsEnabled } from "@/utils/ads"
+import { freemiumEnabled } from "@/utils/freemium"
 
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
@@ -555,7 +555,7 @@ const router = useRouter()
 const route = useRoute()
 
 const mainStore = useMainStore()
-const { authUser, isPremiumUser } = storeToRefs(mainStore)
+const { authUser, viewerHasPremiumAccess } = storeToRefs(mainStore)
 const { isPhone } = useDisplayHelpers()
 
 const scheduleOverlap = ref<ScheduleOverlapInstance | null>(null)
@@ -602,9 +602,9 @@ const userHasResponded = computed(() => {
 const dateString = computed(() => loader.event.value ? getDateRangeStringForEvent(loader.event.value) : "")
 const showAds = computed(
   () =>
-    adsEnabled &&
+    freemiumEnabled &&
     !loader.ownerIsPremium.value &&
-    !isPremiumUser.value &&
+    !viewerHasPremiumAccess.value &&
     !isSettingSpecificTimes.value
 )
 const showFeedbackBtn = computed(() => isPhone.value)

@@ -8,7 +8,7 @@
           Dashboard
         </div>
         <div
-          v-if="!isPremiumUser"
+          v-if="!viewerHasPremiumAccess"
           class="tw-flex tw-items-baseline tw-gap-2 tw-text-sm tw-font-normal tw-text-very-dark-gray"
         >
           <div>
@@ -194,7 +194,6 @@
 defineOptions({ name: "AppDashboard" })
 import { computed, ref, watch } from "vue"
 import { storeToRefs } from "pinia"
-import { isPremiumUser as isPremiumUserUtil } from "@/utils/general_utils"
 import draggable from "vuedraggable"
 import {
   eventTypes,
@@ -215,8 +214,7 @@ interface DragEvent {
 }
 
 const mainStore = useMainStore()
-const { authUser, events, folders } = storeToRefs(mainStore)
-const isPremiumUser = computed(() => isPremiumUserUtil(authUser.value))
+const { authUser, events, folders, viewerHasPremiumAccess } = storeToRefs(mainStore)
 
 const openUpgradeDialog = () => {
   mainStore.showUpgradeDialog({ type: upgradeDialogTypes.UPGRADE_MANUALLY })

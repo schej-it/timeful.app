@@ -26,7 +26,7 @@
 import { computed, watch, onMounted } from "vue"
 import { useMainStore } from "@/stores/main"
 import { upgradeDialogTypes } from "@/constants"
-import { adsEnabled } from "@/utils/ads"
+import { freemiumEnabled } from "@/utils/freemium"
 
 const props = defineProps<{
   showAd?: boolean
@@ -34,7 +34,7 @@ const props = defineProps<{
 }>()
 
 const mainStore = useMainStore()
-const shouldShowAd = computed(() => adsEnabled && props.showAd)
+const shouldShowAd = computed(() => freemiumEnabled && props.showAd)
 
 function removeAds() {
   mainStore.showUpgradeDialog({ type: upgradeDialogTypes.REMOVE_ADS })

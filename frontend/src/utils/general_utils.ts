@@ -3,7 +3,7 @@
 */
 
 import { eventTypes, UTC } from "@/constants"
-import type { Event, User } from "@/types"
+import type { Event } from "@/types"
 import { getEventDateSeeds } from "./eventDateRules"
 import {
   dateToDowDate,
@@ -278,19 +278,6 @@ export const lightOrDark = (color: string): "light" | "dark" => {
   } else {
     return "dark"
   }
-}
-
-/** Returns whether the given user is a premium user */
-export const isPremiumUser = (authUser: User | null | undefined): boolean => {
-  if (!authUser) return false
-
-  if (authUser.stripeCustomerId) {
-    if (authUser.isPremium !== null && authUser.isPremium !== undefined) {
-      return authUser.isPremium
-    }
-    return true
-  }
-  return false
 }
 
 /** Adds an event ID to the 'eventsCreated' list in localStorage */

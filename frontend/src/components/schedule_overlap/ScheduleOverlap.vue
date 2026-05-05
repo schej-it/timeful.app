@@ -54,7 +54,7 @@ import {
   availabilityTypes, eventTypes, guestUserId, UTC, type AvailabilityType
 } from "@/constants"
 import { useMainStore } from "@/stores/main"
-import { adsEnabled } from "@/utils/ads"
+import { freemiumEnabled } from "@/utils/freemium"
 import ScheduleOverlapDaysOnlyGrid from "./ScheduleOverlapDaysOnlyGrid.vue"
 import ScheduleOverlapMobileOverlay from "./ScheduleOverlapMobileOverlay.vue"
 import ScheduleOverlapSidebar from "./ScheduleOverlapSidebar.vue"
@@ -505,9 +505,9 @@ useScheduleOverlapController({
 // ── Local computed ──────────────────────────────────────────────────────
 const showAds = computed(
   () =>
-    adsEnabled &&
+    freemiumEnabled &&
     !props.ownerIsPremium &&
-    !mainStore.isPremiumUser &&
+    !mainStore.viewerHasPremiumAccess &&
     state.value !== states.SET_SPECIFIC_TIMES
 )
 

@@ -10,7 +10,7 @@
           v-if="
             eventType.header === 'Events I created' &&
             enablePaywall &&
-            !isPremiumUser
+            !viewerHasPremiumAccess
           "
           class="tw-flex tw-items-baseline tw-gap-2 tw-text-sm tw-font-normal tw-text-very-dark-gray"
         >
@@ -102,7 +102,6 @@ import { storeToRefs } from "pinia"
 import { posthog } from "@/plugins/posthog"
 import { numFreeEvents, upgradeDialogTypes } from "@/constants"
 import { useMainStore } from "@/stores/main"
-import { isPremiumUser as isPremiumUserUtil } from "@/utils/general_utils"
 import type { Event } from "@/types"
 
 const props = withDefaults(
@@ -121,8 +120,7 @@ const defaultNumEventsToShow = computed(() => (display.lgAndUp.value ? 6 : 4))
 const sortedEvents = computed(() => props.eventType.events)
 
 const mainStore = useMainStore()
-const { authUser, enablePaywall } = storeToRefs(mainStore)
-const isPremiumUser = computed(() => isPremiumUserUtil(authUser.value))
+const { authUser, enablePaywall, viewerHasPremiumAccess } = storeToRefs(mainStore)
 
 const toggleShowAll = () => {
   showAll.value = !showAll.value
