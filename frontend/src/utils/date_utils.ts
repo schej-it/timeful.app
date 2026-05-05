@@ -21,11 +21,14 @@ import { get } from "./fetch_utils"
 import { Temporal } from "temporal-polyfill"
 import type { Event } from "@/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
-import {
-  compareDuration,
-  zdtKey,
-} from "./temporalPrimitives"
+import { compareDuration, zdtKey } from "./temporalPrimitives"
 import type { ZonedDateTime } from "./temporalPrimitives"
+import {
+  dateCompare,
+  dateGt,
+  isDateBetweenInclusive,
+  rangeContainsInclusive,
+} from "./dateRanges"
 import { getFixedOffsetTimeZoneId, resolveTimezoneValue } from "./timezone_utils"
 
 /*
@@ -54,6 +57,31 @@ export {
   zdtSetHas,
   ZdtSet,
 } from "./temporalPrimitives"
+export {
+  compareDateDay,
+  dateCompare,
+  dateEq,
+  dateGeq,
+  dateGt,
+  dateLeq,
+  dateLt,
+  isDateBetween,
+  isDateBetweenInclusive,
+  isDateInRange,
+  isTimeNumBetweenDates,
+  rangeContainsInclusive,
+  rangesOverlap,
+} from "./dateRanges"
+export {
+  dateToTimeNum,
+  getDateWithTimeNum,
+  getWrappedTimeRangeDuration,
+  plainTimeToTimeNum,
+  splitTimeNum,
+  timeNumToPlainTime,
+  utcTimeToLocalTime,
+  utcTimeToLocalTimeNum,
+} from "./timeConversions"
 
 export interface TimeBlock {
   startDate: Temporal.ZonedDateTime
@@ -61,9 +89,6 @@ export interface TimeBlock {
   id?: string
   [key: string]: unknown
 }
-
-const plainTimeToMinutes = (time: Temporal.PlainTime): number =>
-  time.hour * 60 + time.minute
 
 /** Helper: Convert Temporal.ZonedDateTime or ZonedDateTime to ZonedDateTime in specified timezone */
 export const toZDT = (
@@ -200,62 +225,12 @@ export const getEventMembershipDayOfWeekValues = (
   dates?: ZonedDateTime[]
 ): number[] => (dates ?? []).map((date) => date.dayOfWeek)
 
-/** Returns a new ZonedDateTime with the given date and the specified timeNum (e.g. 11.5) */
-export const getDateWithTimeNum = (
-  date: ZonedDateTime,
-  timeNum: number,
-  utc = false
-): Temporal.ZonedDateTime => {
-  const zdt = utc ? toZDT(date, UTC) : toZDT(date)
-
-  const hours = Math.floor(timeNum)
-  const minutes = Math.floor((timeNum - hours) * 60)
-
-  return zdt.with({ hour: hours, minute: minutes })
-}
-
 /** Returns a Temporal.ZonedDateTime from the given mongodb objectId */
 export const dateFromObjectId = function (
   objectId: string
 ): Temporal.ZonedDateTime {
   const timestamp = parseInt(objectId.substring(0, 8), 16) * 1000
   return Temporal.Instant.fromEpochMilliseconds(timestamp).toZonedDateTimeISO(UTC)
-}
-
-/** Takes a timeNum (e.g. 9.5) and splits it into hours and minutes, returning an object of the form { hours, minutes } */
-export const splitTimeNum = (
-  timeNum: number
-): { hours: number; minutes: number } => {
-  const hours = Math.floor(timeNum)
-  const minutes = Math.floor((timeNum - hours) * 60)
-  return { hours, minutes }
-}
-
-/** Converts a Temporal.PlainTime to a timeNum (e.g. 9.5) */
-export const plainTimeToTimeNum = (time: Temporal.PlainTime): number => {
-  return time.hour + time.minute / 60
-}
-
-/** Converts a timeNum (e.g. 9.5) to a Temporal.PlainTime */
-export const timeNumToPlainTime = (timeNum: number): Temporal.PlainTime => {
-  const hours = Math.floor(timeNum)
-  const minutes = Math.floor((timeNum - hours) * 60)
-  return Temporal.PlainTime.from({ hour: hours, minute: minutes })
-}
-
-/**
- * Create-flow time ranges treat equal start/end selections as a full next-day span.
- * This keeps event, sign-up, and group creation on one explicit duration rule.
- */
-export const getWrappedTimeRangeDuration = (
-  startTime: Temporal.PlainTime,
-  endTime: Temporal.PlainTime
-): Temporal.Duration => {
-  let duration = endTime.since(startTime, { largestUnit: "hours" })
-  if (Temporal.PlainTime.compare(endTime, startTime) <= 0) {
-    duration = duration.add({ hours: 24 })
-  }
-  return duration
 }
 
 // TODO
@@ -503,173 +478,11 @@ export const timeNumToTimeString = (timeNum: number): string => {
   return `${paddedHours}:${paddedMinutes}:00`
 }
 
-export const dateToTimeNum = (
-  date: ZonedDateTime,
-  utc = false
-): Temporal.PlainTime => {
-  const zdt = utc ? date.withTimeZone(UTC) : date
-  return zdt.toPlainTime()
-}
-
-/** Returns negative if date1 < date2, positive if date2 > date1, and 0 if date1 == date2 */
-export const dateCompare = (
-  date1: ZonedDateTime,
-  date2: ZonedDateTime
-): number => {
-  return Temporal.ZonedDateTime.compare(date1, date2)
-}
-
-export const dateLt = (
-  date1: ZonedDateTime,
-  date2: ZonedDateTime
-): boolean => dateCompare(date1, date2) < 0
-
-// TODO rename to zdtLeq or make it work with any temporal type?
-export const dateLeq = (
-  date1: ZonedDateTime,
-  date2: ZonedDateTime
-): boolean => dateCompare(date1, date2) <= 0
-
-export const dateGt = (
-  date1: ZonedDateTime,
-  date2: ZonedDateTime
-): boolean => dateCompare(date1, date2) > 0
-
-export const dateGeq = (
-  date1: ZonedDateTime,
-  date2: ZonedDateTime
-): boolean => dateCompare(date1, date2) >= 0
-
-export const dateEq = (
-  date1: ZonedDateTime,
-  date2: ZonedDateTime
-): boolean => dateCompare(date1, date2) === 0
-
-/** Returns whether the given date is between startDate and endDate using closed bounds [start, end]. */
-export const isDateBetweenInclusive = (
-  date: ZonedDateTime,
-  startDate: ZonedDateTime,
-  endDate: ZonedDateTime
-): boolean => dateLeq(startDate, date) && dateLeq(date, endDate)
-
-/** Returns whether the inner range is fully contained within the outer range using closed bounds [start, end]. */
-export const rangeContainsInclusive = (
-  outerStart: ZonedDateTime,
-  outerEnd: ZonedDateTime,
-  innerStart: ZonedDateTime,
-  innerEnd: ZonedDateTime
-): boolean => dateLeq(outerStart, innerStart) && dateLeq(innerEnd, outerEnd)
-
-/** Returns whether two ranges overlap using half-open bounds [start, end). */
-export const rangesOverlap = (
-  startA: ZonedDateTime,
-  endA: ZonedDateTime,
-  startB: ZonedDateTime,
-  endB: ZonedDateTime
-): boolean => dateLt(startA, endB) && dateLt(startB, endA)
-
-/** Returns whether the given date is between startDate and endDate */
-export const isDateBetween = (
-  date: ZonedDateTime,
-  startDate: ZonedDateTime,
-  endDate: ZonedDateTime
-): boolean => {
-  return isDateBetweenInclusive(date, startDate, endDate)
-}
-
 /** Returns the number of days in the given month */
 export const getDaysInMonth = (month: number, year: number): number => {
   // Create a PlainYearMonth and get days in month
   const yearMonth = Temporal.PlainYearMonth.from({ year, month })
   return yearMonth.daysInMonth
-}
-
-// TODO
-/** returns -1 if a is before b, 1 if a is after b, 0 otherwise */
-export const compareDateDay = (a: ZonedDateTime, b: ZonedDateTime): number => {
-  const zdtA = toZDT(a, UTC)
-  const zdtB = toZDT(b, UTC)
-
-  if (zdtA.year !== zdtB.year) {
-    return zdtA.year - zdtB.year
-  } else if (zdtA.month !== zdtB.month) {
-    return zdtA.month - zdtB.month
-  } else {
-    return zdtA.day - zdtB.day
-  }
-}
-
-/**
-Returns whether the given timeNum is between date1 and date2
-such that date1.getHour() <= timeNum <= date2.getHour(), accounting
-for the possibility that date1 and date2 might be on separate days
-*/
-export const isTimeNumBetweenDates = (
-  time: Temporal.PlainTime,
-  date1: ZonedDateTime,
-  date2: ZonedDateTime
-): boolean => {
-  const zdt1 = toZDT(date1)
-  const zdt2 = toZDT(date2)
-
-  const hour1 = zdt1.toPlainTime()
-  const hour2 = zdt2.toPlainTime()
-  const timeMinutes = plainTimeToMinutes(time)
-  const startMinutes = plainTimeToMinutes(hour1)
-  const endMinutes = plainTimeToMinutes(hour2)
-
-  if (startMinutes <= endMinutes) {
-    return startMinutes <= timeMinutes && timeMinutes <= endMinutes
-  } else {
-    return (
-      (startMinutes <= timeMinutes && timeMinutes < 24 * 60) ||
-      (0 <= timeMinutes && timeMinutes <= endMinutes)
-    )
-  }
-}
-
-/** Returns whether date is in between startDate and startDate + duration */
-export const isDateInRange = (
-  date: ZonedDateTime,
-  startDate: ZonedDateTime,
-  // TODO
-  duration: Temporal.Duration
-): boolean => {
-  const startZDT = toZDT(startDate)
-  const endZDT = startZDT.add(duration)
-
-  return isDateBetweenInclusive(date, startZDT, endZDT)
-}
-
-/** Converts a utc time int to a local time int based on the timezoneOffset */
-export const utcTimeToLocalTimeNum = (
-  // TODO
-  timeNum: number,
-  timezoneOffset: Temporal.Duration = (() => {
-    const localTz = Temporal.Now.timeZoneId()
-    const now = Temporal.Now.zonedDateTimeISO(localTz)
-    return Temporal.Duration.from({ nanoseconds: now.offsetNanoseconds })
-  })()
-  // TODO
-): number => {
-  // Convert Duration to hours
-  const offsetHours = timezoneOffset.total("hours")
-  let localTimeNum = timeNum - offsetHours
-  localTimeNum %= 24
-  if (localTimeNum < 0) localTimeNum += 24
-
-  return localTimeNum
-}
-
-export const utcTimeToLocalTime = (
-  time: Temporal.PlainTime,
-  timezoneOffset: Temporal.Duration = (() => {
-    const localTz = Temporal.Now.timeZoneId()
-    const now = Temporal.Now.zonedDateTimeISO(localTz)
-    return Temporal.Duration.from({ nanoseconds: now.offsetNanoseconds })
-  })()
-): Temporal.PlainTime => {
-  return time.subtract(timezoneOffset)
 }
 
 /** Converts a timestamp from a specified timezone to UTC Instant */
