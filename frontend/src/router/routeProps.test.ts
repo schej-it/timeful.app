@@ -76,19 +76,43 @@ describe("route props boundary adapters", () => {
     expect(props.contactsPayload).toEqual({ name: "query" })
   })
 
-  it("accepts already-decoded params without widening component props", () => {
+  it("accepts already-decoded query objects without widening component props", () => {
     const contactsPayload = {
       name: "Existing object",
       notificationsEnabled: false,
     }
 
-    const props = getHomeRouteProps(makeRoute({
+    const props = getHomeRouteProps(makeRoute({}, {
       contactsPayload,
       openNewGroup: true,
     }))
 
     expect(props.contactsPayload).toEqual(contactsPayload)
     expect(props.openNewGroup).toBe(true)
+  })
+
+  it("ignores legacy restore payloads carried only in params", () => {
+    const props = getEventRouteProps(makeRoute({
+      eventId: "evt-1",
+      fromSignIn: "true",
+      editingMode: "true",
+      linkApple: "true",
+      initialTimezone: JSON.stringify({
+        value: "Asia/Kathmandu",
+      }),
+      contactsPayload: JSON.stringify({
+        name: "legacy-only",
+      }),
+    }))
+
+    expect(props).toEqual({
+      eventId: "evt-1",
+      fromSignIn: false,
+      editingMode: false,
+      linkApple: false,
+      initialTimezone: {},
+      contactsPayload: {},
+    })
   })
 
   it("falls back safely for malformed serialized objects", () => {

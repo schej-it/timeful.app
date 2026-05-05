@@ -82,35 +82,28 @@ export function serializeRouteTimezone(
   return JSON.stringify(timezone ?? {})
 }
 
-function getRouteTransportValue(
-  route: RouteWithRestoreState,
-  key: string
-): unknown {
-  return route.query[key] ?? route.params[key]
-}
-
 export function getHomeRouteProps(route: RouteWithRestoreState): HomeRouteProps {
   return {
     contactsPayload: parseJsonRecord<SerializedEventDraft>(
-      getRouteTransportValue(route, "contactsPayload"),
+      route.query.contactsPayload,
       {}
     ),
-    openNewGroup: parseBooleanParam(getRouteTransportValue(route, "openNewGroup")),
+    openNewGroup: parseBooleanParam(route.query.openNewGroup),
   }
 }
 
 export function getEventRouteProps(route: RouteWithRestoreState): EventRouteProps {
   return {
     eventId: parseStringParam(route.params.eventId),
-    fromSignIn: parseBooleanParam(getRouteTransportValue(route, "fromSignIn")),
-    editingMode: parseBooleanParam(getRouteTransportValue(route, "editingMode")),
-    linkApple: parseBooleanParam(getRouteTransportValue(route, "linkApple")),
+    fromSignIn: parseBooleanParam(route.query.fromSignIn),
+    editingMode: parseBooleanParam(route.query.editingMode),
+    linkApple: parseBooleanParam(route.query.linkApple),
     initialTimezone: parseJsonRecord<Timezone | Record<string, never>>(
-      getRouteTransportValue(route, "initialTimezone"),
+      route.query.initialTimezone,
       {}
     ),
     contactsPayload: parseJsonRecord<SerializedEventDraft>(
-      getRouteTransportValue(route, "contactsPayload"),
+      route.query.contactsPayload,
       {}
     ),
   }
@@ -119,13 +112,13 @@ export function getEventRouteProps(route: RouteWithRestoreState): EventRouteProp
 export function getGroupRouteProps(route: RouteWithRestoreState): GroupRouteProps {
   return {
     groupId: parseStringParam(route.params.groupId),
-    fromSignIn: parseBooleanParam(getRouteTransportValue(route, "fromSignIn")),
+    fromSignIn: parseBooleanParam(route.query.fromSignIn),
     initialTimezone: parseJsonRecord<Timezone | Record<string, never>>(
-      getRouteTransportValue(route, "initialTimezone"),
+      route.query.initialTimezone,
       {}
     ),
     contactsPayload: parseJsonRecord<SerializedEventDraft>(
-      getRouteTransportValue(route, "contactsPayload"),
+      route.query.contactsPayload,
       {}
     ),
   }
@@ -134,14 +127,14 @@ export function getGroupRouteProps(route: RouteWithRestoreState): GroupRouteProp
 export function getSignUpRouteProps(route: RouteWithRestoreState): SignUpRouteProps {
   return {
     signUpId: parseStringParam(route.params.signUpId),
-    fromSignIn: parseBooleanParam(getRouteTransportValue(route, "fromSignIn")),
-    editingMode: parseBooleanParam(getRouteTransportValue(route, "editingMode")),
+    fromSignIn: parseBooleanParam(route.query.fromSignIn),
+    editingMode: parseBooleanParam(route.query.editingMode),
     initialTimezone: parseJsonRecord<Timezone | Record<string, never>>(
-      getRouteTransportValue(route, "initialTimezone"),
+      route.query.initialTimezone,
       {}
     ),
     contactsPayload: parseJsonRecord<SerializedEventDraft>(
-      getRouteTransportValue(route, "contactsPayload"),
+      route.query.contactsPayload,
       {}
     ),
   }
