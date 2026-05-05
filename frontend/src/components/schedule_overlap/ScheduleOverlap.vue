@@ -694,6 +694,25 @@
                   </div>
                 </div>
 
+                <div v-if="showOverlayInvertAvailability">
+                  <v-switch
+                    id="invert-availability-toggle"
+                    inset
+                    :input-value="invertAvailability"
+                    @change="updateInvertAvailability"
+                    hide-details
+                  >
+                    <template v-slot:label>
+                      <div class="tw-text-sm tw-text-black">
+                        Invert Availability
+                      </div>
+                    </template>
+                  </v-switch>
+                  <div class="tw-mt-2 tw-text-xs tw-text-dark-gray">
+                    Invert default availaibility editing mode
+                  </div>
+                </div>
+
                 <!-- Options section -->
                 <div
                   v-if="!event.daysOnly && showCalendarOptions"
@@ -1160,6 +1179,7 @@ export default {
           : localStorage["showEditOptions"] == "true",
       availabilityType: availabilityTypes.AVAILABLE, // The current availability type
       overlayAvailability: false, // Whether to overlay everyone's availability when editing
+      invertAvailability: false, // Whether to invert available/unavailable blocks when viewing
       bufferTime: calendarOptionsDefaults.bufferTime, // Set in mounted()
       workingHours: calendarOptionsDefaults.workingHours, // Set in mounted()
 
@@ -2264,6 +2284,11 @@ export default {
     },
 
     // Options
+    showOverlayInvertAvailability() {
+      // might be useful to gat something later
+      return true
+    },
+
     showOverlayAvailabilityToggle() {
       return this.respondents.length > 0 && this.overlayAvailabilitiesEnabled
     },
@@ -2844,6 +2869,8 @@ export default {
       this.availabilityAnimEnabled = false
     },
     async submitAvailability(guestPayload = { name: "", email: "" }) {
+      this.invertAvailability = false
+
       let payload = {}
 
       let type = ""
@@ -3500,6 +3527,7 @@ export default {
       // Reset options
       this.availabilityType = availabilityTypes.AVAILABLE
       this.overlayAvailability = false
+      this.invertAvailability = false
     },
     highlightAvailabilityBtn() {
       this.$emit("highlightAvailabilityBtn")
@@ -4006,6 +4034,30 @@ export default {
     toggleShowEventOptions() {
       this.showEventOptions = !this.showEventOptions
       localStorage["showEventOptions"] = this.showEventOptions
+    },
+    updateInvertAvailability(val) {
+      this.invertAvailability = !!val
+
+      if (this.event.daysOnly) return
+
+      const allSlots = new Set()
+      for (const day of this.allDays) {
+        for (const time of this.times) {
+          const date = getDateHoursOffset(day.dateObject, time.hoursOffset)
+          if (date) allSlots.add(date.getTime())
+        }
+      }
+
+      const newAvailability = new Set()
+      for (const ts of allSlots) {
+        if (!this.availability.has(ts) && !this.ifNeeded.has(ts)) {
+          newAvailability.add(ts)
+        }
+      }
+
+      this.availability = newAvailability
+
+      this.getResponsesFormatted()
     },
     updateOverlayAvailability(val) {
       this.overlayAvailability = !!val
