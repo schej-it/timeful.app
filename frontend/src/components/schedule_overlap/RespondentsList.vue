@@ -429,12 +429,16 @@ import EventOptions from "./EventOptions.vue"
 import OverflowGradient from "@/components/OverflowGradient.vue"
 import { Temporal } from "temporal-polyfill"
 import type { ZdtMap } from "@/utils"
-import type { EventLike, ParsedResponses, Timezone } from "@/composables/schedule_overlap/types"
+import type {
+  ParsedResponses,
+  ScheduleOverlapEvent,
+  Timezone,
+} from "@/composables/schedule_overlap/types"
 import type { User } from "@/types"
 
 const props = defineProps<{
   eventId: string
-  event: EventLike
+  event: ScheduleOverlapEvent
   days: unknown[]
   times: unknown[]
   curDate?: Temporal.ZonedDateTime

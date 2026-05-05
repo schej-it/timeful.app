@@ -13,8 +13,8 @@ import {
   states,
   type CalendarEventsByDay,
   type CalendarOptions,
-  type EventLike,
   type ParsedResponses,
+  type ScheduleOverlapEvent,
   type ScheduledEvent,
   type ScheduleOverlapResponse,
   type ScheduleOverlapState,
@@ -26,7 +26,7 @@ interface AuthUserLike {
 }
 
 export interface UseScheduleOverlapControllerOptions {
-  event: ComputedRef<EventLike>
+  event: ComputedRef<ScheduleOverlapEvent>
   fromEditEvent: ComputedRef<boolean>
   calendarOnly: ComputedRef<boolean>
   weekOffset: ComputedRef<number>
@@ -88,7 +88,7 @@ const getInitialState = ({
   scheduledEventFromUrl,
   showBestTimes,
 }: {
-  event: EventLike
+  event: ScheduleOverlapEvent
   fromEditEvent: boolean
   scheduledEventFromUrl: ScheduledEvent | null
   showBestTimes: boolean
@@ -127,7 +127,7 @@ const applyCalendarOptions = ({
   bufferTime,
   workingHours,
 }: {
-  event: EventLike
+  event: ScheduleOverlapEvent
   isGroup: boolean
   authUser: AuthUserLike | null | undefined
   bufferTime: Ref<CalendarOptions["bufferTime"]>

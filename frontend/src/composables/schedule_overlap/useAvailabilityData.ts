@@ -34,12 +34,12 @@ import {
   type CalendarEventsByDay,
   type CalendarOptions,
   type DayItem,
-  type EventLike,
   type FetchedResponse,
   type ParsedResponse,
   type ParsedResponses,
   type ResponsesFormatted,
   type RowCol,
+  type ScheduleOverlapEvent,
   type ScheduleOverlapState,
   type TimeItem,
 } from "./types"
@@ -56,7 +56,7 @@ declare global {
 }
 
 export interface UseAvailabilityDataOptions {
-  event: Ref<EventLike>
+  event: Ref<ScheduleOverlapEvent>
   weekOffset: Ref<number>
   state: Ref<ScheduleOverlapState>
   fetchedResponses: Ref<Record<string, FetchedResponse | undefined>>

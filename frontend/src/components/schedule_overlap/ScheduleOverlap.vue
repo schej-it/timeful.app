@@ -215,7 +215,7 @@ import {
   states,
 } from "@/composables/schedule_overlap/types"
 import type {
-  FetchedResponse, RowCol, Timezone, ScheduleOverlapState, EventLike, CalendarEventLite, CalendarEventsByDay, CalendarEventsMap,
+  FetchedResponse, RowCol, Timezone, ScheduleOverlapState, ScheduleOverlapEvent, CalendarEventLite, CalendarEventsByDay, CalendarEventsMap,
   SignUpBlockLite,
 } from "@/composables/schedule_overlap/types"
 import type {
@@ -228,7 +228,7 @@ import type {
 // ── Props / Emits ──────────────────────────────────────────────────────
 const props = withDefaults(
   defineProps<{
-    event: EventLike
+    event: ScheduleOverlapEvent
     ownerIsPremium?: boolean
     fromEditEvent?: boolean
     loadingCalendarEvents?: boolean

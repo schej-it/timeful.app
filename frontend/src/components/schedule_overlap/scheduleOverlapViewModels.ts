@@ -1,8 +1,8 @@
 import type { AvailabilityType } from "@/constants"
 import type {
   CalendarEventsMap,
-  EventLike,
   ParsedResponses,
+  ScheduleOverlapEvent,
   ScheduleOverlapState,
   SignUpBlockLite,
   Timezone,
@@ -13,7 +13,7 @@ import type { User } from "@/types"
 import type { ZdtMap } from "@/utils"
 
 export interface ScheduleOverlapRespondentsPanelViewModel {
-  event: EventLike
+  event: ScheduleOverlapEvent
   eventId: string
   days: unknown[]
   times: unknown[]
@@ -38,7 +38,7 @@ export interface ScheduleOverlapRespondentsPanelViewModel {
 }
 
 export interface ScheduleOverlapSidebarViewModel {
-  event: EventLike
+  event: ScheduleOverlapEvent
   state: ScheduleOverlapState
   isSignUp: boolean
   isOwner: boolean
@@ -88,7 +88,7 @@ export interface ScheduleOverlapMobileOverlayViewModel {
   isWeekly: boolean
   calendarPermissionGranted: boolean
   weekOffset: number
-  event: EventLike
+  event: ScheduleOverlapEvent
   showStickyRespondents: boolean
   respondentsPanel: ScheduleOverlapRespondentsPanelViewModel
   state: ScheduleOverlapState
@@ -96,7 +96,7 @@ export interface ScheduleOverlapMobileOverlayViewModel {
 }
 
 export interface ScheduleOverlapToolRowViewModel {
-  event: EventLike
+  event: ScheduleOverlapEvent
   state: ScheduleOverlapState
   states: Record<string, ScheduleOverlapState>
   curTimezone: Timezone

@@ -13,8 +13,8 @@ import {
   HOUR_HEIGHT,
   SPLIT_GAP_HEIGHT,
   states,
-  type EventLike,
   type RowCol,
+  type ScheduleOverlapEvent,
   type ScheduledEvent,
   type ScheduleOverlapState,
   type TimeItem,
@@ -23,7 +23,7 @@ import {
 import { UTC } from "@/constants"
 
 export interface UseEventSchedulingOptions {
-  event: Ref<EventLike>
+  event: Ref<ScheduleOverlapEvent>
   // TODO
   weekOffset: Ref<number>
   curTimezone: Ref<Timezone>

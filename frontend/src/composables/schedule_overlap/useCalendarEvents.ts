@@ -23,8 +23,8 @@ import {
   type CalendarEventsMap,
   type CalendarOptions,
   type DayItem,
-  type EventLike,
   type FetchedResponse,
+  type ScheduleOverlapEvent,
   type TimeItem,
   type Timezone,
   type ProcessedCalendarEvent,
@@ -38,7 +38,7 @@ type SharedCalendarAccount = {
 type SharedCalendarAccounts = Record<string, SharedCalendarAccount>
 
 export interface UseCalendarEventsOptions {
-  event: Ref<EventLike>
+  event: Ref<ScheduleOverlapEvent>
   weekOffset: Ref<number>
   curTimezone: Ref<Timezone>
   calendarEventsMap: Ref<CalendarEventsMap>

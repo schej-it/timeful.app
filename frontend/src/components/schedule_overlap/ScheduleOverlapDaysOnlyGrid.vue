@@ -96,8 +96,8 @@
 
 <script setup lang="ts">
 import type {
-  EventLike,
   MonthDayItem,
+  ScheduleOverlapEvent,
   Timezone,
 } from "@/composables/schedule_overlap/types"
 import type { ClassStyle } from "./scheduleOverlapRendering"
@@ -110,7 +110,7 @@ defineOptions({
 })
 
 defineProps<{
-  event: EventLike
+  event: ScheduleOverlapEvent
   curMonthText: string
   hasPrevPage: boolean
   hasNextPage: boolean

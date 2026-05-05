@@ -6,12 +6,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { UTC, eventTypes } from "@/constants"
 import { ZdtSet } from "@/utils"
-import { states, type EventLike, type ScheduledEvent } from "@/composables/schedule_overlap/types"
+import {
+  states,
+  type ScheduleOverlapEvent,
+  type ScheduledEvent,
+} from "@/composables/schedule_overlap/types"
 import { useScheduleOverlapController } from "./useScheduleOverlapController"
 
 const zdt = (iso: string) => Temporal.Instant.from(iso).toZonedDateTimeISO(UTC)
 
-const baseEvent = (): EventLike => ({
+const baseEvent = (): ScheduleOverlapEvent => ({
   _id: "evt-1",
   ownerId: "owner-1",
   name: "Controller test event",
@@ -27,14 +31,14 @@ class ResizeObserverStub {
 }
 
 interface ControllerHarnessOptions {
-  event?: EventLike
+  event?: ScheduleOverlapEvent
   fromEditEvent?: boolean
   showBestTimes?: boolean
   respondents?: { _id?: string }[]
 }
 
 const mountControllerHarness = (options: ControllerHarnessOptions = {}) => {
-  const event = ref<EventLike>(options.event ?? baseEvent())
+  const event = ref<ScheduleOverlapEvent>(options.event ?? baseEvent())
   const fromEditEvent = ref(options.fromEditEvent ?? false)
   const showBestTimes = ref(options.showBestTimes ?? false)
   const state = ref(states.BEST_TIMES)

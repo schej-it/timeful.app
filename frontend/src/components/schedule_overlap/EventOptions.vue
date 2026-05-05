@@ -68,11 +68,11 @@ import { computed } from "vue"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { eventTypes } from "@/constants"
 import ExpandableSection from "@/components/ExpandableSection.vue"
-import type { EventLike } from "@/composables/schedule_overlap/types"
+import type { ScheduleOverlapEvent } from "@/composables/schedule_overlap/types"
 
 const props = withDefaults(
   defineProps<{
-    event: EventLike
+    event: ScheduleOverlapEvent
     showBestTimes: boolean
     hideIfNeeded: boolean
     numResponses: number

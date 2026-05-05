@@ -130,7 +130,6 @@ export const toScheduleOverlapEvent = (
   }),
 })
 
-export type EventLike = ScheduleOverlapEvent
 export type SignUpBlockLite = ScheduleOverlapSignUpBlock
 
 export interface CalendarOptions {

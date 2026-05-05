@@ -13,13 +13,13 @@
 <script setup lang="ts">
 import { computed } from "vue"
 import { dateToDowDate, getRenderedWeekStart } from "@/utils"
-import type { EventLike } from "@/composables/schedule_overlap/types"
+import type { ScheduleOverlapEvent } from "@/composables/schedule_overlap/types"
 
 const props = withDefaults(
   defineProps<{
     weekOffset: number
     startOnMonday?: boolean
-    event: EventLike
+    event: ScheduleOverlapEvent
   }>(),
   { startOnMonday: false }
 )

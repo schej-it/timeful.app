@@ -34,8 +34,8 @@ import {
   SPLIT_GAP_WIDTH,
   states,
   type DayItem,
-  type EventLike,
   type MonthDayItem,
+  type ScheduleOverlapEvent,
   type ScheduleOverlapState,
   type TimeItem,
   type Timezone,
@@ -57,7 +57,7 @@ const months = [
 ] as const
 
 export interface UseCalendarGridOptions {
-  event: Ref<EventLike>
+  event: Ref<ScheduleOverlapEvent>
   weekOffset: Ref<number>
   curTimezone: Ref<Timezone>
   state: Ref<ScheduleOverlapState>

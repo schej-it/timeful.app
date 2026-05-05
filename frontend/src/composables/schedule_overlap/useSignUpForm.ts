@@ -5,13 +5,13 @@ import { useMainStore } from "@/stores/main"
 import type { Temporal } from "temporal-polyfill"
 import {
   type DayItem,
-  type EventLike,
   type RowCol,
+  type ScheduleOverlapEvent,
   type SignUpBlockLite,
 } from "./types"
 
 export interface UseSignUpFormOptions {
-  event: Ref<EventLike>
+  event: Ref<ScheduleOverlapEvent>
   isSignUp: ComputedRef<boolean>
   days: ComputedRef<DayItem[]>
   isOwner: ComputedRef<boolean>

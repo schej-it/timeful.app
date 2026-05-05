@@ -336,9 +336,9 @@ import type {
   CalendarEventLite,
   CalendarEventsByDay,
   DayItem,
-  EventLike,
   FetchedResponse,
   RowCol,
+  ScheduleOverlapEvent,
   ScheduleOverlapState,
   ScheduledEvent,
   SignUpBlockLite,
@@ -360,7 +360,7 @@ defineOptions({
 })
 
 defineProps<{
-  event: EventLike
+  event: ScheduleOverlapEvent
   calendarOnly: boolean
   hasPrevPage: boolean
   hasNextPage: boolean

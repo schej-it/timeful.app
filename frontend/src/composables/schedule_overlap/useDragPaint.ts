@@ -22,17 +22,17 @@ import {
   SPLIT_GAP_HEIGHT,
   states,
   type DragType,
-  type EventLike,
   type RowCol,
-  type ScheduleOverlapState,
+  type ScheduleOverlapEvent,
   type ScheduledEvent,
+  type ScheduleOverlapState,
   type SignUpBlockLite,
   type TimeItem,
   type MonthDayItem,
 } from "./types"
 
 export interface UseDragPaintOptions {
-  event: Ref<EventLike>
+  event: Ref<ScheduleOverlapEvent>
   state: Ref<ScheduleOverlapState>
   isSignUp: ComputedRef<boolean>
   weekOffset: Ref<number>
