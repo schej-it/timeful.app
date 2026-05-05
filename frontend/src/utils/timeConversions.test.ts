@@ -4,6 +4,8 @@ import { Temporal } from "temporal-polyfill"
 import { UTC } from "../constants"
 import {
   dateToTimeNum,
+  getDateDayOffset,
+  getDateHoursOffset,
   getDateWithTimeNum,
   getWrappedTimeRangeDuration,
   plainTimeToTimeNum,
@@ -39,6 +41,15 @@ describe("timeConversions", () => {
   it("reads a PlainTime back from a ZonedDateTime", () => {
     const date = zdt("2026-01-01T13:30:00Z")
     expect(dateToTimeNum(date, true).toString()).toBe("13:30:00")
+  })
+
+  it("offsets dates by day and duration values without reparsing", () => {
+    const date = zdt("2026-01-01T13:30:00Z")
+
+    expect(getDateDayOffset(date, 2).toString()).toBe("2026-01-03T13:30:00+00:00[UTC]")
+    expect(getDateHoursOffset(date, Temporal.Duration.from({ hours: 2 })).toString()).toBe(
+      "2026-01-01T15:30:00+00:00[UTC]"
+    )
   })
 
   it("treats equal create-flow start and end times as a 24-hour duration", () => {

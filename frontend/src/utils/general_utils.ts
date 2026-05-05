@@ -7,9 +7,9 @@ import type { Event, User } from "@/types"
 import {
   dateToDowDate,
   getRenderedWeekStart,
-  toZDT,
-  type ZonedDateTime,
-} from "./date_utils"
+} from "./scheduleDateRules"
+import type { ZonedDateTime } from "./temporalPrimitives"
+import { toZDT } from "./timezoneDateRules"
 import Color from "color"
 import type { useDisplay } from "vuetify"
 

@@ -16,6 +16,22 @@ export const getDateWithTimeNum = (
   return zdt.with({ hour: hours, minute: minutes })
 }
 
+/** Returns the specified date offset by the given number of days. */
+export const getDateDayOffset = (
+  date: ZonedDateTime,
+  offset: number
+): Temporal.ZonedDateTime => {
+  return date.add({ days: offset })
+}
+
+/** Returns the specified date offset by the given duration. */
+export const getDateHoursOffset = (
+  date: ZonedDateTime,
+  hoursOffset: Temporal.Duration
+): Temporal.ZonedDateTime => {
+  return date.add(hoursOffset)
+}
+
 /** Takes a timeNum (e.g. 9.5) and splits it into hours and minutes. */
 export const splitTimeNum = (
   timeNum: number

@@ -1,179 +1,47 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 import {
   convertUTCSlotsToLocalISO,
-  dateFromObjectId,
-  doesDstExist,
-  getScheduleTimezoneOffset,
-  isDstObserved,
-  getTimezoneOffsetForDate,
+  getDateRangeStringForEvent,
+  getDateHoursOffset,
+  getWrappedTimeRangeDuration,
   getTimezoneReferenceDateForEvent,
+  timeNumToTimeText,
 } from "./date_utils"
 import { eventTypes, UTC } from "../constants"
 import { Temporal } from "temporal-polyfill"
+import {
+  convertUTCSlotsToLocalISO as convertUTCSlotsToLocalISODirect,
+} from "./dateBoundaryAdapters"
+import { getDateRangeStringForEvent as getDateRangeStringForEventDirect, timeNumToTimeText as timeNumToTimeTextDirect } from "./dateFormatting"
+import {
+  getDateHoursOffset as getDateHoursOffsetDirect,
+  getWrappedTimeRangeDuration as getWrappedTimeRangeDurationDirect,
+} from "./timeConversions"
+import { getTimezoneReferenceDateForEvent as getTimezoneReferenceDateForEventDirect } from "./eventDateRules"
 
-describe("DST timezone regression", () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-    // Set system time using Temporal-compatible format
-    vi.setSystemTime(new Date("2026-03-18T12:00:00Z"))
-  })
-
-  it("uses the viewed week as the reference date for weekly events", () => {
-    const weeklyEvent = {
-      type: eventTypes.DOW,
-      dates: [Temporal.Instant.from("2018-06-17T09:00:00Z").toZonedDateTimeISO(UTC)],
-    }
-    const referenceZDT = getTimezoneReferenceDateForEvent(weeklyEvent, 3).withTimeZone(UTC)
-
-    // Use Temporal to check the date components
-    expect(referenceZDT.year).toBe(2026)
-    expect(referenceZDT.month).toBe(4) // April (1-indexed in Temporal)
-    expect(referenceZDT.day).toBe(8)
-    // The function preserves the time from the original DOW date (09:00)
-    expect(referenceZDT.hour).toBe(9)
-  })
-
-  it("uses the first event date as the reference date for specific dates", () => {
-    const datedEvent = {
-      type: eventTypes.SPECIFIC_DATES,
-      dates: [
-        Temporal.Instant.from("2026-11-02T09:00:00Z").toZonedDateTimeISO(UTC),
-        Temporal.Instant.from("2026-11-03T09:00:00Z").toZonedDateTimeISO(UTC),
-      ],
-    }
-
-    const referenceInstant = getTimezoneReferenceDateForEvent(datedEvent)
-    expect(referenceInstant.toInstant().toString()).toBe("2026-11-02T09:00:00Z")
-  })
-
-  it("calculates timezone offsets from the provided reference date", () => {
-    const selectedTimezone = {
-      value: "Europe/Vienna",
-      offset: Temporal.Duration.from({ minutes: 60 }),
-      label: "",
-      gmtString: "",
-    }
-
-    const result = getTimezoneOffsetForDate(
-      selectedTimezone,
-      Temporal.Instant.from("2026-04-08T12:00:00Z").toZonedDateTimeISO(UTC)
-    )
-    // Result is now a Duration, convert to minutes for comparison
-    expect(result.total("minutes")).toBe(-120)
-  })
-
-  it("keeps the standard offset during non-DST viewed weeks", () => {
-    const weeklyEvent = {
-      type: eventTypes.DOW,
-      startOnMonday: false,
-      dates: [Temporal.Instant.from("2018-06-17T09:00:00Z").toZonedDateTimeISO(UTC)],
-    }
-    const selectedTimezone = {
-      value: "Europe/Vienna",
-      offset: Temporal.Duration.from({ minutes: 60 }),
-      label: "",
-      gmtString: "",
-    }
-
-    const result = getScheduleTimezoneOffset(weeklyEvent, selectedTimezone, -10)
-    expect(result.total("minutes")).toBe(-60)
-  })
-
-  it("falls back to the stored numeric offset when no timezone name exists", () => {
-    const selectedTimezone = {
-      offset: Temporal.Duration.from({ minutes: 90 }),
-      value: "",
-      label: "",
-      gmtString: "",
-    }
-
-    const result = getTimezoneOffsetForDate(
-      selectedTimezone,
-      Temporal.Instant.from("2026-04-08T12:00:00Z").toZonedDateTimeISO(UTC)
-    )
-    expect(result.total("minutes")).toBe(-90)
-  })
-
-  it("shows the viewed event week using that week's timezone offset", () => {
-    const weeklyEvent = {
-      type: eventTypes.DOW,
-      startOnMonday: false,
-      dates: [Temporal.Instant.from("2018-06-17T09:00:00Z").toZonedDateTimeISO(UTC)],
-    }
-    const selectedTimezone = {
-      value: "Europe/Vienna",
-      offset: Temporal.Duration.from({ minutes: 60 }),
-      label: "",
-      gmtString: "",
-    }
-
-    const result = getScheduleTimezoneOffset(weeklyEvent, selectedTimezone, 3)
-    expect(result.total("minutes")).toBe(-120)
-  })
-
-  it("shows the viewed event week using the new offset after fall-back DST changes", () => {
-    vi.setSystemTime(new Date("2026-10-20T12:00:00Z"))
-
-    const weeklyEvent = {
-      type: eventTypes.DOW,
-      startOnMonday: false,
-      dates: [Temporal.Instant.from("2018-06-17T09:00:00Z").toZonedDateTimeISO(UTC)],
-    }
-    const selectedTimezone = {
-      value: "Europe/Vienna",
-      offset: Temporal.Duration.from({ minutes: 120 }),
-      label: "",
-      gmtString: "",
-    }
-
-    const result = getScheduleTimezoneOffset(weeklyEvent, selectedTimezone, 2)
-    expect(result.total("minutes")).toBe(-60)
-  })
-})
-
-describe("Temporal migration regression", () => {
+describe("date_utils compatibility barrel", () => {
   const zdt = (iso: string) => Temporal.Instant.from(iso).toZonedDateTimeISO(UTC)
 
-  it("converts MongoDB object ids to UTC Temporal dates", () => {
-    const date = dateFromObjectId("000000000000000000000000")
-
-    expect(date.toInstant().toString()).toBe("1970-01-01T00:00:00Z")
-    expect(date.timeZoneId).toBe(UTC)
+  it("re-exports focused helpers without changing behavior", () => {
+    expect(convertUTCSlotsToLocalISO).toBe(convertUTCSlotsToLocalISODirect)
+    expect(getDateRangeStringForEvent).toBe(getDateRangeStringForEventDirect)
+    expect(getDateHoursOffset).toBe(getDateHoursOffsetDirect)
+    expect(getWrappedTimeRangeDuration).toBe(getWrappedTimeRangeDurationDirect)
+    expect(getTimezoneReferenceDateForEvent).toBe(getTimezoneReferenceDateForEventDirect)
+    expect(timeNumToTimeText).toBe(timeNumToTimeTextDirect)
   })
 
-  it("converts UTC slots into another timezone without using invalid Temporal bags", () => {
-    const result = convertUTCSlotsToLocalISO(
-      [zdt("2026-01-01T12:00:00Z")],
-      "America/New_York"
-    )
+  it("keeps compatibility imports usable at runtime", () => {
+    expect(
+      getDateRangeStringForEvent({
+        type: eventTypes.SPECIFIC_DATES,
+        dates: [zdt("2026-05-01T00:00:00Z"), zdt("2026-05-03T00:00:00Z")],
+      })
+    ).toBe("5/1 - 5/2")
 
-    expect(result).toHaveLength(1)
-    expect(result[0].timeZoneId).toBe("America/New_York")
-    expect(result[0].toInstant().toString()).toBe("2026-01-01T12:00:00Z")
-    expect(result[0].hour).toBe(7)
-  })
-
-  it("detects whether a timezone observes DST without Duration identity comparison", () => {
-    const losAngelesWinter = Temporal.ZonedDateTime.from(
-      "2026-01-15T12:00:00[America/Los_Angeles]"
+    expect(getDateHoursOffset(zdt("2026-01-01T09:00:00Z"), Temporal.Duration.from({ hours: 2 })).hour).toBe(
+      11
     )
-    const tokyoWinter = Temporal.ZonedDateTime.from(
-      "2026-01-15T12:00:00[Asia/Tokyo]"
-    )
-
-    expect(doesDstExist(losAngelesWinter)).toBe(true)
-    expect(doesDstExist(tokyoWinter)).toBe(false)
-  })
-
-  it("detects whether DST is currently observed without Duration ordering coercion", () => {
-    const losAngelesWinter = Temporal.ZonedDateTime.from(
-      "2026-01-15T12:00:00[America/Los_Angeles]"
-    )
-    const losAngelesSummer = Temporal.ZonedDateTime.from(
-      "2026-07-15T12:00:00[America/Los_Angeles]"
-    )
-
-    expect(isDstObserved(losAngelesWinter)).toBe(false)
-    expect(isDstObserved(losAngelesSummer)).toBe(true)
+    expect(timeNumToTimeText(13.5)).toBe("1:30 pm")
   })
 })

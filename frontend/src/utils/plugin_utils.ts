@@ -4,7 +4,7 @@
 
 import { Temporal } from "temporal-polyfill"
 import { eventTypes } from "@/constants"
-import { convertToUTC } from "./date_utils"
+import { convertToUTC } from "./dateBoundaryAdapters"
 import { resolveTimezoneValue } from "./timezone_utils"
 
 export interface PluginSetSlotEntry {
