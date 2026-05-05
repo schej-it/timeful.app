@@ -805,6 +805,54 @@ function updateTimeType(value: string) {
   timeType.value = value as typeof timeType.value
 }
 
+function updateNewGuestName(value: string) {
+  newGuestName.value = value
+}
+
+function updateEditGuestNameDialog(value: boolean) {
+  editGuestNameDialog.value = value
+}
+
+function updateAvailabilityType(value: AvailabilityType) {
+  availabilityType.value = value
+}
+
+function updateCalendarOptionsDialog(value: boolean) {
+  calendarOptionsDialog.value = value
+}
+
+function updateBufferTime(value: typeof bufferTime.value) {
+  bufferTime.value = value
+}
+
+function updateWorkingHours(value: typeof workingHours.value) {
+  workingHours.value = value
+}
+
+function updateDeleteAvailabilityDialog(value: boolean) {
+  deleteAvailabilityDialog.value = value
+}
+
+function updateShowCalendarEvents(value: boolean) {
+  showCalendarEvents.value = value
+}
+
+function updateShowBestTimes(value: boolean) {
+  showBestTimes.value = value
+}
+
+function updateHideIfNeeded(value: boolean) {
+  hideIfNeeded.value = value
+}
+
+function emitAddAvailability() {
+  emit("addAvailability")
+}
+
+function emitAddAvailabilityAsGuest() {
+  emit("addAvailabilityAsGuest")
+}
+
 const toolRowActions = computed<ScheduleOverlapToolRowActions>(() => ({
   updateCurTimezone: (value) => {
     curTimezone.value = value
@@ -829,91 +877,59 @@ const toolRowActions = computed<ScheduleOverlapToolRowActions>(() => ({
   confirmScheduleEvent,
 }))
 
-const sidebarListeners = computed(() => ({
+const sharedRespondentListeners = {
+  "mouse-over-respondent": mouseOverRespondent,
+  "mouse-leave-respondent": mouseLeaveRespondent,
+  "click-respondent": clickRespondent,
+  "edit-guest-availability": editGuestAvailability,
+}
+
+const sharedDisplayListeners = {
+  "update:show-calendar-events": updateShowCalendarEvents,
+  "update:show-best-times": updateShowBestTimes,
+  "update:hide-if-needed": updateHideIfNeeded,
+  "toggle-show-event-options": toggleShowEventOptions,
+}
+
+const sharedParentRelayListeners = {
+  "add-availability": emitAddAvailability,
+  "add-availability-as-guest": emitAddAvailabilityAsGuest,
+  "refresh-event": refreshEvent,
+}
+
+const sidebarListeners = {
   "save-temp-times": saveTempTimes,
   "open-edit-guest-name-dialog": openEditGuestNameDialog,
   "save-guest-name": saveGuestName,
-  "update:new-guest-name": (value: string) => {
-    newGuestName.value = value
-  },
-  "update:edit-guest-name-dialog": (value: boolean) => {
-    editGuestNameDialog.value = value
-  },
-  "update:availability-type": (value: AvailabilityType) => {
-    availabilityType.value = value
-  },
+  "update:new-guest-name": updateNewGuestName,
+  "update:edit-guest-name-dialog": updateEditGuestNameDialog,
+  "update:availability-type": updateAvailabilityType,
   "toggle-calendar-account": toggleCalendarAccount,
   "toggle-sub-calendar-account": toggleSubCalendarAccount,
   "update-overlay-availability": updateOverlayAvailability,
   "toggle-show-edit-options": toggleShowEditOptions,
-  "update:calendar-options-dialog": (value: boolean) => {
-    calendarOptionsDialog.value = value
-  },
-  "update:buffer-time": (value: typeof bufferTime.value) => {
-    bufferTime.value = value
-  },
-  "update:working-hours": (value: typeof workingHours.value) => {
-    workingHours.value = value
-  },
-  "update:delete-availability-dialog": (value: boolean) => {
-    deleteAvailabilityDialog.value = value
-  },
+  "update:calendar-options-dialog": updateCalendarOptionsDialog,
+  "update:buffer-time": updateBufferTime,
+  "update:working-hours": updateWorkingHours,
+  "update:delete-availability-dialog": updateDeleteAvailabilityDialog,
   "delete-availability": handleDeleteAvailability,
   "update-sign-up-block": editSignUpBlock,
   "delete-sign-up-block": deleteSignUpBlock,
   "sign-up-for-block": emitSignUpForBlock,
-  "update:show-calendar-events": (value: boolean) => {
-    showCalendarEvents.value = value
-  },
-  "update:show-best-times": (value: boolean) => {
-    showBestTimes.value = value
-  },
-  "update:hide-if-needed": (value: boolean) => {
-    hideIfNeeded.value = value
-  },
-  "toggle-show-event-options": toggleShowEventOptions,
-  "add-availability": () => {
-    emit("addAvailability")
-  },
-  "add-availability-as-guest": () => {
-    emit("addAvailabilityAsGuest")
-  },
-  "mouse-over-respondent": mouseOverRespondent,
-  "mouse-leave-respondent": mouseLeaveRespondent,
-  "click-respondent": clickRespondent,
-  "edit-guest-availability": editGuestAvailability,
-  "refresh-event": refreshEvent,
-}))
+  ...sharedDisplayListeners,
+  ...sharedParentRelayListeners,
+  ...sharedRespondentListeners,
+}
 
-const mobileOverlayListeners = computed(() => ({
+const mobileOverlayListeners = {
   "close-hint": closeHint,
-  "update:availability-type": (value: AvailabilityType) => {
-    availabilityType.value = value
-  },
+  "update:availability-type": updateAvailabilityType,
   "update:week-offset": emitWeekOffsetUpdate,
-  "update:show-calendar-events": (value: boolean) => {
-    showCalendarEvents.value = value
-  },
-  "update:show-best-times": (value: boolean) => {
-    showBestTimes.value = value
-  },
-  "update:hide-if-needed": (value: boolean) => {
-    hideIfNeeded.value = value
-  },
-  "toggle-show-event-options": toggleShowEventOptions,
-  "add-availability": () => {
-    emit("addAvailability")
-  },
-  "add-availability-as-guest": () => {
-    emit("addAvailabilityAsGuest")
-  },
-  "mouse-over-respondent": mouseOverRespondent,
-  "mouse-leave-respondent": mouseLeaveRespondent,
-  "click-respondent": clickRespondent,
-  "edit-guest-availability": editGuestAvailability,
-  "refresh-event": refreshEvent,
+  ...sharedDisplayListeners,
+  ...sharedParentRelayListeners,
+  ...sharedRespondentListeners,
   "save-temp-times": saveTempTimes,
-}))
+}
 
 const daysOnlyGridActions = computed<ScheduleOverlapDaysOnlyGridActions>(() => ({
   prevPage,
