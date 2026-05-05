@@ -3,16 +3,13 @@ import {
   convertUTCSlotsToLocalISO,
   dateFromObjectId,
   doesDstExist,
-  getCalendarEventsMap,
   getScheduleTimezoneOffset,
   isDstObserved,
   getTimezoneOffsetForDate,
   getTimezoneReferenceDateForEvent,
-  validateDOWPayload,
 } from "./date_utils"
 import { eventTypes, UTC } from "../constants"
 import { Temporal } from "temporal-polyfill"
-import { getRenderedWeekStart } from "./scheduleDateRules"
 
 describe("DST timezone regression", () => {
   beforeEach(() => {
@@ -134,45 +131,6 @@ describe("DST timezone regression", () => {
   })
 })
 
-describe("findings-5 DOW payload validation", () => {
-  it("accepts valid DOW slots without throwing on Temporal comparisons", () => {
-    expect(() =>
-      validateDOWPayload([
-        {
-          start: "2018-06-18T09:00:00",
-          end: "2018-06-18T10:00:00",
-          status: "available",
-        },
-      ])
-    ).not.toThrow()
-
-    expect(
-      validateDOWPayload([
-        {
-          start: "2018-06-18T09:00:00",
-          end: "2018-06-18T10:00:00",
-          status: "available",
-        },
-      ])
-    ).toBeNull()
-  })
-
-  it("keeps the existing reversed-range validation error", () => {
-    expect(
-      validateDOWPayload([
-        {
-          start: "2018-06-18T10:00:00",
-          end: "2018-06-18T09:00:00",
-          status: "available",
-        },
-      ])
-    ).toEqual({
-      valid: false,
-      error: "Slot at index 0 has end time that is before or equal to start time",
-    })
-  })
-})
-
 describe("Temporal migration regression", () => {
   const zdt = (iso: string) => Temporal.Instant.from(iso).toZonedDateTimeISO(UTC)
 
@@ -181,41 +139,6 @@ describe("Temporal migration regression", () => {
 
     expect(date.toInstant().toString()).toBe("1970-01-01T00:00:00Z")
     expect(date.timeZoneId).toBe(UTC)
-  })
-
-  it("fetches weekly calendar events using an explicit rendered week", async () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date("2026-03-18T12:00:00Z"))
-
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      headers: new Headers(),
-      text: () => Promise.resolve("{}"),
-    })
-    vi.stubGlobal("fetch", fetchMock)
-
-    const renderedWeekStart = getRenderedWeekStart(
-      0,
-      false,
-      zdt("2026-04-05T12:00:00Z")
-    )
-
-    await getCalendarEventsMap(
-      {
-        type: eventTypes.DOW,
-        dates: [zdt("2018-06-17T09:00:00Z")],
-        startOnMonday: false,
-      },
-      { weekOffset: 0, renderedWeekStart }
-    )
-
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    const [url] = fetchMock.mock.calls[0] as [string]
-    expect(url).toContain(
-      "/user/calendars?timeMin=2026-04-03T09:00:00+00:00[UTC]&timeMax=2026-04-07T09:00:00+00:00[UTC]"
-    )
   })
 
   it("converts UTC slots into another timezone without using invalid Temporal bags", () => {

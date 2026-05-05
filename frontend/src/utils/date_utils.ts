@@ -10,13 +10,11 @@
  * - Conversion at boundaries handled by adapter functions from types/index.ts
  */
 
-import { eventTypes, dayIndexToDayString, UTC } from "@/constants"
-import { get } from "./fetch_utils"
+import { eventTypes, UTC } from "@/constants"
 import { Temporal } from "temporal-polyfill"
 import type { ZonedDateTime } from "./temporalPrimitives"
 import type { EventLike as EventDateRulesEventLike } from "./eventDateRules"
 import { toZDT } from "./timezoneDateRules"
-import { dateToDowDate, getRenderedWeekStart } from "./scheduleDateRules"
 
 /*
   Date utils
@@ -95,6 +93,8 @@ export {
 
 // Extracted browser preference boundary helpers.
 export { getLocale, getTimeOptions, userPrefers12h } from "./browserDatePreferences"
+export type { DOWSlot, DOWValidationResult } from "./dateValidation"
+export { validateDOWPayload } from "./dateValidation"
 export {
   dateToDowDate,
   getCalendarAccountKey,
@@ -104,6 +104,10 @@ export {
   processTimeBlocks,
   splitTimeBlocksByDay,
 } from "./scheduleDateRules"
+export {
+  getCalendarAvailabilityQueryWindow,
+  getCalendarEventsMap,
+} from "./services/CalendarAvailabilityService"
 
 export interface TimeBlock {
   startDate: Temporal.ZonedDateTime
@@ -346,277 +350,4 @@ export const convertUTCSlotsToLocalISO = (
       )
     }
   })
-}
-
-
-/**
-  Returns an object of the users' calendar events for each calendar account for the given event, filtering for events
-  only between the time ranges of the event and clamping calendar events that extend beyond the time
-  ranges
-  weekOffset specifies the amount of weeks forward or backward to display events for (only used for weekly Timefuls)
-*/
-export const getCalendarEventsMap = async (
-  event: EventLike,
-  {
-    weekOffset = 0,
-    eventId = "",
-    renderedWeekStart,
-  }: {
-    weekOffset?: number
-    eventId?: string
-    renderedWeekStart?: Temporal.ZonedDateTime
-  }
-): Promise<unknown> => {
-  let timeMin: Temporal.ZonedDateTime | undefined
-  let timeMax: Temporal.ZonedDateTime | undefined
-
-  if (!event.dates || event.dates.length === 0) {
-    return Promise.resolve([])
-  }
-
-  if (event.type === eventTypes.SPECIFIC_DATES) {
-    // Get all calendar events between the first date and the last date in dates
-    timeMin = event.dates[0]
-    timeMax = event.dates[event.dates.length - 1].add({ days: 2 })
-  } else if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
-    // Get all calendar events for the current week offsetted by weekOffset
-    const projectedWeekStart =
-      renderedWeekStart ?? getRenderedWeekStart(weekOffset, event.startOnMonday)
-    const firstDate = dateToDowDate(
-      event.dates,
-      event.dates[0],
-      weekOffset,
-      true,
-      event.startOnMonday,
-      projectedWeekStart
-    )
-    const lastDate = dateToDowDate(
-      event.dates,
-      event.dates[event.dates.length - 1],
-      weekOffset,
-      true,
-      event.startOnMonday,
-      projectedWeekStart
-    )
-    timeMin = firstDate.subtract({ days: 2 })
-    timeMax = lastDate.add({ days: 2 })
-  }
-
-  // Fetch calendar events from Google Calendar
-  let calendarEventsMap
-  if (eventId.length === 0) {
-    calendarEventsMap = await get(
-      `/user/calendars?timeMin=${timeMin?.toString() ?? ""}&timeMax=${
-        timeMax?.toString() ?? ""
-      }`
-    )
-  } else {
-    calendarEventsMap = await get(
-      `/events/${eventId}/calendar-availabilities?timeMin=${
-        timeMin?.toString() ?? ""
-      }&timeMax=${timeMax?.toString() ?? ""}`
-    )
-  }
-
-  return calendarEventsMap
-}
-
-interface DOWSlot {
-  start: string
-  end: string
-  status?: string
-}
-
-type DOWValidationResult = { valid: false; error: string } | null
-
-/** Validates a DOW (Days of Week) event payload */
-export const validateDOWPayload = (
-  slots: DOWSlot[],
-  skipSameDayCheck = false
-): DOWValidationResult => {
-  if (!Array.isArray(slots)) {
-    return { valid: false, error: "Slots must be an array" }
-  }
-
-  // Empty array is valid (clears all availability)
-  if (slots.length === 0) {
-    return null
-  }
-
-  // Create a Set of valid DOW dates for fast lookup
-  const validDOWDates = new Set<string>(dayIndexToDayString)
-
-  // Time format regex: YYYY-MM-DDTHH:mm:ss
-  const timeFormatRegex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/
-
-  for (let i = 0; i < slots.length; i++) {
-    const slot = slots[i]
-
-    const iStr = String(i)
-
-    // Validate slot has required fields
-    if (!slot.start || !slot.end) {
-      return {
-        valid: false,
-        error: `Slot at index ${iStr} is missing required 'start' or 'end' field`,
-      }
-    }
-
-    if (typeof slot.start !== "string" || typeof slot.end !== "string") {
-      return {
-        valid: false,
-        error: `Slot at index ${iStr} has invalid 'start' or 'end' type (must be strings)`,
-      }
-    }
-
-    // Validate time format
-    if (!timeFormatRegex.test(slot.start) || !timeFormatRegex.test(slot.end)) {
-      return {
-        valid: false,
-        error: `Slot at index ${iStr} has invalid time format. Expected format: YYYY-MM-DDTHH:mm:ss (e.g., "2018-06-18T09:00:00")`,
-      }
-    }
-
-    // Parse the date/time strings
-    const startMatch = timeFormatRegex.exec(slot.start)
-    const endMatch = timeFormatRegex.exec(slot.end)
-
-    if (!startMatch || !endMatch) {
-      return {
-        valid: false,
-        error: `Slot at index ${iStr} has invalid time format`,
-      }
-    }
-
-    // Extract date and time components
-    const startYear = parseInt(startMatch[1], 10)
-    const startMonth = parseInt(startMatch[2], 10)
-    const startDay = parseInt(startMatch[3], 10)
-    const startHour = parseInt(startMatch[4], 10)
-    const startMinute = parseInt(startMatch[5], 10)
-    const startSecond = parseInt(startMatch[6], 10)
-
-    const endYear = parseInt(endMatch[1], 10)
-    const endMonth = parseInt(endMatch[2], 10)
-    const endDay = parseInt(endMatch[3], 10)
-    const endHour = parseInt(endMatch[4], 10)
-    const endMinute = parseInt(endMatch[5], 10)
-    const endSecond = parseInt(endMatch[6], 10)
-
-    // Validate time components are within valid ranges
-    if (
-      startHour < 0 ||
-      startHour > 23 ||
-      startMinute < 0 ||
-      startMinute > 59 ||
-      startSecond < 0 ||
-      startSecond > 59
-    ) {
-      return {
-        valid: false,
-        error: `Slot at index ${iStr} has invalid start time: hours must be 0-23, minutes and seconds must be 0-59`,
-      }
-    }
-
-    // Validate end time: hours 0-24, but if hour is 24, minutes and seconds must be 00:00
-    if (endHour < 0 || endHour > 24) {
-      return {
-        valid: false,
-        error: `Slot at index ${iStr} has invalid end time: hours must be 0-24`,
-      }
-    }
-
-    if (endHour === 24) {
-      if (endMinute !== 0 || endSecond !== 0) {
-        return {
-          valid: false,
-          error: `Slot at index ${iStr} has invalid end time: if hour is 24, minutes and seconds must be 00:00`,
-        }
-      }
-    } else {
-      if (endMinute < 0 || endMinute > 59 || endSecond < 0 || endSecond > 59) {
-        return {
-          valid: false,
-          error: `Slot at index ${iStr} has invalid end time: minutes and seconds must be 0-59`,
-        }
-      }
-    }
-
-    // Format date part (YYYY-MM-DD) for validation
-    const startDateStr = `${String(startYear)}-${String(startMonth).padStart(
-      2,
-      "0"
-    )}-${String(startDay).padStart(2, "0")}`
-    const endDateStr = `${String(endYear)}-${String(endMonth).padStart(
-      2,
-      "0"
-    )}-${String(endDay).padStart(2, "0")}`
-
-    // Validate dates belong to hardcoded DOW dates
-    if (!validDOWDates.has(startDateStr)) {
-      return {
-        valid: false,
-        error: `Slot at index ${iStr} has invalid start date: ${startDateStr}. Must be one of the hardcoded DOW dates: ${Array.from(
-          validDOWDates
-        ).join(", ")}`,
-      }
-    }
-
-    if (!validDOWDates.has(endDateStr)) {
-      return {
-        valid: false,
-        error: `Slot at index ${iStr} has invalid end date: ${endDateStr}. Must be one of the hardcoded DOW dates: ${Array.from(
-          validDOWDates
-        ).join(", ")}`,
-      }
-    }
-
-    // Validate that start and end are on the same day
-    // Skip this check if skipSameDayCheck is true (e.g., when timezone conversion may cause day boundary crossing)
-    if (!skipSameDayCheck && startDateStr !== endDateStr) {
-      return {
-        valid: false,
-        error: `Slot at index ${iStr} has start and end times on different days (${startDateStr} vs ${endDateStr}). Start and end must be on the same day of the week.`,
-      }
-    }
-
-    // Validate that start time is before end time
-    // Handle 24:00:00 as end of day (convert to next day 00:00:00 for comparison)
-    let endTimeString = slot.end
-    if (endHour === 24) {
-      // Convert 24:00:00 to next day 00:00:00 for proper comparison
-      const endDate = Temporal.PlainDate.from({
-        year: endYear,
-        month: endMonth,
-        day: endDay,
-      })
-      const nextDay = endDate.add({ days: 1 })
-      endTimeString = `${nextDay.toString()}T00:00:00`
-    }
-
-    const startZDT = Temporal.ZonedDateTime.from(`${slot.start}[UTC]`)
-    const endZDT = Temporal.ZonedDateTime.from(`${endTimeString}[UTC]`)
-
-    if (
-      Temporal.Instant.compare(endZDT.toInstant(), startZDT.toInstant()) <= 0
-    ) {
-      return {
-        valid: false,
-        error: `Slot at index ${iStr} has end time that is before or equal to start time`,
-      }
-    }
-
-    // Validate status field if present
-    if (slot.status !== undefined) {
-      if (slot.status !== "available" && slot.status !== "if-needed") {
-        return {
-          valid: false,
-          error: `Slot at index ${iStr} has invalid status '${slot.status}'. Must be 'available' or 'if-needed'`,
-        }
-      }
-    }
-  }
-
-  // All validations passed
-  return null
 }
