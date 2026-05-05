@@ -5,6 +5,7 @@ import type {
   Event,
   Response,
   SignUpBlock,
+  SignUpResponse,
 } from "@/types"
 import type { RawEvent, RawSignUpBlock } from "@/types/transport"
 import { fromRawSignUpBlock } from "@/types/transport"
@@ -67,10 +68,9 @@ export interface ScheduledEvent {
 
 // TODO rename to SignUpBlockLike?
 type RawEventResponses = NonNullable<RawEvent["responses"]>
-type RawSignUpResponses = NonNullable<RawEvent["signUpResponses"]>
 
 export type ScheduleOverlapResponse = RawEventResponses[string]
-export type ScheduleOverlapSignUpResponse = RawSignUpResponses[string]
+export type ScheduleOverlapSignUpResponse = SignUpResponse
 
 export interface ScheduleOverlapSignUpBlock
   extends Omit<SignUpBlock, "startDate" | "endDate" | "_id" | "capacity" | "name"> {
@@ -97,7 +97,7 @@ export type ScheduleOverlapEvent = Omit<
 > & {
   responses?: RawEventResponses
   signUpBlocks?: ScheduleOverlapSignUpBlock[]
-  signUpResponses?: RawSignUpResponses
+  signUpResponses?: Record<string, SignUpResponse>
   attendees?: Attendee[]
   location?: string
   shortId?: string

@@ -173,6 +173,20 @@ describe("transport and timezone regression boundaries", () => {
           endDate: Date.parse("2026-01-01T10:00:00Z"),
         },
       ],
+      signUpResponses: {
+        "user-1": {
+          userId: "user-1",
+          signUpBlockIds: ["block-1"],
+          user: {
+            _id: "user-1",
+            email: "ada@example.com",
+            calendarOptions: {
+              bufferTime: { enabled: true, time: 30 },
+              workingHours: { enabled: true, startTime: 8, endTime: 18 },
+            },
+          },
+        },
+      },
     })
 
     const normalized = toScheduleOverlapEvent(event)
@@ -181,6 +195,13 @@ describe("transport and timezone regression boundaries", () => {
     expect(event.scheduledEvent?.endDate).toBeInstanceOf(Temporal.ZonedDateTime)
     expect(event.signUpBlocks?.[0].startDate).toBeInstanceOf(Temporal.ZonedDateTime)
     expect(event.signUpBlocks?.[0].endDate).toBeInstanceOf(Temporal.ZonedDateTime)
+    expect(event.signUpResponses?.["user-1"]?.user).toBeDefined()
+    expect(
+      event.signUpResponses?.["user-1"]?.user?.calendarOptions?.bufferTime?.time
+    ).toBe(30)
+    expect(
+      normalized.signUpResponses?.["user-1"]?.user?.calendarOptions?.workingHours?.endTime
+    ).toBe(18)
     expect(normalized.responses?.["user-1"]?.calendarOptions?.bufferTime?.time).toBe(15)
     expect(normalized.signUpBlocks?.[0].startDate).toBeInstanceOf(Temporal.ZonedDateTime)
     expect(normalized.signUpBlocks?.[0].endDate).toBeInstanceOf(Temporal.ZonedDateTime)

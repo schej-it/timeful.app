@@ -205,6 +205,14 @@ export function fromRawEvent(raw: RawEvent): Event {
       ? fromRawCalendarEvent(raw.scheduledEvent)
       : undefined,
     signUpBlocks: raw.signUpBlocks?.map((block) => fromRawSignUpBlock(block)),
+    signUpResponses: raw.signUpResponses
+      ? Object.fromEntries(
+          Object.entries(raw.signUpResponses).map(([id, response]) => [
+            id,
+            fromRawSignUpResponse(response),
+          ])
+        )
+      : undefined,
   }
 }
 
@@ -220,6 +228,14 @@ export function toRawEvent(event: Event): RawEvent {
       ? toRawCalendarEvent(event.scheduledEvent)
       : undefined,
     signUpBlocks: event.signUpBlocks?.map((block) => toRawSignUpBlock(block)),
+    signUpResponses: event.signUpResponses
+      ? Object.fromEntries(
+          Object.entries(event.signUpResponses).map(([id, response]) => [
+            id,
+            toRawSignUpResponse(response),
+          ])
+        )
+      : undefined,
   }
 }
 

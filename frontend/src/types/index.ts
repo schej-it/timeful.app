@@ -25,7 +25,7 @@ export type User = Omit<RawUser, "calendarAccounts" | "calendarOptions"> & {
 
 export type Event = Omit<
   RawEvent,
-  "dates" | "times" | "duration" | "scheduledEvent" | "signUpBlocks"
+  "dates" | "times" | "duration" | "scheduledEvent" | "signUpBlocks" | "signUpResponses"
 > & {
   dates?: Temporal.PlainDate[]
   timeSeed?: Temporal.ZonedDateTime
@@ -35,6 +35,7 @@ export type Event = Omit<
   duration?: Temporal.Duration
   scheduledEvent?: CalendarEvent
   signUpBlocks?: SignUpBlock[]
+  signUpResponses?: Record<string, SignUpResponse>
 }
 
 export type Folder = RawFolder
