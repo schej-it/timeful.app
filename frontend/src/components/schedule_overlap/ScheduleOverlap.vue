@@ -9,92 +9,10 @@
           >
             <ScheduleOverlapDaysOnlyGrid
               v-if="event.daysOnly"
-              :event="event"
-              :cur-month-text="curMonthText"
-              :has-prev-page="hasPrevPage"
-              :has-next-page="hasNextPage"
-              :days-of-week="daysOfWeek"
-              :month-days="monthDays"
-              :day-timeslot-class-style="dayTimeslotClassStyle"
-              :day-timeslot-von="dayTimeslotVon"
-              :is-phone="isPhone"
-              :hint-text-shown="hintTextShown"
-              :hint-text="hintText"
-              :calendar-only="calendarOnly"
-              :tool-row="toolRowViewModel"
-              @prev-page="prevPage"
-              @next-page="nextPage"
-              @reset-cur-timeslot="resetCurTimeslot"
-              @close-hint="closeHint"
-              @toggle-show-event-options="toggleShowEventOptions"
-              @update:week-offset="(val) => $emit('update:weekOffset', val)"
-              @schedule-event="scheduleEvent"
-              @cancel-schedule-event="cancelScheduleEvent"
-              @confirm-schedule-event="confirmScheduleEvent"
+              :days-only-grid="daysOnlyGridViewModel"
             />
             <template v-else>
-              <ScheduleOverlapTimeGrid
-                :event="event"
-                :calendar-only="calendarOnly"
-                :has-prev-page="hasPrevPage"
-                :has-next-page="hasNextPage"
-                :split-times="splitTimes"
-                :times="times"
-                :timeslot-height="timeslotHeight"
-                :days="days"
-                :is-specific-dates="isSpecificDates"
-                :is-group="isGroup"
-                :sample-calendar-events-by-day="sampleCalendarEventsByDay"
-                :show-loader="showLoader"
-                :loading-calendar-events="loadingCalendarEvents"
-                :editing="editing"
-                :always-show-calendar-events="alwaysShowCalendarEvents"
-                :show-calendar-events="showCalendarEvents"
-                :calendar-events-by-day="calendarEventsByDay"
-                :state="state"
-                :states="states"
-                :page="page"
-                :max-days-per-page="maxDaysPerPage"
-                :drag-start="dragStart"
-                :cur-scheduled-event="curScheduledEvent"
-                :scheduled-event-style="scheduledEventStyle"
-                :sign-up-block-being-dragged-style="signUpBlockBeingDraggedStyle"
-                :new-sign-up-block-name="newSignUpBlockName"
-                :is-sign-up="isSignUp"
-                :sign-up-blocks-by-day="signUpBlocksByDay"
-                :sign-up-blocks-to-add-by-day="signUpBlocksToAddByDay"
-                :overlay-availability="overlayAvailability"
-                :overlaid-availability="overlaidAvailability"
-                :timeslot-class-style="timeslotClassStyle"
-                :timeslot-von="timeslotVon"
-                :no-event-names="noEventNames"
-                :hint-text-shown="hintTextShown"
-                :hint-text="hintText"
-                :is-phone="isPhone"
-                :max="max"
-                :respondents-length="respondents.length"
-                :fetched-responses="fetchedResponses"
-                :loading-responses-loading="loadingResponses.loading"
-                :tool-row="toolRowViewModel"
-                :get-rendered-time-block-style="getRenderedTimeBlockStyleForTemplate"
-                :get-sign-up-block-style="getSignUpBlockStyle"
-                @prev-page="prevPage"
-                @next-page="nextPage"
-                @calendar-scroll="onCalendarScroll"
-                @reset-cur-timeslot="resetCurTimeslot"
-                @close-hint="closeHint"
-                @toggle-show-event-options="toggleShowEventOptions"
-                @update:week-offset="(val) => $emit('update:weekOffset', val)"
-                @schedule-event="scheduleEvent"
-                @cancel-schedule-event="cancelScheduleEvent"
-                @confirm-schedule-event="confirmScheduleEvent"
-                @sign-up-for-block="
-                  (block) =>
-                    handleSignUpBlockClick(block, (selectedBlock) =>
-                      $emit('signUpForBlock', selectedBlock)
-                    )
-                "
-              />
+              <ScheduleOverlapTimeGrid :timed-grid="timedGridViewModel" />
             </template>
           </div>
 
@@ -140,17 +58,6 @@
           v-if="isPhone && !calendarOnly"
           class="tw-px-4"
           :tool-row="toolRowViewModel"
-          @update:cur-timezone="curTimezone = $event"
-          @update:show-best-times="showBestTimes = $event"
-          @update:hide-if-needed="hideIfNeeded = $event"
-          @update:start-calendar-on-monday="startCalendarOnMonday = $event"
-          @update:mobile-num-days="mobileNumDays = $event"
-          @update:time-type="updateTimeType"
-          @toggle-show-event-options="toggleShowEventOptions"
-          @update:week-offset="(val) => $emit('update:weekOffset', val)"
-          @schedule-event="scheduleEvent"
-          @cancel-schedule-event="cancelScheduleEvent"
-          @confirm-schedule-event="confirmScheduleEvent"
         />
 
         <ScheduleOverlapMobileOverlay
@@ -219,9 +126,14 @@ import type {
   SignUpBlockLite,
 } from "@/composables/schedule_overlap/types"
 import type {
+  ScheduleOverlapDaysOnlyGridActions,
+  ScheduleOverlapDaysOnlyGridViewModel,
   ScheduleOverlapMobileOverlayViewModel,
   ScheduleOverlapRespondentsPanelViewModel,
   ScheduleOverlapSidebarViewModel,
+  ScheduleOverlapTimeGridActions,
+  ScheduleOverlapTimeGridViewModel,
+  ScheduleOverlapToolRowActions,
   ScheduleOverlapToolRowViewModel,
 } from "./scheduleOverlapViewModels"
 
@@ -354,6 +266,13 @@ const nextPage = (e?: Event) => {
 const prevPage = (e?: Event) => {
   ;(e as MouseEvent | undefined)?.stopImmediatePropagation()
   grid.prevPage(e ?? new Event('click'), (n) => { emit("update:weekOffset", n); })
+}
+const emitWeekOffsetUpdate = (value: number) => {
+  emit("update:weekOffset", value)
+}
+
+const emitSignUpForBlock = (block: SignUpBlockLite) => {
+  emit("signUpForBlock", block)
 }
 // ── 2. useCalendarEvents ───────────────────────────────────────────────
 const calEvents = useCalendarEvents({
@@ -742,6 +661,7 @@ const toolRowViewModel = computed<ScheduleOverlapToolRowViewModel>(() => ({
   event: props.event,
   state: state.value,
   states,
+  actions: toolRowActions.value,
   curTimezone: curTimezone.value,
   startCalendarOnMonday: startCalendarOnMonday.value,
   showBestTimes: showBestTimes.value,
@@ -755,6 +675,71 @@ const toolRowViewModel = computed<ScheduleOverlapToolRowViewModel>(() => ({
   allowScheduleEvent: allowScheduleEvent.value,
   showEventOptions: showEventOptions.value,
   timeType: timeType.value,
+}))
+
+const daysOnlyGridViewModel = computed<ScheduleOverlapDaysOnlyGridViewModel>(() => ({
+  event: props.event,
+  actions: daysOnlyGridActions.value,
+  curMonthText: curMonthText.value,
+  hasPrevPage: hasPrevPage.value,
+  hasNextPage: hasNextPage.value,
+  daysOfWeek: daysOfWeek.value,
+  monthDays: monthDays.value,
+  dayTimeslotClassStyle: dayTimeslotClassStyle.value,
+  dayTimeslotVon: dayTimeslotVon.value,
+  isPhone: isPhone.value,
+  hintTextShown: hintTextShown.value,
+  hintText: hintText.value,
+  calendarOnly: props.calendarOnly,
+  toolRow: toolRowViewModel.value,
+}))
+
+const timedGridViewModel = computed<ScheduleOverlapTimeGridViewModel>(() => ({
+  event: props.event,
+  actions: timedGridActions.value,
+  calendarOnly: props.calendarOnly,
+  hasPrevPage: hasPrevPage.value,
+  hasNextPage: hasNextPage.value,
+  splitTimes: splitTimes.value,
+  times: times.value,
+  timeslotHeight: timeslotHeight.value,
+  days: days.value,
+  isSpecificDates: isSpecificDates.value,
+  isGroup: isGroup.value,
+  sampleCalendarEventsByDay: props.sampleCalendarEventsByDay,
+  showLoader: showLoader.value,
+  loadingCalendarEvents: props.loadingCalendarEvents,
+  editing: editing.value,
+  alwaysShowCalendarEvents: props.alwaysShowCalendarEvents,
+  showCalendarEvents: showCalendarEvents.value,
+  calendarEventsByDay: calendarEventsByDay.value,
+  state: state.value,
+  states,
+  page: page.value,
+  maxDaysPerPage: maxDaysPerPage.value,
+  dragStart: dragStart.value,
+  curScheduledEvent: curScheduledEvent.value,
+  scheduledEventStyle: scheduledEventStyle.value,
+  signUpBlockBeingDraggedStyle: signUpBlockBeingDraggedStyle.value,
+  newSignUpBlockName: newSignUpBlockName.value,
+  isSignUp: isSignUp.value,
+  signUpBlocksByDay: signUpBlocksByDay.value,
+  signUpBlocksToAddByDay: signUpBlocksToAddByDay.value,
+  overlayAvailability: overlayAvailability.value,
+  overlaidAvailability: overlaidAvailability.value,
+  timeslotClassStyle: timeslotClassStyle.value,
+  timeslotVon: timeslotVon.value,
+  noEventNames: props.noEventNames,
+  hintTextShown: hintTextShown.value,
+  hintText: hintText.value,
+  isPhone: isPhone.value,
+  max: max.value,
+  respondentsLength: respondents.value.length,
+  fetchedResponses: fetchedResponses.value,
+  loadingResponsesLoading: loadingResponses.value.loading,
+  toolRow: toolRowViewModel.value,
+  getRenderedTimeBlockStyle: getRenderedTimeBlockStyleForTemplate,
+  getSignUpBlockStyle,
 }))
 
 const overlaidAvailability = computed(() => {
@@ -861,6 +846,48 @@ const dayTimeslotVon = computed(() =>
 function updateTimeType(value: string) {
   timeType.value = value as typeof timeType.value
 }
+
+const toolRowActions = computed<ScheduleOverlapToolRowActions>(() => ({
+  updateCurTimezone: (value) => {
+    curTimezone.value = value
+  },
+  updateTimeType,
+  updateMobileNumDays: (value) => {
+    mobileNumDays.value = value
+  },
+  updateShowBestTimes: (value) => {
+    showBestTimes.value = value
+  },
+  updateHideIfNeeded: (value) => {
+    hideIfNeeded.value = value
+  },
+  updateStartCalendarOnMonday: (value) => {
+    startCalendarOnMonday.value = value
+  },
+  updateWeekOffset: emitWeekOffsetUpdate,
+  toggleShowEventOptions,
+  scheduleEvent,
+  cancelScheduleEvent,
+  confirmScheduleEvent,
+}))
+
+const daysOnlyGridActions = computed<ScheduleOverlapDaysOnlyGridActions>(() => ({
+  prevPage,
+  nextPage,
+  resetCurTimeslot,
+  closeHint,
+}))
+
+const timedGridActions = computed<ScheduleOverlapTimeGridActions>(() => ({
+  prevPage,
+  nextPage,
+  calendarScroll: onCalendarScroll,
+  resetCurTimeslot,
+  closeHint,
+  signUpForBlock: (block) => {
+    handleSignUpBlockClick(block, emitSignUpForBlock)
+  },
+}))
 
 function getTimeslotVon(row: number, col: number): Record<string, () => void> {
   if (!props.interactable) return {}

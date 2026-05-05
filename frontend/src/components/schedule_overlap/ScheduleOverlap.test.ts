@@ -111,14 +111,14 @@ describe("ScheduleOverlap", () => {
     expect(overlayViewModel.respondentsPanel.eventId).toBe("evt-1")
   })
 
-  it("passes a cohesive tool-row view model to timed and days-only grid boundaries", () => {
+  it("passes cohesive timed and days-only grid view models to grid boundaries", () => {
     const timedWrapper = mountScheduleOverlap({
       global: {
         stubs: {
           ScheduleOverlapTimeGrid: {
             name: "ScheduleOverlapTimeGrid",
             props: {
-              toolRow: {
+              timedGrid: {
                 type: Object,
                 required: true,
               },
@@ -129,14 +129,21 @@ describe("ScheduleOverlap", () => {
       },
     })
 
-    const timedToolRow = timedWrapper.findComponent({ name: "ScheduleOverlapTimeGrid" })
-      .props("toolRow") as {
+    const timedGrid = timedWrapper.findComponent({ name: "ScheduleOverlapTimeGrid" })
+      .props("timedGrid") as {
       event: { _id?: string }
-      numResponses: number
+      actions: { nextPage: () => void; signUpForBlock: (block: { _id: string }) => void }
+      toolRow: {
+        numResponses: number
+        actions: { updateWeekOffset: (value: number) => void }
+      }
     }
 
-    expect(timedToolRow.event._id).toBe("evt-1")
-    expect(timedToolRow.numResponses).toBe(0)
+    expect(timedGrid.event._id).toBe("evt-1")
+    expect(typeof timedGrid.actions.nextPage).toBe("function")
+    expect(typeof timedGrid.actions.signUpForBlock).toBe("function")
+    expect(timedGrid.toolRow.numResponses).toBe(0)
+    expect(typeof timedGrid.toolRow.actions.updateWeekOffset).toBe("function")
 
     const daysOnlyWrapper = mountScheduleOverlap({
       props: {
@@ -150,7 +157,7 @@ describe("ScheduleOverlap", () => {
           ScheduleOverlapDaysOnlyGrid: {
             name: "ScheduleOverlapDaysOnlyGrid",
             props: {
-              toolRow: {
+              daysOnlyGrid: {
                 type: Object,
                 required: true,
               },
@@ -161,14 +168,21 @@ describe("ScheduleOverlap", () => {
       },
     })
 
-    const daysOnlyToolRow = daysOnlyWrapper.findComponent({
+    const daysOnlyGrid = daysOnlyWrapper.findComponent({
       name: "ScheduleOverlapDaysOnlyGrid",
-    }).props("toolRow") as {
+    }).props("daysOnlyGrid") as {
       event: { daysOnly?: boolean }
-      numResponses: number
+      actions: { prevPage: () => void; closeHint: () => void }
+      toolRow: {
+        numResponses: number
+        actions: { toggleShowEventOptions: () => void }
+      }
     }
 
-    expect(daysOnlyToolRow.event.daysOnly).toBe(true)
-    expect(daysOnlyToolRow.numResponses).toBe(0)
+    expect(daysOnlyGrid.event.daysOnly).toBe(true)
+    expect(typeof daysOnlyGrid.actions.prevPage).toBe("function")
+    expect(typeof daysOnlyGrid.actions.closeHint).toBe("function")
+    expect(daysOnlyGrid.toolRow.numResponses).toBe(0)
+    expect(typeof daysOnlyGrid.toolRow.actions.toggleShowEventOptions).toBe("function")
   })
 })

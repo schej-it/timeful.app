@@ -17,7 +17,7 @@
             class="tw-w-full sm:tw-w-[unset]"
             :model-value="toolRow.curTimezone"
             :reference-date="toolRow.timezoneReferenceDate"
-            @update:model-value="(val) => $emit('update:curTimezone', val)"
+            @update:model-value="(val) => toolRow.actions.updateCurTimezone(val)"
           />
           <v-select
             :value="toolRow.timeType"
@@ -27,7 +27,7 @@
             class="tw-z-20 -tw-mt-px tw-w-16 tw-text-sm"
             dense
             hide-details
-            @input="$emit('update:timeType', $event)"
+            @input="toolRow.actions.updateTimeType($event)"
           />
         </div>
         <div
@@ -43,7 +43,7 @@
             class="-tw-mt-px tw-flex-none tw-shrink tw-basis-24 tw-text-sm"
             dense
             hide-details
-            @input="$emit('update:mobileNumDays', $event)"
+            @input="toolRow.actions.updateMobileNumDays($event)"
           />
           at a time
         </div>
@@ -59,11 +59,11 @@
             :show-event-options="toolRow.showEventOptions"
             :start-calendar-on-monday="toolRow.startCalendarOnMonday"
             :num-responses="toolRow.numResponses"
-            @update:show-best-times="(val) => $emit('update:showBestTimes', val)"
-            @update:hide-if-needed="(val) => $emit('update:hideIfNeeded', val)"
-            @toggle-show-event-options="$emit('toggleShowEventOptions')"
+            @update:show-best-times="(val) => toolRow.actions.updateShowBestTimes(val)"
+            @update:hide-if-needed="(val) => toolRow.actions.updateHideIfNeeded(val)"
+            @toggle-show-event-options="toolRow.actions.toggleShowEventOptions()"
             @update:start-calendar-on-monday="
-              (val) => $emit('update:startCalendarOnMonday', val)
+              (val) => toolRow.actions.updateStartCalendarOnMonday(val)
             "
           />
         </template>
@@ -81,7 +81,7 @@
               :week-offset="toolRow.weekOffset"
               :event="toolRow.event"
               :start-on-monday="toolRow.event.startOnMonday"
-              @update:week-offset="(val) => $emit('update:weekOffset', val)"
+              @update:week-offset="(val) => toolRow.actions.updateWeekOffset(val)"
             />
           </div>
         </template>
@@ -96,7 +96,7 @@
           <v-btn
             outlined
             class="tw-w-full tw-text-blue"
-            @click="(e: MouseEvent) => $emit('scheduleEvent', e)"
+            @click="(e: MouseEvent) => toolRow.actions.scheduleEvent(e)"
           >
             <v-icon small>mdi-calendar-check</v-icon>
             <span class="tw-ml-2">Schedule event</span>
@@ -106,7 +106,7 @@
           <v-btn
             outlined
             class="tw-mr-1 tw-text-red"
-            @click="(e: MouseEvent) => $emit('cancelScheduleEvent', e)"
+            @click="(e: MouseEvent) => toolRow.actions.cancelScheduleEvent(e)"
           >
             Cancel
           </v-btn>
@@ -121,7 +121,7 @@
               </v-btn>
             </template>
             <v-list dense>
-              <v-list-item @click="(e) => $emit('confirmScheduleEvent', true)">
+              <v-list-item @click="toolRow.actions.confirmScheduleEvent(true)">
                 <v-img
                   src="@/assets/gcal_logo.png"
                   class="tw-mr-2 tw-flex-none"
@@ -132,7 +132,7 @@
                   <v-list-item-title>Google Calendar</v-list-item-title>
                 </v-list-item-content>
               </v-list-item>
-              <v-list-item @click="(e) => $emit('confirmScheduleEvent', false)">
+              <v-list-item @click="toolRow.actions.confirmScheduleEvent(false)">
                 <v-img
                   src="@/assets/outlook_logo.svg"
                   class="tw-mr-2 tw-flex-none"
@@ -176,25 +176,10 @@ import TimezoneSelector from "./TimezoneSelector.vue"
 import GCalWeekSelector from "./GCalWeekSelector.vue"
 import EventOptions from "./EventOptions.vue"
 import { guestUserId, timeTypes } from "@/constants"
-import type { Timezone } from "@/composables/schedule_overlap/types"
 import type { ScheduleOverlapToolRowViewModel } from "./scheduleOverlapViewModels"
 
 const props = defineProps<{
   toolRow: ScheduleOverlapToolRowViewModel
-}>()
-
-defineEmits<{
-  "update:curTimezone": [value: Timezone]
-  "update:timeType": [value: string]
-  "update:mobileNumDays": [value: number]
-  "update:showBestTimes": [value: boolean]
-  "update:hideIfNeeded": [value: boolean]
-  "update:startCalendarOnMonday": [value: boolean]
-  "update:weekOffset": [value: number]
-  toggleShowEventOptions: []
-  scheduleEvent: [e: MouseEvent]
-  cancelScheduleEvent: [e: MouseEvent]
-  confirmScheduleEvent: [useGcal: boolean]
 }>()
 
 const mainStore = useMainStore()
