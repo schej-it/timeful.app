@@ -5,6 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { durations } from "@/constants"
 import { createLocalStorageMock } from "@/test/localStorage"
+import {
+  buildEventEditorStubs,
+  type ComponentStubMap,
+} from "@/test/componentStubs"
 import type * as UtilsModule from "@/utils"
 import NewSignUp from "./NewSignUp.vue"
 
@@ -58,58 +62,7 @@ const formRefMethods = {
   resetValidation: vi.fn<() => void>(() => undefined),
 }
 
-const VBtnStub = {
-  emits: ["click"],
-  template: '<button @click="$emit(\'click\')"><slot /></button>',
-}
-
-const PassThroughStub = {
-  inheritAttrs: false,
-  template: "<div><slot /></div>",
-}
-
-const NullStub = {
-  inheritAttrs: false,
-  template: "<div />",
-}
-
-const VFormStub = {
-  methods: {
-    validate(): Promise<{ valid: boolean }> {
-      return formRefMethods.validate()
-    },
-    resetValidation(): void {
-      formRefMethods.resetValidation()
-    },
-  },
-  template: "<form><slot /></form>",
-}
-
-const defaultStubs = {
-  "v-btn": VBtnStub,
-  "v-btn-toggle": NullStub,
-  "v-card": PassThroughStub,
-  "v-card-actions": PassThroughStub,
-  "v-card-text": PassThroughStub,
-  "v-card-title": PassThroughStub,
-  "v-checkbox": NullStub,
-  "v-expand-transition": PassThroughStub,
-  "v-form": VFormStub,
-  "v-icon": NullStub,
-  "v-input": PassThroughStub,
-  "v-select": NullStub,
-  "v-spacer": NullStub,
-  "v-text-field": NullStub,
-  "v-tooltip": NullStub,
-  AlertText: NullStub,
-  DatePicker: NullStub,
-  EmailInput: NullStub,
-  ExpandableSection: PassThroughStub,
-  HelpDialog: PassThroughStub,
-  OverflowGradient: NullStub,
-  SlideToggle: NullStub,
-  TimezoneSelector: NullStub,
-}
+const defaultStubs: ComponentStubMap = buildEventEditorStubs(formRefMethods)
 
 describe("NewSignUp", () => {
   beforeEach(() => {

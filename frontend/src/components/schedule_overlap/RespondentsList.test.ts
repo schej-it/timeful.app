@@ -4,6 +4,10 @@ import { shallowMount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { durations, UTC } from "@/constants"
+import {
+  respondentsListStubs,
+  type ComponentStubMap,
+} from "@/test/componentStubs"
 import { ZdtMap, ZdtSet } from "@/utils"
 import RespondentsList from "./RespondentsList.vue"
 
@@ -34,6 +38,7 @@ vi.mock("@/utils/useDisplayHelpers", () => ({
 }))
 
 const zdt = (iso: string) => Temporal.Instant.from(iso).toZonedDateTimeISO(UTC)
+const sharedRespondentsListStubs: ComponentStubMap = respondentsListStubs
 
 const mountRespondentsList = ({
   curDate,
@@ -93,27 +98,7 @@ const mountRespondentsList = ({
       addingAvailabilityAsGuest: false,
     },
     global: {
-      stubs: {
-        "v-avatar": true,
-        "v-btn": true,
-        "v-card": true,
-        "v-card-actions": true,
-        "v-card-text": true,
-        "v-card-title": true,
-        "v-dialog": true,
-        "v-icon": true,
-        "v-list": true,
-        "v-list-item": true,
-        "v-list-item-title": true,
-        "v-menu": true,
-        "v-select": true,
-        "v-simple-checkbox": true,
-        "v-spacer": true,
-        "v-switch": true,
-        UserAvatarContent: true,
-        EventOptions: true,
-        OverflowGradient: true,
-      },
+      stubs: sharedRespondentsListStubs,
     },
   })
 
