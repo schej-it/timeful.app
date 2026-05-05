@@ -42,6 +42,56 @@ describe("SignUp route normalization", () => {
     vi.clearAllMocks()
   })
 
+  it("redirects group events to the canonical group route", async () => {
+    getMock.mockResolvedValue({
+      _id: "group-1",
+      type: eventTypes.GROUP,
+      isSignUpForm: false,
+    })
+
+    shallowMount(SignUp, {
+      props: {
+        signUpId: "group-1",
+        fromSignIn: true,
+        initialTimezone: {
+          value: "Asia/Kathmandu",
+          label: "Kathmandu",
+          gmtString: "GMT+5:45",
+          offset: "PT5H45M",
+        },
+        contactsPayload: {
+          name: "Draft",
+        },
+      },
+      global: {
+        stubs: {
+          Event: true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(routerReplaceMock).toHaveBeenCalledWith({
+      name: "group",
+      params: {
+        groupId: "group-1",
+      },
+      query: {
+        initialTimezone: JSON.stringify({
+          value: "Asia/Kathmandu",
+          label: "Kathmandu",
+          gmtString: "GMT+5:45",
+          offset: "PT5H45M",
+        }),
+        fromSignIn: "true",
+        contactsPayload: JSON.stringify({
+          name: "Draft",
+        }),
+      },
+    })
+  })
+
   it("redirects non-sign-up events to the canonical event route", async () => {
     getMock.mockResolvedValue({
       _id: "evt-1",
