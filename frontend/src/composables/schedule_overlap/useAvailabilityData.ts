@@ -21,7 +21,6 @@ import {
   ZdtSet,
   zdtMapGet,
   zdtSetHas,
-  type CalendarAccountsMap,
 } from "@/utils"
 import { eventTypes, durations, UTC } from "@/constants"
 import { useMainStore } from "@/stores/main"
@@ -38,6 +37,7 @@ import {
   type ParsedResponses,
   type ResponsesFormatted,
   type RowCol,
+  type SharedCalendarAccounts,
   type ScheduleOverlapEvent,
   type ScheduleOverlapState,
   type TimeItem,
@@ -610,20 +610,20 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
 
   const submitAvailability = async (
     guestPayload: { name: string; email: string } = { name: "", email: "" },
-    sharedCalendarAccounts?: Record<string, unknown>
+    sharedCalendarAccounts?: SharedCalendarAccounts
   ) => {
     const eventId =
       typeof opts.event.value._id === "string" ? opts.event.value._id : ""
     let type: string
     const authUser = mainStore.authUser
-    let payload:
-      | Record<string, unknown>
-      | EncodedEventResponseSubmissionPayload
+    let payload: EncodedEventResponseSubmissionPayload | ReturnType<
+      typeof toGroupResponseSubmissionPayload
+    >
 
     if (opts.isGroup.value) {
       type = "group availability and calendars"
       payload = toGroupResponseSubmissionPayload({
-        sharedCalendarAccounts: (sharedCalendarAccounts ?? {}) as CalendarAccountsMap,
+        sharedCalendarAccounts: sharedCalendarAccounts ?? {},
         manualAvailability: manualAvailability.value,
         calendarOptions: {
           bufferTime: opts.bufferTime.value,

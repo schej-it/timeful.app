@@ -1,7 +1,8 @@
 import type { Temporal } from "temporal-polyfill"
 import type { CalendarOptions } from "@/composables/schedule_overlap/types"
 import type { ZdtMap, ZdtSet } from "@/utils"
-import { generateEnabledCalendarsPayload, type CalendarAccountsMap } from "@/utils"
+import type { SharedCalendarAccounts } from "@/composables/schedule_overlap/types"
+import { generateEnabledCalendarsPayload } from "@/utils"
 
 interface GuestPayload {
   name: string
@@ -69,7 +70,7 @@ export function toEventResponseSubmissionPayload(input: {
 }
 
 export function toGroupResponseSubmissionPayload(input: {
-  sharedCalendarAccounts: CalendarAccountsMap
+  sharedCalendarAccounts: SharedCalendarAccounts
   manualAvailability: ZdtMap<ZdtSet>
   calendarOptions: CalendarOptions
 }): GroupResponseSubmissionPayload {

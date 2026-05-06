@@ -215,8 +215,8 @@ describe("NewGroup", () => {
       props: {
         contactsPayload: {
           name: "Late group",
-          startTime: 23.5,
-          endTime: 1,
+          startTime: Temporal.PlainTime.from("23:30"),
+          endTime: Temporal.PlainTime.from("01:00"),
           selectedDaysOfWeek: [1],
           startOnMonday: true,
         },
@@ -275,8 +275,8 @@ describe("NewGroup", () => {
       props: {
         contactsPayload: {
           name: "Recovered group",
-          startTime: 9,
-          endTime: 10,
+          startTime: Temporal.PlainTime.from("09:00"),
+          endTime: Temporal.PlainTime.from("10:00"),
           selectedDaysOfWeek: [1],
           startOnMonday: true,
         },
@@ -314,8 +314,8 @@ describe("NewGroup", () => {
       props: {
         contactsPayload: {
           name: "All day group",
-          startTime: 9,
-          endTime: 9,
+          startTime: Temporal.PlainTime.from("09:00"),
+          endTime: Temporal.PlainTime.from("09:00"),
           selectedDaysOfWeek: [1],
           startOnMonday: true,
         },

@@ -3,7 +3,7 @@ import ObjectID from "bson-objectid"
 import { getTimeBlock, put, splitTimeBlocksByDay } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import type { Temporal } from "temporal-polyfill"
-import { toEventDateStrings } from "@/types/transport"
+import { toEventPatchPayload } from "@/composables/event/eventMutationBoundary"
 import {
   type DayItem,
   type RowCol,
@@ -168,11 +168,12 @@ export function useSignUpForm(opts: UseSignUpFormOptions) {
       signUpBlocksToAddByDay.value[i] = []
     }
 
-    const payload = {
+    const payload = toEventPatchPayload({
       name: opts.event.value.name,
       duration: opts.event.value.duration,
-      dates: toEventDateStrings(opts.event.value),
       type: opts.event.value.type,
+      dates: opts.event.value.dates,
+      timeSeed: opts.event.value.timeSeed,
       signUpBlocks: signUpBlocksByDay.value.flat().map((block) => ({
         _id: block._id,
         name: block.name,
@@ -180,7 +181,7 @@ export function useSignUpForm(opts: UseSignUpFormOptions) {
         startDate: block.startDate,
         endDate: block.endDate,
       })),
-    }
+    })
 
     try {
       await put(`/events/${opts.event.value._id ?? ""}`, payload)

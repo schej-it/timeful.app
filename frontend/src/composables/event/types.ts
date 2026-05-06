@@ -1,5 +1,8 @@
 import type { states } from "@/composables/schedule_overlap/types"
-import type { Timezone } from "@/composables/schedule_overlap/types"
+import type {
+  SharedCalendarAccounts,
+  Timezone,
+} from "@/composables/schedule_overlap/types"
 import type { Temporal } from "temporal-polyfill"
 
 export interface ScheduleOverlapInstance {
@@ -19,7 +22,7 @@ export interface ScheduleOverlapInstance {
   populateUserAvailability(userId: string): void
   submitAvailability(
     payload?: { name: string; email: string },
-    sharedCalendarAccounts?: Record<string, unknown>
+    sharedCalendarAccounts?: SharedCalendarAccounts
   ): Promise<void>
   submitNewSignUpBlocks(): Promise<boolean>
   deleteAvailability(name?: string): Promise<void>
@@ -42,14 +45,14 @@ export interface ScheduleOverlapInstance {
 export interface EventDraft {
   emails?: string[]
   name?: string
-  startTime?: Temporal.PlainTime | number
-  endTime?: Temporal.PlainTime | number
+  startTime?: Temporal.PlainTime
+  endTime?: Temporal.PlainTime
   daysOnly?: boolean
   selectedDateOption?: string
   selectedDaysOfWeek?: number[]
-  selectedDays?: Temporal.PlainDate[] | string[]
+  selectedDays?: Temporal.PlainDate[]
   notificationsEnabled?: boolean
-  timezone?: Timezone | SerializedTimezone
+  timezone?: Timezone
   specificTimesEnabled?: boolean
   startOnMonday?: boolean
 }

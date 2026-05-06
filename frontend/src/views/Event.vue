@@ -755,6 +755,19 @@ interface SlotEntry {
   status?: string
 }
 
+interface PluginDebugSlotEntry {
+  name?: string
+  email?: string
+  availability?: unknown
+  ifNeeded?: unknown
+}
+
+interface PluginDebugPayload {
+  timezone?: string
+  slots?: Record<string, PluginDebugSlotEntry>
+  timeIncrement?: number
+}
+
 function handleMessage(e: MessageEvent<PluginMessageData>) {
   if (!isValidPluginMessage(e)) return
   const payload = e.data.payload
@@ -772,9 +785,10 @@ function _interceptPluginResponses(e: MessageEvent<PluginMessageData>) {
     const { command, requestId, ok, error: errData, payload } = e.data
     if (ok) {
       if (command === "get-slots" && payload?.slots) {
-        const slots = payload.slots as unknown as Record<string, { name?: string; email?: string; availability?: unknown; ifNeeded?: unknown }>
-        const timeIncrement = Number((payload as Record<string, unknown>).timeIncrement ?? 0)
-        const timezoneValue = ((payload as Record<string, unknown>).timezone ?? "—") as string
+        const debugPayload = payload as PluginDebugPayload
+        const slots = debugPayload.slots ?? {}
+        const timeIncrement = debugPayload.timeIncrement ?? 0
+        const timezoneValue = debugPayload.timezone ?? "—"
         console.log(
           `[PLUGIN RESPONSE - SUCCESS] ${command} | timeIncrement: ${String(timeIncrement)} | timezone: ${timezoneValue}`
         )
@@ -1098,7 +1112,10 @@ void (async () => {
   }
 
   loader.loading.value = true
-  const promises = [loader.fetchCalendarAvailabilities(), loader.fetchAuthUserCalendarEvents()]
+  const promises = [
+    Promise.resolve(loader.fetchCalendarAvailabilities()),
+    Promise.resolve(loader.fetchAuthUserCalendarEvents()),
+  ]
   Promise.allSettled(promises).then(() => { loader.loading.value = false }).catch(() => undefined)
 
   fetchAuthUserProfile()

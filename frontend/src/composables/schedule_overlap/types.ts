@@ -1,9 +1,11 @@
 import { Temporal } from "temporal-polyfill"
 import type {
   Attendee,
+  CalendarAccount,
   CalendarEvent,
   CalendarOptions as InternalCalendarOptions,
   Event,
+  Location,
   Response,
   SignUpBlock,
   SignUpResponse,
@@ -65,6 +67,20 @@ export interface ScheduledEvent {
   numRows: number
 }
 
+export interface SharedSubCalendarSelection {
+  enabled: boolean
+}
+
+export interface SharedCalendarAccountSelection {
+  enabled: boolean
+  subCalendars: Record<string, SharedSubCalendarSelection>
+}
+
+export type SharedCalendarAccounts = Record<
+  string,
+  SharedCalendarAccountSelection
+>
+
 export type ScheduleOverlapResponse = Response
 export type ScheduleOverlapSignUpResponse = SignUpResponse
 
@@ -95,8 +111,7 @@ export type ScheduleOverlapEvent = Omit<
   signUpBlocks?: ScheduleOverlapSignUpBlock[]
   signUpResponses?: Record<string, SignUpResponse>
   attendees?: Attendee[]
-  location?: string
-  shortId?: string
+  location?: Location
 }
 
 export const toScheduleOverlapEvent = (
@@ -123,6 +138,24 @@ export const toScheduleOverlapEvent = (
 })
 
 export type SignUpBlockLite = ScheduleOverlapSignUpBlock
+
+export const toSharedCalendarAccounts = (
+  calendarAccounts?: Record<string, CalendarAccount>
+): SharedCalendarAccounts =>
+  Object.fromEntries(
+    Object.entries(calendarAccounts ?? {}).map(([accountId, account]) => [
+      accountId,
+      {
+        enabled: false,
+        subCalendars: Object.fromEntries(
+          Object.keys(account.subCalendars ?? {}).map((subCalendarId) => [
+            subCalendarId,
+            { enabled: false },
+          ])
+        ),
+      },
+    ])
+  )
 
 export interface CalendarOptions {
   bufferTime: { enabled: boolean; time: number }

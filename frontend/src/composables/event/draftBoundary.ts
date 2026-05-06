@@ -80,11 +80,24 @@ export function fromSerializedEventDraft(
 ): EventDraft {
   if (!rawDraft) return EMPTY_EVENT_DRAFT
   const draft: EventDraft = {}
+  const startTime = rawDraft.startTime as unknown
+  const endTime = rawDraft.endTime as unknown
+  const selectedDays = rawDraft.selectedDays as unknown
 
   if (rawDraft.emails) draft.emails = rawDraft.emails
   if (rawDraft.name != null) draft.name = rawDraft.name
-  if (rawDraft.startTime != null) draft.startTime = timeNumToPlainTime(rawDraft.startTime)
-  if (rawDraft.endTime != null) draft.endTime = timeNumToPlainTime(rawDraft.endTime)
+  if (rawDraft.startTime != null) {
+    draft.startTime =
+      startTime instanceof Temporal.PlainTime
+        ? startTime
+        : timeNumToPlainTime(rawDraft.startTime)
+  }
+  if (rawDraft.endTime != null) {
+    draft.endTime =
+      endTime instanceof Temporal.PlainTime
+        ? endTime
+        : timeNumToPlainTime(rawDraft.endTime)
+  }
   if (rawDraft.daysOnly != null) draft.daysOnly = rawDraft.daysOnly
   if (rawDraft.selectedDateOption != null) {
     draft.selectedDateOption = rawDraft.selectedDateOption
@@ -93,8 +106,8 @@ export function fromSerializedEventDraft(
     draft.selectedDaysOfWeek = rawDraft.selectedDaysOfWeek
   }
   if (rawDraft.selectedDays) {
-    draft.selectedDays = rawDraft.selectedDays.map((day) =>
-      Temporal.PlainDate.from(day)
+    draft.selectedDays = (selectedDays as Array<string | Temporal.PlainDate>).map((day) =>
+      day instanceof Temporal.PlainDate ? day : Temporal.PlainDate.from(day)
     )
   }
   if (rawDraft.notificationsEnabled != null) {
@@ -179,28 +192,20 @@ export function getDraftStartTime(
   draft: EventDraft,
   fallback: Temporal.PlainTime = hoursPlainTime.NINE
 ): Temporal.PlainTime {
-  if (draft.startTime == null) return fallback
-  return typeof draft.startTime === "number"
-    ? timeNumToPlainTime(draft.startTime)
-    : draft.startTime
+  return draft.startTime ?? fallback
 }
 
 export function getDraftEndTime(
   draft: EventDraft,
   fallback: Temporal.PlainTime = hoursPlainTime.SEVENTEEN
 ): Temporal.PlainTime {
-  if (draft.endTime == null) return fallback
-  return typeof draft.endTime === "number"
-    ? timeNumToPlainTime(draft.endTime)
-    : draft.endTime
+  return draft.endTime ?? fallback
 }
 
 export function getDraftSelectedDays(draft: EventDraft): Temporal.PlainDate[] {
-  return (draft.selectedDays ?? []).map((day) =>
-    typeof day === "string" ? Temporal.PlainDate.from(day) : day
-  )
+  return draft.selectedDays ?? []
 }
 
 export function getDraftTimezone(draft: EventDraft): Timezone | undefined {
-  return normalizeRouteTimezone(draft.timezone)
+  return draft.timezone
 }

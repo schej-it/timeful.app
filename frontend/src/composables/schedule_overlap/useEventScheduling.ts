@@ -10,7 +10,8 @@ import {
 } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
-import { toEventDateStrings } from "@/types/transport"
+import { toEventPatchPayload } from "@/composables/event/eventMutationBoundary"
+import type { Event, Location } from "@/types"
 import {
   HOUR_HEIGHT,
   SPLIT_GAP_HEIGHT,
@@ -59,6 +60,18 @@ export interface UseEventSchedulingOptions {
 export function useEventScheduling(opts: UseEventSchedulingOptions) {
   const mainStore = useMainStore()
   const curScheduledEvent = ref<ScheduledEvent | null>(null)
+
+  const getLocationText = (location: unknown): string => {
+    if (!location || typeof location !== "object") {
+      return ""
+    }
+
+    const normalizedLocation = location as Location
+
+    return [normalizedLocation.city, normalizedLocation.state, normalizedLocation.country_name]
+      .filter((value): value is string => Boolean(value))
+      .join(", ")
+  }
 
   const allowScheduleEvent = computed(() => Boolean(curScheduledEvent.value))
 
@@ -158,10 +171,7 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
     )
     const emailsString = encodeURIComponent(emails.filter(Boolean).join(","))
 
-    const eventId =
-      (opts.event.value as { shortId?: string }).shortId ??
-      opts.event.value._id ??
-      ""
+    const eventId = opts.event.value.shortId ?? opts.event.value._id ?? ""
     const scheduleTimezoneId = encodeURIComponent(
       opts.curTimezone.value.value ||
         getFixedOffsetTimeZoneId(opts.curTimezone.value.offset)
@@ -191,7 +201,7 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
       )}&startdt=${startDate.toInstant().toString()}&enddt=${endDate
         .toInstant()
         .toString()}&location=${encodeURIComponent(
-        (opts.event.value as { location?: string }).location ?? ""
+        getLocationText(opts.event.value.location)
       )}&path=/calendar/action/compose&timezone=${scheduleTimezoneId}`
     }
 
@@ -200,16 +210,10 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
   }
 
   const saveTempTimes = () => {
-    interface EventWithTimes {
-      _id?: string
-      dates?: Temporal.PlainDate[]
-      timeSeed?: Temporal.ZonedDateTime
-      times?: Temporal.ZonedDateTime[]
-      duration?: Temporal.Duration
-      remindees?: (string | { email?: string })[]
-    }
-
-    const eventValue = opts.event.value as unknown as EventWithTimes
+    const eventValue: Pick<
+      Event,
+      "_id" | "dates" | "timeSeed" | "times" | "duration" | "remindees"
+    > = { ...opts.event.value }
 
     eventValue.times = [...opts.tempTimes.value].sort((a, b) =>
       Temporal.ZonedDateTime.compare(a, b)
@@ -235,17 +239,8 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
 
     eventValue.duration = maxHours.since(minHours).add({ hours: 1 })
 
-    if (eventValue.remindees) {
-      eventValue.remindees = eventValue.remindees
-        .map((r) => (typeof r === "string" ? r : r.email ?? ""))
-        .filter((s) => s.length > 0)
-    }
-
     const eventId = eventValue._id ?? ""
-    void put(`/events/${eventId}`, {
-      ...eventValue,
-      dates: toEventDateStrings(eventValue),
-    })
+    void put(`/events/${eventId}`, toEventPatchPayload(eventValue))
       .then(() => {
         opts.state.value = opts.defaultState.value
       })

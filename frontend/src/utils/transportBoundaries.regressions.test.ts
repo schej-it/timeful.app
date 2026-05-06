@@ -14,11 +14,14 @@ import {
 import { get } from "@/utils/fetch_utils"
 import { getDateWithTimezone } from "@/utils"
 import { eventTypes } from "@/constants"
+import { toEventPatchPayload } from "@/composables/event/eventMutationBoundary"
 import {
   fetchUserCalendarEventsMap,
   fromCalendarAvailabilitiesTransportMap,
   fromCalendarEventsTransportMap,
 } from "@/composables/event/calendarEventsBoundary"
+import { fetchUserEvents } from "@/utils/services/EventService"
+import { fetchUserFolders } from "@/utils/services/FolderService"
 import { toScheduleOverlapEvent } from "@/composables/schedule_overlap/types"
 
 vi.mock("@/utils/fetch_utils", async () => {
@@ -281,5 +284,69 @@ describe("transport and timezone regression boundaries", () => {
     expect(entry.error).toBeUndefined()
     expect(entry.calendarEvents?.[0].startDate).toBeInstanceOf(Temporal.ZonedDateTime)
     expect(entry.calendarEvents?.[0].endDate).toBeInstanceOf(Temporal.ZonedDateTime)
+  })
+
+  it("decodes raw event and folder lists before store-level consumption", async () => {
+    vi.mocked(get)
+      .mockResolvedValueOnce([
+        {
+          _id: "evt-1",
+          dates: [Date.parse("2026-01-04T09:00:00Z")],
+          duration: 1,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          _id: "folder-1",
+          name: "Planning",
+        },
+      ])
+
+    const events = await fetchUserEvents()
+    const folders = await fetchUserFolders()
+
+    expect(events[0].dates?.[0]).toBeInstanceOf(Temporal.PlainDate)
+    expect(events[0].timeSeed).toBeInstanceOf(Temporal.ZonedDateTime)
+    expect(folders).toEqual([{ _id: "folder-1", name: "Planning" }])
+  })
+
+  it("encodes canonical event patch payloads at an explicit mutation boundary", () => {
+    const payload = toEventPatchPayload({
+      name: "Planning",
+      duration: Temporal.Duration.from({ hours: 2 }),
+      dates: [Temporal.PlainDate.from("2026-01-05")],
+      timeSeed: zdt("2026-01-05T09:00:00Z"),
+      type: eventTypes.SPECIFIC_DATES,
+      signUpBlocks: [
+        {
+          _id: "block-1",
+          name: "Slot 1",
+          capacity: 2,
+          startDate: zdt("2026-01-05T09:00:00Z"),
+          endDate: zdt("2026-01-05T10:00:00Z"),
+        },
+      ],
+      times: [zdt("2026-01-05T09:00:00Z")],
+      remindees: [{ email: "ada@example.com" }],
+    })
+
+    expect(payload).toEqual({
+      name: "Planning",
+      duration: 2,
+      dates: ["2026-01-05T09:00:00+00:00[UTC]"],
+      type: eventTypes.SPECIFIC_DATES,
+      description: undefined,
+      signUpBlocks: [
+        {
+          _id: "block-1",
+          name: "Slot 1",
+          capacity: 2,
+          startDate: Date.parse("2026-01-05T09:00:00Z"),
+          endDate: Date.parse("2026-01-05T10:00:00Z"),
+        },
+      ],
+      times: [Date.parse("2026-01-05T09:00:00Z")],
+      remindees: ["ada@example.com"],
+    })
   })
 })

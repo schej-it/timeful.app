@@ -146,7 +146,7 @@ export const makeEventSchedulingHarness = ({
       _id: "evt-1",
       shortId: "abc123",
       name: "Planning Session",
-      location: "Room 42",
+      location: { city: "Room 42" },
       type: eventType,
       dates,
       timeSeed,

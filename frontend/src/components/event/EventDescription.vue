@@ -73,7 +73,7 @@ import { put } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import type { Event } from "@/types"
-import { toEventDateStrings } from "@/types/transport"
+import { toEventPatchPayload } from "@/composables/event/eventMutationBoundary"
 
 const props = defineProps<{
   event: Event
@@ -98,13 +98,14 @@ const saveDescription = () => {
   const oldEvent = { ...props.event }
   const newEvent = { ...props.event, description: newDescription.value }
 
-  const eventPayload = {
+  const eventPayload = toEventPatchPayload({
     name: props.event.name,
     duration: props.event.duration,
-    dates: toEventDateStrings(props.event),
     type: props.event.type,
     description: newDescription.value,
-  }
+    dates: props.event.dates,
+    timeSeed: props.event.timeSeed,
+  })
 
   emit("update:event", newEvent)
   isEditing.value = false

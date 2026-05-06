@@ -22,19 +22,15 @@ import {
   type CalendarOptions,
   type DayItem,
   type FetchedResponse,
+  type SharedCalendarAccounts,
+  type SharedCalendarAccountSelection,
   type ScheduleOverlapEvent,
   type TimeItem,
   type Timezone,
   type ProcessedCalendarEvent,
+  toSharedCalendarAccounts,
 } from "./types"
 import { fetchEventResponses } from "@/composables/event/eventTransportBoundary"
-
-type SharedCalendarAccount = {
-  enabled: boolean
-  subCalendars?: Record<string, { enabled: boolean }>
-} & Record<string, unknown>
-
-type SharedCalendarAccounts = Record<string, SharedCalendarAccount>
 
 export interface UseCalendarEventsOptions {
   event: Ref<ScheduleOverlapEvent>
@@ -90,35 +86,23 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
     const authUser = mainStore.authUser
     if (!authUser) return
 
-    sharedCalendarAccounts.value = JSON.parse(
-      JSON.stringify(authUser.calendarAccounts ?? {})
-    ) as SharedCalendarAccounts
-
-    for (const id in sharedCalendarAccounts.value) {
-      sharedCalendarAccounts.value[id].enabled = false
-      const subCalendars = sharedCalendarAccounts.value[id].subCalendars
-      if (subCalendars) {
-        for (const subId in subCalendars) {
-          subCalendars[subId].enabled = false
-        }
-      }
-    }
+    sharedCalendarAccounts.value = toSharedCalendarAccounts(
+      authUser.calendarAccounts
+    )
 
     const responses = opts.event.value.responses
     if (authUser._id && responses && authUser._id in responses) {
       const userResponse = responses[authUser._id]
-      const enabledCalendars = userResponse.enabledCalendars ?? {}
-      for (const id in enabledCalendars) {
-        if (id in sharedCalendarAccounts.value) {
-          sharedCalendarAccounts.value[id].enabled = true
-          const subs = sharedCalendarAccounts.value[id].subCalendars
-          if (subs) {
-            enabledCalendars[id].forEach((subId) => {
-              if (subId in subs) subs[subId].enabled = true
-            })
+          const enabledCalendars = userResponse.enabledCalendars ?? {}
+          for (const id in enabledCalendars) {
+            if (id in sharedCalendarAccounts.value) {
+              sharedCalendarAccounts.value[id].enabled = true
+              const subs = sharedCalendarAccounts.value[id].subCalendars
+              enabledCalendars[id].forEach((subId) => {
+                if (subId in subs) subs[subId].enabled = true
+              })
+            }
           }
-        }
-      }
     }
   }
 
@@ -130,9 +114,7 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
     const key = getCalendarAccountKey(payload.email, payload.calendarType)
     if (!(key in sharedCalendarAccounts.value)) return
     sharedCalendarAccounts.value[key].enabled = payload.enabled
-    sharedCalendarAccounts.value = JSON.parse(
-      JSON.stringify(sharedCalendarAccounts.value)
-    ) as SharedCalendarAccounts
+    sharedCalendarAccounts.value = { ...sharedCalendarAccounts.value }
   }
 
   const toggleSubCalendarAccount = (payload: {
@@ -142,18 +124,12 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
     enabled: boolean
   }) => {
     const key = getCalendarAccountKey(payload.email, payload.calendarType)
-    const account = (
-      sharedCalendarAccounts.value as Record<
-        string,
-        SharedCalendarAccount | undefined
-      >
-    )[key]
-    if (!account?.subCalendars) return
+    if (!(key in sharedCalendarAccounts.value)) return
+    const account: SharedCalendarAccountSelection =
+      sharedCalendarAccounts.value[key]
     if (!(payload.subCalendarId in account.subCalendars)) return
     account.subCalendars[payload.subCalendarId].enabled = payload.enabled
-    sharedCalendarAccounts.value = JSON.parse(
-      JSON.stringify(sharedCalendarAccounts.value)
-    ) as SharedCalendarAccounts
+    sharedCalendarAccounts.value = { ...sharedCalendarAccounts.value }
   }
 
   const calendarEventsByDay = computed<CalendarEventsByDay>(() => {
@@ -167,7 +143,7 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
     const events: NormalizedCalendarEvent[] = []
     const calendarAccounts = opts.isGroup.value
       ? sharedCalendarAccounts.value
-      : ((authUser.calendarAccounts ?? {}) as SharedCalendarAccounts)
+      : toSharedCalendarAccounts(authUser.calendarAccounts)
 
     for (const id in calendarAccounts) {
       if (!calendarAccounts[id].enabled) continue
@@ -177,7 +153,6 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
         for (const evt of calMap[id].calendarEvents ?? []) {
           const subCalendars = calendarAccounts[id].subCalendars
           if (
-            !subCalendars ||
             !evt.calendarId ||
             !(evt.calendarId in subCalendars)
           ) {
@@ -188,10 +163,8 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
             continue
           }
 
-          const subCalendar = subCalendars[evt.calendarId] as
-            | { enabled?: boolean }
-            | undefined
-          if (subCalendar?.enabled) {
+          const subCalendar = subCalendars[evt.calendarId]
+          if (subCalendar.enabled) {
             events.push(evt)
           }
         }

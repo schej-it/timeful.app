@@ -2,7 +2,7 @@ import { defineStore } from "pinia"
 import { computed, ref } from "vue"
 import { numFreeEvents, upgradeDialogTypes } from "@/constants"
 import type { UpgradeDialogType } from "@/constants"
-import { get, isPremiumUser as isPremiumUserUtil } from "@/utils"
+import { isPremiumUser as isPremiumUserUtil } from "@/utils"
 import {
   freemiumEnabled,
   viewerHasPremiumAccess as viewerHasPremiumAccessUtil,
@@ -10,14 +10,16 @@ import {
 import {
   createFolder as createFolderService,
   deleteFolder as deleteFolderService,
+  fetchUserFolders,
   setEventFolder as setEventFolderService,
   updateFolder as updateFolderService,
 } from "@/utils/services/FolderService"
-import { archiveEvent as archiveEventService } from "@/utils/services/EventService"
+import {
+  archiveEvent as archiveEventService,
+  fetchUserEvents,
+} from "@/utils/services/EventService"
 import { fetchAuthUserProfile } from "@/utils/services/UserService"
 import type { Event, Folder, NewDialogOptions, User } from "@/types"
-import type { RawEvent, RawFolder } from "@/types/transport"
-import { fromRawEvent, fromRawFolder } from "@/types/transport"
 
 export const useMainStore = defineStore("main", () => {
   const error = ref("")
@@ -211,18 +213,16 @@ export const useMainStore = defineStore("main", () => {
   const getEvents = () => {
     if (authUser.value) {
       return Promise.allSettled([
-        get<RawFolder[]>("/user/folders"),
-        get<RawEvent[]>("/user/events"),
+        fetchUserFolders(),
+        fetchUserEvents(),
       ])
         .then(([foldersResult, eventsResult]) => {
           if (
             foldersResult.status === "fulfilled" &&
             eventsResult.status === "fulfilled"
           ) {
-            setFolders(foldersResult.value.map(fromRawFolder))
-            // Convert raw events to Temporal-based events
-            const convertedEvents = eventsResult.value.map(fromRawEvent)
-            setEvents(convertedEvents)
+            setFolders(foldersResult.value)
+            setEvents(eventsResult.value)
           } else {
             showError("There was a problem fetching events!")
             console.error(

@@ -828,14 +828,16 @@ const requestContactsAccess = ({ emails: requestEmails }: { emails: (string | { 
   const payload = {
     emails: emailStrings,
     name: name.value,
-    startTime: plainTimeToTimeNum(startTime.value),
-    endTime: plainTimeToTimeNum(endTime.value),
+    startTime: startTime.value,
+    endTime: endTime.value,
     daysOnly: daysOnly.value,
-    selectedDays: selectedDays.value.map((day) => day.toString()),
+    selectedDays: selectedDays.value,
     selectedDaysOfWeek: selectedDaysOfWeek.value,
     selectedDateOption: selectedDateOption.value,
     notificationsEnabled: notificationsEnabled.value,
     timezone: timezone.value,
+    specificTimesEnabled: specificTimesEnabled.value,
+    startOnMonday: startOnMonday.value,
   }
   signInGoogle({
     state: {

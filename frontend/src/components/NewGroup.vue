@@ -172,7 +172,6 @@ import {
   getWrappedTimeRangeDuration,
   getEventMembershipDayOfWeekValues,
   getEventTimeSeed,
-  plainTimeToTimeNum,
   resolveTimezoneValue,
   signInGoogle,
   getDateWithTimezone,
@@ -438,9 +437,11 @@ const requestContactsAccess = ({ emails: requestEmails }: { emails: (string | { 
   const payload = {
     emails: emailStrings,
     name: name.value,
-    startTime: plainTimeToTimeNum(startTime.value),
-    endTime: plainTimeToTimeNum(endTime.value),
+    startTime: startTime.value,
+    endTime: endTime.value,
     selectedDaysOfWeek: selectedDaysOfWeek.value,
+    startOnMonday: startOnMonday.value,
+    timezone: timezone.value,
   }
   signInGoogle({
     state: {

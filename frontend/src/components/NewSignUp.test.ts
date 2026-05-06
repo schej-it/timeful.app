@@ -80,11 +80,14 @@ describe("NewSignUp", () => {
       props: {
         contactsPayload: {
           name: "Legacy draft",
-          startTime: 9,
-          endTime: 10,
+          startTime: Temporal.PlainTime.from("09:00"),
+          endTime: Temporal.PlainTime.from("10:00"),
           daysOnly: true,
           selectedDateOption: "Specific dates",
-          selectedDays: ["2026-01-02", "2026-01-03"],
+          selectedDays: [
+            Temporal.PlainDate.from("2026-01-02"),
+            Temporal.PlainDate.from("2026-01-03"),
+          ],
           notificationsEnabled: false,
           timezone: {
             value: "UTC",
@@ -214,11 +217,11 @@ describe("NewSignUp", () => {
       props: {
         contactsPayload: {
           name: "Late sign up",
-          startTime: 23.5,
-          endTime: 1,
+          startTime: Temporal.PlainTime.from("23:30"),
+          endTime: Temporal.PlainTime.from("01:00"),
           daysOnly: false,
           selectedDateOption: "Specific dates",
-          selectedDays: ["2026-01-02"],
+          selectedDays: [Temporal.PlainDate.from("2026-01-02")],
           notificationsEnabled: false,
           timezone: {
             value: "UTC",
@@ -257,11 +260,11 @@ describe("NewSignUp", () => {
       props: {
         contactsPayload: {
           name: "All day sign up",
-          startTime: 9,
-          endTime: 9,
+          startTime: Temporal.PlainTime.from("09:00"),
+          endTime: Temporal.PlainTime.from("09:00"),
           daysOnly: false,
           selectedDateOption: "Specific dates",
-          selectedDays: ["2026-01-02"],
+          selectedDays: [Temporal.PlainDate.from("2026-01-02")],
           notificationsEnabled: false,
           timezone: {
             value: "UTC",

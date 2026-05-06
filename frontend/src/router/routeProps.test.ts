@@ -5,6 +5,7 @@ import {
   getEventRouteProps,
   getHomeRouteProps,
   getSignUpRouteProps,
+  serializeRouteContactsPayload,
 } from "./routeProps"
 
 function makeRoute(
@@ -80,6 +81,7 @@ describe("route props boundary adapters", () => {
   it("accepts already-decoded query objects without widening component props", () => {
     const contactsPayload = {
       name: "Existing object",
+      startTime: Temporal.PlainTime.from("09:00"),
       notificationsEnabled: false,
     }
 
@@ -90,6 +92,36 @@ describe("route props boundary adapters", () => {
 
     expect(props.contactsPayload).toEqual(contactsPayload)
     expect(props.openNewGroup).toBe(true)
+  })
+
+  it("serializes canonical drafts without widening internal runtime shapes", () => {
+    const serialized = serializeRouteContactsPayload({
+      name: "Draft",
+      startTime: Temporal.PlainTime.from("09:00"),
+      endTime: Temporal.PlainTime.from("17:00"),
+      selectedDays: [Temporal.PlainDate.from("2026-05-01")],
+      timezone: {
+        value: "Asia/Kathmandu",
+        label: "Kathmandu",
+        gmtString: "GMT+5:45",
+        offset: Temporal.Duration.from("PT5H45M"),
+      },
+    })
+
+    const props = getHomeRouteProps(makeRoute({}, { contactsPayload: serialized }))
+
+    expect(props.contactsPayload).toEqual({
+      name: "Draft",
+      startTime: Temporal.PlainTime.from("09:00"),
+      endTime: Temporal.PlainTime.from("17:00"),
+      selectedDays: [Temporal.PlainDate.from("2026-05-01")],
+      timezone: {
+        value: "Asia/Kathmandu",
+        label: "Kathmandu",
+        gmtString: "GMT+5:45",
+        offset: Temporal.Duration.from("PT5H45M"),
+      },
+    })
   })
 
   it("ignores legacy restore payloads carried only in params", () => {

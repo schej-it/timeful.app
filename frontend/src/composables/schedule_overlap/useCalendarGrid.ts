@@ -103,9 +103,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
   )
   const isWeekly = computed(() => event.value.type === eventTypes.DOW)
   const isGroup = computed(() => event.value.type === eventTypes.GROUP)
-  const isSpecificTimes = computed(() =>
-    Boolean((event.value as Record<string, unknown>).hasSpecificTimes)
-  )
+  const isSpecificTimes = computed(() => Boolean(event.value.hasSpecificTimes))
 
   const daysOfWeek = computed<string[]>(() => {
     if (!event.value.daysOnly) {
