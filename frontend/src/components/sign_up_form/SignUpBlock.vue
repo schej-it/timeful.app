@@ -111,18 +111,7 @@ import { computed, ref, watch } from "vue"
 import { storeToRefs } from "pinia"
 import { getStartEndDateString } from "@/utils"
 import { useMainStore } from "@/stores/main"
-import type { SignUpBlock } from "@/types"
-
-type SignUpBlockWithResponses = SignUpBlock & { 
-  responses?: {
-    user?: {
-      _id?: string
-      firstName?: string
-      lastName?: string
-      picture?: string
-    }
-  }[]
-}
+import type { SignUpBlock, SignUpBlockWithResponses } from "@/types"
 
 const props = withDefaults(
   defineProps<{
@@ -162,9 +151,7 @@ const timeRangeString = computed(() => {
   )
 })
 
-const blockWithResponses = computed(
-  () => props.signUpBlock
-)
+const blockWithResponses = computed(() => props.signUpBlock)
 
 const hasCapacity = computed(
   () =>

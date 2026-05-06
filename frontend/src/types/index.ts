@@ -70,6 +70,10 @@ export type SignUpResponse = Omit<RawSignUpResponse, "user"> & {
   user?: User
 }
 
+export type SignUpBlockWithResponses = SignUpBlock & {
+  responses?: SignUpResponse[]
+}
+
 export type CalendarAccount = Omit<RawCalendarAccount, "subCalendars"> & {
   subCalendars?: Record<string, SubCalendar>
 }

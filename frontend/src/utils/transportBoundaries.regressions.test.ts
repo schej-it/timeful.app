@@ -9,20 +9,25 @@ import {
   fromRawResponse,
   fromRawSignUpBlock,
   fromRawUser,
+  toRawCalendarOptions,
   toRawUser,
 } from "@/types/transport"
 import { get } from "@/utils/fetch_utils"
-import { getDateWithTimezone } from "@/utils"
+import { getDateWithTimezone, ZdtMap, ZdtSet } from "@/utils"
 import { eventTypes } from "@/constants"
 import { toEventPatchPayload } from "@/composables/event/eventMutationBoundary"
 import {
   fetchUserCalendarEventsMap,
+  fetchCalendarAvailabilities,
+  fetchCalendarEventsMap,
   fromCalendarAvailabilitiesTransportMap,
   fromCalendarEventsTransportMap,
 } from "@/composables/event/calendarEventsBoundary"
 import { fetchUserEvents } from "@/utils/services/EventService"
 import { fetchUserFolders } from "@/utils/services/FolderService"
 import { toScheduleOverlapEvent } from "@/composables/schedule_overlap/types"
+import { toGroupResponseSubmissionPayload } from "@/composables/event/responseSubmissionBoundary"
+import type { SignUpBlockWithResponses } from "@/types"
 
 vi.mock("@/utils/fetch_utils", async () => {
   const actual = await vi.importActual("@/utils/fetch_utils")
@@ -258,6 +263,49 @@ describe("transport and timezone regression boundaries", () => {
     expect(normalizedAvailabilityEvent.endDate).toBeInstanceOf(Temporal.ZonedDateTime)
   })
 
+  it("decodes both calendar transport response modes before downstream consumers see them", async () => {
+    vi.mocked(get)
+      .mockResolvedValueOnce({
+        "google:user@example.com": {
+          error: true,
+          calendarEvents: [
+            {
+              calendarId: "primary",
+              startDate: Date.parse("2026-01-03T09:00:00Z"),
+              endDate: Date.parse("2026-01-03T10:00:00Z"),
+            },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        "user-1": [
+          {
+            calendarId: "primary",
+            startDate: Date.parse("2026-01-03T11:00:00Z"),
+            endDate: Date.parse("2026-01-03T12:00:00Z"),
+          },
+        ],
+      })
+
+    const eventQuery = {
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [Temporal.PlainDate.from("2026-01-03")],
+      timeSeed: zdt("2026-01-03T09:00:00Z"),
+    }
+    const calendarEventsMap = await fetchCalendarEventsMap(eventQuery)
+    const calendarAvailabilities = await fetchCalendarAvailabilities(eventQuery, {
+      eventId: "evt-1",
+    })
+
+    expect(calendarEventsMap["google:user@example.com"].error).toBe("true")
+    expect(
+      calendarEventsMap["google:user@example.com"].calendarEvents?.[0]?.startDate
+    ).toBeInstanceOf(Temporal.ZonedDateTime)
+    expect(calendarAvailabilities["user-1"][0]?.startDate).toBeInstanceOf(
+      Temporal.ZonedDateTime
+    )
+  })
+
   it("decodes raw /user/calendars payloads at the calendar-events fetch boundary", async () => {
     vi.mocked(get).mockResolvedValue({
       "google:user@example.com": {
@@ -348,5 +396,56 @@ describe("transport and timezone regression boundaries", () => {
       times: [Date.parse("2026-01-05T09:00:00Z")],
       remindees: ["ada@example.com"],
     })
+  })
+
+  it("encodes nested group-response calendar options through the transport boundary", () => {
+    const calendarOptions = {
+      bufferTime: { enabled: true, time: 15 },
+      workingHours: { enabled: true, startTime: 9, endTime: 17 },
+    }
+
+    const payload = toGroupResponseSubmissionPayload({
+      sharedCalendarAccounts: {
+        "ada@example.com_google": {
+          enabled: true,
+          subCalendars: {
+            primary: { enabled: true },
+          },
+        },
+      },
+      manualAvailability: new ZdtMap([
+        [
+          zdt("2026-01-03T00:00:00Z"),
+          new ZdtSet([zdt("2026-01-03T09:00:00Z")]),
+        ],
+      ]),
+      calendarOptions,
+    })
+
+    expect(payload.calendarOptions).toEqual(toRawCalendarOptions(calendarOptions))
+    expect(payload.manualAvailability["2026-01-03T00:00:00+00:00[UTC]"]).toEqual([
+      Date.parse("2026-01-03T09:00:00Z"),
+    ])
+  })
+
+  it("reuses the shared populated sign-up block model instead of redefining nested user shapes", () => {
+    const populatedBlock: SignUpBlockWithResponses = {
+      _id: "block-1",
+      name: "Slot 1",
+      capacity: 2,
+      responses: [
+        {
+          userId: "user-1",
+          user: {
+            _id: "user-1",
+            firstName: "Ada",
+            lastName: "Lovelace",
+            picture: "https://example.com/ada.png",
+          },
+        },
+      ],
+    }
+
+    expect(populatedBlock.responses?.[0]?.user?.firstName).toBe("Ada")
   })
 })

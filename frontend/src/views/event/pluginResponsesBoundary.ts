@@ -10,7 +10,7 @@ import type { Temporal } from "temporal-polyfill"
 
 type PluginEventWeekRangeInput = Pick<Event, "type" | "dates" | "startOnMonday">
 
-interface EventResponseMetadata {
+export interface PluginResponseMetadata {
   name?: string
   email?: string
   user?: {
@@ -20,9 +20,9 @@ interface EventResponseMetadata {
   }
 }
 
-export interface PluginEvent extends Event {
-  responses?: Record<string, EventResponseMetadata>
-  hasResponded?: boolean
+export interface PluginResponseInput {
+  response?: Response
+  responseMetadata?: PluginResponseMetadata
 }
 
 export interface PluginEventTimeRange {
@@ -74,22 +74,23 @@ export const getPluginEventTimeRange = (
 }
 
 export const normalizePluginResponses = (input: {
-  responses?: Record<string, Response>
-  eventResponses?: Record<string, EventResponseMetadata>
+  responses?: Record<string, PluginResponseInput>
   timezoneValue: string
   eventType?: string
 }): Record<string, PluginSlotEntry> => {
   const responses = input.responses ?? {}
-  const { eventResponses, timezoneValue, eventType } = input
+  const { timezoneValue, eventType } = input
   const allSlots: Record<string, PluginSlotEntry> = {}
 
-  for (const userId of Object.keys(responses)) {
-    const response = responses[userId]
+  for (const [userId, pluginResponse] of Object.entries(responses)) {
+    const response = pluginResponse.response
+    if (!response) continue
+
     const [name, email] =
       response.name && response.name.length > 0
         ? [response.name, response.email ?? ""]
         : (() => {
-            const eventResponse = eventResponses?.[userId]
+            const eventResponse = pluginResponse.responseMetadata
             if (eventResponse?.user) {
               const user = eventResponse.user
               return [

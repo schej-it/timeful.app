@@ -14,6 +14,7 @@ import { eventTypes } from "@/constants"
 import {
   getPluginEventTimeRange,
   normalizePluginResponses,
+  type PluginResponseInput,
 } from "@/views/event/pluginResponsesBoundary"
 
 const decodeResponses = (
@@ -23,6 +24,20 @@ const decodeResponses = (
     Object.entries(rawResponses).map(([userId, rawResponse]) => [
       userId,
       fromRawResponse(rawResponse),
+    ])
+  )
+
+const toPluginResponses = (input: {
+  responses: Record<string, Parameters<typeof fromRawResponse>[0]>
+  responseMetadata?: Record<string, PluginResponseInput["responseMetadata"]>
+}): Record<string, PluginResponseInput> =>
+  Object.fromEntries(
+    Object.entries(decodeResponses(input.responses)).map(([userId, response]) => [
+      userId,
+      {
+        response,
+        responseMetadata: input.responseMetadata?.[userId],
+      },
     ])
   )
 
@@ -137,18 +152,20 @@ describe("plugin boundary regressions", () => {
     }
 
     const roundTrippedSlots = normalizePluginResponses({
-      responses: decodeResponses({
-        "user-1": {
-          availability: [normalizedSetSlots.slots[0].parsedStart.epochMilliseconds],
-          ifNeeded: [],
+      responses: toPluginResponses({
+        responses: {
+          "user-1": {
+            availability: [normalizedSetSlots.slots[0].parsedStart.epochMilliseconds],
+            ifNeeded: [],
+          },
+        },
+        responseMetadata: {
+          "user-1": {
+            name: "Ada",
+            email: "ada@example.com",
+          },
         },
       }),
-      eventResponses: {
-        "user-1": {
-          name: "Ada",
-          email: "ada@example.com",
-        },
-      },
       timezoneValue: "Asia/Tokyo",
       eventType: eventTypes.DOW,
     })
@@ -228,18 +245,20 @@ describe("plugin boundary regressions", () => {
       "America/New_York"
     )
     const slots = normalizePluginResponses({
-      responses: decodeResponses({
-        "user-1": {
-          availability: [Date.parse("2026-01-07T03:15:00Z")],
-          ifNeeded: [Date.parse("2026-01-07T04:15:00Z")],
+      responses: toPluginResponses({
+        responses: {
+          "user-1": {
+            availability: [Date.parse("2026-01-07T03:15:00Z")],
+            ifNeeded: [Date.parse("2026-01-07T04:15:00Z")],
+          },
+        },
+        responseMetadata: {
+          "user-1": {
+            name: "Ada",
+            email: "ada@example.com",
+          },
         },
       }),
-      eventResponses: {
-        "user-1": {
-          name: "Ada",
-          email: "ada@example.com",
-        },
-      },
       timezoneValue,
       eventType: eventTypes.SPECIFIC_DATES,
     })
@@ -266,21 +285,23 @@ describe("plugin boundary regressions", () => {
 
   it("normalizes plugin get-slots responses after caller-side response decoding", () => {
     const slots = normalizePluginResponses({
-      responses: decodeResponses({
-        "user-1": {
-          availability: [Date.parse("2026-01-07T17:00:00Z")],
-          ifNeeded: [Date.parse("2026-01-07T18:00:00Z")],
-        },
-      }),
-      eventResponses: {
-        "user-1": {
-          user: {
-            firstName: "Ada",
-            lastName: "Lovelace",
-            email: "ada@example.com",
+      responses: toPluginResponses({
+        responses: {
+          "user-1": {
+            availability: [Date.parse("2026-01-07T17:00:00Z")],
+            ifNeeded: [Date.parse("2026-01-07T18:00:00Z")],
           },
         },
-      },
+        responseMetadata: {
+          "user-1": {
+            user: {
+              firstName: "Ada",
+            lastName: "Lovelace",
+            email: "ada@example.com",
+            },
+          },
+        },
+      }),
       timezoneValue: "America/Los_Angeles",
       eventType: eventTypes.SPECIFIC_DATES,
     })
@@ -307,21 +328,23 @@ describe("plugin boundary regressions", () => {
       "America/New_York"
     )
     const slots = normalizePluginResponses({
-      responses: decodeResponses({
-        "user-1": {
-          availability: [Date.parse("2026-01-07T03:15:00Z")],
-          ifNeeded: [Date.parse("2026-01-07T04:15:00Z")],
-        },
-      }),
-      eventResponses: {
-        "user-1": {
-          user: {
-            firstName: "Ada",
-            lastName: "Lovelace",
-            email: "ada@example.com",
+      responses: toPluginResponses({
+        responses: {
+          "user-1": {
+            availability: [Date.parse("2026-01-07T03:15:00Z")],
+            ifNeeded: [Date.parse("2026-01-07T04:15:00Z")],
           },
         },
-      },
+        responseMetadata: {
+          "user-1": {
+            user: {
+              firstName: "Ada",
+            lastName: "Lovelace",
+            email: "ada@example.com",
+            },
+          },
+        },
+      }),
       timezoneValue,
       eventType: eventTypes.SPECIFIC_DATES,
     })
@@ -333,6 +356,35 @@ describe("plugin boundary regressions", () => {
     expect(slots["user-1"].availability[0].hour).toBe(9)
     expect(slots["user-1"].ifNeeded[0].timeZoneId).toBe("+05:45")
     expect(slots["user-1"].ifNeeded[0].hour).toBe(10)
+  })
+
+  it("keeps canonical response data separate from legacy plugin metadata", () => {
+    const slots = normalizePluginResponses({
+      responses: toPluginResponses({
+        responses: {
+          "user-1": {
+            name: "",
+            email: "",
+            availability: [Date.parse("2026-01-07T17:00:00Z")],
+            ifNeeded: [],
+          },
+        },
+        responseMetadata: {
+          "user-1": {
+            user: {
+              firstName: "Ada",
+              lastName: "Lovelace",
+              email: "ada@example.com",
+            },
+          },
+        },
+      }),
+      timezoneValue: "America/Los_Angeles",
+      eventType: eventTypes.SPECIFIC_DATES,
+    })
+
+    expect(slots["user-1"].name).toBe("Ada Lovelace")
+    expect(slots["user-1"].email).toBe("ada@example.com")
   })
 
   it("derives plugin get-slots time ranges from normalized event dates", () => {

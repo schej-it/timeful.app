@@ -86,8 +86,7 @@ import { storeToRefs } from "pinia"
 import { validateEmail } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import SignUpBlock from "./SignUpBlock.vue"
-import type { Event } from "@/types"
-import type { Temporal } from "temporal-polyfill"
+import type { Event, SignUpBlockWithResponses } from "@/types"
 
 type Rule = (val: string) => true | string
 interface FormRef {
@@ -95,21 +94,7 @@ interface FormRef {
   resetValidation: () => void
 }
 
-export interface SignUpBlockProp {
-  _id?: string
-  name?: string
-  capacity?: number
-  startDate?: Temporal.ZonedDateTime
-  endDate?: Temporal.ZonedDateTime
-  responses?: {
-    user?: {
-      _id?: string
-      firstName?: string
-      lastName?: string
-      picture?: string
-    }
-  }[]
-}
+export type SignUpBlockProp = SignUpBlockWithResponses
 
 const props = defineProps<{
   modelValue: boolean
@@ -133,7 +118,6 @@ const nameRules = ref<Rule[]>([])
 const emailRules = ref<Rule[]>([])
 
 const submit = async () => {
-  console.log(props.signUpBlock)
   nameRules.value = [(n) => !!n || "Name is required"]
   emailRules.value = [
     (e) => !!e || "Email is required",

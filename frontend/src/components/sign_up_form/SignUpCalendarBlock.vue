@@ -26,10 +26,11 @@
 
 <script setup lang="ts">
 import { computed } from "vue"
+import type { SignUpBlockWithResponses } from "@/types"
 
 const props = withDefaults(
   defineProps<{
-    signUpBlock?: { name?: string; capacity?: number; responses?: unknown[] } | null
+    signUpBlock?: Pick<SignUpBlockWithResponses, "name" | "capacity" | "responses"> | null
     unsaved?: boolean
     titleOnly?: boolean
     title?: string

@@ -100,5 +100,6 @@ export {
 } from "./scheduleDateRules"
 export {
   getCalendarAvailabilityQueryWindow,
-  getCalendarEventsMap,
+  fetchCalendarAvailabilitiesTransportMap,
+  fetchCalendarEventsTransportMap,
 } from "./services/CalendarAvailabilityService"

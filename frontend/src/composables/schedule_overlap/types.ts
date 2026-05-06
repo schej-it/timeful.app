@@ -7,7 +7,7 @@ import type {
   Event,
   Location,
   Response,
-  SignUpBlock,
+  SignUpBlockWithResponses,
   SignUpResponse,
 } from "@/types"
 import type { ZdtMap, ZdtSet } from "@/utils"
@@ -85,7 +85,10 @@ export type ScheduleOverlapResponse = Response
 export type ScheduleOverlapSignUpResponse = SignUpResponse
 
 export interface ScheduleOverlapSignUpBlock
-  extends Omit<SignUpBlock, "startDate" | "endDate" | "_id" | "capacity" | "name"> {
+  extends Omit<
+    SignUpBlockWithResponses,
+    "startDate" | "endDate" | "_id" | "capacity" | "name"
+  > {
   _id: string
   capacity: number
   name: string
@@ -93,7 +96,6 @@ export interface ScheduleOverlapSignUpBlock
   endDate: Temporal.ZonedDateTime
   hoursOffset: Temporal.Duration
   hoursLength: Temporal.Duration
-  responses?: ScheduleOverlapSignUpResponse[]
 }
 
 export interface Timezone {

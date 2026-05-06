@@ -3,6 +3,8 @@ import type { CalendarOptions } from "@/composables/schedule_overlap/types"
 import type { ZdtMap, ZdtSet } from "@/utils"
 import type { SharedCalendarAccounts } from "@/composables/schedule_overlap/types"
 import { generateEnabledCalendarsPayload } from "@/utils"
+import type { RawCalendarOptions } from "@/types/transport"
+import { toRawCalendarOptions } from "@/types/transport"
 
 interface GuestPayload {
   name: string
@@ -28,7 +30,7 @@ export interface EncodedEventResponseSubmissionPayload {
 export interface GroupResponseSubmissionPayload {
   guest?: false
   manualAvailability: Record<string, number[]>
-  calendarOptions: CalendarOptions
+  calendarOptions: RawCalendarOptions
   [key: string]: unknown
 }
 
@@ -86,7 +88,7 @@ export function toGroupResponseSubmissionPayload(input: {
   }
 
   payload.manualAvailability = encodedManualAvailability
-  payload.calendarOptions = input.calendarOptions
+  payload.calendarOptions = toRawCalendarOptions(input.calendarOptions)
 
   return payload
 }

@@ -1,11 +1,14 @@
-import type { components } from "@/types/api"
 import type { RawCalendarEvent } from "@/types/transport"
 import { fromRawCalendarEvent } from "@/types/transport"
 import { get } from "@/utils/fetch_utils"
 import {
-  getCalendarEventsMap as getCalendarEventsTransportMap,
+  fetchCalendarAvailabilitiesTransportMap,
+  fetchCalendarEventsTransportMap,
   type CalendarAvailabilityQueryEvent,
   type CalendarAvailabilityRequestOptions,
+  type CalendarAvailabilitiesTransportMap,
+  type CalendarEventsTransportEntry,
+  type CalendarEventsTransportMap,
 } from "@/utils/services/CalendarAvailabilityService"
 import type {
   NormalizedCalendarEvent,
@@ -13,24 +16,6 @@ import type {
   CalendarEventsMapEntry,
 } from "@/composables/schedule_overlap/types"
 import type { Temporal } from "temporal-polyfill"
-
-export interface CalendarEventsTransportEntry
-  extends Omit<
-    components["schemas"]["calendar.CalendarEventsWithError"],
-    "calendarEvents"
-  > {
-  calendarEvents?: RawCalendarEvent[]
-}
-
-export type CalendarEventsTransportMap = Record<
-  string,
-  CalendarEventsTransportEntry | undefined
->
-
-export type CalendarAvailabilitiesTransportMap = Record<
-  string,
-  RawCalendarEvent[] | undefined
->
 
 const normalizeCalendarEventError = (error: unknown): string | undefined => {
   if (typeof error === "string") return error
@@ -91,34 +76,20 @@ export const fromCalendarAvailabilitiesTransportMap = (
     ])
   )
 
-const toTransportMap = (value: unknown): Record<string, unknown> => {
-  if (!value || Array.isArray(value)) {
-    return {}
-  }
-
-  return value as Record<string, unknown>
-}
-
 export const fetchCalendarEventsMap = async (
   event: CalendarAvailabilityQueryEvent,
   options: CalendarAvailabilityRequestOptions = {}
 ): Promise<CalendarEventsMap> => {
-  const result = await getCalendarEventsTransportMap(event, options)
-
-  return fromCalendarEventsTransportMap(
-    toTransportMap(result) as CalendarEventsTransportMap
-  )
+  const result = await fetchCalendarEventsTransportMap(event, options)
+  return fromCalendarEventsTransportMap(result)
 }
 
 export const fetchCalendarAvailabilities = async (
   event: CalendarAvailabilityQueryEvent,
   options: CalendarAvailabilityRequestOptions = {}
 ): Promise<Record<string, NormalizedCalendarEvent[]>> => {
-  const result = await getCalendarEventsTransportMap(event, options)
-
-  return fromCalendarAvailabilitiesTransportMap(
-    toTransportMap(result) as CalendarAvailabilitiesTransportMap
-  )
+  const result = await fetchCalendarAvailabilitiesTransportMap(event, options)
+  return fromCalendarAvailabilitiesTransportMap(result)
 }
 
 export const fetchUserCalendarEventsMap = async ({

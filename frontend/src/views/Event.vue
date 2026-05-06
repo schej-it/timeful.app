@@ -500,6 +500,7 @@ import { validateEmail } from "@/utils"
 import {
   getPluginEventTimeRange,
   normalizePluginResponses,
+  type PluginResponseInput,
 } from "@/views/event/pluginResponsesBoundary"
 
 import NewDialog from "@/components/NewDialog.vue"
@@ -1057,9 +1058,17 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
       url += `&guestName=${encodeURIComponent(guestName)}`
     }
     const responses = await fetchEventResponses(url)
+    const pluginResponses: Record<string, PluginResponseInput> = Object.fromEntries(
+      Object.entries(responses).map(([userId, response]) => [
+        userId,
+        {
+          response,
+          responseMetadata: event.value?.responses?.[userId],
+        },
+      ])
+    )
     const allSlots = normalizePluginResponses({
-      responses,
-      eventResponses: ev.responses,
+      responses: pluginResponses,
       timezoneValue,
       eventType: ev.type,
     })

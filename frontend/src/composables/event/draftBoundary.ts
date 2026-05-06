@@ -106,7 +106,7 @@ export function fromSerializedEventDraft(
     draft.selectedDaysOfWeek = rawDraft.selectedDaysOfWeek
   }
   if (rawDraft.selectedDays) {
-    draft.selectedDays = (selectedDays as Array<string | Temporal.PlainDate>).map((day) =>
+    draft.selectedDays = (selectedDays as (string | Temporal.PlainDate)[]).map((day) =>
       day instanceof Temporal.PlainDate ? day : Temporal.PlainDate.from(day)
     )
   }
