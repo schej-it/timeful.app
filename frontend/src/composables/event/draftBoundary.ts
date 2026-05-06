@@ -25,22 +25,18 @@ function isJsonRecord(value: unknown): value is JsonRecord {
 }
 
 function parseJsonRecord<T extends object>(value: unknown, fallback: T): T {
-  if (!value) return fallback
+  if (typeof value !== "string" || !value) return fallback
 
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value) as unknown
-      return isJsonRecord(parsed) ? (parsed as T) : fallback
-    } catch {
-      return fallback
-    }
+  try {
+    const parsed = JSON.parse(value) as unknown
+    return isJsonRecord(parsed) ? (parsed as T) : fallback
+  } catch {
+    return fallback
   }
-
-  return isJsonRecord(value) ? (value as T) : fallback
 }
 
 export function normalizeRouteTimezone(
-  rawTimezone: SerializedTimezone | Timezone | undefined
+  rawTimezone: SerializedTimezone | undefined
 ): Timezone | undefined {
   if (!rawTimezone) return undefined
 
@@ -80,23 +76,14 @@ export function fromSerializedEventDraft(
 ): EventDraft {
   if (!rawDraft) return EMPTY_EVENT_DRAFT
   const draft: EventDraft = {}
-  const startTime = rawDraft.startTime as unknown
-  const endTime = rawDraft.endTime as unknown
-  const selectedDays = rawDraft.selectedDays as unknown
 
   if (rawDraft.emails) draft.emails = rawDraft.emails
   if (rawDraft.name != null) draft.name = rawDraft.name
-  if (rawDraft.startTime != null) {
-    draft.startTime =
-      startTime instanceof Temporal.PlainTime
-        ? startTime
-        : timeNumToPlainTime(rawDraft.startTime)
+  if (typeof rawDraft.startTime === "number") {
+    draft.startTime = timeNumToPlainTime(rawDraft.startTime)
   }
-  if (rawDraft.endTime != null) {
-    draft.endTime =
-      endTime instanceof Temporal.PlainTime
-        ? endTime
-        : timeNumToPlainTime(rawDraft.endTime)
+  if (typeof rawDraft.endTime === "number") {
+    draft.endTime = timeNumToPlainTime(rawDraft.endTime)
   }
   if (rawDraft.daysOnly != null) draft.daysOnly = rawDraft.daysOnly
   if (rawDraft.selectedDateOption != null) {
@@ -106,8 +93,8 @@ export function fromSerializedEventDraft(
     draft.selectedDaysOfWeek = rawDraft.selectedDaysOfWeek
   }
   if (rawDraft.selectedDays) {
-    draft.selectedDays = (selectedDays as (string | Temporal.PlainDate)[]).map((day) =>
-      day instanceof Temporal.PlainDate ? day : Temporal.PlainDate.from(day)
+    draft.selectedDays = rawDraft.selectedDays.flatMap((day) =>
+      typeof day === "string" ? [Temporal.PlainDate.from(day)] : []
     )
   }
   if (rawDraft.notificationsEnabled != null) {

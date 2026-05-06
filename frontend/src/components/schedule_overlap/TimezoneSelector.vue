@@ -45,6 +45,7 @@ import { Temporal } from "temporal-polyfill"
 import { allTimezones } from "@/constants"
 import type { Timezone } from "@/composables/schedule_overlap/types"
 import {
+  getFixedOffsetTimeZoneId,
   readSavedTimezone,
   reviveSavedTimezoneOffset,
   resolveSavedTimezoneValue,
@@ -108,7 +109,7 @@ function formatGmtString(offsetMinutes: number): string {
 
 function createFixedOffsetTimezone(offset: Temporal.Duration): Timezone {
   const offsetMinutes = offset.total("minutes")
-  const value = resolveSavedTimezoneValue({ offset }) ?? ""
+  const value = getFixedOffsetTimeZoneId(offset)
 
   return {
     value,

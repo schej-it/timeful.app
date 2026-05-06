@@ -2,7 +2,7 @@ import { Temporal } from "temporal-polyfill"
 
 export interface SavedTimezoneShape {
   value?: string
-  offset?: Temporal.Duration | string
+  offset?: string
 }
 
 export const getFixedOffsetTimeZoneId = (
@@ -23,11 +23,11 @@ export const getFixedOffsetTimeZoneId = (
 export const reviveSavedTimezoneOffset = (
   offset: SavedTimezoneShape["offset"]
 ): Temporal.Duration | undefined => {
-  if (!offset) {
+  if (typeof offset !== "string" || !offset) {
     return undefined
   }
 
-  return typeof offset === "string" ? Temporal.Duration.from(offset) : offset
+  return Temporal.Duration.from(offset)
 }
 
 export const parseSavedTimezone = (

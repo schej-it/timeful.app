@@ -78,19 +78,17 @@ describe("route props boundary adapters", () => {
     expect(props.contactsPayload).toEqual({ name: "query" })
   })
 
-  it("accepts already-decoded query objects without widening component props", () => {
-    const contactsPayload = {
-      name: "Existing object",
-      startTime: Temporal.PlainTime.from("09:00"),
-      notificationsEnabled: false,
-    }
-
+  it("rejects object-shaped query payloads and falls back to encoded boundary defaults", () => {
     const props = getHomeRouteProps(makeRoute({}, {
-      contactsPayload,
+      contactsPayload: {
+        name: "Existing object",
+        startTime: Temporal.PlainTime.from("09:00"),
+        notificationsEnabled: false,
+      },
       openNewGroup: true,
     }))
 
-    expect(props.contactsPayload).toEqual(contactsPayload)
+    expect(props.contactsPayload).toEqual({})
     expect(props.openNewGroup).toBe(true)
   })
 
@@ -162,6 +160,35 @@ describe("route props boundary adapters", () => {
       signUpId: "signup-1",
       fromSignIn: true,
       editingMode: true,
+      initialTimezone: undefined,
+      contactsPayload: {},
+    })
+  })
+
+  it("does not leak partial Temporal-bearing object payloads from route query", () => {
+    const props = getEventRouteProps(makeRoute({
+      eventId: "evt-1",
+    }, {
+      initialTimezone: {
+        value: "Asia/Kathmandu",
+        offset: "PT5H45M",
+      },
+      contactsPayload: {
+        name: "Draft",
+        startTime: 9,
+        selectedDays: [Temporal.PlainDate.from("2026-05-01")],
+        timezone: {
+          value: "Asia/Kathmandu",
+          offset: Temporal.Duration.from("PT5H45M"),
+        },
+      },
+    }))
+
+    expect(props).toEqual({
+      eventId: "evt-1",
+      fromSignIn: false,
+      editingMode: false,
+      linkApple: false,
       initialTimezone: undefined,
       contactsPayload: {},
     })

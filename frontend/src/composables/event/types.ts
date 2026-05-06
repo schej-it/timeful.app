@@ -59,7 +59,7 @@ export interface EventDraft {
 
 export interface SerializedTimezone {
   value?: string
-  offset?: Temporal.Duration | string
+  offset?: string
   label?: string
   gmtString?: string
 }

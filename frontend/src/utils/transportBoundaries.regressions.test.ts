@@ -17,6 +17,11 @@ import { getDateWithTimezone, ZdtMap, ZdtSet } from "@/utils"
 import { eventTypes } from "@/constants"
 import { toEventPatchPayload } from "@/composables/event/eventMutationBoundary"
 import {
+  fromSerializedEventDraft,
+  serializeRouteTimezone,
+  toSerializedEventDraft,
+} from "@/composables/event/draftBoundary"
+import {
   fetchUserCalendarEventsMap,
   fetchCalendarAvailabilities,
   fetchCalendarEventsMap,
@@ -163,6 +168,91 @@ describe("transport and timezone regression boundaries", () => {
     expect(reconstructed.timeZoneId).toBe("+05:45")
     expect(reconstructed.toPlainTime().toString()).toBe("17:45:00")
     expect(reconstructed.toPlainDate().toString()).toBe("2026-06-15")
+  })
+
+  it("keeps serialized timezone offsets string-encoded at the boundary", () => {
+    const serializedDraft = toSerializedEventDraft({
+      timezone: {
+        value: "Asia/Kathmandu",
+        label: "Kathmandu",
+        gmtString: "GMT+5:45",
+        offset: Temporal.Duration.from("PT5H45M"),
+      },
+    })
+    const serializedTimezone = serializeRouteTimezone({
+      value: "Asia/Kathmandu",
+      label: "Kathmandu",
+      gmtString: "GMT+5:45",
+      offset: Temporal.Duration.from("PT5H45M"),
+    })
+
+    expect(serializedDraft.timezone).toEqual({
+      value: "Asia/Kathmandu",
+      label: "Kathmandu",
+      gmtString: "GMT+5:45",
+      offset: "PT5H45M",
+    })
+    expect(JSON.parse(serializedTimezone)).toEqual({
+      value: "Asia/Kathmandu",
+      label: "Kathmandu",
+      gmtString: "GMT+5:45",
+      offset: "PT5H45M",
+    })
+  })
+
+  it("decodes encoded route drafts into canonical Temporal runtime values", () => {
+    const draft = fromSerializedEventDraft({
+      name: "Draft",
+      startTime: 9,
+      endTime: 17,
+      selectedDays: ["2026-05-01"],
+      timezone: {
+        value: "Asia/Kathmandu",
+        label: "Kathmandu",
+        gmtString: "GMT+5:45",
+        offset: "PT5H45M",
+      },
+    })
+
+    expect(draft).toEqual({
+      name: "Draft",
+      startTime: Temporal.PlainTime.from("09:00"),
+      endTime: Temporal.PlainTime.from("17:00"),
+      selectedDays: [Temporal.PlainDate.from("2026-05-01")],
+      timezone: {
+        value: "Asia/Kathmandu",
+        label: "Kathmandu",
+        gmtString: "GMT+5:45",
+        offset: Temporal.Duration.from("PT5H45M"),
+      },
+    })
+  })
+
+  it("rejects mixed encoded and Temporal route-draft input at the boundary", () => {
+    const draft = fromSerializedEventDraft({
+      name: "Draft",
+      startTime: Temporal.PlainTime.from("09:00") as never,
+      endTime: 17,
+      selectedDays: [Temporal.PlainDate.from("2026-05-01")] as never,
+      timezone: {
+        value: "Asia/Kathmandu",
+        label: "Kathmandu",
+        gmtString: "GMT+5:45",
+        offset: Temporal.Duration.from("PT5H45M") as never,
+      },
+    })
+
+    expect(draft).toEqual({
+      name: "Draft",
+      endTime: Temporal.PlainTime.from("17:00"),
+      selectedDays: [],
+      timezone: {
+        value: "Asia/Kathmandu",
+        label: "Kathmandu",
+        gmtString: "GMT+5:45",
+        offset: Temporal.Duration.from("PT0S"),
+      },
+    })
   })
 
   it("normalizes raw event extras before schedule-overlap consumes them", () => {

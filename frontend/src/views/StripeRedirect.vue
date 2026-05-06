@@ -42,6 +42,7 @@ import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import confetti from "canvas-confetti"
 import { fetchAuthUserProfile } from "@/utils/services/UserService"
+import { Temporal } from "temporal-polyfill"
 
 const router = useRouter()
 const mainStore = useMainStore()
@@ -54,22 +55,27 @@ function navigateToRedirectUrl() {
 }
 
 function fireConfetti() {
-  const duration = 15 * 1000
-  const animationEnd = Date.now() + duration
+  const animationDuration = Temporal.Duration.from({ seconds: 15 })
+  const animationStart = Temporal.Now.instant()
+  const animationEnd = animationStart.add(animationDuration)
+  const totalDurationMs = animationDuration.total("milliseconds")
   const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 }
 
   function randomInRange(min: number, max: number) {
     return Math.random() * (max - min) + min
   }
 
-  const interval = setInterval(function () {
-    const timeLeft = animationEnd - Date.now()
+  const interval = setInterval(() => {
+    const timeLeftMs = animationEnd
+      .since(Temporal.Now.instant())
+      .total("milliseconds")
 
-    if (timeLeft <= 0) {
-      clearInterval(interval); return;
+    if (timeLeftMs <= 0) {
+      clearInterval(interval)
+      return
     }
 
-    const particleCount = 50 * (timeLeft / duration)
+    const particleCount = 50 * (timeLeftMs / totalDurationMs)
     void confetti({
       ...defaults,
       particleCount,
