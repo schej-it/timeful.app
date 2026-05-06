@@ -1,4 +1,4 @@
-# ADR 0001: Frontend Boundary Models and Canonical Internal Shapes
+# ADR 001: Frontend Boundary Models and Canonical Internal Shapes
 
 Date: 2026-05-05
 

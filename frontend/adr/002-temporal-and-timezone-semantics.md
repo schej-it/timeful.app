@@ -1,4 +1,4 @@
-# ADR 0002: Frontend Temporal and Timezone Semantics
+# ADR 002: Frontend Temporal and Timezone Semantics
 
 Date: 2026-05-05
 
