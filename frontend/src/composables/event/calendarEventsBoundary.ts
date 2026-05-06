@@ -1,13 +1,18 @@
-import type {
-  components,
-} from "@/types"
+import type { components } from "@/types/api"
 import type { RawCalendarEvent } from "@/types/transport"
 import { fromRawCalendarEvent } from "@/types/transport"
+import { get } from "@/utils/fetch_utils"
+import {
+  getCalendarEventsMap as getCalendarEventsTransportMap,
+  type CalendarAvailabilityQueryEvent,
+  type CalendarAvailabilityRequestOptions,
+} from "@/utils/services/CalendarAvailabilityService"
 import type {
   NormalizedCalendarEvent,
   CalendarEventsMap,
   CalendarEventsMapEntry,
 } from "@/composables/schedule_overlap/types"
+import type { Temporal } from "temporal-polyfill"
 
 export interface CalendarEventsTransportEntry
   extends Omit<
@@ -85,3 +90,47 @@ export const fromCalendarAvailabilitiesTransportMap = (
       }),
     ])
   )
+
+const toTransportMap = (value: unknown): Record<string, unknown> => {
+  if (!value || Array.isArray(value)) {
+    return {}
+  }
+
+  return value as Record<string, unknown>
+}
+
+export const fetchCalendarEventsMap = async (
+  event: CalendarAvailabilityQueryEvent,
+  options: CalendarAvailabilityRequestOptions = {}
+): Promise<CalendarEventsMap> => {
+  const result = await getCalendarEventsTransportMap(event, options)
+
+  return fromCalendarEventsTransportMap(
+    toTransportMap(result) as CalendarEventsTransportMap
+  )
+}
+
+export const fetchCalendarAvailabilities = async (
+  event: CalendarAvailabilityQueryEvent,
+  options: CalendarAvailabilityRequestOptions = {}
+): Promise<Record<string, NormalizedCalendarEvent[]>> => {
+  const result = await getCalendarEventsTransportMap(event, options)
+
+  return fromCalendarAvailabilitiesTransportMap(
+    toTransportMap(result) as CalendarAvailabilitiesTransportMap
+  )
+}
+
+export const fetchUserCalendarEventsMap = async ({
+  timeMin,
+  timeMax,
+}: {
+  timeMin: Temporal.Instant
+  timeMax: Temporal.Instant
+}): Promise<CalendarEventsMap> => {
+  const result = await get<CalendarEventsTransportMap>(
+    `/user/calendars?timeMin=${timeMin.toString()}&timeMax=${timeMax.toString()}`
+  )
+
+  return fromCalendarEventsTransportMap(result)
+}

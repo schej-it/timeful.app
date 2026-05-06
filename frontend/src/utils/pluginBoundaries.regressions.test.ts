@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { stubRegressionLocalStorage } from "@/test/regressionTestSetup"
 import { zdt } from "@/test/regressionHarness"
-import { fromRawEvent } from "@/types/transport"
+import { fromRawEvent, fromRawResponse } from "@/types/transport"
 import {
   normalizePluginSetSlots,
   resolvePluginTimezoneValue,
@@ -15,6 +15,16 @@ import {
   getPluginEventTimeRange,
   normalizePluginResponses,
 } from "@/views/event/pluginResponsesBoundary"
+
+const decodeResponses = (
+  rawResponses: Record<string, Parameters<typeof fromRawResponse>[0]>
+) =>
+  Object.fromEntries(
+    Object.entries(rawResponses).map(([userId, rawResponse]) => [
+      userId,
+      fromRawResponse(rawResponse),
+    ])
+  )
 
 describe("plugin boundary regressions", () => {
   beforeEach(() => {
@@ -127,12 +137,12 @@ describe("plugin boundary regressions", () => {
     }
 
     const roundTrippedSlots = normalizePluginResponses({
-      rawResponses: {
+      responses: decodeResponses({
         "user-1": {
           availability: [normalizedSetSlots.slots[0].parsedStart.epochMilliseconds],
           ifNeeded: [],
         },
-      },
+      }),
       eventResponses: {
         "user-1": {
           name: "Ada",
@@ -218,12 +228,12 @@ describe("plugin boundary regressions", () => {
       "America/New_York"
     )
     const slots = normalizePluginResponses({
-      rawResponses: {
+      responses: decodeResponses({
         "user-1": {
           availability: [Date.parse("2026-01-07T03:15:00Z")],
           ifNeeded: [Date.parse("2026-01-07T04:15:00Z")],
         },
-      },
+      }),
       eventResponses: {
         "user-1": {
           name: "Ada",
@@ -254,14 +264,14 @@ describe("plugin boundary regressions", () => {
     expect(timezoneValue).toBe("+05:45")
   })
 
-  it("normalizes plugin get-slots responses through the shared raw-response adapter", () => {
+  it("normalizes plugin get-slots responses after caller-side response decoding", () => {
     const slots = normalizePluginResponses({
-      rawResponses: {
+      responses: decodeResponses({
         "user-1": {
           availability: [Date.parse("2026-01-07T17:00:00Z")],
           ifNeeded: [Date.parse("2026-01-07T18:00:00Z")],
         },
-      },
+      }),
       eventResponses: {
         "user-1": {
           user: {
@@ -297,12 +307,12 @@ describe("plugin boundary regressions", () => {
       "America/New_York"
     )
     const slots = normalizePluginResponses({
-      rawResponses: {
+      responses: decodeResponses({
         "user-1": {
           availability: [Date.parse("2026-01-07T03:15:00Z")],
           ifNeeded: [Date.parse("2026-01-07T04:15:00Z")],
         },
-      },
+      }),
       eventResponses: {
         "user-1": {
           user: {

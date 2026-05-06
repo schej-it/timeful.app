@@ -1,7 +1,5 @@
 import { eventTypes } from "@/constants"
 import type { Event, Response } from "@/types"
-import type { RawResponse } from "@/types/transport"
-import { fromRawResponse } from "@/types/transport"
 import {
   convertUTCSlotsToLocalISO,
   dateToDowDate,
@@ -77,18 +75,11 @@ export const getPluginEventTimeRange = (
 
 export const normalizePluginResponses = (input: {
   responses?: Record<string, Response>
-  rawResponses?: Record<string, RawResponse>
   eventResponses?: Record<string, EventResponseMetadata>
   timezoneValue: string
   eventType?: string
 }): Record<string, PluginSlotEntry> => {
-  const responses = input.responses
-    ?? Object.fromEntries(
-      Object.entries(input.rawResponses ?? {}).map(([userId, response]) => [
-        userId,
-        fromRawResponse(response),
-      ])
-    )
+  const responses = input.responses ?? {}
   const { eventResponses, timezoneValue, eventType } = input
   const allSlots: Record<string, PluginSlotEntry> = {}
 

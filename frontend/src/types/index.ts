@@ -1,22 +1,18 @@
 import type { EventDraft } from "@/composables/event/types"
 import type { Temporal } from "temporal-polyfill"
+import type { components } from "./api"
 import type {
-  RawAttendee,
-  RawBufferTimeOptions,
   RawCalendarAccount,
   RawCalendarEvent,
   RawCalendarOptions,
   RawEvent,
-  RawFolder,
-  RawLocation,
-  RawRemindee,
   RawResponse,
   RawSignUpBlock,
   RawSignUpResponse,
-  RawSubCalendar,
   RawUser,
-  RawWorkingHoursOptions,
 } from "./transport"
+
+type Schemas = components["schemas"]
 
 export type User = Omit<RawUser, "calendarAccounts" | "calendarOptions"> & {
   calendarAccounts?: Record<string, CalendarAccount>
@@ -45,7 +41,14 @@ export type Event = Omit<
   signUpResponses?: Record<string, SignUpResponse>
 }
 
-export type Folder = RawFolder
+export interface Folder {
+  _id?: Schemas["models.Folder"]["_id"]
+  color?: Schemas["models.Folder"]["color"]
+  eventIds?: Schemas["models.Folder"]["eventIds"]
+  isDeleted?: Schemas["models.Folder"]["isDeleted"]
+  name?: Schemas["models.Folder"]["name"]
+  userId?: Schemas["models.Folder"]["userId"]
+}
 
 export type Response = Omit<
   RawResponse,
@@ -84,12 +87,43 @@ export type CalendarOptions = Omit<
   workingHours?: WorkingHoursOptions
 }
 
-export type SubCalendar = RawSubCalendar
-export type Location = RawLocation
-export type Remindee = RawRemindee
-export type Attendee = RawAttendee
-export type BufferTimeOptions = RawBufferTimeOptions
-export type WorkingHoursOptions = RawWorkingHoursOptions
+export interface SubCalendar {
+  enabled?: Schemas["models.SubCalendar"]["enabled"]
+  name?: Schemas["models.SubCalendar"]["name"]
+}
+
+export interface Location {
+  city?: Schemas["models.Location"]["city"]
+  country_code?: Schemas["models.Location"]["country_code"]
+  country_name?: Schemas["models.Location"]["country_name"]
+  latitude?: Schemas["models.Location"]["latitude"]
+  longitude?: Schemas["models.Location"]["longitude"]
+  postal?: Schemas["models.Location"]["postal"]
+  state?: Schemas["models.Location"]["state"]
+}
+
+export interface Remindee {
+  email?: Schemas["models.Remindee"]["email"]
+  responded?: Schemas["models.Remindee"]["responded"]
+}
+
+export interface Attendee {
+  _id?: Schemas["models.Attendee"]["_id"]
+  declined?: Schemas["models.Attendee"]["declined"]
+  email?: Schemas["models.Attendee"]["email"]
+  eventId?: Schemas["models.Attendee"]["eventId"]
+}
+
+export interface BufferTimeOptions {
+  enabled?: Schemas["models.BufferTimeOptions"]["enabled"]
+  time?: Schemas["models.BufferTimeOptions"]["time"]
+}
+
+export interface WorkingHoursOptions {
+  enabled?: Schemas["models.WorkingHoursOptions"]["enabled"]
+  endTime?: Schemas["models.WorkingHoursOptions"]["endTime"]
+  startTime?: Schemas["models.WorkingHoursOptions"]["startTime"]
+}
 
 export interface NewDialogOptions {
   show: boolean
@@ -98,5 +132,3 @@ export interface NewDialogOptions {
   eventOnly: boolean
   folderId: string | null
 }
-
-export type { components, paths, operations } from "./api"

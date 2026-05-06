@@ -97,29 +97,15 @@ import { authTypes, calendarTypes } from "@/constants"
 import { post, signInGoogle, getCalendarAccountKey } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
-import type { CalendarEventsTransportMap } from "@/composables/event/calendarEventsBoundary"
+import type { CalendarAccount as CalendarAccountModel } from "@/types"
 import type { CalendarEventsMap } from "@/composables/schedule_overlap/types"
-
-interface SubCalendar {
-  name?: string
-  enabled?: boolean
-}
-
-interface CalendarAccountProp {
-  calendarType?: string
-  email?: string
-  enabled?: boolean
-  subCalendars?: Record<string, SubCalendar>
-}
-
-type CalendarAccountEventsMap = CalendarEventsTransportMap | CalendarEventsMap
 
 const props = withDefaults(
   defineProps<{
     toggleState?: boolean
-    account?: CalendarAccountProp
+    account?: CalendarAccountModel
     eventId?: string
-    calendarEventsMap?: CalendarAccountEventsMap
+    calendarEventsMap?: CalendarEventsMap
     removeDialog?: boolean
     selectedRemoveEmail?: string
     syncWithBackend?: boolean
@@ -173,7 +159,7 @@ const accountHasError = computed(() => {
     props.calendarEventsMap[
       getCalendarAccountKey(props.account.email ?? "", props.account.calendarType ?? "")
     ]
-  return a?.error && a.calendarEvents?.length === 0
+  return Boolean(a.error) && (a.calendarEvents?.length ?? 0) === 0
 })
 const showAccount = computed(() => !(props.toggleState && accountHasError.value))
 const reauthenticateBtnText = computed(() => {

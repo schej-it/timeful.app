@@ -15,7 +15,7 @@ export interface CalendarAvailabilityRequestOptions
   eventId?: string
 }
 
-type CalendarAvailabilityQueryEvent = Pick<
+export type CalendarAvailabilityQueryEvent = Pick<
   Event,
   "type" | "dates" | "timeSeed" | "startOnMonday"
 >

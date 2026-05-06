@@ -1,5 +1,5 @@
 import "@/test/regressionTestSetup"
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { stubRegressionLocalStorage } from "@/test/regressionTestSetup"
 import { zdt } from "@/test/regressionHarness"
@@ -11,16 +11,28 @@ import {
   fromRawUser,
   toRawUser,
 } from "@/types/transport"
+import { get } from "@/utils/fetch_utils"
 import { getDateWithTimezone } from "@/utils"
 import { eventTypes } from "@/constants"
 import {
+  fetchUserCalendarEventsMap,
   fromCalendarAvailabilitiesTransportMap,
   fromCalendarEventsTransportMap,
 } from "@/composables/event/calendarEventsBoundary"
 import { toScheduleOverlapEvent } from "@/composables/schedule_overlap/types"
 
+vi.mock("@/utils/fetch_utils", async () => {
+  const actual = await vi.importActual("@/utils/fetch_utils")
+
+  return {
+    ...actual,
+    get: vi.fn(),
+  }
+})
+
 describe("transport and timezone regression boundaries", () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     stubRegressionLocalStorage()
   })
 
@@ -241,5 +253,33 @@ describe("transport and timezone regression boundaries", () => {
     expect(normalizedCalendarEvent?.endDate).toBeInstanceOf(Temporal.ZonedDateTime)
     expect(normalizedAvailabilityEvent.startDate).toBeInstanceOf(Temporal.ZonedDateTime)
     expect(normalizedAvailabilityEvent.endDate).toBeInstanceOf(Temporal.ZonedDateTime)
+  })
+
+  it("decodes raw /user/calendars payloads at the calendar-events fetch boundary", async () => {
+    vi.mocked(get).mockResolvedValue({
+      "google:user@example.com": {
+        error: false,
+        calendarEvents: [
+          {
+            calendarId: "primary",
+            startDate: Date.parse("2026-01-03T09:00:00Z"),
+            endDate: Date.parse("2026-01-03T10:00:00Z"),
+          },
+        ],
+      },
+    })
+
+    const calendarEventsMap = await fetchUserCalendarEventsMap({
+      timeMin: Temporal.Instant.from("2026-01-03T00:00:00Z"),
+      timeMax: Temporal.Instant.from("2026-01-03T23:59:59Z"),
+    })
+    const entry = calendarEventsMap["google:user@example.com"]
+
+    expect(get).toHaveBeenCalledWith(
+      "/user/calendars?timeMin=2026-01-03T00:00:00Z&timeMax=2026-01-03T23:59:59Z"
+    )
+    expect(entry.error).toBeUndefined()
+    expect(entry.calendarEvents?.[0].startDate).toBeInstanceOf(Temporal.ZonedDateTime)
+    expect(entry.calendarEvents?.[0].endDate).toBeInstanceOf(Temporal.ZonedDateTime)
   })
 })

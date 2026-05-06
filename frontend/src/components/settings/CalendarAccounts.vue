@@ -101,7 +101,6 @@ import { storeToRefs } from "pinia"
 import { authTypes, calendarTypes } from "@/constants"
 import { Temporal } from "temporal-polyfill"
 import {
-  get,
   _delete,
   signInGoogle,
   signInOutlook,
@@ -110,22 +109,10 @@ import {
 import { useMainStore } from "@/stores/main"
 import CalendarAccount from "@/components/settings/CalendarAccount.vue"
 import CalendarTypeSelector from "@/components/settings/CalendarTypeSelector.vue"
-import type { CalendarEventsTransportMap } from "@/composables/event/calendarEventsBoundary"
+import { fetchUserCalendarEventsMap } from "@/composables/event/calendarEventsBoundary"
+import type { CalendarAccount as CalendarAccountModel } from "@/types"
 import type { CalendarEventsMap } from "@/composables/schedule_overlap/types"
-
-export interface SubCalendar {
-  name?: string
-  enabled?: boolean
-}
-
-export interface CalendarAccountEntry {
-  calendarType?: string
-  email?: string
-  enabled?: boolean
-  subCalendars?: Record<string, SubCalendar>
-}
-
-type CalendarAccountsEventsMap = CalendarEventsTransportMap | CalendarEventsMap
+export type CalendarAccountEntry = CalendarAccountModel
 
 export interface ToggleCalendarPayload {
   email?: string
@@ -144,7 +131,7 @@ const props = withDefaults(
   defineProps<{
     toggleState?: boolean
     eventId?: string
-    calendarEventsMap?: CalendarAccountsEventsMap
+    calendarEventsMap?: CalendarEventsMap
     syncWithBackend?: boolean
     allowAddCalendarAccount?: boolean
     initialCalendarAccountsData?: Record<string, CalendarAccountEntry>
@@ -181,7 +168,7 @@ const showCalendars = ref(
     : localStorage.showCalendars == "true"
 )
 
-const calendarEventsMapCopy = ref<CalendarAccountsEventsMap>({})
+const calendarEventsMapCopy = ref<CalendarEventsMap>({})
 
 onMounted(() => {
   calendarAccounts.value = Object.keys(props.initialCalendarAccountsData).length === 0
@@ -255,9 +242,10 @@ watch(
       const timeMin = Temporal.Now.instant()
       const timeMax = Temporal.Now.instant()
       try {
-        calendarEventsMapCopy.value = await get(
-          `/user/calendars?timeMin=${timeMin.toString()}&timeMax=${timeMax.toString()}`
-        )
+        calendarEventsMapCopy.value = await fetchUserCalendarEventsMap({
+          timeMin,
+          timeMax,
+        })
       } catch (err) {
         console.error(err)
       }

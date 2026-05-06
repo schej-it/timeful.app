@@ -1,10 +1,5 @@
 import { ref, nextTick, type Ref, type ComputedRef } from "vue"
-import {
-  get,
-  getCalendarEventsMap,
-  getRenderedWeekStart,
-  processEvent,
-} from "@/utils"
+import { get, getRenderedWeekStart, processEvent } from "@/utils"
 import { eventTypes, guestUserId } from "@/constants"
 import type { Event, User } from "@/types"
 import type {
@@ -14,10 +9,8 @@ import type {
 import type { ScheduleOverlapInstance } from "./types"
 import { fetchEventFromPath } from "./eventTransportBoundary"
 import {
-  fromCalendarAvailabilitiesTransportMap,
-  fromCalendarEventsTransportMap,
-  type CalendarAvailabilitiesTransportMap,
-  type CalendarEventsTransportMap,
+  fetchCalendarAvailabilities as fetchCalendarAvailabilitiesBoundary,
+  fetchCalendarEventsMap,
 } from "./calendarEventsBoundary"
 
 export interface UseEventLoaderOptions {
@@ -87,21 +80,19 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     ownerPremiumChecked.value = true
   }
 
-  async function fetchCalendarAvailabilities() {
+  function fetchCalendarAvailabilities() {
     if (event.value?.type !== eventTypes.GROUP) return
     const curWeekOffset = opts.weekOffset.value
     const ev = event.value as Event & { _id: string; type: string }
     const renderedWeekStart = getEventRenderedWeekStart()
-    return getCalendarEventsMap(ev, {
+    return fetchCalendarAvailabilitiesBoundary(ev, {
       weekOffset: curWeekOffset,
       eventId: ev._id,
       renderedWeekStart,
     })
       .then((result) => {
         if (curWeekOffset !== opts.weekOffset.value) return
-        calendarAvailabilities.value = fromCalendarAvailabilitiesTransportMap(
-          result as CalendarAvailabilitiesTransportMap
-        )
+        calendarAvailabilities.value = result
         // With Temporal, DST is handled automatically - no manual adjustment needed
       })
       .catch((err: unknown) => { console.error(err) })
@@ -115,15 +106,13 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     const curWeekOffset = opts.weekOffset.value
     if (!event.value) return
     const renderedWeekStart = getEventRenderedWeekStart()
-    return getCalendarEventsMap(event.value, {
+    return fetchCalendarEventsMap(event.value, {
       weekOffset: curWeekOffset,
       renderedWeekStart,
     })
       .then((result) => {
         if (curWeekOffset !== opts.weekOffset.value) return
-        calendarEventsMap.value = fromCalendarEventsTransportMap(
-          result as CalendarEventsTransportMap
-        )
+        calendarEventsMap.value = result
 
         const evType = event.value?.type
         if (evType === eventTypes.GROUP || evType === eventTypes.DOW) {
@@ -164,7 +153,10 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
   }
 
   function refreshCalendar() {
-    const promises = [fetchCalendarAvailabilities(), fetchAuthUserCalendarEvents()]
+    const promises = [
+      Promise.resolve(fetchCalendarAvailabilities()),
+      Promise.resolve(fetchAuthUserCalendarEvents()),
+    ]
     const curWeekOffset = opts.weekOffset.value
     loading.value = true
     void Promise.allSettled(promises).then(() => {
