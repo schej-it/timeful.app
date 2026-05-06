@@ -1,4 +1,5 @@
 import type { states } from "@/composables/schedule_overlap/types"
+import type { Timezone } from "@/composables/schedule_overlap/types"
 import type { Temporal } from "temporal-polyfill"
 
 export interface ScheduleOverlapInstance {
@@ -41,16 +42,23 @@ export interface ScheduleOverlapInstance {
 export interface EventDraft {
   emails?: string[]
   name?: string
-  startTime?: Temporal.PlainTime
-  endTime?: Temporal.PlainTime
+  startTime?: Temporal.PlainTime | number
+  endTime?: Temporal.PlainTime | number
   daysOnly?: boolean
   selectedDateOption?: string
   selectedDaysOfWeek?: number[]
-  selectedDays?: Temporal.PlainDate[]
+  selectedDays?: Temporal.PlainDate[] | string[]
   notificationsEnabled?: boolean
-  timezone?: { value?: string; [k: string]: unknown }
+  timezone?: Timezone | SerializedTimezone
   specificTimesEnabled?: boolean
   startOnMonday?: boolean
+}
+
+export interface SerializedTimezone {
+  value?: string
+  offset?: Temporal.Duration | string
+  label?: string
+  gmtString?: string
 }
 
 export interface SerializedEventDraft {
@@ -63,7 +71,7 @@ export interface SerializedEventDraft {
   selectedDaysOfWeek?: number[]
   selectedDays?: string[]
   notificationsEnabled?: boolean
-  timezone?: { value?: string; [k: string]: unknown }
+  timezone?: SerializedTimezone
   specificTimesEnabled?: boolean
   startOnMonday?: boolean
 }

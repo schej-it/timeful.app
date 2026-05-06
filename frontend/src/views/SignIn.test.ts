@@ -2,6 +2,7 @@
 
 import { shallowMount } from "@vue/test-utils"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { Temporal } from "temporal-polyfill"
 import type * as UtilsModule from "@/utils"
 import { authTypes } from "@/constants"
 import SignIn from "./SignIn.vue"
@@ -102,7 +103,7 @@ describe("SignIn auth restore state", () => {
             value: "Asia/Kathmandu",
             label: "Kathmandu",
             gmtString: "GMT+5:45",
-            offset: "PT5H45M",
+            offset: Temporal.Duration.from("PT5H45M"),
           },
           contactsPayload: {
             name: "Draft",

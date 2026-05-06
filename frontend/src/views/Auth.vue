@@ -3,19 +3,21 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from "vue-router"
 import { storeToRefs } from "pinia"
-import { get, post, getEventsCreated, deleteEventsCreated } from "@/utils"
+import { post, getEventsCreated, deleteEventsCreated } from "@/utils"
 import { authTypes, calendarTypes } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import { Temporal } from "temporal-polyfill"
-import type { SerializedEventDraft } from "@/composables/event/types"
+import type { EventDraft } from "@/composables/event/types"
 import type { AuthRestoreQueryState } from "@/router/authRestoreState"
 import {
   serializeRouteContactsPayload,
   serializeRouteTimezone,
 } from "@/router/routeProps"
-import type { RawUser } from "@/types/transport"
-import { fromRawUser } from "@/types/transport"
+import {
+  fetchAuthUserProfile,
+  signInWithOAuthCode,
+} from "@/utils/services/UserService"
 
 defineOptions({ name: 'AppAuth' })
 
@@ -26,7 +28,7 @@ interface AuthState {
   eventId?: string
   groupId?: string
   signUpId?: string
-  payload?: SerializedEventDraft
+  payload?: EventDraft
   restoreQuery?: AuthRestoreQueryState
   openNewGroup?: boolean
   upgradeParams?: string
@@ -66,13 +68,13 @@ void (async () => {
         throw new Error("Invalid calendar type")
       }
     } else {
-      const user = fromRawUser(await post<RawUser>("/auth/sign-in", {
+      const user = await signInWithOAuthCode({
         code,
         scope: scope ?? state?.scope,
         calendarType: state?.calendarType,
         timezoneOffset: Temporal.Now.zonedDateTimeISO().offsetNanoseconds / (1000 * 1000 * 1000) / 60 * -1,
         eventsToLink: getEventsCreated(),
-      }))
+      })
       deleteEventsCreated()
 
       mainStore.setAuthUser(user)
@@ -147,14 +149,14 @@ void (async () => {
             params: { groupId: state.eventId },
             query: { fromSignIn: "true" },
           })
-          authUserRefreshed = fromRawUser(await get<RawUser>("/user/profile"))
+          authUserRefreshed = await fetchAuthUserProfile()
           mainStore.setAuthUser(authUserRefreshed)
           break
         case authTypes.ADD_CALENDAR_ACCOUNT:
           void router.replace({
             name: "settings",
           })
-          authUserRefreshed = fromRawUser(await get<RawUser>("/user/profile"))
+          authUserRefreshed = await fetchAuthUserProfile()
           mainStore.setAuthUser(authUserRefreshed)
           break
         case authTypes.ADD_CALENDAR_ACCOUNT_FROM_EDIT:
@@ -163,7 +165,7 @@ void (async () => {
             params: { eventId: state.eventId },
             query: { fromSignIn: "true" },
           })
-          authUserRefreshed = fromRawUser(await get<RawUser>("/user/profile"))
+          authUserRefreshed = await fetchAuthUserProfile()
           mainStore.setAuthUser(authUserRefreshed)
           break
         case authTypes.EVENT_CONTACTS:

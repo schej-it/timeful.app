@@ -14,12 +14,13 @@
 import { ref } from "vue"
 import { useRouter } from "vue-router"
 import Event from "./Event.vue"
-import { get } from "@/utils"
 import { errors, eventTypes } from "@/constants"
 import { useMainStore } from "@/stores/main"
-import type { SerializedEventDraft } from "@/composables/event/types"
+import type { EventDraft } from "@/composables/event/types"
+import { fetchEventById } from "@/composables/event/eventTransportBoundary"
 import { serializeRouteContactsPayload, serializeRouteTimezone } from "@/router/routeProps"
 import type { Event as EventType } from "@/types"
+import type { Timezone } from "@/composables/schedule_overlap/types"
 
 defineOptions({ name: 'AppSignUp' })
 
@@ -27,8 +28,8 @@ const props = defineProps<{
   signUpId: string
   fromSignIn?: boolean
   editingMode?: boolean
-  initialTimezone?: Record<string, unknown>
-  contactsPayload?: SerializedEventDraft
+  initialTimezone?: Timezone
+  contactsPayload?: EventDraft
 }>()
 
 const router = useRouter()
@@ -38,7 +39,7 @@ const event = ref<EventType | null>(null)
 
 void (async () => {
   try {
-    event.value = await get<EventType>(`/events/${props.signUpId}`)
+    event.value = await fetchEventById(props.signUpId)
 
     if ((event.value as { type?: string }).type === eventTypes.GROUP) {
       void router.replace({

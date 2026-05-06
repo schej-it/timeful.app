@@ -261,8 +261,7 @@ import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import { Temporal } from "temporal-polyfill"
 import type { User } from "@/types"
-import type { RawUser } from "@/types/transport"
-import { fromRawUser } from "@/types/transport"
+import { verifyOtpSignIn } from "@/utils/services/UserService"
 
 const props = defineProps<{
   initialIsSignUp?: boolean
@@ -302,22 +301,36 @@ const upgradeRedirect = computed(
 
 function signIn(provider: string) {
   const restoreState = getAuthRestoreState(route)
-  const state = upgradeRedirect.value
-    ? { type: authTypes.UPGRADE, upgradeParams: route.query.upgradeParams }
-    : restoreState
-      ? {
-          type:
-            restoreState.routeName === "event"
-              ? authTypes.EVENT_SIGN_IN
-              : restoreState.routeName === "group"
-                ? authTypes.GROUP_SIGN_IN
-                : authTypes.SIGN_UP_SIGN_IN,
-          eventId: restoreState.routeName === "event" ? restoreState.routeId : undefined,
-          groupId: restoreState.routeName === "group" ? restoreState.routeId : undefined,
-          signUpId: restoreState.routeName === "signUp" ? restoreState.routeId : undefined,
+  let state: Record<string, unknown> | null
+  if (upgradeRedirect.value) {
+    state = { type: authTypes.UPGRADE, upgradeParams: route.query.upgradeParams }
+  } else if (restoreState) {
+    switch (restoreState.routeName) {
+      case "event":
+        state = {
+          type: authTypes.EVENT_SIGN_IN,
+          eventId: restoreState.routeId,
           restoreQuery: restoreState.routeQuery,
         }
-      : null
+        break
+      case "group":
+        state = {
+          type: authTypes.GROUP_SIGN_IN,
+          groupId: restoreState.routeId,
+          restoreQuery: restoreState.routeQuery,
+        }
+        break
+      case "signUp":
+        state = {
+          type: authTypes.SIGN_UP_SIGN_IN,
+          signUpId: restoreState.routeId,
+          restoreQuery: restoreState.routeQuery,
+        }
+        break
+    }
+  } else {
+    state = null
+  }
   if (provider === calendarTypes.GOOGLE) {
     signInGoogle({ state, selectAccount: true })
   } else if (provider === calendarTypes.OUTLOOK) {
@@ -415,7 +428,7 @@ async function verifyOtp() {
       body.firstName = firstName.value.trim()
       body.lastName = lastName.value.trim()
     }
-    const user = fromRawUser(await post<RawUser>("/auth/otp/verify", body))
+    const user = await verifyOtpSignIn(body)
     mainStore.setAuthUser(user)
     posthog.identify(user._id, {
       email: user.email,

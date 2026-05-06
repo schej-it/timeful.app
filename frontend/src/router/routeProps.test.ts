@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { RouteLocationNormalizedLoaded } from "vue-router"
+import { Temporal } from "temporal-polyfill"
 import {
   getEventRouteProps,
   getHomeRouteProps,
@@ -47,13 +48,13 @@ describe("route props boundary adapters", () => {
         value: "Asia/Kathmandu",
         label: "Kathmandu",
         gmtString: "GMT+5:45",
-        offset: "PT5H45M",
+        offset: Temporal.Duration.from("PT5H45M"),
       },
       contactsPayload: {
         name: "Draft",
-        startTime: 9,
-        endTime: 17,
-        selectedDays: ["2026-05-01"],
+        startTime: Temporal.PlainTime.from("09:00"),
+        endTime: Temporal.PlainTime.from("17:00"),
+        selectedDays: [Temporal.PlainDate.from("2026-05-01")],
       },
     })
   })
@@ -110,7 +111,7 @@ describe("route props boundary adapters", () => {
       fromSignIn: false,
       editingMode: false,
       linkApple: false,
-      initialTimezone: {},
+      initialTimezone: undefined,
       contactsPayload: {},
     })
   })
@@ -129,7 +130,7 @@ describe("route props boundary adapters", () => {
       signUpId: "signup-1",
       fromSignIn: true,
       editingMode: true,
-      initialTimezone: {},
+      initialTimezone: undefined,
       contactsPayload: {},
     })
   })

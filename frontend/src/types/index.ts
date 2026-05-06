@@ -1,4 +1,4 @@
-import type { SerializedEventDraft } from "@/composables/event/types"
+import type { EventDraft } from "@/composables/event/types"
 import type { Temporal } from "temporal-polyfill"
 import type {
   RawAttendee,
@@ -25,7 +25,13 @@ export type User = Omit<RawUser, "calendarAccounts" | "calendarOptions"> & {
 
 export type Event = Omit<
   RawEvent,
-  "dates" | "times" | "duration" | "scheduledEvent" | "signUpBlocks" | "signUpResponses"
+  | "dates"
+  | "times"
+  | "duration"
+  | "scheduledEvent"
+  | "responses"
+  | "signUpBlocks"
+  | "signUpResponses"
 > & {
   dates?: Temporal.PlainDate[]
   timeSeed?: Temporal.ZonedDateTime
@@ -34,6 +40,7 @@ export type Event = Omit<
   endTime?: Temporal.PlainTime
   duration?: Temporal.Duration
   scheduledEvent?: CalendarEvent
+  responses?: Record<string, Response>
   signUpBlocks?: SignUpBlock[]
   signUpResponses?: Record<string, SignUpResponse>
 }
@@ -86,7 +93,7 @@ export type WorkingHoursOptions = RawWorkingHoursOptions
 
 export interface NewDialogOptions {
   show: boolean
-  contactsPayload: SerializedEventDraft
+  contactsPayload: EventDraft
   openNewGroup: boolean
   eventOnly: boolean
   folderId: string | null

@@ -7,13 +7,12 @@ import {
 } from "@/utils"
 import { eventTypes, guestUserId } from "@/constants"
 import type { Event, User } from "@/types"
-import type { RawEvent } from "@/types/transport"
-import { fromRawEvent } from "@/types/transport"
 import type {
   NormalizedCalendarEvent,
   CalendarEventsMap,
 } from "@/composables/schedule_overlap/types"
 import type { ScheduleOverlapInstance } from "./types"
+import { fetchEventFromPath } from "./eventTransportBoundary"
 import {
   fromCalendarAvailabilitiesTransportMap,
   fromCalendarEventsTransportMap,
@@ -71,9 +70,7 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     }
     let url = `/events/${sanitizedId}`
     if (guestName && guestName.length > 0) url += `?guestName=${encodeURIComponent(guestName)}`
-    const rawEvent = await get<RawEvent>(url)
-    // Convert raw event to Temporal-based event
-    event.value = fromRawEvent(rawEvent)
+    event.value = await fetchEventFromPath(url)
     processEvent(event.value, getEventRenderedWeekStart())
   }
 

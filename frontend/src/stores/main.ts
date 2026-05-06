@@ -14,9 +14,10 @@ import {
   updateFolder as updateFolderService,
 } from "@/utils/services/FolderService"
 import { archiveEvent as archiveEventService } from "@/utils/services/EventService"
+import { fetchAuthUserProfile } from "@/utils/services/UserService"
 import type { Event, Folder, NewDialogOptions, User } from "@/types"
-import type { RawEvent, RawFolder, RawUser } from "@/types/transport"
-import { fromRawEvent, fromRawFolder, fromRawUser } from "@/types/transport"
+import type { RawEvent, RawFolder } from "@/types/transport"
+import { fromRawEvent, fromRawFolder } from "@/types/transport"
 
 export const useMainStore = defineStore("main", () => {
   const error = ref("")
@@ -159,8 +160,7 @@ export const useMainStore = defineStore("main", () => {
   }
 
   const refreshAuthUser = async () => {
-    const user = await get<RawUser>("/user/profile")
-    setAuthUser(fromRawUser(user))
+    setAuthUser(await fetchAuthUserProfile())
   }
 
   const showUpgradeDialog = ({

@@ -176,7 +176,6 @@ import {
   resolveTimezoneValue,
   signInGoogle,
   getDateWithTimezone,
-  timeNumToPlainTime,
 } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { eventTypes, authTypes, durations, hoursPlainTime } from "@/constants"
@@ -187,7 +186,12 @@ import EmailInput from "./event/EmailInput.vue"
 import type { Event } from "@/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
 import { Temporal } from "temporal-polyfill"
-import type { SerializedEventDraft } from "@/composables/event/types"
+import type { EventDraft } from "@/composables/event/types"
+import {
+  getDraftEndTime,
+  getDraftStartTime,
+  hasEventDraftData,
+} from "@/composables/event/draftBoundary"
 
 interface FormRef {
   validate: () => Promise<{ valid: boolean }> | boolean
@@ -203,7 +207,7 @@ const props = withDefaults(
     edit?: boolean
     dialog?: boolean
     showHelp?: boolean
-    contactsPayload?: SerializedEventDraft
+    contactsPayload?: EventDraft
     folderId?: string | null
   }>(),
   {
@@ -277,14 +281,6 @@ const times = computed(() => {
   t.push({ text: "12 am", value: 0 })
   return t
 })
-const normalizeDraftTime = (
-  time: SerializedEventDraft["startTime"],
-  fallback: Temporal.PlainTime
-): Temporal.PlainTime => {
-  if (time == null) return fallback
-  if (typeof time === "number") return timeNumToPlainTime(time)
-  return Temporal.PlainTime.from(time)
-}
 const otherEventAttendees = computed(() =>
   props.event?.attendees
     ? props.event.attendees
@@ -293,16 +289,16 @@ const otherEventAttendees = computed(() =>
     : []
 )
 const addedEmails = computed(() => {
-  if (Object.keys(props.contactsPayload).length > 0)
+  if (hasEventDraftData(props.contactsPayload))
     return props.contactsPayload.emails ?? []
   return otherEventAttendees.value
 })
 
 onMounted(() => {
-  if (Object.keys(props.contactsPayload).length > 0) {
+  if (hasEventDraftData(props.contactsPayload)) {
     name.value = props.contactsPayload.name ?? ""
-    startTime.value = normalizeDraftTime(props.contactsPayload.startTime, hoursPlainTime.NINE)
-    endTime.value = normalizeDraftTime(props.contactsPayload.endTime, hoursPlainTime.SEVENTEEN)
+    startTime.value = getDraftStartTime(props.contactsPayload)
+    endTime.value = getDraftEndTime(props.contactsPayload)
     selectedDaysOfWeek.value = props.contactsPayload.selectedDaysOfWeek ?? []
     startOnMonday.value = props.contactsPayload.startOnMonday ?? false
 

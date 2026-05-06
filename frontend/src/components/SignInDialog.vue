@@ -203,8 +203,7 @@ import { calendarTypes, type CalendarType } from "@/constants"
 import { post } from "@/utils"
 import { Temporal } from "temporal-polyfill"
 import type { User } from "@/types"
-import type { RawUser } from "@/types/transport"
-import { fromRawUser } from "@/types/transport"
+import { verifyOtpSignIn } from "@/utils/services/UserService"
 
 defineProps<{ modelValue: boolean }>()
 
@@ -324,7 +323,7 @@ const verifyOtp = async () => {
       body.firstName = firstName.value.trim()
       body.lastName = lastName.value.trim()
     }
-    const user = fromRawUser(await post<RawUser>("/auth/otp/verify", body))
+    const user = await verifyOtpSignIn(body)
     emit("emailSignIn", user)
     reset()
     emit("update:modelValue", false)

@@ -20,13 +20,11 @@ import { ref, computed, onMounted } from "vue"
 import { storeToRefs } from "pinia"
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
-import { get } from "@/utils"
 import { freemiumEnabled } from "@/utils/freemium"
 import { guestUserId } from "@/constants"
 import { posthog } from "@/plugins/posthog"
 import type { User } from "@/types"
-import type { RawUser } from "@/types/transport"
-import { fromRawUser } from "@/types/transport"
+import { fetchUserById } from "@/utils/services/UserService"
 
 defineOptions({ name: 'EventAdvertisement' })
 
@@ -50,7 +48,7 @@ const adImageUrl = computed(() => {
 
 async function loadOwner() {
   if (props.ownerId && props.ownerId !== guestUserId) {
-    owner.value = fromRawUser(await get<RawUser>(`/users/${props.ownerId}`))
+    owner.value = await fetchUserById(props.ownerId)
   }
 }
 

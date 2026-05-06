@@ -1,18 +1,20 @@
 import type { LocationQueryRaw, RouteLocationNormalizedLoaded } from "vue-router"
-import type { SerializedEventDraft } from "@/composables/event/types"
+import type { EventDraft } from "@/composables/event/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
 import {
+  parseRouteContactsPayload,
+  parseRouteTimezone,
   serializeRouteContactsPayload,
   serializeRouteTimezone,
-} from "./routeProps"
+} from "@/composables/event/draftBoundary"
 
 type RouteWithParamsAndQuery = Pick<RouteLocationNormalizedLoaded, "name" | "params" | "query">
 type RouteWithQuery = Pick<RouteLocationNormalizedLoaded, "query">
 
 export interface AuthRestoreQueryState {
   editingMode: boolean
-  initialTimezone: Timezone | Record<string, never>
-  contactsPayload: SerializedEventDraft
+  initialTimezone?: Timezone
+  contactsPayload: EventDraft
 }
 
 export interface AuthRestoreState {
@@ -36,34 +38,11 @@ function parseStringParam(value: unknown): string {
   return typeof normalized === "string" ? normalized : ""
 }
 
-function isJsonRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-function parseJsonRecord<T extends object>(value: unknown, fallback: T): T {
-  if (!value) return fallback
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value) as unknown
-      return isJsonRecord(parsed) ? parsed as T : fallback
-    } catch {
-      return fallback
-    }
-  }
-  return isJsonRecord(value) ? value as T : fallback
-}
-
 export function getAuthRestoreQueryState(route: RouteWithQuery): AuthRestoreQueryState {
   return {
     editingMode: parseBooleanParam(route.query.editingMode),
-    initialTimezone: parseJsonRecord<Timezone | Record<string, never>>(
-      route.query.initialTimezone,
-      {}
-    ),
-    contactsPayload: parseJsonRecord<SerializedEventDraft>(
-      route.query.contactsPayload,
-      {}
-    ),
+    initialTimezone: parseRouteTimezone(route.query.initialTimezone),
+    contactsPayload: parseRouteContactsPayload(route.query.contactsPayload),
   }
 }
 

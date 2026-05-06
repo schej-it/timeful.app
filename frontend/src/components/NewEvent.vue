@@ -481,7 +481,14 @@ import OverflowGradient from "@/components/OverflowGradient.vue"
 import ExpandableSection from "./ExpandableSection.vue"
 import type { Event as EventModel } from "@/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
-import type { SerializedEventDraft } from "@/composables/event/types"
+import type { EventDraft } from "@/composables/event/types"
+import {
+  getDraftEndTime,
+  getDraftSelectedDays,
+  getDraftStartTime,
+  getDraftTimezone,
+  hasEventDraftData,
+} from "@/composables/event/draftBoundary"
 
 interface FormRef {
   validate: () => Promise<{ valid: boolean }> | boolean
@@ -495,7 +502,7 @@ const props = withDefaults(
     event?: EventModel
     edit?: boolean
     dialog?: boolean
-    contactsPayload?: SerializedEventDraft
+    contactsPayload?: EventDraft
     showHelp?: boolean
     folderId?: string | null
     isDialogOpen?: boolean
@@ -569,7 +576,7 @@ const selectedDaysRules = computed(() => [
   (s: unknown[]) => s.length > 0 || "Please select at least one day",
 ])
 const addedEmails = computed(() => {
-  if (Object.keys(props.contactsPayload).length > 0)
+  if (hasEventDraftData(props.contactsPayload))
     return props.contactsPayload.emails ?? []
   return props.event?.remindees
     ? props.event.remindees
@@ -602,34 +609,19 @@ const timeIncrementItems = computed(() => [
   { text: "60 min", value: 60 },
 ])
 
-const normalizeDraftTime = (
-  time: SerializedEventDraft["startTime"],
-  fallback: Temporal.PlainTime
-): Temporal.PlainTime => {
-  if (time == null) return fallback
-  if (typeof time === "number") return timeNumToPlainTime(time)
-  return Temporal.PlainTime.from(time)
-}
-
-const normalizeSelectedDays = (
-  selectedDays: SerializedEventDraft["selectedDays"]
-): Temporal.PlainDate[] => {
-  return (selectedDays ?? []).map((day) => Temporal.PlainDate.from(day))
-}
-
 onMounted(() => {
-  if (Object.keys(props.contactsPayload).length > 0) {
+  if (hasEventDraftData(props.contactsPayload)) {
     toggleEmailReminders(true)
 
     name.value = props.contactsPayload.name ?? ""
-    startTime.value = normalizeDraftTime(props.contactsPayload.startTime, hoursPlainTime.NINE)
-    endTime.value = normalizeDraftTime(props.contactsPayload.endTime, hoursPlainTime.SEVENTEEN)
+    startTime.value = getDraftStartTime(props.contactsPayload)
+    endTime.value = getDraftEndTime(props.contactsPayload)
     daysOnly.value = props.contactsPayload.daysOnly ?? false
     selectedDateOption.value = (props.contactsPayload.selectedDateOption ?? dateOptions.SPECIFIC) as DateOptionType
     selectedDaysOfWeek.value = props.contactsPayload.selectedDaysOfWeek ?? []
-    selectedDays.value = normalizeSelectedDays(props.contactsPayload.selectedDays)
+    selectedDays.value = getDraftSelectedDays(props.contactsPayload)
     notificationsEnabled.value = props.contactsPayload.notificationsEnabled ?? true
-    timezone.value = (props.contactsPayload.timezone as Timezone | undefined) ?? { value: "", label: "", gmtString: "", offset: durations.ZERO }
+    timezone.value = getDraftTimezone(props.contactsPayload) ?? { value: "", label: "", gmtString: "", offset: durations.ZERO }
     specificTimesEnabled.value = props.contactsPayload.specificTimesEnabled ?? false
 
     formRef.value?.resetValidation()

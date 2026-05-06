@@ -107,7 +107,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useHead } from "@unhead/vue"
 import { storeToRefs } from "pinia"
-import { get, getLocation, post, signInGoogle, signInOutlook } from "@/utils"
+import { getLocation, post, signInGoogle, signInOutlook } from "@/utils"
 import { authTypes, calendarTypes } from "@/constants"
 import isWebview from "is-ua-webview"
 import { posthog } from "@/plugins/posthog"
@@ -115,6 +115,7 @@ import { useMainStore } from "@/stores/main"
 import { getSignInRestoreQuery } from "@/router/authRestoreState"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import type { User } from "@/types"
+import { fetchAuthUserProfile } from "@/utils/services/UserService"
 
 useHead({ htmlAttrs: { lang: "en-US" } })
 
@@ -215,9 +216,8 @@ function handleUpgradeDialogInput(value: boolean) {
 
 // created() equivalent
 void (async () => {
-  await get("/user/profile")
-    .then((user) => {
-      const u = user as User
+  await fetchAuthUserProfile()
+    .then((u) => {
       mainStore.setAuthUser(u)
       posthog.identify(u._id, {
         email: u.email,

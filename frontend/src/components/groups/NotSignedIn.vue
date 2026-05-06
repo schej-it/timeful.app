@@ -49,7 +49,7 @@
 <script setup lang="ts">
 import { ref } from "vue"
 import { useRoute } from "vue-router"
-import { get, signInGoogle } from "@/utils"
+import { signInGoogle } from "@/utils"
 import { authTypes } from "@/constants"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import CalendarPermissionsCard from "@/components/calendar_permission_dialogs/CalendarPermissionsCard.vue"
@@ -57,8 +57,7 @@ import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
 import isWebview from "is-ua-webview"
 import type { Event, User } from "@/types"
-import type { RawUser } from "@/types/transport"
-import { fromRawUser } from "@/types/transport"
+import { fetchUserById } from "@/utils/services/UserService"
 
 const props = defineProps<{
   event: Event
@@ -108,9 +107,7 @@ const signIn = () => {
 }
 
 void (async () => {
-  owner.value = fromRawUser(
-    await get<RawUser>(`/users/${props.event.ownerId ?? ""}`)
-  )
+  owner.value = await fetchUserById(props.event.ownerId ?? "")
   loaded.value = true
 })()
 </script>

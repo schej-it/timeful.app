@@ -37,12 +37,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue"
 import { useRouter } from "vue-router"
-import { get, post } from "@/utils"
+import { post } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import confetti from "canvas-confetti"
-import type { RawUser } from "@/types/transport"
-import { fromRawUser } from "@/types/transport"
+import { fetchAuthUserProfile } from "@/utils/services/UserService"
 
 const router = useRouter()
 const mainStore = useMainStore()
@@ -98,7 +97,7 @@ async function handleRedirect() {
   try {
     if (upgradeStatus === "success" && sessionId) {
       await post("/stripe/fulfill-checkout", { sessionId })
-      const user = fromRawUser(await get<RawUser>("/user/profile"))
+      const user = await fetchAuthUserProfile()
       mainStore.setAuthUser(user)
       fulfillmentComplete.value = true
       fireConfetti()

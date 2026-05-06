@@ -2,13 +2,12 @@ import { Temporal } from "temporal-polyfill"
 import type {
   Attendee,
   CalendarEvent,
+  CalendarOptions as InternalCalendarOptions,
   Event,
   Response,
   SignUpBlock,
   SignUpResponse,
 } from "@/types"
-import type { RawEvent, RawSignUpBlock } from "@/types/transport"
-import { fromRawSignUpBlock } from "@/types/transport"
 import type { ZdtMap, ZdtSet } from "@/utils"
 
 export const states = {
@@ -66,10 +65,7 @@ export interface ScheduledEvent {
   numRows: number
 }
 
-// TODO rename to SignUpBlockLike?
-type RawEventResponses = NonNullable<RawEvent["responses"]>
-
-export type ScheduleOverlapResponse = RawEventResponses[string]
+export type ScheduleOverlapResponse = Response
 export type ScheduleOverlapSignUpResponse = SignUpResponse
 
 export interface ScheduleOverlapSignUpBlock
@@ -95,7 +91,7 @@ export type ScheduleOverlapEvent = Omit<
   Event,
   "responses" | "signUpBlocks" | "signUpResponses"
 > & {
-  responses?: RawEventResponses
+  responses?: Record<string, ScheduleOverlapResponse>
   signUpBlocks?: ScheduleOverlapSignUpBlock[]
   signUpResponses?: Record<string, SignUpResponse>
   attendees?: Attendee[]
@@ -108,22 +104,18 @@ export const toScheduleOverlapEvent = (
 ): ScheduleOverlapEvent => ({
   ...event,
   signUpBlocks: event.signUpBlocks?.flatMap((block) => {
-    const normalizedBlock: SignUpBlock =
-      typeof block.startDate === "number" || typeof block.endDate === "number"
-        ? fromRawSignUpBlock(block as RawSignUpBlock)
-        : block
     if (
-      !(normalizedBlock.startDate instanceof Temporal.ZonedDateTime) ||
-      !(normalizedBlock.endDate instanceof Temporal.ZonedDateTime)
+      !(block.startDate instanceof Temporal.ZonedDateTime) ||
+      !(block.endDate instanceof Temporal.ZonedDateTime)
     ) {
       return []
     }
     return [{
-      _id: normalizedBlock._id ?? "",
-      capacity: normalizedBlock.capacity ?? 0,
-      name: normalizedBlock.name ?? "",
-      startDate: normalizedBlock.startDate,
-      endDate: normalizedBlock.endDate,
+      _id: block._id ?? "",
+      capacity: block.capacity ?? 0,
+      name: block.name ?? "",
+      startDate: block.startDate,
+      endDate: block.endDate,
       hoursOffset: Temporal.Duration.from({ minutes: 0 }),
       hoursLength: Temporal.Duration.from({ minutes: 0 }),
     }]
@@ -138,7 +130,7 @@ export interface CalendarOptions {
 }
 
 export const normalizeCalendarOptions = (
-  calendarOptions?: RawEventResponses[string]["calendarOptions"]
+  calendarOptions?: InternalCalendarOptions
 ): CalendarOptions => ({
   bufferTime: {
     enabled: calendarOptions?.bufferTime?.enabled ?? false,

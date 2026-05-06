@@ -2,6 +2,7 @@ import { ref, type Ref, type ComputedRef } from "vue"
 import { post } from "@/utils"
 import type { Event, SignUpBlock, User } from "@/types"
 import type { ScheduleOverlapInstance } from "./types"
+import { toSignUpBlockResponseSubmissionPayload } from "./responseSubmissionBoundary"
 
 interface GuestPayload { name: string; email?: string }
 
@@ -26,12 +27,11 @@ export function useEventRespondent(opts: UseEventRespondentOptions) {
   async function signUpForBlock(guestPayload: GuestPayload) {
     const ev = opts.event.value as (Event & { _id: string }) | null
     if (!ev || !currSignUpBlock.value) return
-    let payload: Record<string, unknown>
-    if (opts.authUser.value) {
-      payload = { guest: false, signUpBlockIds: [currSignUpBlock.value._id] }
-    } else {
-      payload = { guest: true, signUpBlockIds: [currSignUpBlock.value._id], ...guestPayload }
-    }
+    const payload = toSignUpBlockResponseSubmissionPayload({
+      signUpBlockId: currSignUpBlock.value._id ?? "",
+      authUserId: opts.authUser.value?._id,
+      guestPayload,
+    })
     await post(`/events/${ev._id}/response`, payload)
     await opts.refreshEvent()
     opts.scheduleOverlapRef.value?.resetSignUpForm()

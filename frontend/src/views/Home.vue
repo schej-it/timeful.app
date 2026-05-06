@@ -99,14 +99,13 @@ import BottomFab from "@/components/BottomFab.vue"
 import When2meetImportDialog from "@/components/When2meetImportDialog.vue"
 import TimefulImportDialog from "@/components/TimefulImportDialog.vue"
 import Dashboard from "@/components/home/Dashboard.vue"
-import { get } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { posthog } from "@/plugins/posthog"
 import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
-import type { SerializedEventDraft } from "@/composables/event/types"
-import type { RawUser } from "@/types/transport"
-import { fromRawUser } from "@/types/transport"
+import type { EventDraft } from "@/composables/event/types"
+import { hasEventDraftData } from "@/composables/event/draftBoundary"
+import { fetchAuthUserProfile } from "@/utils/services/UserService"
 
 defineOptions({ name: 'AppHome' })
 
@@ -114,7 +113,7 @@ useHead({ title: "Home - Timeful" })
 
 const props = withDefaults(
   defineProps<{
-    contactsPayload?: SerializedEventDraft
+    contactsPayload?: EventDraft
     openNewGroup?: boolean
   }>(),
   { contactsPayload: () => ({}), openNewGroup: false }
@@ -133,7 +132,7 @@ const eventsNotEmpty = computed(() => events.value.length > 0)
 onMounted(() => {
   mainStore.setNewDialogOptions({
     show:
-      Object.keys(props.contactsPayload).length > 0 ||
+      hasEventDraftData(props.contactsPayload) ||
       props.openNewGroup,
     contactsPayload: props.contactsPayload,
     openNewGroup: props.openNewGroup,
@@ -164,9 +163,9 @@ if (eventsPromise) {
 } else {
   loading.value = false
 }
-get<RawUser>("/user/profile")
+fetchAuthUserProfile()
   .then((user) => {
-    mainStore.setAuthUser(fromRawUser(user))
+    mainStore.setAuthUser(user)
   })
   .catch(() => {
     mainStore.setAuthUser(null)

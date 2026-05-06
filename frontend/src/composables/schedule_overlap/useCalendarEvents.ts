@@ -2,7 +2,6 @@ import { computed, ref, type ComputedRef, type Ref } from "vue"
 import { Temporal } from "temporal-polyfill"
 import {
   dateToDowDate,
-  get,
   getCalendarAccountKey,
   getEventDateSeeds,
   getDateHoursOffset,
@@ -16,8 +15,6 @@ import {
 } from "@/utils"
 import { calendarOptionsDefaults, eventTypes } from "@/constants"
 import { useMainStore } from "@/stores/main"
-import type { RawResponse } from "@/types/transport"
-import { fromRawResponse } from "@/types/transport"
 import {
   type NormalizedCalendarEvent,
   type CalendarEventsByDay,
@@ -30,6 +27,7 @@ import {
   type Timezone,
   type ProcessedCalendarEvent,
 } from "./types"
+import { fetchEventResponses } from "@/composables/event/eventTransportBoundary"
 
 type SharedCalendarAccount = {
   enabled: boolean
@@ -190,7 +188,10 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
             continue
           }
 
-          if (subCalendars[evt.calendarId].enabled) {
+          const subCalendar = subCalendars[evt.calendarId] as
+            | { enabled?: boolean }
+            | undefined
+          if (subCalendar?.enabled) {
             events.push(evt)
           }
         }
@@ -404,11 +405,7 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
     if (opts.calendarOnly.value) {
       const responses = opts.event.value.responses
       if (responses) {
-        const convertedResponses: Record<string, FetchedResponse | undefined> = {}
-        for (const [userId, rawResponse] of Object.entries(responses)) {
-          convertedResponses[userId] = fromRawResponse(rawResponse)
-        }
-        opts.fetchedResponses.value = convertedResponses
+        opts.fetchedResponses.value = { ...responses }
       }
       return
     }
@@ -456,21 +453,16 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
 
     if (!timeMin || !timeMax) return
 
-    let url = `/events/${
-      opts.event.value._id ?? ""
-    }/responses?timeMin=${timeMin.toString()}&timeMax=${timeMax.toString()}`
+    const eventId =
+      typeof opts.event.value._id === "string" ? opts.event.value._id : ""
+    let url = `/events/${eventId}/responses?timeMin=${timeMin.toString()}&timeMax=${timeMax.toString()}`
     if (opts.guestName.value && opts.guestName.value.length > 0) {
       url += `&guestName=${encodeURIComponent(opts.guestName.value)}`
     }
 
-    get<Record<string, RawResponse>>(url)
-      .then((rawResponses) => {
-        // Convert raw responses to Temporal-based responses
-        const convertedResponses: Record<string, FetchedResponse | undefined> = {}
-        for (const [userId, rawResponse] of Object.entries(rawResponses)) {
-          convertedResponses[userId] = fromRawResponse(rawResponse)
-        }
-        opts.fetchedResponses.value = convertedResponses
+    fetchEventResponses(url)
+      .then((responses) => {
+        opts.fetchedResponses.value = responses
         opts.onResponsesFetched?.()
       })
       .catch(() => {

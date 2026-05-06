@@ -17,20 +17,21 @@ import { ref, computed } from "vue"
 import { useRouter } from "vue-router"
 import { storeToRefs } from "pinia"
 import Event from "./Event.vue"
-import { get } from "@/utils"
 import { errors, eventTypes } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import AccessDenied from "@/components/groups/AccessDenied.vue"
 import NotSignedIn from "@/components/groups/NotSignedIn.vue"
-import type { SerializedEventDraft } from "@/composables/event/types"
+import type { EventDraft } from "@/composables/event/types"
+import { fetchEventById } from "@/composables/event/eventTransportBoundary"
 import { serializeRouteContactsPayload, serializeRouteTimezone } from "@/router/routeProps"
 import type { Event as EventType } from "@/types"
+import type { Timezone } from "@/composables/schedule_overlap/types"
 
 const props = defineProps<{
   groupId: string
   fromSignIn?: boolean
-  initialTimezone?: Record<string, unknown>
-  contactsPayload?: SerializedEventDraft
+  initialTimezone?: Timezone
+  contactsPayload?: EventDraft
 }>()
 
 defineOptions({ name: 'AppGroup' })
@@ -61,7 +62,7 @@ const accessDenied = computed(() => {
 
 void (async () => {
   try {
-    event.value = await get<EventType>(`/events/${props.groupId}`)
+    event.value = await fetchEventById(props.groupId)
 
     if ((event.value as { type?: string }).type !== eventTypes.GROUP) {
       void router.replace({

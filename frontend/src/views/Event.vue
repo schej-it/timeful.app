@@ -289,7 +289,7 @@
             :calendar-permission-granted="calendarPermissionGranted"
             :calendar-availabilities="calendarAvailabilities"
             :cur-guest-id="curGuestId"
-            :initial-timezone="initialTimezone as unknown as Timezone"
+            :initial-timezone="initialTimezone"
             :adding-availability-as-guest="addingAvailabilityAsGuest"
             @add-availability="addAvailability"
             @add-availability-as-guest="addAvailabilityAsGuest"
@@ -486,7 +486,6 @@ import { useRouter, useRoute } from "vue-router"
 import { storeToRefs } from "pinia"
 import { Temporal } from "temporal-polyfill"
 import {
-  get,
   post,
   getDateRangeStringForEvent,
   isIOS as isIOSFn,
@@ -527,15 +526,20 @@ import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { useEventLoader } from "@/composables/event/useEventLoader"
 import { useEventEditing } from "@/composables/event/useEventEditing"
 import { useEventRespondent } from "@/composables/event/useEventRespondent"
-import type { SerializedEventDraft } from "@/composables/event/types"
+import type { EventDraft } from "@/composables/event/types"
 import type { ScheduleOverlapInstance } from "@/composables/event/types"
+import { hasEventDraftData } from "@/composables/event/draftBoundary"
+import { fetchEventResponses } from "@/composables/event/eventTransportBoundary"
+import {
+  encodeEventResponseSubmissionPayload,
+  toEventResponseSubmissionPayload,
+} from "@/composables/event/responseSubmissionBoundary"
 import {
   toScheduleOverlapEvent,
   type Timezone,
 } from "@/composables/schedule_overlap/types"
 import type { Event, User } from "@/types"
-import type { RawResponse, RawUser } from "@/types/transport"
-import { fromRawUser } from "@/types/transport"
+import { fetchAuthUserProfile } from "@/utils/services/UserService"
 
 defineOptions({ name: "AppEvent" })
 
@@ -544,9 +548,12 @@ const props = defineProps({
   fromSignIn: { type: Boolean, default: false },
   editingMode: { type: Boolean, default: false },
   linkApple: { type: Boolean, default: false },
-  initialTimezone: { type: Object, default: () => ({}) },
+  initialTimezone: {
+    type: Object as PropType<Timezone | undefined>,
+    default: undefined,
+  },
   contactsPayload: {
-    type: Object as PropType<SerializedEventDraft>,
+    type: Object as PropType<EventDraft>,
     default: () => ({}),
   },
 })
@@ -971,17 +978,20 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
   if (isBrokenBounds) return
   try {
     const sanitizedId = props.eventId.replaceAll(".", "")
-    const payload: Record<string, unknown> = {
-      availability: allAvailabilityTimestamps,
-      ifNeeded: allIfNeededTimestamps,
-    }
-    if (isGuest) {
-      payload.guest = true
-      payload.name = guestName
-      payload.email = guestEmail
-    } else {
-      payload.guest = false
-    }
+    const availability = allAvailabilityTimestamps.map((ms) =>
+      Temporal.Instant.fromEpochMilliseconds(ms).toZonedDateTimeISO("UTC")
+    )
+    const ifNeeded = allIfNeededTimestamps.map((ms) =>
+      Temporal.Instant.fromEpochMilliseconds(ms).toZonedDateTimeISO("UTC")
+    )
+    const payload = encodeEventResponseSubmissionPayload(
+      toEventResponseSubmissionPayload({
+      availability,
+      ifNeeded,
+      authUserId: isGuest ? undefined : authUser.value?._id,
+      addingAvailabilityAsGuest: isGuest,
+      guestPayload: { name: guestName, email: guestEmail },
+    }))
     await post(`/events/${sanitizedId}/response`, payload)
     await loader.refreshEvent()
     sendPluginSuccess(requestId, command)
@@ -1032,9 +1042,9 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
     if (guestName && guestName.length > 0) {
       url += `&guestName=${encodeURIComponent(guestName)}`
     }
-    const responses = await get<Record<string, RawResponse>>(url)
+    const responses = await fetchEventResponses(url)
     const allSlots = normalizePluginResponses({
-      rawResponses: responses,
+      responses,
       eventResponses: ev.responses,
       timezoneValue,
       eventType: ev.type,
@@ -1091,8 +1101,8 @@ void (async () => {
   const promises = [loader.fetchCalendarAvailabilities(), loader.fetchAuthUserCalendarEvents()]
   Promise.allSettled(promises).then(() => { loader.loading.value = false }).catch(() => undefined)
 
-  get<RawUser>("/user/profile")
-    .then((user) => { mainStore.setAuthUser(fromRawUser(user)) })
+  fetchAuthUserProfile()
+    .then((user) => { mainStore.setAuthUser(user) })
     .catch(() => { mainStore.setAuthUser(null) })
 })()
 
@@ -1104,7 +1114,7 @@ onBeforeUnmount(() => {
 })
 
 onMounted(() => {
-  editEventDialog.value = Object.keys(props.contactsPayload).length > 0
+  editEventDialog.value = hasEventDraftData(props.contactsPayload)
   if (props.linkApple) choiceDialog.value = true
   loadVideoAd()
 })

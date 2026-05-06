@@ -10,7 +10,6 @@ import {
   _delete,
   dateToDowDate,
   dateCompare,
-  fromEpochMillisecondsToZDT,
   getEventDateSeeds,
   getDateDayOffset,
   getDateHoursOffset,
@@ -18,7 +17,6 @@ import {
   isDateBetween,
   parseTemporalEpochKey,
   post,
-  generateEnabledCalendarsPayload,
   ZdtMap,
   ZdtSet,
   zdtMapGet,
@@ -44,6 +42,12 @@ import {
   type ScheduleOverlapState,
   type TimeItem,
 } from "./types"
+import {
+  encodeEventResponseSubmissionPayload,
+  type EncodedEventResponseSubmissionPayload,
+  toEventResponseSubmissionPayload,
+  toGroupResponseSubmissionPayload,
+} from "@/composables/event/responseSubmissionBoundary"
 
 declare global {
   interface Window {
@@ -184,11 +188,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
             ifNeeded:
               responses[userId].ifNeeded &&
               Array.isArray(responses[userId].ifNeeded)
-                ? new ZdtSet(
-                    responses[userId].ifNeeded.map((ms) =>
-                      fromEpochMillisecondsToZDT(ms)
-                    )
-                  )
+                ? new ZdtSet(responses[userId].ifNeeded)
                 : undefined,
             enabledCalendars: responses[userId].enabledCalendars,
             calendarOptions: normalizeCalendarOptions(
@@ -612,41 +612,40 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     guestPayload: { name: string; email: string } = { name: "", email: "" },
     sharedCalendarAccounts?: Record<string, unknown>
   ) => {
-    let payload: Record<string, unknown> = {}
+    const eventId =
+      typeof opts.event.value._id === "string" ? opts.event.value._id : ""
     let type: string
     const authUser = mainStore.authUser
+    let payload:
+      | Record<string, unknown>
+      | EncodedEventResponseSubmissionPayload
 
     if (opts.isGroup.value) {
       type = "group availability and calendars"
-      payload = generateEnabledCalendarsPayload(
-        (sharedCalendarAccounts ?? {}) as CalendarAccountsMap
-      )
-      const md: Record<string, number[]> = {}
-      for (const [day, instants] of manualAvailability.value.entries()) {
-        md[day.toString()] = [...instants].map(
-          (instant) => instant.epochMilliseconds
-        )
-      }
-      payload.manualAvailability = md
-      payload.calendarOptions = {
-        bufferTime: opts.bufferTime.value,
-        workingHours: opts.workingHours.value,
-      }
+      payload = toGroupResponseSubmissionPayload({
+        sharedCalendarAccounts: (sharedCalendarAccounts ?? {}) as CalendarAccountsMap,
+        manualAvailability: manualAvailability.value,
+        calendarOptions: {
+          bufferTime: opts.bufferTime.value,
+          workingHours: opts.workingHours.value,
+        },
+      })
     } else {
       type = "availability"
-      payload.availability = availabilityArray.value
-      payload.ifNeeded = ifNeededArray.value
-      if (authUser && !opts.addingAvailabilityAsGuest.value) {
-        payload.guest = false
-      } else {
-        payload.guest = true
-        payload.name = guestPayload.name
-        payload.email = guestPayload.email
+      payload = encodeEventResponseSubmissionPayload(
+        toEventResponseSubmissionPayload({
+        availability: availabilityArray.value,
+        ifNeeded: ifNeededArray.value,
+        authUserId: authUser?._id,
+        addingAvailabilityAsGuest: opts.addingAvailabilityAsGuest.value,
+        guestPayload,
+      }))
+      if (payload.guest) {
         localStorage[opts.guestNameKey.value] = guestPayload.name
       }
     }
 
-    await post(`/events/${opts.event.value._id ?? ""}/response`, payload)
+    await post(`/events/${eventId}/response`, payload)
 
     const addedIfNeededTimes = ifNeededArray.value.length > 0
     if (authUser) {
@@ -685,6 +684,8 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   }
 
   const deleteAvailability = async (name = "") => {
+    const eventId =
+      typeof opts.event.value._id === "string" ? opts.event.value._id : ""
     const payload: Record<string, unknown> = {}
     const authUser = mainStore.authUser
     if (authUser && !opts.addingAvailabilityAsGuest.value) {
@@ -701,7 +702,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
         name,
       })
     }
-    await _delete(`/events/${opts.event.value._id ?? ""}/response`, payload)
+    await _delete(`/events/${eventId}/response`, payload)
     availability.value = new ZdtSet()
     if (opts.isGroup.value) {
       // group navigation handled by caller
