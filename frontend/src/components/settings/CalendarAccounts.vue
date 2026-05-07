@@ -17,7 +17,7 @@
     >
     <div
       v-else
-      class="tw-border-b tw-border-off-white tw-px-4 tw-py-3 tw-font-medium"
+      class="tw-border-b tw-border-border-default tw-px-4 tw-py-3 tw-font-medium"
     >
       My calendars
     </div>
