@@ -9,7 +9,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"schej.it/server/errs"
-	"schej.it/server/logger"
 	"schej.it/server/models"
 	"schej.it/server/utils"
 )
@@ -27,7 +26,7 @@ func (calendar GoogleCalendar) GetCalendarList() (map[string]models.SubCalendar,
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", calendar.AccessToken))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		logger.StdErr.Panicln(err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -44,7 +43,7 @@ func (calendar GoogleCalendar) GetCalendarList() (map[string]models.SubCalendar,
 	// Parse the response
 	var res Response
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		logger.StdErr.Panicln(err)
+		return nil, err
 	}
 
 	// Check if the response returned an error
@@ -82,7 +81,7 @@ func (calendar *GoogleCalendar) GetCalendarEvents(calendarId string, timeMin tim
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", calendar.AccessToken))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		logger.StdErr.Panicln(err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -112,7 +111,7 @@ func (calendar *GoogleCalendar) GetCalendarEvents(calendarId string, timeMin tim
 	// Parse the response
 	var res Response
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		logger.StdErr.Panicln(err)
+		return nil, err
 	}
 
 	// Check if the response returned an error
@@ -129,8 +128,14 @@ func (calendar *GoogleCalendar) GetCalendarEvents(calendarId string, timeMin tim
 
 		// Handle all day events
 		if item.Start.DateTime.IsZero() {
-			startDate, _ = time.Parse(time.DateOnly, item.Start.Date)
-			endDate, _ = time.Parse(time.DateOnly, item.End.Date)
+			startDate, err = time.Parse(time.DateOnly, item.Start.Date)
+			if err != nil {
+				continue
+			}
+			endDate, err = time.Parse(time.DateOnly, item.End.Date)
+			if err != nil {
+				continue
+			}
 			allDay = true
 		}
 

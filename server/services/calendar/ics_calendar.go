@@ -66,8 +66,14 @@ func (cal *ICSCalendar) GetCalendarEvents(calendarId string, timeMin time.Time, 
 
 		// Check that event is not all day
 		if !strings.Contains(dtStart.Value, "T") {
-			startTime, _ = time.Parse("20060102", dtStart.Value)
-			endTime, _ = time.Parse("20060102", dtEnd.Value)
+			startTime, err = time.Parse("20060102", dtStart.Value)
+			if err != nil {
+				continue
+			}
+			endTime, err = time.Parse("20060102", dtEnd.Value)
+			if err != nil {
+				continue
+			}
 			allDay = true
 		} else {
 			startTime, err = parseTimeWithTZ(dtStart)
