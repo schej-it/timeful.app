@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@gtm-support/vue-gtm": "^3.1.0",
-    "temporal-polyfill": "^0.3.2",
     "@mdi/font": "^7.4.47",
     "@rive-app/canvas": "^2.10.0",
     "@unhead/vue": "^1.11.11",
@@ -30,6 +29,7 @@
     "pinia": "^2.2.6",
     "posthog-js": "^1.237.1",
     "spacetime": "^7.5.0",
+    "temporal-polyfill": "^0.3.2",
     "ua-parser-js": "^1.0.37",
     "vue": "^3.5.13",
     "vue-eslint-parser": "^10.4.0",
