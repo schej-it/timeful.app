@@ -4,6 +4,7 @@ import { computed, ref } from "vue"
 import { Temporal } from "temporal-polyfill"
 import { stubRegressionLocalStorage } from "@/test/regressionTestSetup"
 import {
+  epochMs,
   makeAvailabilityData,
   makeCalendarEventsHarness,
   makeEventSchedulingHarness,
@@ -384,7 +385,7 @@ describe("schedule-overlap Temporal regressions", () => {
 
   it("exports weekly DOW schedules from the displayed week instead of the seed week", () => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date("2026-01-11T12:00:00Z"))
+    vi.setSystemTime(epochMs("2026-01-11T12:00:00Z"))
 
     const openMock = vi
       .fn<(url?: string | URL, target?: string) => Window | null>()

@@ -1,6 +1,7 @@
 import "@/test/regressionTestSetup"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
+import { epochMs } from "@/test/regressionHarness"
 import { eventTypes, UTC } from "@/constants"
 import {
   getEventMembershipDayOfWeekValues,
@@ -52,7 +53,7 @@ describe("eventDateRules", () => {
 
   it("uses the viewed week as the reference date for weekly events", () => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date("2026-03-18T12:00:00Z"))
+    vi.setSystemTime(epochMs("2026-03-18T12:00:00Z"))
 
     const referenceZDT = getTimezoneReferenceDateForEvent(
       {

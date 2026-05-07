@@ -77,6 +77,46 @@ const config: ConfigArray = [
       '@typescript-eslint/no-explicit-any': 'error',
       // Ban non-null assertions — use proper guards instead
       '@typescript-eslint/no-non-null-assertion': 'error',
+      // Keep frontend runtime and tests on the Temporal model; native Date is allowed
+      // only in explicit adapter files that integrate with APIs requiring Date objects.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "NewExpression[callee.name='Date']",
+          message: 'Use Temporal instead of constructing Date directly outside explicit native-Date boundaries.',
+        },
+        {
+          selector: "CallExpression[callee.name='Date']",
+          message: 'Use Temporal instead of calling Date directly outside explicit native-Date boundaries.',
+        },
+        {
+          selector: "CallExpression[callee.object.name='Date'][callee.property.name='now']",
+          message: 'Use Temporal.Now instead of Date.now().',
+        },
+        {
+          selector: "CallExpression[callee.object.name='Date'][callee.property.name='parse']",
+          message: 'Use Temporal parsing instead of Date.parse().',
+        },
+        {
+          selector: "CallExpression[callee.object.name='Date'][callee.property.name='UTC']",
+          message: 'Use Temporal instead of Date.UTC().',
+        },
+        {
+          selector: "TSTypeReference > Identifier[name='Date']",
+          message: 'Use Temporal types instead of the native Date type outside explicit native-Date boundaries.',
+        },
+      ],
+    },
+  },
+
+  {
+    files: [
+      'src/components/DatePicker.vue',
+      'src/components/DatePicker.test.ts',
+      'src/components/DatePicker.spec.ts',
+    ],
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
 

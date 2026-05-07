@@ -3,6 +3,7 @@
 import { flushPromises, shallowMount } from "@vue/test-utils"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
+import { epochMs } from "@/test/regressionHarness"
 import type * as UtilsModule from "@/utils"
 import { eventTypes } from "@/constants"
 import Group from "./Group.vue"
@@ -53,11 +54,11 @@ describe("Group route normalization", () => {
     getMock.mockResolvedValue({
       _id: "evt-1",
       type: eventTypes.SPECIFIC_DATES,
-      dates: [Date.parse("2026-05-01T09:00:00Z")],
+      dates: [epochMs("2026-05-01T09:00:00Z")],
       duration: 1,
       responses: {
         "user-1": {
-          availability: [Date.parse("2026-05-01T09:00:00Z")],
+          availability: [epochMs("2026-05-01T09:00:00Z")],
         },
       },
     })

@@ -2,7 +2,7 @@ import "@/test/regressionTestSetup"
 import { beforeEach, describe, expect, it } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { stubRegressionLocalStorage } from "@/test/regressionTestSetup"
-import { zdt } from "@/test/regressionHarness"
+import { epochMs, zdt } from "@/test/regressionHarness"
 import { fromRawEvent, fromRawResponse } from "@/types/transport"
 import {
   normalizePluginSetSlots,
@@ -248,8 +248,8 @@ describe("plugin boundary regressions", () => {
       responses: toPluginResponses({
         responses: {
           "user-1": {
-            availability: [Date.parse("2026-01-07T03:15:00Z")],
-            ifNeeded: [Date.parse("2026-01-07T04:15:00Z")],
+            availability: [epochMs("2026-01-07T03:15:00Z")],
+            ifNeeded: [epochMs("2026-01-07T04:15:00Z")],
           },
         },
         responseMetadata: {
@@ -288,8 +288,8 @@ describe("plugin boundary regressions", () => {
       responses: toPluginResponses({
         responses: {
           "user-1": {
-            availability: [Date.parse("2026-01-07T17:00:00Z")],
-            ifNeeded: [Date.parse("2026-01-07T18:00:00Z")],
+            availability: [epochMs("2026-01-07T17:00:00Z")],
+            ifNeeded: [epochMs("2026-01-07T18:00:00Z")],
           },
         },
         responseMetadata: {
@@ -331,8 +331,8 @@ describe("plugin boundary regressions", () => {
       responses: toPluginResponses({
         responses: {
           "user-1": {
-            availability: [Date.parse("2026-01-07T03:15:00Z")],
-            ifNeeded: [Date.parse("2026-01-07T04:15:00Z")],
+            availability: [epochMs("2026-01-07T03:15:00Z")],
+            ifNeeded: [epochMs("2026-01-07T04:15:00Z")],
           },
         },
         responseMetadata: {
@@ -365,7 +365,7 @@ describe("plugin boundary regressions", () => {
           "user-1": {
             name: "",
             email: "",
-            availability: [Date.parse("2026-01-07T17:00:00Z")],
+            availability: [epochMs("2026-01-07T17:00:00Z")],
             ifNeeded: [],
           },
         },
@@ -392,8 +392,8 @@ describe("plugin boundary regressions", () => {
       _id: "evt-1",
       type: eventTypes.SPECIFIC_DATES,
       dates: [
-        Date.parse("2026-01-07T17:00:00Z"),
-        Date.parse("2026-01-08T17:00:00Z"),
+        epochMs("2026-01-07T17:00:00Z"),
+        epochMs("2026-01-08T17:00:00Z"),
       ],
     }
     const event = fromRawEvent(rawEvent)
@@ -411,8 +411,8 @@ describe("plugin boundary regressions", () => {
       _id: "evt-1",
       type: eventTypes.DOW,
       dates: [
-        Date.parse("2026-01-05T17:00:00Z"),
-        Date.parse("2026-01-07T17:00:00Z"),
+        epochMs("2026-01-05T17:00:00Z"),
+        epochMs("2026-01-07T17:00:00Z"),
       ],
     }
     const event = fromRawEvent(rawEvent)

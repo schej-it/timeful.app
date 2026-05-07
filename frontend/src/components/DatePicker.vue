@@ -59,26 +59,31 @@ function toIsoDate(plainDate: Temporal.PlainDate): string {
   return plainDate.toString()
 }
 
+function toVuetifyDateBoundary(plainDate: Temporal.PlainDate): Date {
+  return new Date(plainDate.year, plainDate.month - 1, plainDate.day)
+}
+
+function fromVuetifyDateBoundary(nativeDate: Date): string {
+  const plainDate = Temporal.PlainDate.from({
+    year: nativeDate.getFullYear(),
+    month: nativeDate.getMonth() + 1,
+    day: nativeDate.getDate(),
+  })
+  return toIsoDate(plainDate)
+}
+
 const dateValue = computed<Date[]>({
-  get: () => props.modelValue.map((s) => {
-    const plainDate = Temporal.PlainDate.from(s)
-    // BOUNDARY CONVERSION: Vuetify's v-date-picker requires native Date objects
-    // We convert from Temporal.PlainDate (our internal representation) to Date (library requirement)
-    return new Date(plainDate.year, plainDate.month - 1, plainDate.day)
-  }),
+  get: () =>
+    props.modelValue.map((s) => {
+      const plainDate = Temporal.PlainDate.from(s)
+      // Explicit native-Date adapter for Vuetify's v-date-picker boundary.
+      return toVuetifyDateBoundary(plainDate)
+    }),
   set: (val) => {
     const arr = Array.isArray(val) ? val : [val]
     emit(
       "update:modelValue",
-      arr.map((d) => {
-        // BOUNDARY CONVERSION: Convert native Date from Vuetify back to ISO string using Temporal
-        const plainDate = Temporal.PlainDate.from({
-          year: d.getFullYear(),
-          month: d.getMonth() + 1,
-          day: d.getDate(),
-        })
-        return toIsoDate(plainDate)
-      })
+      arr.map((d) => fromVuetifyDateBoundary(d))
     )
   },
 })

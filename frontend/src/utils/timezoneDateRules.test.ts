@@ -2,6 +2,7 @@ import "@/test/regressionTestSetup"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { eventTypes, UTC } from "@/constants"
+import { epochMs } from "@/test/regressionHarness"
 import { createLocalStorageMock } from "@/test/localStorage"
 import {
   doesDstExist,
@@ -55,7 +56,7 @@ describe("timezoneDateRules", () => {
 
   it("uses the rendered week when deriving weekly schedule offsets", () => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date("2026-03-18T12:00:00Z"))
+    vi.setSystemTime(epochMs("2026-03-18T12:00:00Z"))
 
     const result = getScheduleTimezoneOffset(
       {

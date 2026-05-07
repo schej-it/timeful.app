@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { durations, eventTypes, UTC } from "@/constants"
+import { epochMs } from "@/test/regressionHarness"
 import {
   getRenderedWeekStart,
   getSpecificTimesDayStarts,
@@ -63,7 +64,7 @@ describe("scheduleDateRules", () => {
 
   it("projects weekly time blocks from an explicit rendered week instead of the ambient clock", () => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date("2026-03-18T12:00:00Z"))
+    vi.setSystemTime(epochMs("2026-03-18T12:00:00Z"))
 
     const weeklyDates = [zdt("2018-06-17T09:00:00Z")]
     const renderedWeekStart = getRenderedWeekStart(

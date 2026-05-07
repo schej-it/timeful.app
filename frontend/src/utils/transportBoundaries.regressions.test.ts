@@ -2,12 +2,13 @@ import "@/test/regressionTestSetup"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { stubRegressionLocalStorage } from "@/test/regressionTestSetup"
-import { zdt } from "@/test/regressionHarness"
+import { epochMs, zdt } from "@/test/regressionHarness"
 import {
   fromRawCalendarEvent,
   fromRawEvent,
   fromRawResponse,
   fromRawSignUpBlock,
+  toRawEvent,
   fromRawUser,
   toRawCalendarOptions,
   toRawUser,
@@ -81,7 +82,7 @@ describe("transport and timezone regression boundaries", () => {
 
   it("exposes an explicit time seed alongside decoded event dates", () => {
     const event = fromRawEvent({
-      dates: [Date.parse("2026-01-02T09:30:00Z")],
+      dates: [epochMs("2026-01-02T09:30:00Z")],
       duration: 1,
     })
 
@@ -259,12 +260,12 @@ describe("transport and timezone regression boundaries", () => {
     const event = fromRawEvent({
       _id: "evt-1",
       type: eventTypes.SPECIFIC_DATES,
-      dates: [Date.parse("2026-01-01T00:00:00Z")],
+      dates: [epochMs("2026-01-01T00:00:00Z")],
       duration: 1,
       scheduledEvent: {
         calendarId: "primary",
-        startDate: Date.parse("2026-01-01T11:00:00Z"),
-        endDate: Date.parse("2026-01-01T12:00:00Z"),
+        startDate: epochMs("2026-01-01T11:00:00Z"),
+        endDate: epochMs("2026-01-01T12:00:00Z"),
       },
       responses: {
         "user-1": {
@@ -279,8 +280,8 @@ describe("transport and timezone regression boundaries", () => {
           _id: "block-1",
           capacity: 2,
           name: "Slot 1",
-          startDate: Date.parse("2026-01-01T09:00:00Z"),
-          endDate: Date.parse("2026-01-01T10:00:00Z"),
+          startDate: epochMs("2026-01-01T09:00:00Z"),
+          endDate: epochMs("2026-01-01T10:00:00Z"),
         },
       ],
       signUpResponses: {
@@ -324,8 +325,8 @@ describe("transport and timezone regression boundaries", () => {
         calendarEvents: [
           {
             calendarId: "primary",
-            startDate: Date.parse("2026-01-01T09:00:00Z"),
-            endDate: Date.parse("2026-01-01T10:00:00Z"),
+            startDate: epochMs("2026-01-01T09:00:00Z"),
+            endDate: epochMs("2026-01-01T10:00:00Z"),
           },
         ],
       },
@@ -334,8 +335,8 @@ describe("transport and timezone regression boundaries", () => {
       "user-1": [
         {
           calendarId: "primary",
-          startDate: Date.parse("2026-01-02T09:00:00Z"),
-          endDate: Date.parse("2026-01-02T10:00:00Z"),
+          startDate: epochMs("2026-01-02T09:00:00Z"),
+          endDate: epochMs("2026-01-02T10:00:00Z"),
         },
       ],
     })
@@ -361,8 +362,8 @@ describe("transport and timezone regression boundaries", () => {
           calendarEvents: [
             {
               calendarId: "primary",
-              startDate: Date.parse("2026-01-03T09:00:00Z"),
-              endDate: Date.parse("2026-01-03T10:00:00Z"),
+              startDate: epochMs("2026-01-03T09:00:00Z"),
+              endDate: epochMs("2026-01-03T10:00:00Z"),
             },
           ],
         },
@@ -371,8 +372,8 @@ describe("transport and timezone regression boundaries", () => {
         "user-1": [
           {
             calendarId: "primary",
-            startDate: Date.parse("2026-01-03T11:00:00Z"),
-            endDate: Date.parse("2026-01-03T12:00:00Z"),
+            startDate: epochMs("2026-01-03T11:00:00Z"),
+            endDate: epochMs("2026-01-03T12:00:00Z"),
           },
         ],
       })
@@ -403,8 +404,8 @@ describe("transport and timezone regression boundaries", () => {
         calendarEvents: [
           {
             calendarId: "primary",
-            startDate: Date.parse("2026-01-03T09:00:00Z"),
-            endDate: Date.parse("2026-01-03T10:00:00Z"),
+            startDate: epochMs("2026-01-03T09:00:00Z"),
+            endDate: epochMs("2026-01-03T10:00:00Z"),
           },
         ],
       },
@@ -429,7 +430,7 @@ describe("transport and timezone regression boundaries", () => {
       .mockResolvedValueOnce([
         {
           _id: "evt-1",
-          dates: [Date.parse("2026-01-04T09:00:00Z")],
+          dates: [epochMs("2026-01-04T09:00:00Z")],
           duration: 1,
         },
       ])
@@ -479,13 +480,30 @@ describe("transport and timezone regression boundaries", () => {
           _id: "block-1",
           name: "Slot 1",
           capacity: 2,
-          startDate: Date.parse("2026-01-05T09:00:00Z"),
-          endDate: Date.parse("2026-01-05T10:00:00Z"),
+          startDate: epochMs("2026-01-05T09:00:00Z"),
+          endDate: epochMs("2026-01-05T10:00:00Z"),
         },
       ],
-      times: [Date.parse("2026-01-05T09:00:00Z")],
+      times: [epochMs("2026-01-05T09:00:00Z")],
       remindees: ["ada@example.com"],
     })
+  })
+
+  it("encodes event membership dates through Temporal at the transport boundary", () => {
+    const payload = toRawEvent({
+      _id: "evt-1",
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [
+        Temporal.PlainDate.from("2026-01-05"),
+        Temporal.PlainDate.from("2026-01-06"),
+      ],
+      timeSeed: zdt("2026-01-05T09:00:00Z"),
+    })
+
+    expect(payload.dates).toEqual([
+      epochMs("2026-01-05T09:00:00Z"),
+      epochMs("2026-01-06T09:00:00Z"),
+    ])
   })
 
   it("encodes nested group-response calendar options through the transport boundary", () => {
@@ -514,7 +532,7 @@ describe("transport and timezone regression boundaries", () => {
 
     expect(payload.calendarOptions).toEqual(toRawCalendarOptions(calendarOptions))
     expect(payload.manualAvailability["2026-01-03T00:00:00+00:00[UTC]"]).toEqual([
-      Date.parse("2026-01-03T09:00:00Z"),
+      epochMs("2026-01-03T09:00:00Z"),
     ])
   })
 

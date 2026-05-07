@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { eventTypes, UTC } from "@/constants"
 import { Temporal } from "temporal-polyfill"
+import { epochMs } from "@/test/regressionHarness"
 import { getRenderedWeekStart } from "../scheduleDateRules"
 import {
   fetchCalendarAvailabilitiesTransportMap,
@@ -13,7 +14,7 @@ describe("CalendarAvailabilityService", () => {
 
   beforeEach(() => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date("2026-03-18T12:00:00Z"))
+    vi.setSystemTime(epochMs("2026-03-18T12:00:00Z"))
   })
 
   it("derives the weekly calendar query window from an explicit rendered week", () => {
@@ -84,8 +85,8 @@ describe("CalendarAvailabilityService", () => {
               calendarEvents: [
                 {
                   calendarId: "primary",
-                  startDate: Date.parse("2026-04-03T09:00:00Z"),
-                  endDate: Date.parse("2026-04-03T10:00:00Z"),
+                  startDate: epochMs("2026-04-03T09:00:00Z"),
+                  endDate: epochMs("2026-04-03T10:00:00Z"),
                 },
               ],
             },
@@ -121,8 +122,8 @@ describe("CalendarAvailabilityService", () => {
             "user-1": [
               {
                 calendarId: "primary",
-                startDate: Date.parse("2026-04-03T09:00:00Z"),
-                endDate: Date.parse("2026-04-03T10:00:00Z"),
+                startDate: epochMs("2026-04-03T09:00:00Z"),
+                endDate: epochMs("2026-04-03T10:00:00Z"),
               },
             ],
           })

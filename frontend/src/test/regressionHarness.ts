@@ -9,6 +9,7 @@ import { useEventScheduling } from "@/composables/schedule_overlap/useEventSched
 import { states, type DayItem, type TimeItem } from "@/composables/schedule_overlap/types"
 
 export const zdt = (iso: string) => Temporal.Instant.from(iso).toZonedDateTimeISO(UTC)
+export const epochMs = (iso: string) => Temporal.Instant.from(iso).epochMilliseconds
 
 export const makeAvailabilityData = (
   eventType: string = eventTypes.SPECIFIC_DATES

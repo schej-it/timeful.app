@@ -63,6 +63,9 @@ const toEventMembershipTimeSeed = (
   )
 }
 
+const toEpochMilliseconds = (zonedDateTime: string): number =>
+  Temporal.ZonedDateTime.from(zonedDateTime).epochMilliseconds
+
 export function fromRawBufferTimeOptions(
   raw?: RawBufferTimeOptions
 ): BufferTimeOptions | undefined {
@@ -227,9 +230,7 @@ export function fromRawEvent(raw: RawEvent): Event {
 export function toRawEvent(event: Event): RawEvent {
   return {
     ...event,
-    dates: toEventMembershipTimeSeed(event.dates, event.timeSeed)?.map((date) =>
-      Date.parse(date)
-    ),
+    dates: toEventMembershipTimeSeed(event.dates, event.timeSeed)?.map(toEpochMilliseconds),
     times: event.times?.map((instant) => instant.epochMilliseconds),
     duration: event.duration?.total("hours"),
     scheduledEvent: event.scheduledEvent
