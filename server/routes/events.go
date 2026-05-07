@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"schej.it/server/db"
 	"schej.it/server/errs"
 	"schej.it/server/logger"
@@ -335,7 +336,11 @@ func editEvent(c *gin.Context) {
 			ownerName = "Somebody"
 		} else {
 			owner := db.GetUserById(event.OwnerId.Hex())
-			ownerName = owner.FirstName
+			if owner != nil {
+				ownerName = owner.FirstName
+			} else {
+				ownerName = "Somebody"
+			}
 		}
 
 		for _, keptEmail := range kept {
@@ -372,7 +377,11 @@ func editEvent(c *gin.Context) {
 		var owner *models.User
 		if event.OwnerId != primitive.NilObjectID {
 			owner = db.GetUserById(event.OwnerId.Hex())
-			ownerName = owner.FirstName
+			if owner != nil {
+				ownerName = owner.FirstName
+			} else {
+				ownerName = "Somebody"
+			}
 		} else {
 			ownerName = "Somebody"
 		}
@@ -1000,6 +1009,9 @@ func updateEventResponse(c *gin.Context) {
 				respondentName = payload.Name
 			} else {
 				respondent := db.GetUserById(userIdString)
+				if respondent == nil {
+					return
+				}
 				respondentName = fmt.Sprintf("%s %s", respondent.FirstName, respondent.LastName)
 			}
 
@@ -1271,6 +1283,10 @@ func userResponded(c *gin.Context) {
 	if everyoneResponded {
 		// Get owner
 		owner := db.GetUserById(event.OwnerId.Hex())
+		if owner == nil {
+			c.JSON(http.StatusOK, gin.H{})
+			return
+		}
 
 		// Get event url
 		baseUrl := utils.GetBaseUrl()
@@ -1318,10 +1334,13 @@ func declineInvite(c *gin.Context) {
 		"email":   user.Email,
 		"eventId": event.Id,
 	})
-	if attendee == nil {
+	if attendee.Err() == mongo.ErrNoDocuments {
 		// User not in attendees array
 		c.JSON(http.StatusNotFound, responses.Error{Error: errs.AttendeeEmailNotFound})
 		return
+	}
+	if attendee.Err() != nil {
+		logger.StdErr.Panicln(attendee.Err())
 	}
 
 	// Decline invite
@@ -1391,11 +1410,18 @@ func getCalendarAvailabilities(c *gin.Context) {
 				}
 
 				// Fetch calendar events
-				go func(userId string) {
+				go func(userId string, user *models.User, enabledAccounts []string) {
 					// Recover from panics
 					defer func() {
 						if err := recover(); err != nil {
 							logger.StdErr.Println(err)
+							calendarEventsChan <- struct {
+								UserId string
+								Events map[string]calendar.CalendarEventsWithError
+							}{
+								UserId: userId,
+								Events: make(map[string]calendar.CalendarEventsWithError),
+							}
 						}
 					}()
 
@@ -1407,7 +1433,7 @@ func getCalendarAvailabilities(c *gin.Context) {
 						UserId: userId,
 						Events: calendarEvents,
 					}
-				}(eventResponse.UserId)
+				}(eventResponse.UserId, user, enabledAccounts)
 			}
 		}
 	}
@@ -1507,6 +1533,10 @@ func deleteEvent(c *gin.Context) {
 		})
 		err = result.Decode(&event)
 		if err != nil {
+			if err == mongo.ErrNoDocuments {
+				c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
+				return
+			}
 			logger.StdErr.Panicln(err)
 		}
 	} else {
@@ -1517,6 +1547,10 @@ func deleteEvent(c *gin.Context) {
 		})
 		err = result.Decode(&event)
 		if err != nil {
+			if err == mongo.ErrNoDocuments {
+				c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
+				return
+			}
 			logger.StdErr.Panicln(err)
 		}
 
@@ -1581,7 +1615,7 @@ func duplicateEvent(c *gin.Context) {
 	numResponses := 0
 	event.NumResponses = &numResponses
 	if *payload.CopyAvailability {
-		eventResponses := db.GetEventResponses(eventId)
+		eventResponses := db.GetEventResponses(event.Id.Hex())
 		for _, eventResponse := range eventResponses {
 			eventResponse.Id = primitive.NewObjectID()
 			eventResponse.EventId = event.Id
@@ -1647,6 +1681,10 @@ func archiveEvent(c *gin.Context) {
 	var event models.Event
 	err = result.Decode(&event)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
+			return
+		}
 		logger.StdErr.Panicln(err)
 	}
 
