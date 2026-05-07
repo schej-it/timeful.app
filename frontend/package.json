@@ -11,6 +11,8 @@
     "gen:api": "swagger2openapi ../server/docs/swagger.yaml -o src/types/.swagger-v3.yaml --yaml && openapi-typescript src/types/.swagger-v3.yaml -o src/types/api.ts && rm src/types/.swagger-v3.yaml",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots",
     "lint": "eslint src --cache --concurrency auto",
     "lint:fix": "eslint src --fix --cache --concurrency auto"
   },
@@ -39,6 +41,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/forms": "^0.5.7",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22.9.0",

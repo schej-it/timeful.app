@@ -123,7 +123,7 @@ const config: ConfigArray = [
   // Disable type-checked rules for config/build files and plain JS (not covered by tsconfig)
   // eslint.config.ts is included here so type-checked rules don't run on the config itself
   {
-    files: ['eslint.config.ts', '**/*.js', '**/*.cjs', '**/*.mjs'],
+    files: ['eslint.config.ts', 'playwright.config.ts', '**/*.js', '**/*.cjs', '**/*.mjs'],
     ...tseslint.configs.disableTypeChecked,
   },
 
