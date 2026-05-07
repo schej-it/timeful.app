@@ -31,6 +31,15 @@ The frontend keeps one explicit Temporal runtime model:
 - Do not use `Date` in frontend runtime or domain logic.
 - New frontend time modeling should use `Temporal` types that match the invariant being represented.
 - If an external library requires a non-Temporal representation, isolate that conversion at the explicit boundary that integrates with the library.
+- The only acceptable frontend `Date` usage is an explicit adapter around a third-party or browser API that requires a native `Date` object.
+- `Date` must not leak from those adapters into props, emits, stores, composables, shared helpers, or canonical internal types.
+- Prefer named boundary helpers or adapter modules for those conversions instead of ad hoc inline `Date` usage inside feature logic.
+
+### Encoded boundaries should still prefer Temporal
+
+- Do not use `Date.parse(...)`, `Date.now()`, or `Date.UTC(...)` when a boundary value is already modeled as a canonical Temporal value or a Temporal-compatible encoded string.
+- Prefer `Temporal.Instant`, `Temporal.ZonedDateTime`, or the canonical domain Temporal type when encoding and decoding transport or persisted time values.
+- Reserve native `Date` usage for boundaries that literally require a `Date` object, not for general parsing, encoding, clock access, or arithmetic.
 
 ### No mixed encoded and Temporal unions
 
@@ -44,6 +53,12 @@ The frontend keeps one explicit Temporal runtime model:
 - Do not rely on object identity for `Temporal` values in sets or maps.
 - Prefer canonical value-keyed wrappers, `.equals(...)`, or `Temporal.*.compare(...)` where ordering or equality matters.
 - Avoid relational operators on Temporal objects.
+
+### Tests follow the same model
+
+- Regression and unit tests should model frontend runtime time values with `Temporal` by default.
+- Fake clocks should use epoch numbers or Temporal-derived helpers rather than `new Date(...)`.
+- Test fixtures may use native `Date` only when explicitly covering a native-Date integration boundary.
 
 ## Consequences
 
