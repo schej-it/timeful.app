@@ -74,6 +74,7 @@ func (calendar *AppleCalendar) GetCalendarEvents(calendarId string, timeMin time
 					"DTSTART",
 					"DTEND",
 					"DURATION",
+					"TRANSP",
 				},
 			}},
 			Expand: &caldav.CalendarExpandRequest{
@@ -96,7 +97,17 @@ func (calendar *AppleCalendar) GetCalendarEvents(calendarId string, timeMin time
 
 	var filteredEvents []models.CalendarEvent
 	for _, event := range events {
-		startTimeString := event.Data.Children[0].Props["DTSTART"][0].Value
+		if len(event.Data.Children) == 0 {
+			continue
+		}
+		eventProps := event.Data.Children[0].Props
+		dtStart := eventProps.Get("DTSTART")
+		dtEnd := eventProps.Get("DTEND")
+		if dtStart == nil || dtEnd == nil {
+			continue
+		}
+
+		startTimeString := dtStart.Value
 		allDay := false
 
 		var startTime time.Time
@@ -104,27 +115,47 @@ func (calendar *AppleCalendar) GetCalendarEvents(calendarId string, timeMin time
 
 		if !strings.Contains(startTimeString, "T") {
 			// Handle all day events
-			startTime, _ = time.Parse("20060102", startTimeString)
-			endTime, _ = time.Parse("20060102", event.Data.Children[0].Props["DTEND"][0].Value)
-			allDay = true
-		} else {
-			// Handle normal events
-			startTime, err = parseTimeWithTZ(event.Data.Children[0].Props.Get("DTSTART"))
+			startTime, err = time.Parse("20060102", startTimeString)
 			if err != nil {
 				continue
 			}
-			endTime, err = parseTimeWithTZ(event.Data.Children[0].Props.Get("DTEND"))
+			endTime, err = time.Parse("20060102", dtEnd.Value)
+			if err != nil {
+				continue
+			}
+			allDay = true
+		} else {
+			// Handle normal events
+			startTime, err = parseTimeWithTZ(dtStart)
+			if err != nil {
+				continue
+			}
+			endTime, err = parseTimeWithTZ(dtEnd)
 			if err != nil {
 				continue
 			}
 		}
 
+		uid := ""
+		if uidProp := eventProps.Get("UID"); uidProp != nil {
+			uid = uidProp.Value
+		}
+		summary := ""
+		if summaryProp := eventProps.Get("SUMMARY"); summaryProp != nil {
+			summary = summaryProp.Value
+		}
+		free := false
+		if transparency := eventProps.Get(ical.PropTransparency); transparency != nil {
+			free = strings.EqualFold(transparency.Value, "TRANSPARENT")
+		}
+
 		filteredEvents = append(filteredEvents, models.CalendarEvent{
-			Id:         event.Data.Children[0].Props.Get("UID").Value,
+			Id:         uid,
 			CalendarId: calendarId,
-			Summary:    event.Data.Children[0].Props.Get("SUMMARY").Value,
+			Summary:    summary,
 			StartDate:  primitive.NewDateTimeFromTime(startTime),
 			EndDate:    primitive.NewDateTimeFromTime(endTime),
+			Free:       free,
 			AllDay:     allDay,
 		})
 	}
@@ -154,6 +185,10 @@ func (calendar *AppleCalendar) getClients() (*webdav.Client, *caldav.Client, err
 }
 
 func parseTimeWithTZ(prop *ical.Prop) (time.Time, error) {
+	if prop == nil {
+		return time.Time{}, fmt.Errorf("missing datetime property")
+	}
+
 	timeStr := prop.Value
 	tzID := prop.Params.Get("TZID")
 
