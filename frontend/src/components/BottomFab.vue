@@ -1,7 +1,7 @@
 <template>
   <v-scale-transition appear origin="center">
     <v-btn
-      fab
+      icon
       fixed
       class="tw-bottom-4 tw-left-0 tw-right-0 tw-mx-auto tw-bg-green tw-text-white sm:tw-bottom-8"
       v-bind="$attrs"

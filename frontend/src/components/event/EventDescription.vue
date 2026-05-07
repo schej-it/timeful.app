@@ -18,7 +18,7 @@
         key="edit-description-btn"
         class="-tw-my-1"
         icon
-        small
+        size="small"
         @click="isEditing = true"
       >
         <v-icon small>mdi-pencil</v-icon>
@@ -27,7 +27,7 @@
 
     <v-btn
       v-else-if="canEdit && !isEditing"
-      text
+      variant="text"
       class="-tw-ml-2 tw-mt-0 tw-w-min tw-px-2 tw-text-dark-gray"
       @click="isEditing = true"
     >
@@ -54,12 +54,12 @@
         ></v-textarea>
         <v-btn
           icon
-          :small="isPhone"
+          :size="isPhone ? 'small' : undefined"
           @click="cancelEditing"
         >
           <v-icon>mdi-close</v-icon>
         </v-btn>
-        <v-btn icon :small="isPhone" color="primary" @click="saveDescription"
+        <v-btn icon :size="isPhone ? 'small' : undefined" color="primary" @click="saveDescription"
           ><v-icon>mdi-check</v-icon></v-btn
         >
       </div>

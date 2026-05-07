@@ -80,9 +80,9 @@
           >
           <v-card-actions>
             <v-spacer />
-            <v-btn text @click="pagesNotVisitedDialog = false">Cancel</v-btn>
+            <v-btn variant="text" @click="pagesNotVisitedDialog = false">Cancel</v-btn>
             <v-btn
-              text
+              variant="text"
               color="primary"
               @click="
                 () => {
@@ -167,7 +167,7 @@
                   <template v-if="canEdit">
                     <v-btn
                       id="edit-event-btn"
-                      text
+                      variant="text"
                       class="tw-px-2 tw-text-sm tw-text-green"
                       @click="editEvent"
                     >
@@ -184,7 +184,7 @@
                       event.startOnMonday ? weekOffset != 1 : weekOffset != 0
                     "
                     :icon="isPhone"
-                    text
+                    :variant="isPhone ? 'text' : undefined"
                     class="tw-mr-1 tw-text-very-dark-gray sm:tw-mr-2.5"
                     @click="resetWeekOffset"
                   >
@@ -193,7 +193,7 @@
                   </v-btn>
                   <v-btn
                     :icon="isPhone"
-                    :outlined="!isPhone"
+                    :variant="isPhone ? undefined : 'outlined'"
                     :loading="loading"
                     class="tw-text-green"
                     @click="refreshCalendar"
@@ -206,7 +206,7 @@
                 <div v-else>
                   <v-btn
                     :icon="isPhone"
-                    :outlined="!isPhone"
+                    :variant="isPhone ? undefined : 'outlined'"
                     class="tw-text-green"
                     @click="copyLink"
                   >
@@ -251,7 +251,7 @@
                   </template>
                   <template v-else>
                     <v-btn
-                      outlined
+                      variant="outlined"
                       class="tw-mr-1 tw-w-20 tw-text-red"
                       @click="cancelEditing"
                     >
@@ -340,7 +340,7 @@
           <v-btn
             id="feedback-btn"
             block
-            text
+            variant="text"
             class="tw-h-16"
             href="https://forms.gle/A96i4TTWeKgH3P1W6"
             target="_blank"
@@ -362,7 +362,7 @@
           <div
             class="tw-w-full tw-border-t tw-border-solid tw-border-gray"
           ></div>
-          <v-btn class="tw-h-16" block text :to="{ name: 'privacy-policy' }">
+          <v-btn class="tw-h-16" block variant="text" :to="{ name: 'privacy-policy' }">
             Privacy Policy
           </v-btn>
         </div>
@@ -397,7 +397,7 @@
           <template v-if="!isEditing && !isScheduling">
             <v-btn
               v-if="!event.daysOnly && numResponses > 0"
-              text
+              variant="text"
               class="tw-text-white"
               @click="scheduleEvent"
               >Schedule</v-btn
@@ -422,7 +422,7 @@
             </v-btn>
           </template>
           <template v-else-if="isEditing">
-            <v-btn text class="tw-text-white" @click="cancelEditing">
+            <v-btn variant="text" class="tw-text-white" @click="cancelEditing">
               Cancel
             </v-btn>
             <v-spacer />
@@ -434,7 +434,7 @@
             </v-btn>
           </template>
           <template v-else-if="isScheduling">
-            <v-btn text class="tw-text-white" @click="cancelScheduleEvent">
+            <v-btn variant="text" class="tw-text-white" @click="cancelScheduleEvent">
               Cancel
             </v-btn>
             <v-spacer />

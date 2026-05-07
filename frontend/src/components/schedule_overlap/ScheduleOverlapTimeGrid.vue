@@ -310,7 +310,7 @@
       :class="timedGrid.hasNextPage ? 'tw-visible' : 'tw-invisible'"
       class="tw-sticky tw-top-14 -tw-mr-2 tw-self-start tw-pt-1.5 sm:tw-top-16"
     >
-      <v-btn class="tw-border-gray" outlined icon @click="timedGrid.actions.nextPage"
+      <v-btn class="tw-border-gray" variant="outlined" icon @click="timedGrid.actions.nextPage"
         ><v-icon>mdi-chevron-right</v-icon></v-btn
       >
     </div>

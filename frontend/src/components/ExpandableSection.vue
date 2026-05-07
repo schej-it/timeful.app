@@ -4,7 +4,7 @@
     <v-btn
       class="-tw-ml-2 tw-w-[calc(100%+1rem)] tw-justify-between tw-px-2"
       block
-      text
+      variant="text"
       @click="toggle"
     >
       <span class="-tw-ml-px tw-mr-1" :class="labelClass">

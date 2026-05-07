@@ -15,7 +15,7 @@
     <v-btn
       :href="redditUrl"
       target="_blank"
-      small
+      size="small"
       color="#FF4501"
       @click="trackRedditClick"
     >

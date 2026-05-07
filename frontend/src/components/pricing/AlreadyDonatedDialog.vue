@@ -16,7 +16,7 @@
         from the email address associated with your donation. We'll upgrade your
         account manually.
       </p>
-      <v-btn text block @click="emit('update:modelValue', false)"> Close </v-btn>
+      <v-btn variant="text" block @click="emit('update:modelValue', false)"> Close </v-btn>
     </v-card>
   </v-dialog>
 </template>

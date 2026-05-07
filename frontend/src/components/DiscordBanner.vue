@@ -12,10 +12,10 @@
       <v-btn
         :href="discordUrl"
         target="_blank"
-        outlined
+        variant="outlined"
         color="white"
         class="tw-mt-3 tw-flex-shrink-0 sm:tw-ml-4 sm:tw-mt-0"
-        small
+        size="small"
         @click="trackDiscordClick"
       >
         Join Discord
@@ -23,7 +23,7 @@
     </div>
     <v-btn
       icon
-      small
+      size="small"
       class="tw-absolute tw-right-2 tw-top-1/2 -tw-translate-y-1/2"
       @click="dismiss"
     >

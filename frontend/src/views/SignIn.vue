@@ -113,7 +113,7 @@
         <!-- Onboarding: name entry for new users -->
         <template v-else-if="step === 'onboarding'">
           <v-card-title class="tw-flex tw-items-center">
-            <v-btn icon small class="tw-mr-1" @click="step = 'select'">
+            <v-btn icon size="small" class="tw-mr-1" @click="step = 'select'">
               <v-icon>mdi-arrow-left</v-icon>
             </v-btn>
             What's your name?
@@ -169,7 +169,7 @@
           <v-card-title class="tw-flex tw-items-center">
             <v-btn
               icon
-              small
+              size="small"
               class="tw-mr-1"
               @click="step = isNewUser ? 'onboarding' : 'select'"
             >
@@ -207,8 +207,8 @@
             </v-btn>
             <div class="tw-mt-3 tw-text-center">
               <v-btn
-                text
-                x-small
+                variant="text"
+                size="x-small"
                 :disabled="resendCooldown > 0"
                 @click="resendOtp"
               >

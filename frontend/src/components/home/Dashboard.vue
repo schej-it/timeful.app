@@ -24,7 +24,7 @@
         </div>
       </div>
       <v-btn
-        text
+        variant="text"
         class="tw-text-very-dark-gray"
         @click="openCreateFolderDialog"
       >
@@ -40,7 +40,7 @@
         class="tw-group tw-mb-2"
       >
         <div class="tw-flex tw-items-center">
-          <v-btn icon small @click="toggleFolder(folder.id)">
+          <v-btn icon size="small" @click="toggleFolder(folder.id)">
             <v-icon>{{
               folderOpenState[folder.id] ? "mdi-menu-down" : "mdi-menu-right"
             }}</v-icon>
@@ -63,7 +63,7 @@
           >
             <v-menu offset-y>
               <template #activator="{ props }">
-                <v-btn icon small v-bind="props" @click.stop.prevent>
+                <v-btn icon size="small" v-bind="props" @click.stop.prevent>
                   <v-icon small>mdi-dots-horizontal</v-icon>
                 </v-btn>
               </template>
@@ -80,7 +80,7 @@
             </v-menu>
             <v-btn
               icon
-              small
+              size="small"
               @click.stop.prevent="createEventInFolder(folder.id)"
             >
               <v-icon small>mdi-plus</v-icon>
@@ -144,8 +144,8 @@
         >
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn text @click="deleteDialog = false">Cancel</v-btn>
-          <v-btn color="red darken-1" text @click="confirmDelete">Delete</v-btn>
+          <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
+          <v-btn color="red darken-1" variant="text" @click="confirmDelete">Delete</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -180,8 +180,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn text @click="closeFolderDialog">Cancel</v-btn>
-          <v-btn color="primary" text @click="confirmFolderDialog">{{
+          <v-btn variant="text" @click="closeFolderDialog">Cancel</v-btn>
+          <v-btn color="primary" variant="text" @click="confirmFolderDialog">{{
             folderDialogConfirmText
           }}</v-btn>
         </v-card-actions>

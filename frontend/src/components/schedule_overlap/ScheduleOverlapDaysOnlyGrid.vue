@@ -4,7 +4,7 @@
       <v-btn
         :class="daysOnlyGrid.hasPrevPage ? 'tw-visible' : 'tw-invisible'"
         class="tw-border-gray"
-        outlined
+        variant="outlined"
         icon
         @click="daysOnlyGrid.actions.prevPage"
         ><v-icon>mdi-chevron-left</v-icon></v-btn
@@ -15,7 +15,7 @@
       <v-btn
         :class="daysOnlyGrid.hasNextPage ? 'tw-visible' : 'tw-invisible'"
         class="tw-border-gray"
-        outlined
+        variant="outlined"
         icon
         @click="daysOnlyGrid.actions.nextPage"
         ><v-icon>mdi-chevron-right</v-icon></v-btn

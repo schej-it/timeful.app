@@ -66,8 +66,7 @@
           <div class="tw-flex">
             <v-spacer />
             <v-btn
-              class="tw-bg-green"
-              :dark="formValid"
+              class="tw-bg-green tw-text-white"
               :disabled="!formValid"
               @click="submit"
             >

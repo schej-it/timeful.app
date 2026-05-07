@@ -1,11 +1,9 @@
 <template>
-  <v-img
+  <img
     :alt="alt"
-    class="shrink tw-cursor-pointer"
-    contain
+    class="tw-block tw-shrink-0 tw-cursor-pointer"
     :src="src"
-    transition="fade-transition"
-    :width="width"
+    :style="{ width: `${width}px` }"
   />
 </template>
 

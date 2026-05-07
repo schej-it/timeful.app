@@ -60,7 +60,7 @@
           offset-x
         >
           <template #activator="{ props: menuProps }">
-            <v-btn plain icon v-bind="menuProps" @click.prevent>
+            <v-btn variant="plain" icon v-bind="menuProps" @click.prevent>
               <v-icon>mdi-dots-vertical</v-icon>
             </v-btn>
           </template>
@@ -107,13 +107,13 @@
                 <v-card-actions>
                   <v-spacer />
                   <v-btn
-                    text
+                    variant="text"
                     :disabled="duplicateDialogOptions.loading"
                     @click="duplicateDialog = false"
                     >Cancel</v-btn
                   >
                   <v-btn
-                    text
+                    variant="text"
                     color="primary"
                     :loading="duplicateDialogOptions.loading"
                     @click="duplicateEvent"
@@ -186,8 +186,8 @@
                 >
                 <v-card-actions>
                   <v-spacer />
-                  <v-btn text @click="removeDialog = false">Cancel</v-btn>
-                  <v-btn text color="error" @click="removeEvent"
+                  <v-btn variant="text" @click="removeDialog = false">Cancel</v-btn>
+                  <v-btn variant="text" color="error" @click="removeEvent"
                     >I'm sure</v-btn
                   >
                 </v-card-actions>

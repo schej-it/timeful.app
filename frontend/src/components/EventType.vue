@@ -28,7 +28,7 @@
       </div>
       <v-btn
         v-if="eventType.header === 'Events I created'"
-        text
+        variant="text"
         class="tw-hidden tw-text-very-dark-gray sm:tw-block"
         @click="createFolder"
       >

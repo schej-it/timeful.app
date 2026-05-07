@@ -59,13 +59,13 @@
                   <v-card-actions>
                     <v-spacer />
                     <v-btn
-                      text
+                      variant="text"
                       :disabled="exportCsvDialog.loading"
                       @click="exportCsvDialog.visible = false"
                       >Cancel</v-btn
                     >
                     <v-btn
-                      text
+                      variant="text"
                       color="primary"
                       :loading="exportCsvDialog.loading"
                       @click="exportCsv"
@@ -225,16 +225,16 @@
                 <template v-else>
                   <v-btn
                     v-if="isGuest(user)"
-                    small
                     icon
+                    size="small"
                     class="tw-bg-white"
                     @click="$emit('editGuestAvailability', user._id ?? '')"
                     ><v-icon small color="#4F4F4F">mdi-pencil</v-icon></v-btn
                   >
                   <v-btn
                     v-if="isOwner && !isGroup"
-                    small
                     icon
+                    size="small"
                     class="tw-bg-white"
                     @click="() => showDeleteAvailabilityDialog(user)"
                     ><v-icon small class="hover:tw-text-red" color="#4F4F4F"
@@ -290,7 +290,7 @@
             (authUser || guestAddedAvailability) &&
             (!event.blindAvailabilityEnabled || isOwner)
           "
-          text
+          variant="text"
           color="primary"
           class="-tw-ml-2 tw-mb-4 tw-w-min tw-px-2"
           @click="
@@ -361,9 +361,9 @@
         >
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="deleteAvailabilityDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="deleteAvailabilityDialog = false">Cancel</v-btn>
           <v-btn
-            text
+            variant="text"
             color="error"
             @click="
               () => {
@@ -399,7 +399,7 @@
         (authUser || guestAddedAvailability) &&
         (!event.blindAvailabilityEnabled || isOwner)
       "
-      text
+      variant="text"
       color="primary"
       class="-tw-ml-2 tw-mt-4 tw-w-min tw-px-2"
       @click="

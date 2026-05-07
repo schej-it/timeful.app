@@ -82,15 +82,10 @@
             Per month.<br />Billed monthly.
           </div>
           <v-btn
-            class="tw-mb-0.5"
+            class="tw-mb-0.5 tw-text-white"
             color="primary"
-            outlined
+            variant="outlined"
             block
-            :dark="
-              isStudent
-                ? !loadingCheckoutUrl[monthlyStudentPrice?.id ?? '']
-                : !loadingCheckoutUrl[monthlyPrice?.id ?? '']
-            "
             :disabled="
               isStudent
                 ? loadingCheckoutUrl[monthlyStudentPrice?.id ?? '']
@@ -146,14 +141,9 @@
             Per month.<br />Billed annually.
           </div>
           <v-btn
-            class="tw-mb-0.5"
+            class="tw-mb-0.5 tw-text-white"
             color="primary"
             block
-            :dark="
-              isStudent
-                ? !loadingCheckoutUrl[yearlyStudentPrice?.id ?? '']
-                : !loadingCheckoutUrl[yearlyPrice?.id ?? '']
-            "
             :disabled="
               isStudent
                 ? loadingCheckoutUrl[yearlyStudentPrice?.id ?? '']
@@ -212,14 +202,9 @@
             One-time payment.<br />No subscription.
           </div>
           <v-btn
-            class="tw-mb-0.5"
+            class="tw-mb-0.5 tw-text-white"
             color="primary"
             block
-            :dark="
-              isStudent
-                ? !loadingCheckoutUrl[lifetimeStudentPrice?.id ?? '']
-                : !loadingCheckoutUrl[lifetimePrice?.id ?? '']
-            "
             :disabled="
               isStudent
                 ? loadingCheckoutUrl[lifetimeStudentPrice?.id ?? '']
@@ -420,9 +405,9 @@
           </ul>
 
           <v-btn
+            class="tw-text-white"
             color="primary"
             block
-            :dark="!loadingCheckoutUrl[v2ActivePrice?.id ?? '']"
             :disabled="!v2ActivePrice || loadingCheckoutUrl[v2ActivePrice.id ?? '']"
             :loading="loadingCheckoutUrl[v2ActivePrice?.id ?? '']"
             @click="v2ActivePrice && handleUpgrade(v2ActivePrice)"

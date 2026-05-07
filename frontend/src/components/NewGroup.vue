@@ -119,7 +119,7 @@
           <v-btn
             class="tw-justify-start tw-pl-0"
             block
-            text
+            variant="text"
             @click="showAdvancedOptions = !showAdvancedOptions"
             ><span class="tw-mr-1">Advanced options</span>
             <v-icon :class="`tw-rotate-${showAdvancedOptions ? '180' : '0'}`"

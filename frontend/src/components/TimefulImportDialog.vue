@@ -31,7 +31,7 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn text :disabled="loading" @click="dialog = false">Cancel</v-btn>
+        <v-btn variant="text" :disabled="loading" @click="dialog = false">Cancel</v-btn>
         <v-btn
           color="primary"
           :loading="loading"

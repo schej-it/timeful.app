@@ -84,11 +84,11 @@
               <v-card-actions>
                 <v-spacer />
                 <v-btn
-                  text
+                  variant="text"
                   @click="emit('update:editGuestNameDialog', false)"
                   >Cancel</v-btn
                 >
-                <v-btn text color="primary" @click="emit('saveGuestName')"
+                <v-btn variant="text" color="primary" @click="emit('saveGuestName')"
                   >Save</v-btn
                 >
               </v-card-actions>
@@ -156,7 +156,7 @@
               >
                 <template #activator="{ props: activatorProps }">
                   <v-btn
-                    outlined
+                    variant="outlined"
                     class="tw-border-gray tw-text-sm"
                     v-bind="activatorProps"
                   >
@@ -230,11 +230,11 @@
               <v-card-actions>
                 <v-spacer />
                 <v-btn
-                  text
+                  variant="text"
                   @click="emit('update:deleteAvailabilityDialog', false)"
                   >Cancel</v-btn
                 >
-                <v-btn text color="error" @click="emit('deleteAvailability')"
+                <v-btn variant="text" color="error" @click="emit('deleteAvailability')"
                   >{{ !sidebar.isGroup ? "Delete" : "Leave" }}</v-btn
                 >
               </v-card-actions>

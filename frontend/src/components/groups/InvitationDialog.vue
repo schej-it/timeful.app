@@ -69,7 +69,7 @@
         </v-card-text>
 
         <v-card-actions v-if="isOwner">
-          <v-btn class="tw-px-6" text @click="goHome">Back</v-btn>
+          <v-btn class="tw-px-6" variant="text" @click="goHome">Back</v-btn>
           <v-spacer />
           <v-btn
             color="primary"
@@ -82,7 +82,7 @@
         <v-card-actions v-else>
           <v-dialog v-model="rejectDialog" width="400" persistent>
             <template #activator="{ props: rejectDialogProps }">
-              <v-btn text class="tw-text-dark-gray" v-bind="rejectDialogProps"
+              <v-btn variant="text" class="tw-text-dark-gray" v-bind="rejectDialogProps"
                 >Reject invitation</v-btn
               >
             </template>
@@ -94,12 +94,12 @@
               <v-card-actions>
                 <v-spacer />
                 <v-btn
-                  text
+                  variant="text"
                   class="tw-text-dark-gray"
                   @click="rejectDialog = false"
                   >Cancel</v-btn
                 >
-                <v-btn text color="error" @click="rejectInvitation"
+                <v-btn variant="text" color="error" @click="rejectInvitation"
                   >I'm sure</v-btn
                 >
               </v-card-actions>

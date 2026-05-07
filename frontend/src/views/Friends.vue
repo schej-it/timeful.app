@@ -23,10 +23,9 @@
 
     <v-scale-transition appear origin="center">
       <v-btn
-        fab
+        icon
         absolute
-        dark
-        class="tw-left-0 tw-right-0 tw-bottom-4 tw-mx-auto tw-bg-blue"
+        class="tw-left-0 tw-right-0 tw-bottom-4 tw-mx-auto tw-bg-blue tw-text-white"
       >
         <v-icon>mdi-account-plus</v-icon>
       </v-btn>

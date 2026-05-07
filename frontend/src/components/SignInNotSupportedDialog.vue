@@ -20,7 +20,7 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn text class="tw-text-green" @click="emit('update:modelValue', false)">
+        <v-btn variant="text" class="tw-text-green" @click="emit('update:modelValue', false)">
           Ok
         </v-btn>
       </v-card-actions>

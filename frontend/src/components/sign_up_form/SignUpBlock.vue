@@ -15,7 +15,7 @@
         <div>
           (<span :class="!hasCapacity && 'tw-text-green'">{{ numberResponses }}/{{ signUpBlock.capacity }}</span>)
         </div>
-        <v-btn v-if="isEditing" icon x-small @click="isEditingName = true">
+        <v-btn v-if="isEditing" icon size="x-small" @click="isEditingName = true">
           <v-icon x-small>mdi-pencil</v-icon>
         </v-btn>
       </div>
@@ -30,10 +30,10 @@
           autofocus
           @keyup.enter="saveName"
         ></v-text-field>
-        <v-btn icon small @click="cancelEditName">
+        <v-btn icon size="small" @click="cancelEditName">
           <v-icon small>mdi-undo</v-icon>
         </v-btn>
-        <v-btn icon small color="primary" @click="saveName">
+        <v-btn icon size="small" color="primary" @click="saveName">
           <v-icon small>mdi-check</v-icon>
         </v-btn>
       </div>

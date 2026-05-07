@@ -94,7 +94,7 @@
       >
         <template v-if="toolRow.state !== toolRow.states.SCHEDULE_EVENT">
           <v-btn
-            outlined
+            variant="outlined"
             class="tw-w-full tw-text-blue"
             @click="(e: MouseEvent) => toolRow.actions.scheduleEvent(e)"
           >
@@ -104,7 +104,7 @@
         </template>
         <template v-else>
           <v-btn
-            outlined
+            variant="outlined"
             class="tw-mr-1 tw-text-red"
             @click="(e: MouseEvent) => toolRow.actions.cancelScheduleEvent(e)"
           >

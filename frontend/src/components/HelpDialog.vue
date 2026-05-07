@@ -10,7 +10,7 @@
       <v-card-text><slot></slot></v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn text @click="emit('update:modelValue', false)">Ok</v-btn>
+        <v-btn variant="text" @click="emit('update:modelValue', false)">Ok</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

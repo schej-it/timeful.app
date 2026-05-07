@@ -17,7 +17,7 @@
         with proof that you are a student to get the discounted price. The
         subject of your email should be "Student Discount".
       </p>
-      <v-btn text block @click="emit('update:modelValue', false)">OK</v-btn>
+      <v-btn variant="text" block @click="emit('update:modelValue', false)">OK</v-btn>
     </v-card>
   </v-dialog>
 </template>

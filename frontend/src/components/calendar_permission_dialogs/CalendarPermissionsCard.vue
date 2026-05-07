@@ -39,13 +39,13 @@
     <div class="tw-flex">
       <v-btn
         v-if="cancelLabel != ''"
-        text
+        variant="text"
         class="tw-mr-2 tw-flex-1"
         @click="emit('cancel')"
       >
         {{ cancelLabel }}
       </v-btn>
-      <v-btn class="tw-flex-1 tw-bg-green" dark @click="emit('allow')">
+      <v-btn class="tw-flex-1 tw-bg-green tw-text-white" @click="emit('allow')">
         {{ allowLabel }}
       </v-btn>
     </div>

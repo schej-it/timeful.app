@@ -11,12 +11,12 @@
           <v-spacer />
 
           <LandingPageHeader>
-            <v-btn text @click="openHowItWorksDialog">How it works</v-btn>
-            <v-btn text href="/blog">Blog</v-btn>
+            <v-btn variant="text" @click="openHowItWorksDialog">How it works</v-btn>
+            <v-btn variant="text" href="/blog">Blog</v-btn>
             <div v-if="authUser" class="tw-ml-2">
               <AuthUserMenu />
             </div>
-            <v-btn v-else text :to="{ name: 'sign-in' }">Sign in</v-btn>
+            <v-btn v-else variant="text" :to="{ name: 'sign-in' }">Sign in</v-btn>
           </LandingPageHeader>
         </div>
 
@@ -75,7 +75,6 @@
         <div class="tw-mb-12 tw-space-y-2">
           <v-btn
             class="tw-block tw-self-center tw-rounded-lg tw-bg-green tw-px-10 tw-text-base sm:tw-px-10 lg:tw-px-12"
-            dark
             large
             :x-large="display.mdAndUp"
             @click="authUser ? openDashboard() : (newDialog = true)"

@@ -46,7 +46,7 @@
         <v-btn
           v-if="$route.name === 'event'"
           id="top-right-create-btn"
-          text
+          variant="text"
           @click="() => _createNew(true)"
         >
           Create an event
@@ -54,7 +54,7 @@
         <v-btn
           v-if="showFeedbackBtn"
           id="feedback-btn"
-          text
+          variant="text"
           href="https://forms.gle/A96i4TTWeKgH3P1W6"
           target="_blank"
           @click="trackFeedbackClick"
@@ -83,7 +83,7 @@
         <div v-if="authUser" class="sm:tw-ml-4">
           <AuthUserMenu />
         </div>
-        <v-btn v-else id="top-right-sign-in-btn" text @click="signIn">
+        <v-btn v-else id="top-right-sign-in-btn" variant="text" @click="signIn">
           Sign in
         </v-btn>
       </div>

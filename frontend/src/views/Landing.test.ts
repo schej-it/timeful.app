@@ -73,6 +73,11 @@ const VTooltipStub = {
   template: '<div><slot name="activator" :props="{}" /><slot /></div>',
 }
 
+const VBtnStub = {
+  props: ["variant"],
+  template: '<button :data-variant="variant"><slot /></button>',
+}
+
 describe("Landing", () => {
   it("renders landing highlights without injecting raw HTML", async () => {
     const wrapper = shallowMount(Landing, {
@@ -104,5 +109,37 @@ describe("Landing", () => {
     expect(wrapper.text()).toContain("Create a Timeful event")
     expect(wrapper.findAll(".reddit-comment .rdt-h")).toHaveLength(5)
     expect(wrapper.html()).not.toContain("v-html")
+  })
+
+  it("uses explicit text variants for header navigation buttons", () => {
+    const wrapper = shallowMount(Landing, {
+      global: {
+        stubs: {
+          AuthUserMenu: true,
+          FAQ: true,
+          Footer: true,
+          FormerlyKnownAs: true,
+          Header: PassThroughStub,
+          HowItWorksDialog: true,
+          LandingPageHeader: PassThroughStub,
+          Logo: true,
+          NewDialog: true,
+          NumberBullet: PassThroughStub,
+          SignInDialog: true,
+          "v-avatar": PassThroughStub,
+          "v-btn": VBtnStub,
+          "v-icon": true,
+          "v-img": true,
+          "v-spacer": true,
+          "v-tooltip": VTooltipStub,
+        },
+      },
+    })
+
+    const navLabels = ["How it works", "Blog", "Sign in"]
+    const navButtons = wrapper.findAll("button").filter((button) => navLabels.includes(button.text()))
+
+    expect(navButtons).toHaveLength(3)
+    expect(navButtons.every((button) => button.attributes("data-variant") === "text")).toBe(true)
   })
 })

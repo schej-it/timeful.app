@@ -13,10 +13,10 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn text class="tw-text-green" @click="emit('update:modelValue', false)"
+        <v-btn variant="text" class="tw-text-green" @click="emit('update:modelValue', false)"
           >Cancel</v-btn
         >
-        <v-btn text @click="emit('leave')">Leave page</v-btn>
+        <v-btn variant="text" @click="emit('leave')">Leave page</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

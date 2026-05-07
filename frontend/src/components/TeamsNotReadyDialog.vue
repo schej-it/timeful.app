@@ -19,7 +19,7 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn text @click="dialog = false">Close</v-btn>
+        <v-btn variant="text" @click="dialog = false">Close</v-btn>
         <v-btn color="primary" @click="bookCall">Book a call</v-btn>
       </v-card-actions>
     </v-card>

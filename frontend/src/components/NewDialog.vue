@@ -18,8 +18,8 @@
             v-for="t in tabs"
             :key="t.type"
             :tab-value="t.type"
-            text
-            small
+            variant="text"
+            size="small"
             :class="`tw-text-xs tw-text-dark-gray tw-transition-all ${
               t.type == tab ? 'tw-bg-ligher-green tw-text-green' : ''
             }`"

@@ -14,7 +14,7 @@
       <v-text-field v-model="feedUrl" solo placeholder="Feed URL" hide-details="auto" :error-messages="feedUrlError" />
       <v-text-field v-model="label" solo placeholder="Label" hide-details />
       <div class="tw-flex tw-items-center tw-gap-2">
-        <v-btn text class="tw-grow" @click="emit('back')">Back</v-btn>
+        <v-btn variant="text" class="tw-grow" @click="emit('back')">Back</v-btn>
         <v-btn
 :disabled="!enableSubmit" color="primary" class="tw-grow" :loading="loading"
           @click="submit">Submit</v-btn>

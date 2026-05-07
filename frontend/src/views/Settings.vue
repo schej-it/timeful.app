@@ -31,7 +31,7 @@
               <div class="tw-mt-4">
                 <v-btn
                   color="primary"
-                  outlined
+                  variant="outlined"
                   class="tw-mr-2"
                   @click="resetProfileChanges"
                   >Cancel</v-btn
@@ -75,7 +75,7 @@
             availability.
           </div>
           <v-btn
-            outlined
+            variant="outlined"
             class="tw-text-red"
             href="https://myaccount.google.com/connections?filters=3,4&hl=en"
             target="_blank"
@@ -151,7 +151,7 @@
         <div class="tw-w-64">
           <v-dialog v-model="deleteDialog" width="400" persistent>
             <template #activator="{ props: activatorProps }">
-              <v-btn outlined class="tw-text-red" block v-bind="activatorProps"
+              <v-btn variant="outlined" class="tw-text-red" block v-bind="activatorProps"
                 >Delete account</v-btn
               >
             </template>
@@ -174,9 +174,9 @@
               </div>
               <v-card-actions>
                 <v-spacer />
-                <v-btn text @click="deleteDialog = false">Cancel</v-btn>
+                <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
                 <v-btn
-                  text
+                  variant="text"
                   color="error"
                   :disabled="authUser?.email != deleteValidateEmail"
                   @click="deleteAccount()"
