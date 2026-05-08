@@ -15,6 +15,7 @@
     "vite.config.ts",
     "vitest.config.mjs",
     "eslint.config.ts",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "eslint/**/*.ts"
   ]
 }

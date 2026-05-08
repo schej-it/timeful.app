@@ -4,6 +4,7 @@ import pluginVue from 'eslint-plugin-vue'
 import configPrettier from 'eslint-config-prettier'
 import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
+import { noLegacyVBtnPropsRule } from './eslint/rules/noLegacyVBtnPropsRule'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -39,6 +40,13 @@ const config: ConfigArray = [
   // vue-eslint-parser handles .vue files; tseslint.parser handles their <script> blocks
   {
     files: ['**/*.vue'],
+    plugins: {
+      local: {
+        rules: {
+          'no-legacy-v-btn-props': noLegacyVBtnPropsRule,
+        },
+      },
+    },
     languageOptions: {
       parserOptions: {
         parser: tseslint.parser,
@@ -49,6 +57,7 @@ const config: ConfigArray = [
       // TypeScript's type-checker already catches undefined identifiers in .vue scripts;
       // eslint/no-undef doesn't recognise DOM globals in vue-eslint-parser's scope.
       'no-undef': 'off',
+      'local/no-legacy-v-btn-props': 'error',
     },
   },
 

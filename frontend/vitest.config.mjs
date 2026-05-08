@@ -14,6 +14,6 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.{js,ts}"],
+    include: ["src/**/*.test.{js,ts}", "eslint/**/*.test.{js,ts}"],
   },
 })
