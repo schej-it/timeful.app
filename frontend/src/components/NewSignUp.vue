@@ -130,14 +130,14 @@
                   solo
                   color="primary"
                 >
-                  <v-btn v-show="!startOnMonday" depressed> Sun </v-btn>
-                  <v-btn depressed> Mon </v-btn>
-                  <v-btn depressed> Tue </v-btn>
-                  <v-btn depressed> Wed </v-btn>
-                  <v-btn depressed> Thu </v-btn>
-                  <v-btn depressed> Fri </v-btn>
-                  <v-btn depressed> Sat </v-btn>
-                  <v-btn v-show="startOnMonday" depressed> Sun </v-btn>
+                  <v-btn v-show="!startOnMonday" variant="flat"> Sun </v-btn>
+                  <v-btn variant="flat"> Mon </v-btn>
+                  <v-btn variant="flat"> Tue </v-btn>
+                  <v-btn variant="flat"> Wed </v-btn>
+                  <v-btn variant="flat"> Thu </v-btn>
+                  <v-btn variant="flat"> Fri </v-btn>
+                  <v-btn variant="flat"> Sat </v-btn>
+                  <v-btn v-show="startOnMonday" variant="flat"> Sun </v-btn>
                 </v-btn-toggle>
               </v-input>
               <v-checkbox v-model="startOnMonday" class="tw-mt-2" hide-details>

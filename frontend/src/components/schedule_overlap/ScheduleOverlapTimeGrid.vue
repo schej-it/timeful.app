@@ -13,7 +13,7 @@
         >
           <v-btn
             class="tw-border-gray"
-            outlined
+            variant="outlined"
             icon
             @click="timedGrid.actions.prevPage"
             ><v-icon>mdi-chevron-left</v-icon></v-btn

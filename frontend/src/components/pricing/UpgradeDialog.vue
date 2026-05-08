@@ -342,7 +342,7 @@
               {{ item }}
             </li>
           </ul>
-          <v-btn depressed disabled class="tw-mt-auto">
+          <v-btn variant="flat" disabled class="tw-mt-auto">
             <span class="tw-text-very-dark-gray">Your current plan</span>
           </v-btn>
         </div>
