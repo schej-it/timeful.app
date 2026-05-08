@@ -2,35 +2,35 @@
 <template>
   <div
     id="timezone-select-container"
-    class="tw-flex tw-items-center tw-justify-center"
+    class="tw-flex tw-items-center tw-justify-center tw-text-dark-gray"
   >
     <div :class="`tw-mr-2 tw-mt-px ${labelColor}`">{{ label }}</div>
     <v-select
       id="timezone-select"
-      :model-value="modelValue"
-      :items="timezones"
-      class="tw-z-20 -tw-mt-px tw-w-52 tw-text-sm"
-      dense
+      :model-value="selectedTimezoneValue"
+      :items="visibleTimezoneItems"
+      class="compact-inline-select tw-z-20 -tw-mt-px tw-w-52 tw-text-sm tw-text-black"
       color="#219653"
+      density="compact"
       item-color="green"
       hide-details
-      item-title="label"
+      item-title="title"
       item-value="value"
-      return-object
-      @update:model-value="onChange"
+      :menu-props="{ auto: true }"
+      single-line
+      variant="plain"
+      @update:model-value="onChangeValue"
     >
-      <template #item="{ item }">
-        <v-list-item>
-          <v-list-item-content>
-            <v-list-item-title>
-              {{ (item.raw as Timezone).gmtString }} {{ (item.raw as Timezone).label }}
-            </v-list-item-title>
-          </v-list-item-content>
+      <template #item="{ item, props: itemProps }">
+        <v-list-item v-bind="itemProps">
+          <v-list-item-title>
+            {{ item.raw.timezone.gmtString }} {{ item.raw.timezone.label }}
+          </v-list-item-title>
         </v-list-item>
       </template>
       <template #selection="{ item }">
         <div class="v-select__selection v-select__selection--comma">
-          {{ (item.raw as Timezone).gmtString }} {{ (item.raw as Timezone).label }}
+          {{ item.raw.timezone.gmtString }} {{ item.raw.timezone.label }}
         </div>
       </template>
     </v-select>
@@ -51,6 +51,12 @@ import {
   reviveSavedTimezoneOffset,
   resolveSavedTimezoneValue,
 } from "@/utils/timezone_utils"
+
+interface TimezoneSelectItem {
+  title: string
+  value: string
+  timezone: Timezone
+}
 
 const props = withDefaults(
   defineProps<{
@@ -79,6 +85,48 @@ const effectiveReferenceDate = computed(() => {
   return refDate
 })
 
+function formatTimezoneTitle(timezone: Timezone): string {
+  return `${timezone.gmtString} ${timezone.label}`.trim()
+}
+
+function normalizeTimezone(timezone: Timezone): Timezone {
+  const rawOffset = timezone.offset
+  const revivedOffset =
+    rawOffset instanceof Temporal.Duration
+      ? rawOffset
+      : typeof rawOffset === "string"
+        ? reviveSavedTimezoneOffset(rawOffset)
+        : undefined
+  const offset = revivedOffset ?? Temporal.Duration.from({ minutes: 0 })
+  const value =
+    typeof timezone.value === "string" && timezone.value
+      ? timezone.value
+      : getFixedOffsetTimeZoneId(offset)
+  const label =
+    typeof timezone.label === "string" && timezone.label ? timezone.label : value
+  const gmtString =
+    typeof timezone.gmtString === "string" && timezone.gmtString
+      ? timezone.gmtString
+      : formatGmtString(offset.total("minutes"))
+
+  return {
+    value,
+    label,
+    gmtString,
+    offset,
+  }
+}
+
+function toTimezoneSelectItem(timezone: Timezone): TimezoneSelectItem {
+  const normalizedTimezone = normalizeTimezone(timezone)
+
+  return {
+    title: formatTimezoneTitle(normalizedTimezone),
+    value: normalizedTimezone.value,
+    timezone: normalizedTimezone,
+  }
+}
+
 const timezones = computed<Timezone[]>(() => {
   const t = Object.entries(allTimezones)
     .map((zone): Timezone | null => {
@@ -99,6 +147,43 @@ const timezones = computed<Timezone[]>(() => {
     .filter((z): z is Timezone => z !== null)
     .sort((a, b) => a.offset.total("minutes") - b.offset.total("minutes"))
   return t
+})
+
+const timezoneItems = computed<TimezoneSelectItem[]>(() =>
+  timezones.value.map((timezone) => toTimezoneSelectItem(timezone))
+)
+
+const selectedTimezoneValue = computed(() => {
+  if (!props.modelValue.value && !(props.modelValue.offset instanceof Temporal.Duration)) {
+    return undefined
+  }
+
+  return normalizeTimezone(props.modelValue).value
+})
+
+const selectedTimezoneItem = computed<TimezoneSelectItem | undefined>(() => {
+  const currentValue = selectedTimezoneValue.value
+  if (!currentValue) {
+    return undefined
+  }
+
+  return (
+    visibleTimezoneItems.value.find((item) => item.value === currentValue) ??
+    toTimezoneSelectItem(props.modelValue)
+  )
+})
+
+const visibleTimezoneItems = computed<TimezoneSelectItem[]>(() => {
+  const currentValue = selectedTimezoneValue.value
+  if (!currentValue) {
+    return timezoneItems.value
+  }
+
+  if (timezoneItems.value.some((item) => item.value === currentValue)) {
+    return timezoneItems.value
+  }
+
+  return [toTimezoneSelectItem(props.modelValue), ...timezoneItems.value]
 })
 
 function formatGmtString(offsetMinutes: number): string {
@@ -162,9 +247,26 @@ function getLocalTimezone(): Timezone | undefined {
 }
 
 function onChange(val: Timezone) {
-  storage?.setItem("timezone", JSON.stringify(val))
-  emit("update:modelValue", val)
+  const normalizedTimezone = normalizeTimezone(val)
+
+  storage?.setItem("timezone", JSON.stringify(normalizedTimezone))
+  emit("update:modelValue", normalizedTimezone)
   timezoneModified.value = true
+}
+
+function onChangeValue(val: string | null) {
+  if (!val) {
+    return
+  }
+
+  const matchedTimezone = visibleTimezoneItems.value.find(
+    (timezone) => timezone.value === val
+  )?.timezone
+  if (!matchedTimezone) {
+    return
+  }
+
+  onChange(matchedTimezone)
 }
 
 function getSavedTimezone(): Timezone | undefined {
@@ -250,3 +352,61 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+.compact-inline-select {
+  --v-input-control-height: 26px;
+  --v-field-padding-top: 0px;
+  --v-field-padding-bottom: 0px;
+  --v-field-padding-start: 0px;
+  --v-field-padding-end: 0px;
+}
+
+.compact-inline-select :deep(.v-field) {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  align-items: center !important;
+  display: flex !important;
+  height: 26px !important;
+  min-height: 26px !important;
+}
+
+.compact-inline-select :deep(.v-input__control),
+.compact-inline-select :deep(.v-field__field) {
+  align-items: center !important;
+  display: flex !important;
+  height: 26px !important;
+  min-height: 26px !important;
+}
+
+.compact-inline-select :deep(.v-field__input) {
+  align-items: center !important;
+  display: flex !important;
+  height: 26px !important;
+  min-height: 26px;
+  padding-inline: 0 !important;
+  padding-bottom: 0;
+  padding-top: 0;
+}
+
+.compact-inline-select :deep(.v-field__append-inner) {
+  align-items: center !important;
+  height: 26px !important;
+  min-height: 26px !important;
+  padding-bottom: 0 !important;
+  padding-top: 0 !important;
+}
+
+.compact-inline-select :deep(.v-select__selection-text) {
+  line-height: 22px !important;
+}
+
+.compact-inline-select :deep(.v-field__overlay) {
+  opacity: 0;
+}
+
+.compact-inline-select :deep(.v-field__outline) {
+  display: none;
+}
+</style>

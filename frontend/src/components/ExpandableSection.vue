@@ -2,8 +2,9 @@
 <template>
   <div>
     <v-btn
-      class="-tw-ml-2 tw-w-[calc(100%+1rem)] tw-justify-between tw-px-2"
+      class="expandable-section-toggle -tw-ml-2 tw-w-[calc(100%+1rem)] tw-justify-between tw-px-2 tw-py-0 tw-normal-case"
       block
+      density="compact"
       variant="text"
       @click="toggle"
     >
@@ -18,7 +19,7 @@
       ></v-btn
     >
     <v-expand-transition>
-      <div v-show="modelValue">
+      <div v-if="modelValue">
         <slot></slot>
       </div>
     </v-expand-transition>
@@ -70,3 +71,30 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+.expandable-section-toggle {
+  min-height: 38px;
+  border: 0 !important;
+  border-radius: 6px !important;
+  letter-spacing: 0.1px;
+  line-height: 22px;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.expandable-section-toggle :deep(.v-btn__content) {
+  justify-content: space-between;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.expandable-section-toggle :deep(.v-btn__overlay) {
+  opacity: 0;
+}
+
+.expandable-section-toggle:focus,
+.expandable-section-toggle:focus-visible {
+  outline: none !important;
+}
+</style>

@@ -31,9 +31,21 @@ export const nullStub = {
 export const vSelectStub = defineComponent({
   name: "VSelect",
   props: {
+    class: {
+      type: String,
+      default: undefined,
+    },
+    density: {
+      type: String,
+      default: undefined,
+    },
     items: {
       type: Array,
       default: () => [],
+    },
+    menuProps: {
+      type: [Object, String],
+      default: undefined,
     },
     modelValue: {
       required: false,
@@ -44,6 +56,10 @@ export const vSelectStub = defineComponent({
       default: undefined,
     },
     itemValue: {
+      type: String,
+      default: undefined,
+    },
+    variant: {
       type: String,
       default: undefined,
     },

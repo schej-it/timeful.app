@@ -285,22 +285,26 @@
             label="Advanced options"
             :auto-scroll="dialog"
           >
-            <div class="tw-flex tw-flex-col tw-gap-5 tw-pt-2">
+            <div class="tw-flex tw-flex-col tw-gap-3 tw-pt-2 tw-text-dark-gray">
               <div v-if="!edit" class="tw-flex tw-items-center tw-gap-x-2">
                 <div class="tw-text-sm tw-text-black">Time increment:</div>
                 <v-select
                   v-model="timeIncrement"
-                  dense
-                  class="-tw-mt-[2px] tw-w-24 tw-grow-0 tw-text-sm"
+                  class="compact-inline-select -tw-mt-[2px] tw-w-24 tw-grow-0 tw-text-sm tw-text-black"
+                  density="compact"
                   hide-details
                   :items="timeIncrementItems"
-                  item-title="text"
+                  item-title="title"
                   item-value="value"
+                  :menu-props="{ auto: true }"
+                  single-line
+                  variant="plain"
                 ></v-select>
               </div>
               <v-checkbox
                 v-if="authUser && !guestEvent"
                 v-model="collectEmails"
+                density="compact"
                 hide-details
               >
                 <template #label>
@@ -319,6 +323,7 @@
               <v-checkbox
                 v-else-if="!guestEvent"
                 disabled
+                density="compact"
                 messages="test"
                 off-icon="mdi-checkbox-blank-off-outline"
               >
@@ -341,6 +346,7 @@
               <v-checkbox
                 v-if="authUser && !guestEvent"
                 v-model="blindAvailabilityEnabled"
+                density="compact"
                 messages="Only show responses to event creator"
               >
                 <template #label>
@@ -359,6 +365,7 @@
               <v-checkbox
                 v-else-if="!guestEvent"
                 disabled
+                density="compact"
                 messages="Only show responses to event creator. "
                 off-icon="mdi-checkbox-blank-off-outline"
               >
@@ -382,6 +389,7 @@
               <v-checkbox
                 v-if="authUser && !guestEvent"
                 v-model="sendEmailAfterXResponsesEnabled"
+                density="compact"
                 hide-details
               >
                 <template #label>
@@ -564,7 +572,10 @@ const showEmailReminders = ref(false)
 const emails = ref<string[]>([])
 
 const showAdvancedOptions = ref(false)
-const timeIncrement = ref(15)
+const DEFAULT_TIME_INCREMENT = 15
+const SUPPORTED_TIME_INCREMENTS = new Set([15, 30, 60])
+
+const timeIncrement = ref(DEFAULT_TIME_INCREMENT)
 const collectEmails = ref(false)
 const blindAvailabilityEnabled = ref(false)
 const timezone = ref<Timezone>({ value: "", label: "", gmtString: "", offset: durations.ZERO })
@@ -609,10 +620,30 @@ const minCalendarDate = computed(() => {
 const guestEvent = computed(
   () => props.event?.ownerId === guestUserId
 )
+function normalizeTimeIncrement(value: unknown): number {
+  const candidate =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number(value)
+        : value instanceof Temporal.Duration
+          ? value.total("minutes")
+          : typeof value === "object" &&
+              value !== null &&
+              "value" in value &&
+              typeof value.value === "number"
+            ? value.value
+            : NaN
+
+  return SUPPORTED_TIME_INCREMENTS.has(candidate)
+    ? candidate
+    : DEFAULT_TIME_INCREMENT
+}
+
 const timeIncrementItems = computed(() => [
-  { text: "15 min", value: 15 },
-  { text: "30 min", value: 30 },
-  { text: "60 min", value: 60 },
+  { title: "15 min", value: 15 },
+  { title: "30 min", value: 30 },
+  { title: "60 min", value: 60 },
 ])
 
 onMounted(() => {
@@ -875,7 +906,7 @@ const updateFieldsFromEvent = () => {
     specificTimesEnabled.value = props.event.hasSpecificTimes ?? false
     startOnMonday.value = props.event.startOnMonday ?? startOnMonday.value
     collectEmails.value = props.event.collectEmails ?? false
-    timeIncrement.value = props.event.timeIncrement ?? 15
+    timeIncrement.value = normalizeTimeIncrement(props.event.timeIncrement)
 
     if (
       props.event.sendEmailAfterXResponses != null &&
@@ -981,5 +1012,61 @@ watch(
 <style>
 .email-me-after-text-field input {
   padding: 0px !important;
+}
+
+.compact-inline-select {
+  --v-input-control-height: 26px;
+  --v-field-padding-top: 0px;
+  --v-field-padding-bottom: 0px;
+  --v-field-padding-start: 0px;
+  --v-field-padding-end: 0px;
+}
+
+.compact-inline-select .v-field {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  align-items: center !important;
+  display: flex !important;
+  height: 26px !important;
+  min-height: 26px !important;
+}
+
+.compact-inline-select .v-input__control,
+.compact-inline-select .v-field__field {
+  align-items: center !important;
+  display: flex !important;
+  height: 26px !important;
+  min-height: 26px !important;
+}
+
+.compact-inline-select .v-field__input {
+  align-items: center !important;
+  display: flex !important;
+  height: 26px !important;
+  min-height: 26px;
+  padding-inline: 0px !important;
+  padding-bottom: 0px;
+  padding-top: 0px;
+}
+
+.compact-inline-select .v-field__append-inner {
+  align-items: center !important;
+  height: 26px !important;
+  min-height: 26px !important;
+  padding-bottom: 0px !important;
+  padding-top: 0px !important;
+}
+
+.compact-inline-select .v-select__selection-text {
+  line-height: 22px !important;
+}
+
+.compact-inline-select .v-field__overlay {
+  opacity: 0;
+}
+
+.compact-inline-select .v-field__outline {
+  display: none;
 }
 </style>

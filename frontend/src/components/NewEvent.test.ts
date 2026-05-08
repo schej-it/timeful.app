@@ -120,13 +120,47 @@ describe("NewEvent", () => {
     )
     expect(selects[1]?.props("itemTitle")).toBe("text")
     expect(selects[1]?.props("itemValue")).toBe("value")
-    expect(selects[3]?.props("itemTitle")).toBe("text")
+    expect(selects[3]?.props("itemTitle")).toBe("title")
     expect(selects[3]?.props("itemValue")).toBe("value")
+    expect(selects[3]?.props("variant")).toBe("plain")
+    expect(selects[3]?.props("density")).toBe("compact")
+    expect(selects[3]?.props("menuProps")).toEqual({ auto: true })
     expect(selects[3]?.props("items")).toEqual([
-      { text: "15 min", value: 15 },
-      { text: "30 min", value: 30 },
-      { text: "60 min", value: 60 },
+      { title: "15 min", value: 15 },
+      { title: "30 min", value: 30 },
+      { title: "60 min", value: 60 },
     ])
+  })
+
+  it("normalizes edit-flow time increment objects into a numeric advanced-options select value", () => {
+    const wrapper = shallowMount(NewEvent, {
+      props: {
+        edit: true,
+        event: {
+          _id: "evt-time-increment",
+          name: "Duration-backed increment",
+          dates: [Temporal.PlainDate.from("2026-01-02")],
+          timeSeed: Temporal.ZonedDateTime.from("2026-01-02T09:00:00+00:00[UTC]"),
+          duration: durations.ONE_HOUR,
+          // Force a bad runtime shape through the typed boundary to cover
+          // the select-normalization regression from object-valued increments.
+          timeIncrement: Temporal.Duration.from({ minutes: 30 }) as unknown as number,
+        },
+      },
+      global: {
+        stubs: {
+          ...defaultStubs,
+          "v-select": VSelectStub,
+        },
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      timeIncrement?: number
+      $: { setupState?: { timeIncrement?: number } }
+    }
+
+    expect(vm.timeIncrement ?? vm.$.setupState?.timeIncrement).toBe(30)
   })
 
   it("wraps cross-midnight edit durations to the next day's local end time", () => {
