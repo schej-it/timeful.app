@@ -1,7 +1,7 @@
 <template>
   <div class="tw-bg-light-gray">
     <div
-      class="tw-relative tw-m-auto tw-mb-12 tw-flex tw-max-w-6xl tw-flex-col tw-px-4 sm:tw-mb-20"
+      class="landing-page-shell tw-relative tw-m-auto tw-mb-12 tw-flex tw-max-w-6xl tw-flex-col tw-px-4 sm:tw-mb-20"
     >
       <!-- Header -->
       <div class="tw-mb-16 sm:tw-mb-28">
@@ -25,14 +25,14 @@
 
       <div class="tw-flex tw-flex-col tw-items-center">
         <div
-          class="tw-mb-6 tw-flex tw-max-w-[26rem] tw-flex-col tw-items-center sm:tw-w-[35rem] sm:tw-max-w-none"
+          class="landing-hero-copy tw-flex tw-flex-col tw-items-center"
         >
           <div
-            class="tw-mb-4 tw-flex tw-select-none tw-items-center tw-rounded-full tw-border tw-border-light-gray-stroke tw-bg-white/70 tw-px-2.5 tw-py-1.5 tw-text-sm tw-text-dark-gray"
+            class="landing-github-badge tw-flex tw-select-none tw-items-center tw-rounded-full tw-border tw-border-light-gray-stroke tw-bg-white/70 tw-text-sm tw-text-dark-gray"
           >
             We're open source!
             <a
-              class="github-button -tw-mb-1 tw-ml-2"
+              class="github-button landing-github-button"
               href="https://github.com/schej-it/timeful.app"
               data-show-count="true"
               aria-label="Star timeful.app on GitHub"
@@ -41,13 +41,13 @@
           </div>
           <div
             id="header"
-            class="tw-mb-4 tw-text-center tw-text-2xl tw-font-medium sm:tw-text-4xl lg:tw-text-4xl xl:tw-text-5xl"
+            class="landing-hero-heading tw-text-center tw-font-medium"
           >
-            <h1>Find a time to meet</h1>
+            <h1 class="landing-hero-heading-text">Find a time to meet</h1>
           </div>
 
           <div
-            class="lg:tw-text-md tw-text-left tw-text-center tw-text-sm tw-text-very-dark-gray sm:tw-text-lg md:tw-text-lg xl:tw-text-lg"
+            class="landing-hero-subtitle tw-text-center tw-text-very-dark-gray"
           >
             Coordinate group meetings without the back and forth.
             <br class="tw-hidden sm:tw-block" />
@@ -58,7 +58,7 @@
             >
               <template #activator="{ props }">
                 <span
-                  class="tw-cursor-pointer tw-border-b tw-border-dashed tw-border-dark-gray"
+                  class="landing-calendar-link"
                   v-bind="props"
                   >calendar</span
                 >
@@ -72,9 +72,9 @@
           </div>
         </div>
 
-        <div class="tw-mb-12 tw-space-y-2">
+        <div class="landing-hero-cta">
           <v-btn
-            class="tw-block tw-self-center tw-rounded-lg tw-bg-green tw-px-10 tw-text-base sm:tw-px-10 lg:tw-px-12"
+            class="landing-primary-cta tw-block tw-self-center tw-rounded-lg tw-bg-green tw-text-base"
             large
             :x-large="display.mdAndUp"
             @click="authUser ? openDashboard() : (newDialog = true)"
@@ -554,6 +554,100 @@ watch(
   { immediate: true }
 )
 </script>
+
+<style scoped>
+.landing-page-shell {
+  padding-top: 3.25rem;
+}
+
+.landing-hero-copy {
+  margin-bottom: 1.5rem;
+  max-width: 26rem;
+}
+
+.landing-github-badge {
+  margin-bottom: 1rem;
+  padding: 0.375rem 0.625rem;
+}
+
+.landing-github-button {
+  margin-bottom: -0.25rem;
+  margin-left: 0.5rem;
+}
+
+.landing-hero-heading {
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  line-height: 1.5rem;
+}
+
+.landing-hero-heading-text {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  white-space: inherit;
+}
+
+.landing-hero-subtitle {
+  font-size: 0.875rem;
+  line-height: 1.75rem;
+}
+
+.landing-calendar-link {
+  border-bottom: 1px dashed rgb(107, 107, 107);
+  cursor: pointer;
+}
+
+.landing-hero-cta {
+  margin-bottom: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.landing-primary-cta {
+  padding-left: 2.5rem;
+  padding-right: 2.5rem;
+}
+
+@media (min-width: 640px) {
+  .landing-hero-copy {
+    max-width: none;
+    width: 35rem;
+  }
+
+  .landing-hero-heading {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+  }
+
+  .landing-hero-subtitle {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+
+  .landing-hero-cta {
+    gap: 0.75rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .landing-hero-heading {
+    font-size: 3rem;
+    line-height: 3rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .landing-primary-cta {
+    padding-left: 3rem;
+    padding-right: 3rem;
+  }
+}
+</style>
 
 <style scoped>
 @media screen and (min-width: 375px) and (max-width: 640px) {
