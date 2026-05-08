@@ -14,9 +14,6 @@
       :first-day-of-week="startCalendarOnMonday ? 1 : 0"
       @update:month="onMonthChange"
       @update:year="onYearChange"
-      @touchstart:date="touchstart"
-      @mousedown:date="mousedown"
-      @mouseover:date="mouseover"
     ></v-date-picker>
   </div>
 </template>
@@ -101,21 +98,40 @@ function onYearChange(year: number) {
   pickerDate.value = `${String(year)}-${month}`
 }
 
-function mousedown(date: string) {
+function startDrag(date: string) {
   dragging.value = true
   setDragState(date)
   addRemoveDate(date)
 }
 
-function touchstart(date: string) {
-  dragging.value = true
-  setDragState(date)
-  addRemoveDate(date)
-}
-
-function mouseover(date: string) {
+function continueDrag(date: string) {
   if (!dragging.value) return
   addRemoveDate(date)
+}
+
+function getDateCell(node: EventTarget | null): HTMLElement | null {
+  if (!(node instanceof HTMLElement)) return null
+
+  return node.closest("[data-v-date]")
+}
+
+function getDateFromNode(node: EventTarget | null): string | null {
+  return getDateCell(node)?.dataset.vDate ?? null
+}
+
+function onPointerDown(e: PointerEvent) {
+  const date = getDateFromNode(e.target)
+  if (!date) return
+
+  e.preventDefault()
+  startDrag(date)
+}
+
+function onPointerOver(e: PointerEvent) {
+  const date = getDateFromNode(e.target)
+  if (!date) return
+
+  continueDrag(date)
 }
 
 function touchmove(e: TouchEvent) {
@@ -125,18 +141,10 @@ function touchmove(e: TouchEvent) {
 
   const touch = e.changedTouches[0]
   const target = document.elementFromPoint(touch.clientX, touch.clientY)
+  const date = getDateFromNode(target)
 
-  if (
-    target &&
-    datePickerEl &&
-    datePickerEl.contains(target) &&
-    target.classList.contains("v-btn__content")
-  ) {
-    const dateNum = parseInt(target.innerHTML)
-    if (!isNaN(dateNum)) {
-      const date = `${pickerDate.value}-${pad2(dateNum)}`
-      addRemoveDate(date)
-    }
+  if (date && datePickerEl?.contains(getDateCell(target))) {
+    continueDrag(date)
   }
 }
 
@@ -177,6 +185,8 @@ function removeDate(date: string) {
 onMounted(() => {
   if (!datePicker.value) return
   datePickerEl = datePicker.value.$el
+  datePickerEl.addEventListener("pointerdown", onPointerDown)
+  datePickerEl.addEventListener("pointerover", onPointerOver)
   datePickerEl.addEventListener("mouseup", mouseup)
   datePickerEl.addEventListener("touchmove", touchmove)
   datePickerEl.addEventListener("touchend", mouseup, { capture: true })
@@ -184,6 +194,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (!datePickerEl) return
+  datePickerEl.removeEventListener("pointerdown", onPointerDown)
+  datePickerEl.removeEventListener("pointerover", onPointerOver)
   datePickerEl.removeEventListener("mouseup", mouseup)
   datePickerEl.removeEventListener("touchmove", touchmove)
   datePickerEl.removeEventListener("touchend", mouseup)

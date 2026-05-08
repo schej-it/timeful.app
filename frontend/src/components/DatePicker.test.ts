@@ -20,7 +20,20 @@ const VDatePickerStub = defineComponent({
     },
   },
   emits: ["update:modelValue"],
-  template: "<div />",
+  template: `
+    <div>
+      <div data-v-date="2026-01-07">
+        <button type="button">
+          <span>7</span>
+        </button>
+      </div>
+      <div data-v-date="2026-01-08">
+        <button type="button">
+          <span>8</span>
+        </button>
+      </div>
+    </div>
+  `,
 })
 
 describe("DatePicker native-Date boundary", () => {
@@ -70,5 +83,36 @@ describe("DatePicker native-Date boundary", () => {
     expect(wrapper.emitted("update:modelValue")).toEqual([
       [["2026-01-07", "2026-01-08"]],
     ])
+  })
+
+  it("commits clicked days from the rendered date-cell DOM", async () => {
+    const wrapper = mount(DatePicker, {
+      props: {
+        modelValue: ["2026-01-05"],
+      },
+      global: {
+        stubs: {
+          "v-date-picker": VDatePickerStub,
+        },
+      },
+    })
+
+    await wrapper.get('[data-v-date="2026-01-07"] button').trigger("pointerdown")
+    await nextTick()
+
+    expect(wrapper.emitted("update:modelValue")).toEqual([
+      [["2026-01-05", "2026-01-07"]],
+    ])
+
+    await wrapper.setProps({
+      modelValue: ["2026-01-05", "2026-01-07"],
+    })
+
+    const boundaryDates = wrapper.getComponent(VDatePickerStub).props("modelValue") as Date[]
+
+    expect(boundaryDates).toHaveLength(2)
+    expect(boundaryDates[1]?.getFullYear()).toBe(2026)
+    expect(boundaryDates[1]?.getMonth()).toBe(0)
+    expect(boundaryDates[1]?.getDate()).toBe(7)
   })
 })
