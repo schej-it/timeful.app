@@ -74,7 +74,7 @@
 
         <div class="landing-hero-cta">
           <v-btn
-            class="landing-primary-cta tw-block tw-self-center tw-rounded-lg tw-bg-green tw-text-base"
+            class="landing-primary-cta tw-block tw-self-center tw-rounded-lg tw-bg-green tw-text-base tw-text-white"
             large
             :x-large="display.mdAndUp"
             @click="authUser ? openDashboard() : (newDialog = true)"
@@ -598,6 +598,15 @@ watch(
 .landing-calendar-link {
   border-bottom: 1px dashed rgb(107, 107, 107);
   cursor: pointer;
+  outline: none;
+  text-decoration: none;
+}
+
+.landing-calendar-link:hover,
+.landing-calendar-link:focus,
+.landing-calendar-link:focus-visible {
+  outline: none;
+  text-decoration: none;
 }
 
 .landing-hero-cta {

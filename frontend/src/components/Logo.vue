@@ -1,7 +1,7 @@
 <template>
   <img
     :alt="alt"
-    class="tw-block tw-shrink-0 tw-cursor-pointer"
+    class="tw-flex tw-max-w-full tw-shrink-0 tw-cursor-pointer"
     :src="src"
     :style="{ width: `${width}px` }"
   />

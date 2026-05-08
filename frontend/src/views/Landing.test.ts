@@ -3,6 +3,7 @@
 import { flushPromises, shallowMount } from "@vue/test-utils"
 import { ref } from "vue"
 import { describe, expect, it, vi } from "vitest"
+import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
 import Landing from "./Landing.vue"
 
 vi.mock("@unhead/vue", () => ({
@@ -86,7 +87,7 @@ describe("Landing", () => {
           AuthUserMenu: true,
           FAQ: true,
           Footer: true,
-          FormerlyKnownAs: true,
+          FormerlyKnownAs: false,
           Header: PassThroughStub,
           HowItWorksDialog: true,
           LandingPageHeader: PassThroughStub,
@@ -141,5 +142,48 @@ describe("Landing", () => {
 
     expect(navButtons).toHaveLength(3)
     expect(navButtons.every((button) => button.attributes("data-variant") === "text")).toBe(true)
+  })
+
+  it("keeps the landing hero style hooks for calendar, CTA, and legacy note parity", async () => {
+    const landingWrapper = shallowMount(Landing, {
+      global: {
+        stubs: {
+          AuthUserMenu: true,
+          FAQ: true,
+          Footer: true,
+          Header: PassThroughStub,
+          HowItWorksDialog: true,
+          LandingPageHeader: PassThroughStub,
+          Logo: true,
+          NewDialog: true,
+          NumberBullet: PassThroughStub,
+          SignInDialog: true,
+          "v-avatar": PassThroughStub,
+          "v-btn": VBtnStub,
+          "v-icon": true,
+          "v-img": true,
+          "v-spacer": true,
+          "v-tooltip": VTooltipStub,
+        },
+      },
+    })
+
+    const legacyNoteWrapper = shallowMount(FormerlyKnownAs, {
+      global: {
+        stubs: {
+          "v-icon": true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    const calendarLink = landingWrapper.get(".landing-calendar-link")
+    const legacyNote = legacyNoteWrapper.get(".formerly-known-as-link")
+    const primaryCta = landingWrapper.get(".landing-primary-cta")
+
+    expect(calendarLink.text()).toBe("calendar")
+    expect(legacyNote.text()).toContain('Formerly known as "Schej"')
+    expect(primaryCta.classes()).toContain("tw-text-white")
   })
 })

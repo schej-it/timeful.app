@@ -1,14 +1,14 @@
 <template>
-  <div class="tw-relative tw-mt-2 tw-flex tw-items-center tw-justify-center">
+  <div class="formerly-known-as-shell tw-relative tw-mt-2 tw-flex tw-items-center tw-justify-center">
     <div
-      class="tw-absolute tw-left-8 tw-top-0 tw-flex tw-items-center sm:tw-left-12"
+      class="formerly-known-as-row tw-absolute tw-top-0 tw-flex tw-items-center"
     >
-      <div class="-tw-mt-3.5 tw-text-dark-gray">
+      <div class="formerly-known-as-icon-wrap -tw-mt-3.5 tw-text-dark-gray">
         <v-icon>mdi-arrow-up-left</v-icon>
       </div>
       <a
         href="/blog/schej-is-now-timeful/"
-        class="tw-cursor-pointer tw-select-none tw-text-sm tw-text-dark-gray hover:tw-underline"
+        class="formerly-known-as-link tw-cursor-pointer tw-select-none tw-text-sm tw-text-dark-gray"
       >
         Formerly known as "Schej"
       </a>
@@ -17,3 +17,34 @@
 </template>
 
 <script setup lang="ts"></script>
+
+<style scoped>
+.formerly-known-as-shell {
+  min-height: 2px;
+  padding-top: 2px;
+}
+
+.formerly-known-as-row {
+  left: 48px;
+}
+
+.formerly-known-as-icon-wrap {
+  width: 18.67px;
+  min-width: 18.67px;
+}
+
+.formerly-known-as-link,
+.formerly-known-as-link:hover,
+.formerly-known-as-link:focus,
+.formerly-known-as-link:focus-visible,
+.formerly-known-as-link:visited {
+  outline: none;
+  text-decoration: none;
+}
+
+@media (min-width: 640px) {
+  .formerly-known-as-row {
+    left: 48px;
+  }
+}
+</style>
