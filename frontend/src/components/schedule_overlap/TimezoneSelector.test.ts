@@ -130,8 +130,11 @@ describe("TimezoneSelector", () => {
     expect(selectProps.modelValue).toBe("America/New_York")
     expect(selectProps.variant).toBe("plain")
     expect(selectProps.density).toBe("compact")
-    expect(selectProps.menuProps).toEqual({ auto: true })
-    const matchingTimezoneItem = (selectProps.items as Array<Record<string, unknown>>).find(
+    expect(String(selectProps.class)).toContain("compact-inline-select")
+    expect(wrapper.get("#timezone-select-container").attributes("class")).toContain(
+      "tw-text-[rgba(0,0,0,0.6)]"
+    )
+    const matchingTimezoneItem = (selectProps.items as Record<string, unknown>[]).find(
       (item) => item.value === "America/New_York"
     )
 

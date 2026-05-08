@@ -17,7 +17,7 @@
         </div>
       </div>
       <v-spacer />
-      <template v-if="dialog">
+      <template v-if="dialog && !hideDialogActions">
         <v-btn v-if="showHelp" icon @click="helpDialog = true">
           <v-icon>mdi-information-outline</v-icon>
         </v-btn>
@@ -247,8 +247,8 @@
     </v-card-actions>
 
     <OverflowGradient
-      v-if="hasMounted && cardText"
-      :scroll-container="cardText"
+      v-if="hasMounted && cardTextElement"
+      :scroll-container="cardTextElement"
       class="tw-bottom-[90px]"
     />
   </v-card>
@@ -295,6 +295,7 @@ interface FormRef {
 }
 
 interface NameFieldRef { blur: () => void }
+interface ElementWithRoot { $el?: HTMLElement }
 
 const props = withDefaults(
   defineProps<{
@@ -303,6 +304,7 @@ const props = withDefaults(
     dialog?: boolean
     contactsPayload?: EventDraft
     showHelp?: boolean
+    hideDialogActions?: boolean
   }>(),
   {
     event: undefined,
@@ -310,6 +312,7 @@ const props = withDefaults(
     dialog: true,
     contactsPayload: () => ({}),
     showHelp: false,
+    hideDialogActions: false,
   }
 )
 
@@ -324,7 +327,12 @@ const { authUser } = storeToRefs(mainStore)
 
 const formRef = ref<FormRef | null>(null)
 const nameField = ref<NameFieldRef | null>(null)
-const cardText = ref<HTMLElement | null>(null)
+const cardText = ref<HTMLElement | ElementWithRoot | null>(null)
+const cardTextElement = computed(() => {
+  if (!cardText.value) return null
+  if (cardText.value instanceof HTMLElement) return cardText.value
+  return cardText.value.$el ?? null
+})
 
 const formValid = ref(true)
 const name = ref("")

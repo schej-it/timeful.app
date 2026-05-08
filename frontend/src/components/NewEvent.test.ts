@@ -124,7 +124,6 @@ describe("NewEvent", () => {
     expect(selects[3]?.props("itemValue")).toBe("value")
     expect(selects[3]?.props("variant")).toBe("plain")
     expect(selects[3]?.props("density")).toBe("compact")
-    expect(selects[3]?.props("menuProps")).toEqual({ auto: true })
     expect(selects[3]?.props("items")).toEqual([
       { title: "15 min", value: 15 },
       { title: "30 min", value: 30 },

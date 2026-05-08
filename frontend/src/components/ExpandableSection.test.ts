@@ -42,5 +42,6 @@ describe("ExpandableSection", () => {
     expect(button.props("variant")).toBe("text")
     expect(button.props("density")).toBe("compact")
     expect(button.attributes("class")).toContain("expandable-section-toggle")
+    expect(button.attributes("class")).toContain("tw-whitespace-nowrap")
   })
 })

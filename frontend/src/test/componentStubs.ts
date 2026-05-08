@@ -48,6 +48,7 @@ export const vSelectStub = defineComponent({
       default: undefined,
     },
     modelValue: {
+      type: null,
       required: false,
       default: undefined,
     },

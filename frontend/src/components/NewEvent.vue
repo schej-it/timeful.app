@@ -17,7 +17,7 @@
         </div>
       </div>
       <v-spacer />
-      <template v-if="dialog">
+      <template v-if="dialog && !hideDialogActions">
         <v-btn v-if="showHelp" icon @click="helpDialog = true">
           <v-icon>mdi-information-outline</v-icon>
         </v-btn>
@@ -52,10 +52,14 @@
           v-model="name"
           placeholder="Name your event..."
           hide-details="auto"
-          solo
+          variant="solo"
+          class="new-event-name-field"
+          :class="{ 'new-event-name-field--invalid': showNameFieldError }"
           :rules="nameRules"
           autofocus
           required
+          @focus="handleNameFieldFocus"
+          @blur="handleNameFieldBlur"
           @keyup.enter="blurNameField"
         />
 
@@ -285,7 +289,9 @@
             label="Advanced options"
             :auto-scroll="dialog"
           >
-            <div class="tw-flex tw-flex-col tw-gap-3 tw-pt-2 tw-text-dark-gray">
+            <div
+              class="advanced-options-panel tw-flex tw-flex-col tw-gap-3 tw-pt-2 tw-text-[rgba(0,0,0,0.6)]"
+            >
               <div v-if="!edit" class="tw-flex tw-items-center tw-gap-x-2">
                 <div class="tw-text-sm tw-text-black">Time increment:</div>
                 <v-select
@@ -296,7 +302,6 @@
                   :items="timeIncrementItems"
                   item-title="title"
                   item-value="value"
-                  :menu-props="{ auto: true }"
                   single-line
                   variant="plain"
                 ></v-select>
@@ -445,8 +450,8 @@
     </v-card-actions>
 
     <OverflowGradient
-      v-if="hasMounted && cardText"
-      :scroll-container="cardText"
+      v-if="hasMounted && cardTextElement"
+      :scroll-container="cardTextElement"
       class="tw-bottom-[90px]"
     />
   </v-card>
@@ -510,6 +515,7 @@ interface FormRef {
 }
 interface NameFieldRef { blur: () => void }
 interface EmailInputRef { reset: () => void }
+interface ElementWithRoot { $el?: HTMLElement }
 
 const props = withDefaults(
   defineProps<{
@@ -520,6 +526,7 @@ const props = withDefaults(
     showHelp?: boolean
     folderId?: string | null
     isDialogOpen?: boolean
+    hideDialogActions?: boolean
   }>(),
   {
     event: undefined,
@@ -529,6 +536,7 @@ const props = withDefaults(
     showHelp: false,
     folderId: null,
     isDialogOpen: false,
+    hideDialogActions: false,
   }
 )
 
@@ -549,10 +557,17 @@ const daysOnlyOptions = [
 const formRef = ref<FormRef | null>(null)
 const nameField = ref<NameFieldRef | null>(null)
 const emailInput = ref<EmailInputRef | null>(null)
-const cardText = ref<HTMLElement | null>(null)
+const cardText = ref<HTMLElement | ElementWithRoot | null>(null)
+const cardTextElement = computed(() => {
+  if (!cardText.value) return null
+  if (cardText.value instanceof HTMLElement) return cardText.value
+  return cardText.value.$el ?? null
+})
 
 const formValid = ref(true)
 const name = ref("")
+const hasBlurredNameField = ref(false)
+const isNameFieldFocused = ref(true)
 const startTime = ref<Temporal.PlainTime>(hoursPlainTime.NINE)
 const endTime = ref<Temporal.PlainTime>(hoursPlainTime.SEVENTEEN)
 const specificTimesEnabled = ref(false)
@@ -589,6 +604,9 @@ const hasMounted = ref(false)
 const nameRules = computed(() => [
   (v: string) => !!v || "Event name is required",
 ])
+const showNameFieldError = computed(
+  () => !name.value.trim() && hasBlurredNameField.value && !isNameFieldFocused.value
+)
 const selectedDaysRules = computed(() => [
   (s: unknown[]) => s.length > 0 || "Please select at least one day",
 ])
@@ -673,8 +691,19 @@ const blurNameField = () => {
   nameField.value?.blur()
 }
 
+const handleNameFieldFocus = () => {
+  isNameFieldFocused.value = true
+}
+
+const handleNameFieldBlur = () => {
+  isNameFieldFocused.value = false
+  hasBlurredNameField.value = true
+}
+
 const reset = () => {
   name.value = ""
+  hasBlurredNameField.value = false
+  isNameFieldFocused.value = true
   startTime.value = hoursPlainTime.NINE
   endTime.value = hoursPlainTime.SEVENTEEN
   specificTimesEnabled.value = false
@@ -1014,12 +1043,36 @@ watch(
   padding: 0px !important;
 }
 
+.new-event-name-field .v-field__outline {
+  display: none;
+}
+
+.new-event-name-field--invalid .v-field {
+  outline: red solid;
+  border-radius: 3px;
+}
+
 .compact-inline-select {
   --v-input-control-height: 26px;
   --v-field-padding-top: 0px;
   --v-field-padding-bottom: 0px;
   --v-field-padding-start: 0px;
   --v-field-padding-end: 0px;
+}
+
+.advanced-options-panel {
+  letter-spacing: 0.1px;
+  line-height: 22px;
+}
+
+.compact-inline-select,
+.compact-inline-select.v-input,
+.compact-inline-select .v-input,
+.compact-inline-select .v-field,
+.compact-inline-select .v-field__input,
+.compact-inline-select .v-select__selection,
+.compact-inline-select .v-select__selection-text {
+  letter-spacing: normal !important;
 }
 
 .compact-inline-select .v-field {
@@ -1043,11 +1096,17 @@ watch(
 .compact-inline-select .v-field__input {
   align-items: center !important;
   display: flex !important;
+  flex-wrap: nowrap !important;
   height: 26px !important;
   min-height: 26px;
+  overflow: hidden !important;
   padding-inline: 0px !important;
   padding-bottom: 0px;
   padding-top: 0px;
+}
+
+.compact-inline-select .v-select__selection {
+  overflow: hidden !important;
 }
 
 .compact-inline-select .v-field__append-inner {
@@ -1060,6 +1119,9 @@ watch(
 
 .compact-inline-select .v-select__selection-text {
   line-height: 22px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 .compact-inline-select .v-field__overlay {

@@ -2,7 +2,7 @@
 <template>
   <div
     id="timezone-select-container"
-    class="tw-flex tw-items-center tw-justify-center tw-text-dark-gray"
+    class="tw-flex tw-items-center tw-justify-center tw-text-[rgba(0,0,0,0.6)]"
   >
     <div :class="`tw-mr-2 tw-mt-px ${labelColor}`">{{ label }}</div>
     <v-select
@@ -16,7 +16,6 @@
       hide-details
       item-title="title"
       item-value="value"
-      :menu-props="{ auto: true }"
       single-line
       variant="plain"
       @update:model-value="onChangeValue"
@@ -159,18 +158,6 @@ const selectedTimezoneValue = computed(() => {
   }
 
   return normalizeTimezone(props.modelValue).value
-})
-
-const selectedTimezoneItem = computed<TimezoneSelectItem | undefined>(() => {
-  const currentValue = selectedTimezoneValue.value
-  if (!currentValue) {
-    return undefined
-  }
-
-  return (
-    visibleTimezoneItems.value.find((item) => item.value === currentValue) ??
-    toTimezoneSelectItem(props.modelValue)
-  )
 })
 
 const visibleTimezoneItems = computed<TimezoneSelectItem[]>(() => {
@@ -362,6 +349,16 @@ watch(
   --v-field-padding-end: 0px;
 }
 
+.compact-inline-select,
+.compact-inline-select:deep(.v-input),
+.compact-inline-select :deep(.v-input),
+.compact-inline-select :deep(.v-field),
+.compact-inline-select :deep(.v-field__input),
+.compact-inline-select :deep(.v-select__selection),
+.compact-inline-select :deep(.v-select__selection-text) {
+  letter-spacing: normal !important;
+}
+
 .compact-inline-select :deep(.v-field) {
   background: transparent;
   border: 0;
@@ -383,11 +380,17 @@ watch(
 .compact-inline-select :deep(.v-field__input) {
   align-items: center !important;
   display: flex !important;
+  flex-wrap: nowrap !important;
   height: 26px !important;
   min-height: 26px;
+  overflow: hidden !important;
   padding-inline: 0 !important;
   padding-bottom: 0;
   padding-top: 0;
+}
+
+.compact-inline-select :deep(.v-select__selection) {
+  overflow: hidden !important;
 }
 
 .compact-inline-select :deep(.v-field__append-inner) {
@@ -400,6 +403,9 @@ watch(
 
 .compact-inline-select :deep(.v-select__selection-text) {
   line-height: 22px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 .compact-inline-select :deep(.v-field__overlay) {

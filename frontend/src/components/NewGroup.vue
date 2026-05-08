@@ -17,7 +17,7 @@
         </div>
       </div>
       <v-spacer />
-      <template v-if="dialog">
+      <template v-if="dialog && !hideDialogActions">
         <v-btn v-if="showHelp" icon @click="helpDialog = true">
           <v-icon>mdi-information-outline</v-icon>
         </v-btn>
@@ -208,6 +208,7 @@ const props = withDefaults(
     showHelp?: boolean
     contactsPayload?: EventDraft
     folderId?: string | null
+    hideDialogActions?: boolean
   }>(),
   {
     event: undefined,
@@ -216,6 +217,7 @@ const props = withDefaults(
     showHelp: false,
     contactsPayload: () => ({}),
     folderId: null,
+    hideDialogActions: false,
   }
 )
 

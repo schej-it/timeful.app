@@ -1,6 +1,6 @@
 <template>
   <v-dialog
-    :model-value="modelValue"
+    v-model="dialogOpen"
     no-click-animation
     persistent
     content-class="tw-max-w-[28rem]"
@@ -12,8 +12,8 @@
     <UnsavedChangesDialog v-model="unsavedChangesDialog" @leave="exitDialog">
     </UnsavedChangesDialog>
     <v-card class="tw-pt-4">
-      <div v-if="!_noTabs" class="tw-flex tw-rounded sm:-tw-mt-4 sm:tw-px-8">
-        <div class="tw-pt-4">
+      <div class="tw-flex tw-rounded sm:-tw-mt-4 sm:tw-px-8">
+        <div v-if="!_noTabs" class="tw-pt-4">
           <v-btn
             v-for="t in tabs"
             :key="t.type"
@@ -33,7 +33,7 @@
           absolute
           icon
           class="tw-right-0 tw-mr-2 tw-self-center"
-          @click="emit('update:modelValue', false)"
+          @click="handleDialogInput"
         >
           <v-icon>mdi-close</v-icon>
         </v-btn>
@@ -49,6 +49,7 @@
         :contacts-payload="type == 'event' ? contactsPayload : {}"
         :show-help="!_noTabs"
         :folder-id="folderId"
+        hide-dialog-actions
         @update:model-value="handleDialogInput"
         @sign-in="emit('signIn')"
       />
@@ -60,6 +61,7 @@
         :edit="edit"
         :show-help="!_noTabs"
         :folder-id="folderId"
+        hide-dialog-actions
         :contacts-payload="type == 'group' ? contactsPayload : {}"
         @update:model-value="handleDialogInput"
       />
@@ -71,6 +73,7 @@
         :edit="edit"
         :show-help="!_noTabs"
         :folder-id="folderId"
+        hide-dialog-actions
         :contacts-payload="type == 'signup' ? contactsPayload : {}"
         @update:model-value="handleDialogInput"
       />
@@ -127,6 +130,7 @@ const mainStore = useMainStore()
 const { groupsEnabled, signUpFormEnabled } = storeToRefs(mainStore)
 const { isPhone } = useDisplayHelpers()
 
+const dialogOpen = ref(props.modelValue)
 const tab = ref<TabType>(props.type)
 const tabs = ref<{ title: string; type: TabType }[]>([
   { title: "Event", type: "event" },
@@ -160,6 +164,7 @@ const handleDialogInput = () => {
   }
 }
 const exitDialog = () => {
+  dialogOpen.value = false
   emit("update:modelValue", false)
   const current = refsByTab.value[tab.value]
   if (props.edit) current?.resetToEventData()
@@ -197,11 +202,20 @@ watch(
 watch(
   () => props.modelValue,
   (val) => {
+    dialogOpen.value = val
     if (val) {
       tab.value = props.type
     }
   },
   { immediate: true }
+)
+watch(
+  dialogOpen,
+  (val) => {
+    if (val !== props.modelValue) {
+      emit("update:modelValue", val)
+    }
+  }
 )
 watch(
   () => props.type,

@@ -2,7 +2,7 @@
 <template>
   <div>
     <v-btn
-      class="expandable-section-toggle -tw-ml-2 tw-w-[calc(100%+1rem)] tw-justify-between tw-px-2 tw-py-0 tw-normal-case"
+      class="expandable-section-toggle -tw-ml-2 tw-w-[calc(100%+1rem)] tw-justify-between tw-whitespace-nowrap tw-px-2 tw-py-0 tw-normal-case tw-text-black"
       block
       density="compact"
       variant="text"
@@ -74,6 +74,8 @@ watch(
 
 <style scoped>
 .expandable-section-toggle {
+  width: calc(100% + 1rem) !important;
+  max-width: none !important;
   min-height: 38px;
   border: 0 !important;
   border-radius: 6px !important;
@@ -87,6 +89,13 @@ watch(
   justify-content: space-between;
   white-space: nowrap;
   width: 100%;
+  color: rgba(0, 0, 0, 0.87);
+  letter-spacing: 0.1px !important;
+}
+
+.expandable-section-toggle :deep(.v-btn__content *) {
+  color: rgba(0, 0, 0, 0.87);
+  letter-spacing: 0.1px !important;
 }
 
 .expandable-section-toggle :deep(.v-btn__overlay) {
@@ -96,5 +105,6 @@ watch(
 .expandable-section-toggle:focus,
 .expandable-section-toggle:focus-visible {
   outline: none !important;
+  outline-width: 0 !important;
 }
 </style>

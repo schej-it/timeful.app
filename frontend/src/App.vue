@@ -391,8 +391,15 @@ html {
   padding: 0 !important;
 }
 
+/** Dialog interaction */
+.v-dialog > .v-overlay__content {
+  pointer-events: auto !important;
+}
+
 /** Error color */
-.error--text .v-input__slot {
+.error--text .v-input__slot,
+.v-input--error .v-field,
+.v-field--error {
   outline: red solid;
   border-radius: 3px;
 }
