@@ -1,4 +1,4 @@
-# ADR 007: Frontend UI Primitive Semantics
+# ADR-007: Frontend UI Primitive Semantics
 
 Date: 2026-05-07
 
@@ -8,7 +8,7 @@ Status:
 
 ## Context
 
-Within the frontend stack migration described in ADR 008, a recurring class of UI regressions surfaced around shared component-library primitives:
+Within the frontend stack migration described in ADR-008, a recurring class of UI regressions surfaced around shared component-library primitives:
 
 - legacy Vuetify shorthand props can continue to compile while changing rendered behavior
 - visual semantics such as button style, size, and contrast can drift when they rely on deprecated or ambiguous props

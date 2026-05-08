@@ -1,4 +1,4 @@
-# ADR 001: Frontend Boundary Models and Canonical Internal Shapes
+# ADR-001: Frontend Boundary Models and Canonical Internal Shapes
 
 Date: 2026-05-05
 
@@ -8,7 +8,7 @@ Status:
 
 ## Context
 
-Within the frontend stack migration described in ADR 008, a recurring class of regressions surfaced that was broader than any one feature area:
+Within the frontend stack migration described in ADR-008, a recurring class of regressions surfaced that was broader than any one feature area:
 
 - raw backend payload shapes leaking into internal frontend types
 - multiple internal shapes being accepted for the same concept

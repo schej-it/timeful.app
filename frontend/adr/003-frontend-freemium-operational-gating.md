@@ -1,4 +1,4 @@
-# ADR 003: Frontend Freemium Operational Gating
+# ADR-003: Frontend Freemium Operational Gating
 
 Date: 2026-05-05
 

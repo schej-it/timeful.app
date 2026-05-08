@@ -1,4 +1,4 @@
-# ADR 004: Frontend Temporal Runtime Model
+# ADR-004: Frontend Temporal Runtime Model
 
 Date: 2026-05-06
 
@@ -8,7 +8,7 @@ Status:
 
 ## Context
 
-Within the frontend stack migration described in ADR 008, a separate class of Temporal-specific regressions surfaced:
+Within the frontend stack migration described in ADR-008, a separate class of Temporal-specific regressions surfaced:
 
 - internal runtime models widening one concept across `Temporal`, string, and numeric encoded forms
 - `Date` continuing to appear in frontend runtime logic after the frontend time model moved to `Temporal`

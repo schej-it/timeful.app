@@ -1,4 +1,4 @@
-# ADR 006: Frontend Temporal Collection Semantics
+# ADR-006: Frontend Temporal Collection Semantics
 
 Date: 2026-05-07
 
@@ -8,13 +8,13 @@ Status:
 
 ## Context
 
-Within the frontend stack migration described in ADR 008, the move to `Temporal` exposed a collection-specific class of regressions around Temporal object types:
+Within the frontend stack migration described in ADR-008, the move to `Temporal` exposed a collection-specific class of regressions around Temporal object types:
 
 - native `Set` and `Map` use object identity, not Temporal value semantics
 - equal Temporal values can accidentally fork collection membership or keyed lookup state when they are reconstructed separately
 - schedule-overlap flows already depend on repeated membership, merge, and lookup operations over canonical time values
 
-ADR 004 established that Temporal values use value semantics, but the frontend also needs an explicit rule for how those semantics are preserved inside collection types.
+ADR-004 established that Temporal values use value semantics, but the frontend also needs an explicit rule for how those semantics are preserved inside collection types.
 
 ## Decision
 

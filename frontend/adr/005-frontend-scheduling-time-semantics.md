@@ -1,4 +1,4 @@
-# ADR 005: Frontend Scheduling Time Semantics
+# ADR-005: Frontend Scheduling Time Semantics
 
 Date: 2026-05-06
 

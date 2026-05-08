@@ -1,4 +1,4 @@
-# ADR 008: Frontend Framework and Language Baseline
+# ADR-008: Frontend Framework and Language Baseline
 
 Date: 2026-05-08
 
@@ -38,7 +38,7 @@ The frontend stack baseline is explicit:
 
 ### ADR and cleanup references
 
-- When another frontend ADR depends on the framework-and-language migration as setup, reference ADR 008 instead of restating the full stack transition.
+- When another frontend ADR depends on the framework-and-language migration as setup, reference ADR-008 instead of restating the full stack transition.
 - Migration cleanup work should separate stack-baseline decisions from narrower domain or feature-specific architectural rules.
 
 ## Consequences

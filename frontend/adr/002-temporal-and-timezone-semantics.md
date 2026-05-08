@@ -1,4 +1,4 @@
-# ADR 002: Frontend Timezone Decoding and Fixed-Offset Boundaries
+# ADR-002: Frontend Timezone Decoding and Fixed-Offset Boundaries
 
 Date: 2026-05-05
 
@@ -8,7 +8,7 @@ Status:
 
 ## Context
 
-Within the frontend stack migration described in ADR 008, the shift from `Date`-heavy code to `Temporal` exposed a recurring class of timezone-specific regressions:
+Within the frontend stack migration described in ADR-008, the shift from `Date`-heavy code to `Temporal` exposed a recurring class of timezone-specific regressions:
 
 - timezone decoding and fixed-offset handling being reimplemented at call sites
 - scheduling, plugin, and export paths drifting into incompatible offset reconstruction behavior
