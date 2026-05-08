@@ -1,0 +1,29 @@
+# Example Caddyfile for Timeful
+# Place this file at /etc/caddy/Caddyfile or configure appropriately
+
+timeful.app {
+    # Reverse proxy to the Go backend
+    reverse_proxy localhost:3002
+
+    # Enable compression
+    encode gzip zstd
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+
+    # Logging (optional)
+    log {
+        output file /var/log/caddy/timeful.log
+        format json
+    }
+}
+
+# Redirect www to non-www
+www.timeful.app {
+    redir https://timeful.app{uri} permanent
+}

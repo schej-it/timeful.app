@@ -1,0 +1,63 @@
+name: timeful
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      target: builder
+      args:
+        VUE_APP_POSTHOG_API_KEY: ${VUE_APP_POSTHOG_API_KEY:-}
+        VUE_APP_GOOGLE_CLIENT_ID: ${CLIENT_ID:-}
+        VUE_APP_MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+    volumes:
+      - frontend_dist:/app/dist
+    command:
+      [
+        "sh",
+        "-c",
+        "rm -rf /app/dist/* && cp -r /build/* /app/dist/ && echo 'Frontend assets copied' && tail -f /dev/null",
+      ]
+
+  server:
+    build:
+      context: ./server
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    env_file:
+      - ./server/.env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017
+      GIN_MODE: release
+    volumes:
+      - frontend_dist:/app/frontend/dist:ro
+      - server_logs:/app/logs
+    depends_on:
+      mongo:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    healthcheck:
+      test:
+        ["CMD", "wget", "-q", "--spider", "http://localhost:3002/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  mongo_data:
+  frontend_dist:
+  server_logs:

@@ -3,6 +3,8 @@
     <FormerlyKnownAs
       class="tw-mx-auto tw-mb-10 tw-mt-3 tw-max-w-6xl tw-pl-4 sm:tw-pl-12"
     />
+    <!-- Video Ad (desktop only, when ads enabled) -->
+    <div v-if="!isPhone && showAds" ref="videoAdContainer"></div>
     <div v-if="event" class="tw-mt-8 tw-h-full">
       <!-- Mark availability option dialog -->
       <MarkAvailabilityDialog
@@ -323,7 +325,7 @@
         <div class="tw-h-[300px] publift-m:tw-h-[90px]">
           <div
             id="meet_incontent_md"
-            data-fuse="meet_incontent"
+            data-fuse="meet_incontent_md"
             class="tw-flex tw-items-center tw-justify-center"
           ></div>
         </div>
@@ -603,6 +605,7 @@ export default {
     }
     // window.enableStickyFooter = true
     // this.initFusetag()
+    this.loadVideoAd()
   },
 
   computed: {
@@ -698,6 +701,16 @@ export default {
   methods: {
     ...mapActions(["showError", "showInfo", "getEvents"]),
     ...mapMutations(["setAuthUser"]),
+
+    loadVideoAd() {
+      if (!this.isPhone && this.showAds && this.$refs.videoAdContainer) {
+        const script = document.createElement("script")
+        script.type = "text/javascript"
+        script.src =
+          "https://live.primis.tech/live/liveView.php?s=122130&schain=1.0,1!publift.com,01KF27H3XMWD7H1S0HYBGVB3BR,1"
+        this.$refs.videoAdContainer.appendChild(script)
+      }
+    },
 
     initFusetag() {
       console.log("initFusetag called, blockingFuseIds: ", [

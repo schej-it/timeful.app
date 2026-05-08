@@ -120,8 +120,13 @@ export default {
   },
 
   async created() {
-    this.owner = await get(`/users/${this.event.ownerId}`)
-    this.loaded = true
+    try {
+      this.owner = await get(`/users/${this.event.ownerId}`)
+    } catch {
+      this.owner = { firstName: "", picture: "" }
+    } finally {
+      this.loaded = true
+    }
   },
 }
 </script>

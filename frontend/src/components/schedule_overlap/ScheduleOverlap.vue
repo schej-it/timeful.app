@@ -3649,18 +3649,16 @@ export default {
     //#region Drag Stuff
     // -----------------------------------
     normalizeXY(e) {
-      /* Normalize the touch event to be relative to element */
-      let pageX, pageY
+      /* Normalize the touch/mouse event to be relative to element */
+      let clientX, clientY
       if ("touches" in e) {
-        // is a touch event
-        ;({ pageX, pageY } = e.touches[0])
+        ;({ clientX, clientY } = e.touches[0])
       } else {
-        // is a mouse event
-        ;({ pageX, pageY } = e)
+        ;({ clientX, clientY } = e)
       }
       const { left, top } = e.currentTarget.getBoundingClientRect()
-      const x = pageX - left
-      const y = pageY - top - window.scrollY
+      const x = clientX - left
+      const y = clientY - top
       return { x, y }
     },
     clampRow(row) {
@@ -4600,17 +4598,30 @@ export default {
     this.setTimeslotSize()
     addEventListener("resize", this.onResize)
     addEventListener("scroll", this.onScroll)
+
+    // Watch for layout changes (e.g. ads loading, flex reflows) that resize
+    // the grid without triggering a window resize event
+    const dragSection = document.getElementById("drag-section")
+    if (dragSection) {
+      this._resizeObserver = new ResizeObserver(() => {
+        this.setTimeslotSize()
+      })
+      this._resizeObserver.observe(dragSection)
+    }
+
     if (!this.calendarOnly) {
-      const timesEl = document.getElementById("drag-section")
-      if (isTouchEnabled()) {
+      const timesEl = dragSection
+      if (timesEl && isTouchEnabled()) {
         timesEl.addEventListener("touchstart", this.startDrag)
         timesEl.addEventListener("touchmove", this.moveDrag)
         timesEl.addEventListener("touchend", this.endDrag)
         timesEl.addEventListener("touchcancel", this.endDrag)
       }
-      timesEl.addEventListener("mousedown", this.startDrag)
-      timesEl.addEventListener("mousemove", this.moveDrag)
-      timesEl.addEventListener("mouseup", this.endDrag)
+      if (timesEl) {
+        timesEl.addEventListener("mousedown", this.startDrag)
+        timesEl.addEventListener("mousemove", this.moveDrag)
+        timesEl.addEventListener("mouseup", this.endDrag)
+      }
     }
 
     // Parse sign up blocks and responses
@@ -4620,6 +4631,9 @@ export default {
     removeEventListener("click", this.deselectRespondents)
     removeEventListener("resize", this.onResize)
     removeEventListener("scroll", this.onScroll)
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect()
+    }
   },
   components: {
     AlertText,

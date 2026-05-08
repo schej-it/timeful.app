@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"os"
-	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -42,9 +41,12 @@ func Init() func() {
 	)
 	defer cancel()
 
-	// Try primary URI, then fall back to localhost if the host "mongo" is unreachable (common when running API outside compose).
-	connectURI := mongoURI
-	Client, err = mongo.Connect(ctx, options.Client().ApplyURI(connectURI))
+	mongoURI := os.Getenv("MONGODB_URI")
+	if mongoURI == "" {
+		mongoURI = "mongodb://localhost"
+	}
+
+	Client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
 	if err != nil {
 		logger.StdErr.Printf("failed to connect to Mongo at %s: %v\n", connectURI, err)
 		// Always try a localhost fallback on any error (covers parse errors or host resolution failures)

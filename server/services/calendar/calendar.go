@@ -5,7 +5,6 @@ import (
 
 	"schej.it/server/models"
 	"schej.it/server/services/auth"
-	"schej.it/server/utils"
 )
 
 type GetCalendarListData struct {
@@ -67,9 +66,8 @@ func GetUsersCalendarEvents(user *models.User, accounts models.Set[string], time
 
 	// Get calendar lists
 	numCalendarListRequests := 0
-	for _, account := range user.CalendarAccounts {
+	for calendarAccountKey, account := range user.CalendarAccounts {
 		calendarProvider := GetCalendarProvider(account)
-		calendarAccountKey := utils.GetCalendarAccountKey(account.Email, account.CalendarType)
 
 		// Get secondary account calendars
 		if _, ok := accounts[calendarAccountKey]; ok || returnAllAccounts {
