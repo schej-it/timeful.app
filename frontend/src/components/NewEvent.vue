@@ -573,8 +573,11 @@ const endTime = ref<Temporal.PlainTime>(hoursPlainTime.SEVENTEEN)
 const specificTimesEnabled = ref(false)
 const loading = ref(false)
 const selectedDays = ref<Temporal.PlainDate[]>([])
-const selectedDaysStr = computed(() => {
-  return selectedDays.value.map(x => x.toString())
+const selectedDaysStr = computed<string[]>({
+  get: () => selectedDays.value.map(x => x.toString()),
+  set: value => {
+    selectedDays.value = value.map(date => Temporal.PlainDate.from(date))
+  },
 })
 const selectedDaysOfWeek = ref<number[]>([])
 const startOnMonday = ref(prefersStartOnMonday())

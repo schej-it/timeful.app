@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 
 import { shallowMount } from "@vue/test-utils"
+import { defineComponent, nextTick } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { durations } from "@/constants"
 import { Temporal } from "temporal-polyfill"
@@ -66,6 +67,18 @@ const formRefMethods = {
 }
 
 const defaultStubs: ComponentStubMap = buildEventEditorStubs(formRefMethods)
+
+const DatePickerModelStub = defineComponent({
+  name: "DatePicker",
+  props: {
+    modelValue: {
+      type: Array,
+      required: true,
+    },
+  },
+  emits: ["update:modelValue"],
+  template: "<div />",
+})
 
 describe("NewEvent", () => {
   beforeEach(() => {
@@ -160,6 +173,29 @@ describe("NewEvent", () => {
     }
 
     expect(vm.timeIncrement ?? vm.$.setupState?.timeIncrement).toBe(30)
+  })
+
+  it("commits ISO dates emitted by DatePicker into Temporal selected days", async () => {
+    const wrapper = shallowMount(NewEvent, {
+      global: {
+        stubs: {
+          ...defaultStubs,
+          DatePicker: DatePickerModelStub,
+        },
+      },
+    })
+
+    wrapper
+      .getComponent(DatePickerModelStub)
+      .vm.$emit("update:modelValue", ["2026-05-15"])
+    await nextTick()
+
+    const selectedDays = (wrapper.vm as unknown as {
+      selectedDays: Temporal.PlainDate[]
+    }).selectedDays
+
+    expect(selectedDays.map(day => day.toString())).toEqual(["2026-05-15"])
+    expect(selectedDays[0]).toBeInstanceOf(Temporal.PlainDate)
   })
 
   it("wraps cross-midnight edit durations to the next day's local end time", () => {

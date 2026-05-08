@@ -1,7 +1,15 @@
 <template>
-  <div>
+  <div
+    ref="datePickerEl"
+    @pointerdown.capture="onPointerDown"
+    @pointerover.capture="onPointerOver"
+    @pointerup.capture="endDrag"
+    @pointercancel.capture="endDrag"
+    @mouseup="endDrag"
+    @touchmove="touchmove"
+    @touchend.capture="endDrag"
+  >
     <v-date-picker
-      ref="datePicker"
       v-model="dateValue"
       readonly
       hide-header
@@ -19,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue"
+import { computed, ref } from "vue"
 import { Temporal } from "temporal-polyfill"
 
 const props = withDefaults(
@@ -38,8 +46,7 @@ const emit = defineEmits<{
   "update:modelValue": [value: string[]]
 }>()
 
-const datePicker = ref<{ $el: HTMLElement } | null>(null)
-let datePickerEl: HTMLElement | null = null
+const datePickerEl = ref<HTMLElement | null>(null)
 
 const dragStates = { ADD: "add", REMOVE: "remove" } as const
 type DragState = (typeof dragStates)[keyof typeof dragStates]
@@ -143,12 +150,12 @@ function touchmove(e: TouchEvent) {
   const target = document.elementFromPoint(touch.clientX, touch.clientY)
   const date = getDateFromNode(target)
 
-  if (date && datePickerEl?.contains(getDateCell(target))) {
+  if (date && datePickerEl.value?.contains(getDateCell(target))) {
     continueDrag(date)
   }
 }
 
-function mouseup(e: Event) {
+function endDrag(e: Event) {
   if (!dragging.value) return
 
   e.preventDefault()
@@ -182,22 +189,4 @@ function removeDate(date: string) {
   emit("update:modelValue", [...set])
 }
 
-onMounted(() => {
-  if (!datePicker.value) return
-  datePickerEl = datePicker.value.$el
-  datePickerEl.addEventListener("pointerdown", onPointerDown)
-  datePickerEl.addEventListener("pointerover", onPointerOver)
-  datePickerEl.addEventListener("mouseup", mouseup)
-  datePickerEl.addEventListener("touchmove", touchmove)
-  datePickerEl.addEventListener("touchend", mouseup, { capture: true })
-})
-
-onBeforeUnmount(() => {
-  if (!datePickerEl) return
-  datePickerEl.removeEventListener("pointerdown", onPointerDown)
-  datePickerEl.removeEventListener("pointerover", onPointerOver)
-  datePickerEl.removeEventListener("mouseup", mouseup)
-  datePickerEl.removeEventListener("touchmove", touchmove)
-  datePickerEl.removeEventListener("touchend", mouseup)
-})
 </script>
