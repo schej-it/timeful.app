@@ -8,7 +8,7 @@ Status:
 
 ## Context
 
-The frontend migration surfaced a recurring class of regressions that were broader than any one feature area:
+Within the frontend stack migration described in ADR 008, a recurring class of regressions surfaced that was broader than any one feature area:
 
 - raw backend payload shapes leaking into internal frontend types
 - multiple internal shapes being accepted for the same concept

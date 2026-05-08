@@ -8,7 +8,7 @@ Status:
 
 ## Context
 
-The frontend migration from Vue 2 / Vuetify 2 to Vue 3 / Vuetify 3 exposed a recurring class of UI regressions around shared component-library primitives:
+Within the frontend stack migration described in ADR 008, a recurring class of UI regressions surfaced around shared component-library primitives:
 
 - legacy Vuetify shorthand props can continue to compile while changing rendered behavior
 - visual semantics such as button style, size, and contrast can drift when they rely on deprecated or ambiguous props

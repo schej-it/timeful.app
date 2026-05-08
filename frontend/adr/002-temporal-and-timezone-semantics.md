@@ -8,7 +8,7 @@ Status:
 
 ## Context
 
-The frontend migration from Vue 2 / JavaScript / `Date`-heavy code to Vue 3 / TypeScript / `Temporal` exposed a recurring class of timezone-specific regressions:
+Within the frontend stack migration described in ADR 008, the shift from `Date`-heavy code to `Temporal` exposed a recurring class of timezone-specific regressions:
 
 - timezone decoding and fixed-offset handling being reimplemented at call sites
 - scheduling, plugin, and export paths drifting into incompatible offset reconstruction behavior

@@ -8,10 +8,10 @@ Status:
 
 ## Context
 
-The frontend migration surfaced a separate class of Temporal-specific regressions:
+Within the frontend stack migration described in ADR 008, a separate class of Temporal-specific regressions surfaced:
 
 - internal runtime models widening one concept across `Temporal`, string, and numeric encoded forms
-- `Date` continuing to appear in frontend runtime logic after the migration target moved to `Temporal`
+- `Date` continuing to appear in frontend runtime logic after the frontend time model moved to `Temporal`
 - Temporal values being treated like identity-keyed objects instead of value-keyed domain data
 
 Without a strict runtime model, cleanup work can drift back into mixed representations that obscure boundaries and reintroduce runtime bugs.

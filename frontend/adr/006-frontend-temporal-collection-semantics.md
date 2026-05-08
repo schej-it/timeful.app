@@ -8,7 +8,7 @@ Status:
 
 ## Context
 
-The frontend migration to `Temporal` exposed a collection-specific class of regressions around Temporal object types:
+Within the frontend stack migration described in ADR 008, the move to `Temporal` exposed a collection-specific class of regressions around Temporal object types:
 
 - native `Set` and `Map` use object identity, not Temporal value semantics
 - equal Temporal values can accidentally fork collection membership or keyed lookup state when they are reconstructed separately
