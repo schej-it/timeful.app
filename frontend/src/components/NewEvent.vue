@@ -80,6 +80,8 @@
                     <v-select
                       :model-value="startTimeNum"
                       :items="times"
+                      item-title="text"
+                      item-value="value"
                       return-object
                       hide-details
                       solo
@@ -89,6 +91,8 @@
                     <v-select
                       :model-value="endTimeNum"
                       :items="times"
+                      item-title="text"
+                      item-value="value"
                       return-object
                       hide-details
                       solo
@@ -290,6 +294,8 @@
                   class="-tw-mt-[2px] tw-w-24 tw-grow-0 tw-text-sm"
                   hide-details
                   :items="timeIncrementItems"
+                  item-title="text"
+                  item-value="value"
                 ></v-select>
               </div>
               <v-checkbox

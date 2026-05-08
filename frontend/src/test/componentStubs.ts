@@ -1,4 +1,4 @@
-import type { Component, Directive } from "vue"
+import { defineComponent, type Component, type Directive } from "vue"
 
 interface FormValidationResult {
   valid: boolean
@@ -27,6 +27,29 @@ export const nullStub = {
   inheritAttrs: false,
   template: "<div />",
 }
+
+export const vSelectStub = defineComponent({
+  name: "VSelect",
+  props: {
+    items: {
+      type: Array,
+      default: () => [],
+    },
+    modelValue: {
+      required: false,
+      default: undefined,
+    },
+    itemTitle: {
+      type: String,
+      default: undefined,
+    },
+    itemValue: {
+      type: String,
+      default: undefined,
+    },
+  },
+  template: "<div />",
+})
 
 export const createFormStub = (
   formRefMethods: FormRefMethods

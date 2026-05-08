@@ -9,6 +9,11 @@ import DatePicker from "./DatePicker.vue"
 const VDatePickerStub = defineComponent({
   name: "VDatePicker",
   props: {
+    hideHeader: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
     modelValue: {
       type: Array,
       required: true,
@@ -41,6 +46,7 @@ describe("DatePicker native-Date boundary", () => {
     expect(boundaryDates[1]?.getFullYear()).toBe(2026)
     expect(boundaryDates[1]?.getMonth()).toBe(0)
     expect(boundaryDates[1]?.getDate()).toBe(6)
+    expect(wrapper.getComponent(VDatePickerStub).props("hideHeader")).toBe(true)
   })
 
   it("converts native Date updates from the Vuetify boundary back to ISO strings", async () => {

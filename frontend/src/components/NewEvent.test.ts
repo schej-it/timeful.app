@@ -8,6 +8,7 @@ import { createLocalStorageMock } from "@/test/localStorage"
 import {
   buildEventEditorStubs,
   type ComponentStubMap,
+  vSelectStub as VSelectStub,
 } from "@/test/componentStubs"
 import type * as UtilsModule from "@/utils"
 import NewEvent from "./NewEvent.vue"
@@ -94,6 +95,38 @@ describe("NewEvent", () => {
         },
       })
     ).not.toThrow()
+  })
+
+  it("passes explicit Vuetify 3 item mappings to event time and increment selects", () => {
+    const wrapper = shallowMount(NewEvent, {
+      global: {
+        stubs: {
+          ...defaultStubs,
+          "v-select": VSelectStub,
+        },
+      },
+    })
+
+    const selects = wrapper.findAllComponents(VSelectStub)
+
+    expect(selects).toHaveLength(4)
+    expect(selects[0]?.props("itemTitle")).toBe("text")
+    expect(selects[0]?.props("itemValue")).toBe("value")
+    expect(selects[0]?.props("items")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: "9 am", value: 9 }),
+        expect.objectContaining({ text: "5 pm", value: 17 }),
+      ])
+    )
+    expect(selects[1]?.props("itemTitle")).toBe("text")
+    expect(selects[1]?.props("itemValue")).toBe("value")
+    expect(selects[3]?.props("itemTitle")).toBe("text")
+    expect(selects[3]?.props("itemValue")).toBe("value")
+    expect(selects[3]?.props("items")).toEqual([
+      { text: "15 min", value: 15 },
+      { text: "30 min", value: 30 },
+      { text: "60 min", value: 60 },
+    ])
   })
 
   it("wraps cross-midnight edit durations to the next day's local end time", () => {

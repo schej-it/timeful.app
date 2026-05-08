@@ -7,16 +7,17 @@
     <div :class="`tw-mr-2 tw-mt-px ${labelColor}`">{{ label }}</div>
     <v-select
       id="timezone-select"
-      :value="modelValue"
+      :model-value="modelValue"
       :items="timezones"
       class="tw-z-20 -tw-mt-px tw-w-52 tw-text-sm"
       dense
       color="#219653"
       item-color="green"
       hide-details
-      item-text="label"
+      item-title="label"
+      item-value="value"
       return-object
-      @input="onChange"
+      @update:model-value="onChange"
     >
       <template #item="{ item }">
         <v-list-item>

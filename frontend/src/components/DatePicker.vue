@@ -4,13 +4,12 @@
       ref="datePicker"
       v-model="dateValue"
       readonly
-      no-title
+      hide-header
       multiple
       color="primary"
       :show-current="false"
       class="tw-min-w-full tw-rounded-md tw-border-0 tw-drop-shadow sm:tw-min-w-0"
       :min="minCalendarDate"
-      full-width
       :scrollable="false"
       :first-day-of-week="startCalendarOnMonday ? 1 : 0"
       @update:month="onMonthChange"

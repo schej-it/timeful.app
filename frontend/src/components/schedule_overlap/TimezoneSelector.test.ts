@@ -6,6 +6,7 @@ import { durations } from "@/constants"
 import { Temporal } from "temporal-polyfill"
 import type { Timezone } from "@/composables/schedule_overlap/types"
 import { createLocalStorageMock } from "@/test/localStorage"
+import { vSelectStub as VSelectStub } from "@/test/componentStubs"
 import TimezoneSelector from "./TimezoneSelector.vue"
 
 const mountTimezoneSelector = () =>
@@ -25,7 +26,7 @@ const mountTimezoneSelector = () =>
         "v-list-item": true,
         "v-list-item-content": true,
         "v-list-item-title": true,
-        "v-select": true,
+        "v-select": VSelectStub,
       },
     },
   })
@@ -76,5 +77,17 @@ describe("TimezoneSelector", () => {
       gmtString: "(GMT+5:45)",
     })
     expect(restoredTimezone?.offset.total("minutes")).toBe(345)
+  })
+
+  it("uses explicit Vuetify 3 item bindings for timezone labels and values", () => {
+    const wrapper = mountTimezoneSelector()
+    const select = wrapper.getComponent(VSelectStub)
+
+    expect(select.props("itemTitle")).toBe("label")
+    expect(select.props("itemValue")).toBe("value")
+    expect(select.props("modelValue")).toMatchObject({
+      value: "",
+      label: "",
+    })
   })
 })
