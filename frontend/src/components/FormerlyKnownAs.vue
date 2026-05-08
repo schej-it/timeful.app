@@ -1,7 +1,7 @@
 <template>
   <div class="formerly-known-as-shell tw-relative tw-mt-2 tw-flex tw-items-center tw-justify-center">
     <div
-      class="formerly-known-as-row tw-absolute tw-top-0 tw-flex tw-items-center"
+      class="formerly-known-as-row tw-absolute tw-flex tw-items-center"
     >
       <div class="formerly-known-as-icon-wrap -tw-mt-3.5 tw-text-dark-gray">
         <v-icon>mdi-arrow-up-left</v-icon>
@@ -21,10 +21,10 @@
 <style scoped>
 .formerly-known-as-shell {
   min-height: 2px;
-  padding-top: 2px;
 }
 
 .formerly-known-as-row {
+  top: 2px;
   left: 48px;
 }
 

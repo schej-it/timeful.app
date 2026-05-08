@@ -567,7 +567,7 @@ watch(
 
 .landing-github-badge {
   margin-bottom: 1rem;
-  padding: 0.375rem 0.625rem;
+  padding: 0.375rem 0.625rem 0.5rem;
 }
 
 .landing-github-button {
