@@ -215,6 +215,7 @@ describe("NewEvent", () => {
     expect(appCssSource).toMatch(/--timeful-selection-fg:\s*#00994c;/)
     expect(appCssSource).toMatch(/--timeful-muted-foreground:\s*rgba\(0,\s*0,\s*0,\s*0\.6\);/)
     expect(appCssSource).toMatch(/--timeful-disabled-foreground:\s*rgba\(0,\s*0,\s*0,\s*0\.38\);/)
+    expect(appCssSource).toMatch(/--timeful-disabled-checkbox-icon:\s*#aaaaaa;/i)
     expect(appCssSource).toMatch(/--timeful-emphasis-foreground:\s*#4f4f4f;/i)
   })
 
@@ -226,7 +227,7 @@ describe("NewEvent", () => {
     )
   })
 
-  it("uses Vuetify 3 false-icon for disabled unchecked advanced-option checkboxes", () => {
+  it("uses crossed-out Vuetify 3 false-icon for disabled unchecked gated checkboxes", () => {
     expect(newEventSource).toContain('false-icon="mdi-checkbox-blank-off-outline"')
     expect(newEventSource).not.toContain('off-icon="mdi-checkbox-blank-off-outline"')
   })
@@ -280,7 +281,10 @@ describe("NewEvent", () => {
     expect(wrapper.findAll(".advanced-options-sign-in-link")).toHaveLength(3)
   })
 
-  it("keeps disabled helper text at full opacity without restoring the checkbox icon", () => {
+  it("keeps disabled helper text and gated checkbox icon styling stable", () => {
+    expect(newEventStyleBlock).toMatch(
+      /\.new-event-form \.v-checkbox \.v-selection-control\s*\{\s*--v-selection-control-size:\s*32px;/
+    )
     expect(newEventStyleBlock).toMatch(
       /\.gated-feature-checkbox\s*\{\s*--v-disabled-opacity:\s*1;/
     )
@@ -294,13 +298,13 @@ describe("NewEvent", () => {
       /\.gated-feature-checkbox \.v-input__details,\s*\.gated-feature-checkbox \.v-messages,\s*\.gated-feature-checkbox \.v-messages__message\s*\{\s*opacity:\s*1 !important;/
     )
     expect(newEventStyleBlock).toMatch(
-      /\.gated-feature-checkbox\.v-input--density-default \.advanced-options-disabled-message\s*\{\s*margin-left:\s*40px !important;/
+      /\.gated-feature-checkbox\.v-input--density-default \.advanced-options-disabled-message\s*\{\s*margin-left:\s*32px !important;/
     )
     expect(newEventStyleBlock).toMatch(
-      /\.gated-feature-checkbox\.v-input--density-compact \.advanced-options-disabled-message\s*\{\s*margin-left:\s*28px !important;/
+      /\.gated-feature-checkbox\.v-input--density-compact \.advanced-options-disabled-message\s*\{\s*margin-left:\s*32px !important;/
     )
     expect(newEventStyleBlock).toMatch(
-      /\.gated-feature-checkbox \.v-selection-control__input > \.v-icon\s*\{\s*opacity:\s*0\.38 !important;/
+      /\.gated-feature-checkbox \.v-selection-control__input > \.v-icon\s*\{\s*color:\s*var\(--timeful-disabled-checkbox-icon\) !important;\s*opacity:\s*1 !important;/
     )
     expect(newEventStyleBlock).toMatch(
       /\.advanced-options-disabled-label\s*\{\s*color:\s*var\(--timeful-disabled-foreground\) !important;/

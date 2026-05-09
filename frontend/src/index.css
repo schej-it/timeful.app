@@ -7,5 +7,6 @@
   --timeful-selection-fg: #00994c;
   --timeful-muted-foreground: rgba(0, 0, 0, 0.6);
   --timeful-disabled-foreground: rgba(0, 0, 0, 0.38);
+  --timeful-disabled-checkbox-icon: #aaaaaa;
   --timeful-emphasis-foreground: #4f4f4f;
 }

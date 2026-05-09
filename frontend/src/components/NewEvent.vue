@@ -31,7 +31,7 @@
         ref="formRef"
         v-model="formValid"
         lazy-validation
-        class="tw-flex tw-flex-col tw-gap-y-6"
+        class="new-event-form tw-flex tw-flex-col tw-gap-y-6"
         :disabled="loading"
       >
         <v-text-field
@@ -1114,6 +1114,10 @@ watch(
   line-height: 22px;
 }
 
+.new-event-form .v-checkbox .v-selection-control {
+  --v-selection-control-size: 32px;
+}
+
 .gated-feature-checkbox .v-selection-control--disabled {
   opacity: 1 !important;
 }
@@ -1127,7 +1131,8 @@ watch(
 }
 
 .gated-feature-checkbox .v-selection-control__input > .v-icon {
-  opacity: 0.38 !important;
+  color: var(--timeful-disabled-checkbox-icon) !important;
+  opacity: 1 !important;
 }
 
 .gated-feature-checkbox .v-input__details,
@@ -1146,11 +1151,11 @@ watch(
 }
 
 .gated-feature-checkbox.v-input--density-default .advanced-options-disabled-message {
-  margin-left: 40px !important;
+  margin-left: 32px !important;
 }
 
 .gated-feature-checkbox.v-input--density-compact .advanced-options-disabled-message {
-  margin-left: 28px !important;
+  margin-left: 32px !important;
 }
 
 .advanced-options-disabled-copy {
