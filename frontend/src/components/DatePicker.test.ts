@@ -32,6 +32,18 @@ const VDatePickerStub = defineComponent({
           <span>8</span>
         </button>
       </div>
+      <div
+        data-v-date="2026-02-01"
+        class="v-date-picker-month__day--adjacent"
+      >
+        <button
+          type="button"
+          @pointerdown.stop
+          @click="$emit('update:modelValue', [new Date(2026, 1, 1)])"
+        >
+          <span>1</span>
+        </button>
+      </div>
     </div>
   `,
 })
@@ -140,5 +152,45 @@ describe("DatePicker native-Date boundary", () => {
     expect(wrapper.emitted("update:modelValue")).toEqual([
       [["2026-01-05", "2026-01-07"]],
     ])
+  })
+
+  it("ignores adjacent-month drag targets so cross-month hover does not select or navigate", async () => {
+    const wrapper = mount(DatePicker, {
+      props: {
+        modelValue: ["2026-01-05"],
+      },
+      global: {
+        stubs: {
+          "v-date-picker": VDatePickerStub,
+        },
+      },
+    })
+
+    await wrapper.get('[data-v-date="2026-01-07"] button').trigger("pointerdown")
+    await wrapper.setProps({
+      modelValue: ["2026-01-05", "2026-01-07"],
+    })
+    await wrapper.get('[data-v-date="2026-02-01"] button').trigger("pointerover")
+
+    expect(wrapper.emitted("update:modelValue")).toEqual([
+      [["2026-01-05", "2026-01-07"]],
+    ])
+  })
+
+  it("blocks adjacent-month clicks from driving Vuetify month navigation through empty slots", async () => {
+    const wrapper = mount(DatePicker, {
+      props: {
+        modelValue: ["2026-01-05"],
+      },
+      global: {
+        stubs: {
+          "v-date-picker": VDatePickerStub,
+        },
+      },
+    })
+
+    await wrapper.get('[data-v-date="2026-02-01"] button').trigger("click")
+
+    expect(wrapper.emitted("update:modelValue")).toBeUndefined()
   })
 })

@@ -4,6 +4,7 @@
     class="tw-w-full"
     @pointerdown.capture="onPointerDown"
     @pointerover.capture="onPointerOver"
+    @click.capture="onClickCapture"
     @pointerup.capture="endDrag"
     @pointercancel.capture="endDrag"
     @mouseup="endDrag"
@@ -123,12 +124,29 @@ function getDateCell(node: EventTarget | null): HTMLElement | null {
   return node.closest("[data-v-date]")
 }
 
-function getDateFromNode(node: EventTarget | null): string | null {
-  return getDateCell(node)?.dataset.vDate ?? null
+function isAdjacentDateCell(cell: HTMLElement | null): boolean {
+  return cell?.classList.contains("v-date-picker-month__day--adjacent") ?? false
+}
+
+function getSelectableDateFromNode(node: EventTarget | null): string | null {
+  const cell = getDateCell(node)
+  if (!cell || isAdjacentDateCell(cell)) return null
+  return cell.dataset.vDate ?? null
+}
+
+function stopAdjacentMonthNavigation(event: Event): boolean {
+  const cell = getDateCell(event.target)
+  if (!isAdjacentDateCell(cell)) return false
+
+  event.preventDefault()
+  event.stopPropagation()
+  return true
 }
 
 function onPointerDown(e: PointerEvent) {
-  const date = getDateFromNode(e.target)
+  if (stopAdjacentMonthNavigation(e)) return
+
+  const date = getSelectableDateFromNode(e.target)
   if (!date) return
 
   e.preventDefault()
@@ -136,10 +154,14 @@ function onPointerDown(e: PointerEvent) {
 }
 
 function onPointerOver(e: PointerEvent) {
-  const date = getDateFromNode(e.target)
+  const date = getSelectableDateFromNode(e.target)
   if (!date) return
 
   continueDrag(date)
+}
+
+function onClickCapture(e: MouseEvent) {
+  stopAdjacentMonthNavigation(e)
 }
 
 function touchmove(e: TouchEvent) {
@@ -149,7 +171,7 @@ function touchmove(e: TouchEvent) {
 
   const touch = e.changedTouches[0]
   const target = document.elementFromPoint(touch.clientX, touch.clientY)
-  const date = getDateFromNode(target)
+  const date = getSelectableDateFromNode(target)
 
   if (date && datePickerEl.value?.contains(getDateCell(target))) {
     continueDrag(date)
