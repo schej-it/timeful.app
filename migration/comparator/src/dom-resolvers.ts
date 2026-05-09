@@ -9,6 +9,18 @@ export function resolveSnapshotEntries({
   elements,
   flattenedProperties,
 }: EvaluateSnapshotArgs): SnapshotEntry[] {
+  function getNodeDepth(node: Node) {
+    let depth = 0
+    let current = node.parentNode
+
+    while (current) {
+      depth += 1
+      current = current.parentNode
+    }
+
+    return depth
+  }
+
   function isVisible(element: Element) {
     const computed = window.getComputedStyle(element)
     const box = element.getBoundingClientRect()
@@ -48,6 +60,10 @@ export function resolveSnapshotEntries({
   function findVisibleTimezoneRow() {
     const timezoneRows = Array.from(document.querySelectorAll("#timezone-select-container"))
     return findVisibleCandidate(timezoneRows)
+  }
+
+  function findAdvancedOptionsContent() {
+    return findVisibleTimezoneRow()?.parentElement ?? null
   }
 
   function findDaysOnlyToggleRoot() {
@@ -91,10 +107,41 @@ export function resolveSnapshotEntries({
 
   function findByText(selector: string, text: string) {
     const candidates = Array.from(document.querySelectorAll(selector))
+    const exactMatches = candidates.filter((node) => node.textContent?.trim() === text)
+
     return (
-      candidates.find((node) => node.textContent?.trim() === text && isVisible(node)) ??
-      candidates.find((node) => node.textContent?.trim() === text) ??
-      null
+      exactMatches.sort((left, right) => {
+        const leftVisible = isVisible(left)
+        const rightVisible = isVisible(right)
+
+        if (leftVisible !== rightVisible) {
+          return leftVisible ? -1 : 1
+        }
+
+        return getNodeDepth(right) - getNodeDepth(left)
+      })[0] ?? null
+    )
+  }
+
+  function findByTextWithin(root: ParentNode | null, selector: string, text: string) {
+    if (!root) {
+      return null
+    }
+
+    const candidates = Array.from(root.querySelectorAll(selector))
+    const exactMatches = candidates.filter((node) => node.textContent?.trim() === text)
+
+    return (
+      exactMatches.sort((left, right) => {
+        const leftVisible = isVisible(left)
+        const rightVisible = isVisible(right)
+
+        if (leftVisible !== rightVisible) {
+          return leftVisible ? -1 : 1
+        }
+
+        return getNodeDepth(right) - getNodeDepth(left)
+      })[0] ?? null
     )
   }
 
@@ -144,7 +191,21 @@ export function resolveSnapshotEntries({
           ) ?? null
         )
       case "advancedOptionsContent":
-        return findVisibleTimezoneRow()?.parentElement ?? null
+        return findAdvancedOptionsContent()
+      case "advancedOptionsDisabledLabel":
+        return findByTextWithin(
+          findAdvancedOptionsContent(),
+          "div, span, label",
+          "Collect respondents' email addresses",
+        )
+      case "advancedOptionsSignInPrompt":
+        return findByTextWithin(
+          findAdvancedOptionsContent(),
+          "div, span",
+          "Sign in to use this feature",
+        )
+      case "advancedOptionsSignInLink":
+        return findByTextWithin(findAdvancedOptionsContent(), "a, button, span", "Sign in")
       case "timeIncrementSelect":
         return (
           findTimeIncrementLabel()?.parentElement?.querySelector(

@@ -22,6 +22,9 @@ export const newEventFormScenario = {
       text: "Advanced options",
     },
     { name: "advancedOptionsContent", kind: "advancedOptionsContent" },
+    { name: "advancedOptionsDisabledLabel", kind: "advancedOptionsDisabledLabel" },
+    { name: "advancedOptionsSignInPrompt", kind: "advancedOptionsSignInPrompt" },
+    { name: "advancedOptionsSignInLink", kind: "advancedOptionsSignInLink" },
     {
       name: "timeIncrementLabel",
       kind: "text",
