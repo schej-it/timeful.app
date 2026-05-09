@@ -1,9 +1,7 @@
 import { Temporal } from "temporal-polyfill"
 
 // Urls
-export const serverURL = import.meta.env.DEV
-  ? "http://localhost:3002/api"
-  : "/api"
+export const serverURL = "/api"
 
 // Errors enum
 export const errors = {

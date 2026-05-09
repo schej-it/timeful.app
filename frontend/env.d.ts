@@ -20,6 +20,7 @@ interface Window {
 }
 
 interface ImportMetaEnv {
+  readonly VITE_API_PROXY_TARGET?: string
   readonly VITE_POSTHOG_API_KEY: string
   readonly VITE_GOOGLE_CLIENT_ID: string
   readonly VITE_MICROSOFT_CLIENT_ID: string
