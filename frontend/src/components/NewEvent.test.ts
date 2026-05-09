@@ -227,6 +227,13 @@ describe("NewEvent", () => {
     )
   })
 
+  it("uses the shared selection palette for the date option and time increment dropdown items", () => {
+    expect(newEventSource).toContain(
+      "'time-range-select-item--active': item.raw === selectedDateOption"
+    )
+    expect(newEventSource).toContain("item.raw.value === timeIncrement")
+  })
+
   it("uses crossed-out Vuetify 3 false-icon for disabled unchecked gated checkboxes", () => {
     expect(newEventSource).toContain('false-icon="mdi-checkbox-blank-off-outline"')
     expect(newEventSource).not.toContain('off-icon="mdi-checkbox-blank-off-outline"')

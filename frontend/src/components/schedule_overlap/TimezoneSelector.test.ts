@@ -77,28 +77,6 @@ const ItemSlotRenderingVSelectStub = defineComponent({
   `,
 })
 
-const DuplicatingListItemStub = defineComponent({
-  name: "DuplicatingListItemStub",
-  props: {
-    title: {
-      type: String,
-      required: false,
-      default: undefined,
-    },
-  },
-  template: `
-    <div>
-      <div v-if="title" class="generated-title">{{ title }}</div>
-      <slot />
-    </div>
-  `,
-})
-
-const PassThroughListItemTitleStub = defineComponent({
-  name: "PassThroughListItemTitleStub",
-  template: "<div><slot /></div>",
-})
-
 const mountTimezoneSelector = (modelValue?: Timezone) =>
   shallowMount(TimezoneSelector, {
     props: {
@@ -305,8 +283,6 @@ describe("TimezoneSelector", () => {
         stubs: {
           "v-btn": true,
           "v-icon": true,
-          "v-list-item": DuplicatingListItemStub,
-          "v-list-item-title": PassThroughListItemTitleStub,
           "v-select": ItemSlotRenderingVSelectStub,
         },
       },
@@ -314,5 +290,16 @@ describe("TimezoneSelector", () => {
 
     expect(wrapper.text()).toContain("Istanbul, Minsk, Moscow")
     expect(wrapper.find(".generated-title").exists()).toBe(false)
+  })
+
+  it("uses the shared selection palette for the active timezone dropdown item", () => {
+    expect(timezoneSelectorSource).toContain("class=\"timezone-select__item\"")
+    expect(timezoneSelectorSource).toContain("'timezone-select__item--active':")
+    expect(timezoneSelectorSource).toContain(
+      ".timezone-select__item {\n  align-items: center;\n  color: rgba(0, 0, 0, 0.87);\n  cursor: pointer;\n  display: flex;\n  min-height: 48px;\n  padding: 0 16px;\n}"
+    )
+    expect(timezoneSelectorSource).toContain(
+      ".timezone-select__item--active {\n  background-color: var(--timeful-selection-bg);\n  color: var(--timeful-selection-fg);\n}"
+    )
   })
 })

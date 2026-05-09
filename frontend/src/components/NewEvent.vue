@@ -167,7 +167,19 @@
             variant="solo"
             hide-details
             class="tw-mb-4"
-          />
+          >
+            <template #item="{ item, props: itemProps }">
+              <div
+                v-bind="itemProps"
+                class="time-range-select-item"
+                :class="{
+                  'time-range-select-item--active': item.raw === selectedDateOption,
+                }"
+              >
+                {{ item.raw }}
+              </div>
+            </template>
+          </v-select>
 
           <v-expand-transition>
             <div v-if="selectedDateOption === dateOptions.SPECIFIC || daysOnly">
@@ -325,7 +337,20 @@
                   item-value="value"
                   single-line
                   variant="plain"
-                ></v-select>
+                >
+                  <template #item="{ item, props: itemProps }">
+                    <div
+                      v-bind="itemProps"
+                      class="time-range-select-item"
+                      :class="{
+                        'time-range-select-item--active':
+                          item.raw.value === timeIncrement,
+                      }"
+                    >
+                      {{ item.raw.title }}
+                    </div>
+                  </template>
+                </v-select>
               </div>
               <v-checkbox
                 v-if="authUser && !guestEvent"

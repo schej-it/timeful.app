@@ -22,11 +22,15 @@
         @update:model-value="onChangeValue"
       >
         <template #item="{ item, props: itemProps }">
-          <v-list-item v-bind="stripGeneratedTitle(itemProps)">
-            <v-list-item-title>
-              {{ item.raw.timezone.gmtString }} {{ item.raw.timezone.label }}
-            </v-list-item-title>
-          </v-list-item>
+          <div
+            v-bind="stripGeneratedTitle(itemProps)"
+            class="timezone-select__item"
+            :class="{
+              'timezone-select__item--active': item.raw.value === selectedTimezoneValue,
+            }"
+          >
+            {{ item.raw.timezone.gmtString }} {{ item.raw.timezone.label }}
+          </div>
         </template>
         <template #selection="{ item }">
           <div
@@ -447,5 +451,19 @@ watch(
 
 .timezone-select__reset-button {
   margin-inline-start: -2px;
+}
+
+.timezone-select__item {
+  align-items: center;
+  color: rgba(0, 0, 0, 0.87);
+  cursor: pointer;
+  display: flex;
+  min-height: 48px;
+  padding: 0 16px;
+}
+
+.timezone-select__item--active {
+  background-color: var(--timeful-selection-bg);
+  color: var(--timeful-selection-fg);
 }
 </style>
