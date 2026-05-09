@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 
+import { readFileSync } from "node:fs"
 import { shallowMount } from "@vue/test-utils"
 import { defineComponent, nextTick, ref } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -134,6 +135,7 @@ const VBtnStub = defineComponent({
 
 const newEventStyleBlock =
   /<style>([\s\S]*)<\/style>/.exec(newEventSource)?.[1] ?? ""
+const appCssSource = readFileSync("src/index.css", "utf8")
 
 describe("NewEvent", () => {
   beforeEach(() => {
@@ -207,11 +209,20 @@ describe("NewEvent", () => {
     ])
   })
 
-  it("renders time-range menu items with an explicit legacy active palette", () => {
+  it("defines shared semantic styling tokens at the app layer", () => {
+    expect(appCssSource).toMatch(/:root\s*\{/)
+    expect(appCssSource).toMatch(/--timeful-selection-bg:\s*#f2faf6;/)
+    expect(appCssSource).toMatch(/--timeful-selection-fg:\s*#00994c;/)
+    expect(appCssSource).toMatch(/--timeful-muted-foreground:\s*rgba\(0,\s*0,\s*0,\s*0\.6\);/)
+    expect(appCssSource).toMatch(/--timeful-disabled-foreground:\s*rgba\(0,\s*0,\s*0,\s*0\.38\);/)
+    expect(appCssSource).toMatch(/--timeful-emphasis-foreground:\s*#4f4f4f;/i)
+  })
+
+  it("renders time-range menu items with shared semantic selection tokens", () => {
     expect(newEventSource).toContain('<template #item="{ item, props: itemProps }">')
     expect(newEventSource).toContain("'time-range-select-item--active':")
     expect(newEventStyleBlock).toMatch(
-      /\.time-range-select-item--active\s*\{\s*background-color:\s*#f2faf6;\s*color:\s*#00994c;/
+      /\.time-range-select-item--active\s*\{\s*background-color:\s*var\(--timeful-selection-bg\);\s*color:\s*var\(--timeful-selection-fg\);/
     )
   })
 
@@ -291,8 +302,27 @@ describe("NewEvent", () => {
     expect(newEventStyleBlock).toMatch(
       /\.gated-feature-checkbox \.v-selection-control__input > \.v-icon\s*\{\s*opacity:\s*0\.38 !important;/
     )
+    expect(newEventStyleBlock).toMatch(
+      /\.advanced-options-disabled-label\s*\{\s*color:\s*var\(--timeful-disabled-foreground\) !important;/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.advanced-options-disabled-message\s*\{\s*color:\s*var\(--timeful-muted-foreground\) !important;/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.advanced-options-disabled-copy\s*\{\s*color:\s*var\(--timeful-emphasis-foreground\) !important;/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.advanced-options-sign-in-link\s*\{\s*color:\s*var\(--timeful-selection-fg\) !important;/
+    )
     expect(newEventStyleBlock).not.toMatch(/:deep\(/)
     expect(newEventStyleBlock).not.toMatch(/v-selection-control--disabled \.v-label/)
+  })
+
+  it("uses the shared muted-foreground token for the advanced-options panel", () => {
+    expect(newEventSource).toContain('class="advanced-options-panel tw-flex tw-flex-col tw-gap-5 tw-pt-2"')
+    expect(newEventStyleBlock).toMatch(
+      /\.advanced-options-panel\s*\{\s*color:\s*var\(--timeful-muted-foreground\);/
+    )
   })
 
   it("normalizes edit-flow time increment objects into a numeric advanced-options select value", () => {

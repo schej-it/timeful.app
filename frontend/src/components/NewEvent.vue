@@ -311,7 +311,7 @@
             :auto-scroll="dialog"
           >
             <div
-              class="advanced-options-panel tw-flex tw-flex-col tw-gap-5 tw-pt-2 tw-text-[rgba(0,0,0,0.6)]"
+              class="advanced-options-panel tw-flex tw-flex-col tw-gap-5 tw-pt-2"
             >
               <div v-if="!edit" class="tw-flex tw-items-center tw-gap-x-2">
                 <div class="tw-text-sm tw-text-black">Time increment:</div>
@@ -1109,6 +1109,7 @@ watch(
 }
 
 .advanced-options-panel {
+  color: var(--timeful-muted-foreground);
   letter-spacing: 0.1px;
   line-height: 22px;
 }
@@ -1136,11 +1137,11 @@ watch(
 }
 
 .advanced-options-disabled-label {
-  color: rgba(0, 0, 0, 0.38) !important;
+  color: var(--timeful-disabled-foreground) !important;
 }
 
 .advanced-options-disabled-message {
-  color: rgba(0, 0, 0, 0.6) !important;
+  color: var(--timeful-muted-foreground) !important;
   line-height: 16px !important;
 }
 
@@ -1153,11 +1154,11 @@ watch(
 }
 
 .advanced-options-disabled-copy {
-  color: rgb(79, 79, 79) !important;
+  color: var(--timeful-emphasis-foreground) !important;
 }
 
 .advanced-options-sign-in-link {
-  color: #00994c !important;
+  color: var(--timeful-selection-fg) !important;
   cursor: pointer;
 }
 
@@ -1257,7 +1258,7 @@ watch(
 }
 
 .time-range-select-item--active {
-  background-color: #f2faf6;
-  color: #00994c;
+  background-color: var(--timeful-selection-bg);
+  color: var(--timeful-selection-fg);
 }
 </style>
