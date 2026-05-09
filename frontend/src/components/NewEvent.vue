@@ -220,7 +220,7 @@
           v-else-if="!guestEvent"
           disabled
           messages="test"
-          off-icon="mdi-checkbox-blank-off-outline"
+          false-icon="mdi-checkbox-blank-off-outline"
           class="tw-mt-2"
         >
           <template #label>
@@ -330,7 +330,7 @@
                 disabled
                 density="compact"
                 messages="test"
-                off-icon="mdi-checkbox-blank-off-outline"
+                false-icon="mdi-checkbox-blank-off-outline"
               >
                 <template #label>
                   <span class="tw-text-sm"
@@ -372,7 +372,7 @@
                 disabled
                 density="compact"
                 messages="Only show responses to event creator. "
-                off-icon="mdi-checkbox-blank-off-outline"
+                false-icon="mdi-checkbox-blank-off-outline"
               >
                 <template #label>
                   <span class="tw-text-sm"

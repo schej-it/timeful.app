@@ -28,7 +28,9 @@
         </v-list-item>
       </template>
       <template #selection="{ item }">
-        <div class="v-select__selection v-select__selection--comma">
+        <div
+          class="timezone-select__selection-text v-select__selection v-select__selection--comma"
+        >
           {{ item.raw.timezone.gmtString }} {{ item.raw.timezone.label }}
         </div>
       </template>
@@ -391,6 +393,8 @@ watch(
 
 .compact-inline-select :deep(.v-select__selection) {
   overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 .compact-inline-select :deep(.v-field__append-inner) {

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { shallowMount } from "@vue/test-utils"
-import { defineComponent, nextTick } from "vue"
+import { defineComponent, nextTick, ref } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { durations } from "@/constants"
 import { Temporal } from "temporal-polyfill"
@@ -13,6 +13,7 @@ import {
 } from "@/test/componentStubs"
 import type * as UtilsModule from "@/utils"
 import NewEvent from "./NewEvent.vue"
+import newEventSource from "./NewEvent.vue?raw"
 
 const { postMock, putMock } = vi.hoisted(() => ({
   postMock: vi.fn(),
@@ -45,8 +46,8 @@ vi.mock("pinia", () => ({
 
 vi.mock("@/stores/main", () => ({
   useMainStore: () => ({
-    authUser: { value: null },
-    daysOnlyEnabled: { value: true },
+    authUser: ref(null),
+    daysOnlyEnabled: ref(true),
     showInfo: vi.fn(),
     showError: vi.fn(),
   }),
@@ -142,6 +143,11 @@ describe("NewEvent", () => {
       { title: "30 min", value: 30 },
       { title: "60 min", value: 60 },
     ])
+  })
+
+  it("uses Vuetify 3 false-icon for disabled unchecked advanced-option checkboxes", () => {
+    expect(newEventSource).toContain('false-icon="mdi-checkbox-blank-off-outline"')
+    expect(newEventSource).not.toContain('off-icon="mdi-checkbox-blank-off-outline"')
   })
 
   it("normalizes edit-flow time increment objects into a numeric advanced-options select value", () => {

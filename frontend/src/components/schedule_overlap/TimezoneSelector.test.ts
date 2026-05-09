@@ -32,17 +32,26 @@ const RenderingVSelectStub = defineComponent({
     },
   },
   setup(props) {
-    const renderedLabel = computed(() => {
-      const selectedItem = props.items.find(
-        (item) => item[props.itemValue] === props.modelValue
-      )
+    const selectedItem = computed(() =>
+      props.items.find((item) => item[props.itemValue] === props.modelValue)
+    )
 
-      return selectedItem?.[props.itemTitle]
+    const renderedLabel = computed(() => {
+      return selectedItem.value?.[props.itemTitle]
     })
 
-    return { renderedLabel }
+    return { renderedLabel, selectedItem }
   },
-  template: "<div>{{ renderedLabel }}</div>",
+  template: `
+    <div>
+      <slot
+        v-if="selectedItem"
+        name="selection"
+        :item="{ raw: selectedItem }"
+      />
+      <div v-else>{{ renderedLabel }}</div>
+    </div>
+  `,
 })
 
 const mountTimezoneSelector = (modelValue?: Timezone) =>
@@ -166,5 +175,32 @@ describe("TimezoneSelector", () => {
     })
 
     expect(wrapper.text()).toContain("(GMT+5:45) +05:45")
+  })
+
+  it("keeps the custom timezone selection text in the truncation class path", () => {
+    const wrapper = shallowMount(TimezoneSelector, {
+      props: {
+        modelValue: {
+          value: "Europe/Moscow",
+          label: "Istanbul, Minsk, Moscow, St. Petersburg, Volgograd",
+          gmtString: "(GMT+3:00)",
+          offset: Temporal.Duration.from({ hours: 3 }),
+        },
+      },
+      global: {
+        stubs: {
+          "v-btn": true,
+          "v-icon": true,
+          "v-list-item": true,
+          "v-list-item-title": true,
+          "v-select": RenderingVSelectStub,
+        },
+      },
+    })
+
+    const selection = wrapper.get(".timezone-select__selection-text")
+
+    expect(selection.text()).toContain("(GMT+3:00)")
+    expect(selection.text()).toContain("Istanbul, Minsk, Moscow")
   })
 })
