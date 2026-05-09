@@ -9,6 +9,7 @@ import { createLocalStorageMock } from "@/test/localStorage"
 import {
   buildEventEditorStubs,
   type ComponentStubMap,
+  vSelectStub as VSelectStub,
 } from "@/test/componentStubs"
 import type * as UtilsModule from "@/utils"
 import NewSignUp from "./NewSignUp.vue"
@@ -124,6 +125,29 @@ describe("NewSignUp", () => {
       "2026-01-03",
     ])
     expect(selectedDays.every((day) => day instanceof Temporal.PlainDate)).toBe(true)
+  })
+
+  it("uses explicit solo variants for the top-level time and date selects", () => {
+    const wrapper = shallowMount(NewSignUp, {
+      global: {
+        stubs: {
+          ...defaultStubs,
+          "v-select": VSelectStub,
+        },
+      },
+    })
+
+    const selects = wrapper.findAllComponents(VSelectStub)
+
+    expect(selects).toHaveLength(3)
+    expect(selects[0]?.props("itemColor")).toBe("green")
+    expect(selects[0]?.props("menuProps")).toEqual({ minWidth: 176, maxWidth: 176 })
+    expect(selects[0]?.props("variant")).toBe("solo")
+    expect(selects[1]?.props("itemColor")).toBe("green")
+    expect(selects[1]?.props("menuProps")).toEqual({ minWidth: 176, maxWidth: 176 })
+    expect(selects[1]?.props("variant")).toBe("solo")
+    expect(selects[2]?.props("itemColor")).toBe("green")
+    expect(selects[2]?.props("variant")).toBe("solo")
   })
 
   it("commits ISO dates emitted by DatePicker into Temporal selected days", async () => {

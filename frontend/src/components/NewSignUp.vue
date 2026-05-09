@@ -61,24 +61,28 @@
               <div class="tw-mb-2 tw-text-lg tw-text-black">
                 What times might work?
               </div>
-              <div
-                class="tw-mb-6 tw-flex tw-items-baseline tw-justify-center tw-space-x-2"
-              >
+              <div class="time-range-row tw-mb-6 tw-flex tw-justify-center tw-space-x-2">
                 <v-select
                   :model-value="startTime"
                   :items="times"
+                  class="time-range-select"
+                  item-color="green"
                   return-object
                   hide-details
-                  solo
+                  :menu-props="{ minWidth: 176, maxWidth: 176 }"
+                  variant="solo"
                   @update:model-value="(t: any) => (startTime = t.time ?? t)"
                 ></v-select>
-                <div>to</div>
+                <div class="time-range-separator">to</div>
                 <v-select
                   :model-value="endTime"
                   :items="times"
+                  class="time-range-select"
+                  item-color="green"
                   return-object
                   hide-details
-                  solo
+                  :menu-props="{ minWidth: 176, maxWidth: 176 }"
+                  variant="solo"
                   @update:model-value="(t: any) => (endTime = t.time ?? t)"
                 ></v-select>
               </div>
@@ -94,7 +98,8 @@
             v-if="!edit && !daysOnly"
             v-model="selectedDateOption"
             :items="Object.values(dateOptions)"
-            solo
+            item-color="green"
+            variant="solo"
             hide-details
             class="tw-mb-4"
           />
@@ -685,5 +690,24 @@ watch(selectedDateOption, () => {
 <style>
 .email-me-after-text-field input {
   padding: 0px !important;
+}
+
+.time-range-separator {
+  align-items: center;
+  display: flex;
+  height: var(--time-range-control-height);
+  line-height: var(--time-range-separator-line-height);
+}
+
+.time-range-row {
+  --time-range-control-height: 44px;
+  --time-range-select-width: 176px;
+  --time-range-separator-line-height: 20px;
+  align-items: center;
+}
+
+.time-range-select {
+  flex: 0 0 var(--time-range-select-width);
+  width: var(--time-range-select-width);
 }
 </style>

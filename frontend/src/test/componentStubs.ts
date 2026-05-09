@@ -56,6 +56,10 @@ export const vSelectStub = defineComponent({
       type: String,
       default: undefined,
     },
+    itemColor: {
+      type: String,
+      default: undefined,
+    },
     itemValue: {
       type: String,
       default: undefined,

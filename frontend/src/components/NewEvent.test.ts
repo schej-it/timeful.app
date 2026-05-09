@@ -152,6 +152,9 @@ describe("NewEvent", () => {
     expect(selects).toHaveLength(4)
     expect(selects[0]?.props("itemTitle")).toBe("text")
     expect(selects[0]?.props("itemValue")).toBe("value")
+    expect(selects[0]?.props("itemColor")).toBe("green")
+    expect(selects[0]?.props("menuProps")).toEqual({ minWidth: 176, maxWidth: 176 })
+    expect(selects[0]?.props("variant")).toBe("solo")
     expect(selects[0]?.props("items")).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ text: "9 am", value: 9 }),
@@ -160,6 +163,11 @@ describe("NewEvent", () => {
     )
     expect(selects[1]?.props("itemTitle")).toBe("text")
     expect(selects[1]?.props("itemValue")).toBe("value")
+    expect(selects[1]?.props("itemColor")).toBe("green")
+    expect(selects[1]?.props("menuProps")).toEqual({ minWidth: 176, maxWidth: 176 })
+    expect(selects[1]?.props("variant")).toBe("solo")
+    expect(selects[2]?.props("itemColor")).toBe("green")
+    expect(selects[2]?.props("variant")).toBe("solo")
     expect(selects[3]?.props("itemTitle")).toBe("title")
     expect(selects[3]?.props("itemValue")).toBe("value")
     expect(selects[3]?.props("variant")).toBe("plain")

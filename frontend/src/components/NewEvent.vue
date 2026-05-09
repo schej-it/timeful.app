@@ -78,28 +78,32 @@
               </div>
               <v-expand-transition>
                 <div v-if="!specificTimesEnabled">
-                  <div
-                    class="tw-mb-2 tw-flex tw-items-baseline tw-justify-center tw-space-x-2"
-                  >
+                  <div class="time-range-row tw-mb-2 tw-flex tw-justify-center tw-space-x-2">
                     <v-select
                       :model-value="startTimeNum"
                       :items="times"
+                      class="time-range-select"
+                      item-color="green"
                       item-title="text"
                       item-value="value"
                       return-object
                       hide-details
-                      solo
+                      :menu-props="{ minWidth: 176, maxWidth: 176 }"
+                      variant="solo"
                       @update:model-value="(t: any) => (startTimeNum = t.time ?? t)"
                     ></v-select>
-                    <div>to</div>
+                    <div class="time-range-separator">to</div>
                     <v-select
                       :model-value="endTimeNum"
                       :items="times"
+                      class="time-range-select"
+                      item-color="green"
                       item-title="text"
                       item-value="value"
                       return-object
                       hide-details
-                      solo
+                      :menu-props="{ minWidth: 176, maxWidth: 176 }"
+                      variant="solo"
                       @update:model-value="(t: any) => (endTimeNum = t.time ?? t)"
                     ></v-select>
                   </div>
@@ -146,7 +150,8 @@
             v-if="!edit && !daysOnly"
             v-model="selectedDateOption"
             :items="Object.values(dateOptions)"
-            solo
+            item-color="green"
+            variant="solo"
             hide-details
             class="tw-mb-4"
           />
@@ -1192,5 +1197,24 @@ watch(
 
 .compact-inline-select .v-field__outline {
   display: none;
+}
+
+.time-range-separator {
+  align-items: center;
+  display: flex;
+  height: var(--time-range-control-height);
+  line-height: var(--time-range-separator-line-height);
+}
+
+.time-range-row {
+  --time-range-control-height: 44px;
+  --time-range-select-width: 176px;
+  --time-range-separator-line-height: 20px;
+  align-items: center;
+}
+
+.time-range-select {
+  flex: 0 0 var(--time-range-select-width);
+  width: var(--time-range-select-width);
 }
 </style>
