@@ -25,8 +25,17 @@ Run commands from `./migration/comparator` from the repo root:
 - migrated app default URL: `http://127.0.0.1:4173`
 - legacy app default URL: `http://127.0.0.1:4174`
 - override URLs with `OLD_APP_URL` and `NEW_APP_URL` when local ports differ
-- start the migrated app from `../../frontend` with `npm run dev -- --host 127.0.0.1 --port 4173`
-- start the legacy app from `../timeful.app.js/frontend` with `npm run serve -- --host 127.0.0.1 --port 4174`
+- in this checkout, start the migrated app from `../frontend` with `npm run dev -- --host 127.0.0.1 --port 4173`
+- start the legacy app from `timeful.app.js/frontend` with `npm run serve -- --host 127.0.0.1 --port 4174`
+- if you launch from a different working directory, adjust those relative paths accordingly
+
+## Startup Sequence
+
+- install dependencies before first run in any package that does not already have `node_modules`
+- from the `migration/` repo root, start the migrated app with `cd ../frontend && npm run dev -- --host 127.0.0.1 --port 4173`
+- from the `migration/` repo root, start the legacy app with `cd timeful.app.js/frontend && npm run serve -- --host 127.0.0.1 --port 4174`
+- keep both servers running while invoking comparator scenarios from `migration/comparator`
+- if either app is already using a different local port, export `OLD_APP_URL` and `NEW_APP_URL` when running comparator commands
 
 Example:
 
