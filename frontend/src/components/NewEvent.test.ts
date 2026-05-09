@@ -182,7 +182,7 @@ describe("NewEvent", () => {
     expect(selects).toHaveLength(4)
     expect(selects[0]?.props("itemTitle")).toBe("text")
     expect(selects[0]?.props("itemValue")).toBe("value")
-    expect(selects[0]?.props("itemColor")).toBe("green")
+    expect(selects[0]?.props("itemColor")).toBeUndefined()
     expect(selects[0]?.props("menuProps")).toEqual({ minWidth: 176, maxWidth: 176 })
     expect(selects[0]?.props("variant")).toBe("solo")
     expect(selects[0]?.props("items")).toEqual(
@@ -193,10 +193,10 @@ describe("NewEvent", () => {
     )
     expect(selects[1]?.props("itemTitle")).toBe("text")
     expect(selects[1]?.props("itemValue")).toBe("value")
-    expect(selects[1]?.props("itemColor")).toBe("green")
+    expect(selects[1]?.props("itemColor")).toBeUndefined()
     expect(selects[1]?.props("menuProps")).toEqual({ minWidth: 176, maxWidth: 176 })
     expect(selects[1]?.props("variant")).toBe("solo")
-    expect(selects[2]?.props("itemColor")).toBe("green")
+    expect(selects[2]?.props("itemColor")).toBeUndefined()
     expect(selects[2]?.props("variant")).toBe("solo")
     expect(selects[3]?.props("itemTitle")).toBe("title")
     expect(selects[3]?.props("itemValue")).toBe("value")
@@ -213,10 +213,15 @@ describe("NewEvent", () => {
     expect(appCssSource).toMatch(/:root\s*\{/)
     expect(appCssSource).toMatch(/--timeful-selection-bg:\s*#f2faf6;/)
     expect(appCssSource).toMatch(/--timeful-selection-fg:\s*#00994c;/)
+    expect(appCssSource).toMatch(/--timeful-error-foreground:\s*#dc2626;/i)
     expect(appCssSource).toMatch(/--timeful-muted-foreground:\s*rgba\(0,\s*0,\s*0,\s*0\.6\);/)
     expect(appCssSource).toMatch(/--timeful-disabled-foreground:\s*rgba\(0,\s*0,\s*0,\s*0\.38\);/)
     expect(appCssSource).toMatch(/--timeful-disabled-checkbox-icon:\s*#aaaaaa;/i)
     expect(appCssSource).toMatch(/--timeful-emphasis-foreground:\s*#4f4f4f;/i)
+    expect(appCssSource).toMatch(/--timeful-primary-action-bg:\s*#00994c;/i)
+    expect(appCssSource).toMatch(/--timeful-primary-action-fg:\s*#ffffff;/i)
+    expect(appCssSource).toMatch(/--timeful-primary-action-disabled-bg:\s*#f3f3f3;/i)
+    expect(appCssSource).toMatch(/--timeful-primary-action-disabled-fg:\s*#4f4f4f;/i)
   })
 
   it("renders time-range menu items with shared semantic selection tokens", () => {
@@ -232,6 +237,16 @@ describe("NewEvent", () => {
       "'time-range-select-item--active': item.raw === selectedDateOption"
     )
     expect(newEventSource).toContain("item.raw.value === timeIncrement")
+  })
+
+  it("uses token-backed selected styling for day-of-week controls instead of Vuetify palette props", () => {
+    expect(newEventSource).toContain('class="new-event-dow-toggle"')
+    expect(newEventSource).toContain('getDayOfWeekButtonClass(0)')
+    expect(newEventSource).toContain('"new-event-dow-button--selected": selectedDaysOfWeek.value.includes(dayIndex)')
+    expect(newEventSource).not.toContain('color="primary"')
+    expect(newEventStyleBlock).toMatch(
+      /\.new-event-dow-button--selected\s*\{\s*background-color:\s*var\(--timeful-selection-bg\);\s*color:\s*var\(--timeful-selection-fg\);/
+    )
   })
 
   it("uses crossed-out Vuetify 3 false-icon for disabled unchecked gated checkboxes", () => {
@@ -258,17 +273,34 @@ describe("NewEvent", () => {
     const button = wrapper.get(".v-btn-stub")
     expect(button.attributes("aria-disabled")).toBe("true")
     expect(button.attributes("tabindex")).toBe("-1")
-    expect(button.classes()).not.toContain("tw-bg-green")
-    expect(button.classes()).toContain("tw-bg-light-gray")
-    expect(button.classes()).toContain("tw-text-dark-gray")
+    expect(button.classes()).toContain("new-event-submit-button")
+    expect(button.classes()).toContain("new-event-submit-button--disabled")
+    expect(button.classes()).not.toContain("new-event-submit-button--enabled")
 
     ;(wrapper.vm as unknown as { name: string }).name = "Planning sync"
     await nextTick()
 
     expect(button.attributes("aria-disabled")).toBe("false")
     expect(button.attributes("tabindex")).toBeUndefined()
-    expect(button.classes()).toContain("tw-bg-green")
-    expect(button.classes()).toContain("tw-text-white")
+    expect(button.classes()).toContain("new-event-submit-button")
+    expect(button.classes()).toContain("new-event-submit-button--enabled")
+    expect(button.classes()).not.toContain("new-event-submit-button--disabled")
+  })
+
+  it("uses semantic tokens for submit error and invalid-name state styling", () => {
+    expect(newEventSource).toContain('class="new-event-submit-error tw-mt-1 tw-text-xs"')
+    expect(newEventStyleBlock).toMatch(
+      /\.new-event-name-field--invalid \.v-field\s*\{\s*outline:\s*1px solid var\(--timeful-error-foreground\);/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.new-event-submit-error\s*\{\s*color:\s*var\(--timeful-error-foreground\);/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.new-event-submit-button--enabled\s*\{\s*background-color:\s*var\(--timeful-primary-action-bg\);\s*color:\s*var\(--timeful-primary-action-fg\);/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.new-event-submit-button--disabled\s*\{\s*background-color:\s*var\(--timeful-primary-action-disabled-bg\);\s*color:\s*var\(--timeful-primary-action-disabled-fg\);/
+    )
   })
 
   it("renders all signed-out gated helpers with the legacy-emphasis helper markup", () => {

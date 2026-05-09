@@ -70,7 +70,6 @@
                       :model-value="startTimeNum"
                       :items="times"
                       class="time-range-select"
-                      item-color="green"
                       item-title="text"
                       item-value="value"
                       return-object
@@ -97,7 +96,6 @@
                       :model-value="endTimeNum"
                       :items="times"
                       class="time-range-select"
-                      item-color="green"
                       item-title="text"
                       item-value="value"
                       return-object
@@ -163,7 +161,6 @@
             v-if="!edit && !daysOnly"
             v-model="selectedDateOption"
             :items="Object.values(dateOptions)"
-            item-color="green"
             variant="solo"
             hide-details
             class="tw-mb-4"
@@ -211,16 +208,42 @@
                   v-model="selectedDaysOfWeek"
                   multiple
                   solo
-                  color="primary"
+                  class="new-event-dow-toggle"
                 >
-                  <v-btn v-show="!startOnMonday" variant="flat"> Sun </v-btn>
-                  <v-btn variant="flat"> Mon </v-btn>
-                  <v-btn variant="flat"> Tue </v-btn>
-                  <v-btn variant="flat"> Wed </v-btn>
-                  <v-btn variant="flat"> Thu </v-btn>
-                  <v-btn variant="flat"> Fri </v-btn>
-                  <v-btn variant="flat"> Sat </v-btn>
-                  <v-btn v-show="startOnMonday" variant="flat"> Sun </v-btn>
+                  <v-btn
+                    v-show="!startOnMonday"
+                    :class="getDayOfWeekButtonClass(0)"
+                    :value="0"
+                    variant="flat"
+                  >
+                    Sun
+                  </v-btn>
+                  <v-btn :class="getDayOfWeekButtonClass(1)" :value="1" variant="flat">
+                    Mon
+                  </v-btn>
+                  <v-btn :class="getDayOfWeekButtonClass(2)" :value="2" variant="flat">
+                    Tue
+                  </v-btn>
+                  <v-btn :class="getDayOfWeekButtonClass(3)" :value="3" variant="flat">
+                    Wed
+                  </v-btn>
+                  <v-btn :class="getDayOfWeekButtonClass(4)" :value="4" variant="flat">
+                    Thu
+                  </v-btn>
+                  <v-btn :class="getDayOfWeekButtonClass(5)" :value="5" variant="flat">
+                    Fri
+                  </v-btn>
+                  <v-btn :class="getDayOfWeekButtonClass(6)" :value="6" variant="flat">
+                    Sat
+                  </v-btn>
+                  <v-btn
+                    v-show="startOnMonday"
+                    :class="getDayOfWeekButtonClass(7)"
+                    :value="7"
+                    variant="flat"
+                  >
+                    Sun
+                  </v-btn>
                 </v-btn-toggle>
               </v-input>
               <v-checkbox v-model="startOnMonday" class="tw-mt-2" hide-details>
@@ -490,8 +513,8 @@
           :loading="loading"
           :class="
             submitInvalid
-              ? 'tw-mt-4 tw-cursor-default tw-bg-light-gray tw-text-dark-gray tw-pointer-events-none'
-              : 'tw-mt-4 tw-bg-green tw-text-white'
+              ? 'new-event-submit-button new-event-submit-button--disabled tw-mt-4 tw-cursor-default tw-pointer-events-none'
+              : 'new-event-submit-button new-event-submit-button--enabled tw-mt-4'
           "
           :ripple="!submitInvalid"
           :tabindex="submitInvalid ? -1 : undefined"
@@ -503,7 +526,7 @@
         </v-btn>
         <div
           :class="showSubmitError ? 'tw-visible' : 'tw-invisible'"
-          class="tw-mt-1 tw-text-xs tw-text-red"
+          class="new-event-submit-error tw-mt-1 tw-text-xs"
         >
           Please fix form errors before continuing
         </div>
@@ -706,6 +729,10 @@ const minCalendarDate = computed(() => {
 const guestEvent = computed(
   () => props.event?.ownerId === guestUserId
 )
+const getDayOfWeekButtonClass = (dayIndex: number) => ({
+  "new-event-dow-button": true,
+  "new-event-dow-button--selected": selectedDaysOfWeek.value.includes(dayIndex),
+})
 function normalizeTimeIncrement(value: unknown): number {
   const candidate =
     typeof value === "number"
@@ -1121,8 +1148,35 @@ watch(
 }
 
 .new-event-name-field--invalid .v-field {
-  outline: red solid;
+  outline: 1px solid var(--timeful-error-foreground);
   border-radius: 3px;
+}
+
+.new-event-dow-toggle {
+  gap: 4px;
+}
+
+.new-event-dow-button {
+  color: rgba(0, 0, 0, 0.87);
+}
+
+.new-event-dow-button--selected {
+  background-color: var(--timeful-selection-bg);
+  color: var(--timeful-selection-fg);
+}
+
+.new-event-submit-button--enabled {
+  background-color: var(--timeful-primary-action-bg);
+  color: var(--timeful-primary-action-fg);
+}
+
+.new-event-submit-button--disabled {
+  background-color: var(--timeful-primary-action-disabled-bg);
+  color: var(--timeful-primary-action-disabled-fg);
+}
+
+.new-event-submit-error {
+  color: var(--timeful-error-foreground);
 }
 
 .time-increment-select {
