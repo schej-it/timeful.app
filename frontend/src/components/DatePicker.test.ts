@@ -60,6 +60,8 @@ describe("DatePicker native-Date boundary", () => {
     expect(boundaryDates[1]?.getMonth()).toBe(0)
     expect(boundaryDates[1]?.getDate()).toBe(6)
     expect(wrapper.getComponent(VDatePickerStub).props("hideHeader")).toBe(true)
+    expect(wrapper.classes()).toContain("tw-w-full")
+    expect(wrapper.getComponent(VDatePickerStub).classes()).toContain("tw-w-full")
   })
 
   it("converts native Date updates from the Vuetify boundary back to ISO strings", async () => {

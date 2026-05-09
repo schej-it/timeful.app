@@ -1,6 +1,7 @@
 <template>
   <div
     ref="datePickerEl"
+    class="tw-w-full"
     @pointerdown.capture="onPointerDown"
     @pointerover.capture="onPointerOver"
     @pointerup.capture="endDrag"
@@ -16,7 +17,7 @@
       multiple
       color="primary"
       :show-current="false"
-      class="tw-min-w-full tw-rounded-md tw-border-0 tw-drop-shadow sm:tw-min-w-0"
+      class="tw-w-full tw-min-w-full tw-rounded-md tw-border-0 tw-drop-shadow sm:tw-min-w-0"
       :min="minCalendarDate"
       :scrollable="false"
       :first-day-of-week="startCalendarOnMonday ? 1 : 0"
