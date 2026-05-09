@@ -4,36 +4,23 @@
     :class="{ 'tw-py-4': !dialog, 'tw-flex-1': dialog }"
     class="tw-relative tw-flex tw-max-w-[28rem] tw-flex-col tw-overflow-hidden tw-rounded-lg tw-transition-all"
   >
-    <v-card-title class="tw-mb-2 tw-flex tw-gap-2 tw-px-4 sm:tw-px-8">
-      <div>
-        <div class="tw-mb-1">
-          {{ edit ? "Edit group" : "New group" }}
+    <EditorDialogHeader
+      :title="edit ? 'Edit group' : 'New group'"
+      subtitle="Ideal for viewing weekly calendar availability"
+      help-header="Availability groups"
+      :dialog="dialog"
+      :show-help="showHelp"
+      :hide-dialog-actions="hideDialogActions"
+      @close="emit('update:modelValue', false)"
+    >
+      <template #help-content>
+        <div class="mb-4">
+          Use availability groups to see group members' weekly calendar
+          availabilities from Google Calendar. Your actual calendar events
+          will NOT be visible to others.
         </div>
-        <div
-          v-if="dialog && showHelp"
-          class="tw-text-xs tw-font-normal tw-italic tw-text-dark-gray"
-        >
-          Ideal for viewing weekly calendar availability
-        </div>
-      </div>
-      <v-spacer />
-      <template v-if="dialog && !hideDialogActions">
-        <v-btn v-if="showHelp" icon @click="helpDialog = true">
-          <v-icon>mdi-information-outline</v-icon>
-        </v-btn>
-        <v-btn v-else icon @click="emit('update:modelValue', false)">
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
-        <HelpDialog v-model="helpDialog">
-          <template #header>Availability groups</template>
-          <div class="mb-4">
-            Use availability groups to see group members' weekly calendar
-            availabilities from Google Calendar. Your actual calendar events
-            will NOT be visible to others.
-          </div>
-        </HelpDialog>
       </template>
-    </v-card-title>
+    </EditorDialogHeader>
     <v-card-text class="tw-flex-1 tw-overflow-auto tw-px-4 tw-py-1 sm:tw-px-8">
       <v-form
         ref="formRef"
@@ -179,7 +166,7 @@ import {
 import { useMainStore } from "@/stores/main"
 import { eventTypes, authTypes, durations, hoursPlainTime } from "@/constants"
 import { posthog } from "@/plugins/posthog"
-import HelpDialog from "./HelpDialog.vue"
+import EditorDialogHeader from "./EditorDialogHeader.vue"
 import TimezoneSelector from "./schedule_overlap/TimezoneSelector.vue"
 import EmailInput from "./event/EmailInput.vue"
 import type { Event } from "@/types"
@@ -246,7 +233,6 @@ const emails = ref<string[]>([])
 const showAdvancedOptions = ref(false)
 const timezone = ref<Timezone>({ value: "", label: "", gmtString: "", offset: durations.ZERO })
 
-const helpDialog = ref(false)
 const initialEventData = ref<{
   name: string
   startTime: Temporal.PlainTime

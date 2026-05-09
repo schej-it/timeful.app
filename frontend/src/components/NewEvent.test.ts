@@ -184,6 +184,12 @@ describe("NewEvent", () => {
     expect(newEventSource).not.toContain('off-icon="mdi-checkbox-blank-off-outline"')
   })
 
+  it("uses the shared editor header for dialog title and actions", () => {
+    expect(newEventSource).toContain("<EditorDialogHeader")
+    expect(newEventSource).toContain('help-header="Events"')
+    expect(newEventSource).toContain(`@close="emit('update:modelValue', false)"`)
+  })
+
   it("renders all signed-out gated helpers with the legacy-emphasis helper markup", () => {
     const wrapper = shallowMount(NewEvent, {
       global: {

@@ -12,8 +12,8 @@
     <UnsavedChangesDialog v-model="unsavedChangesDialog" @leave="exitDialog">
     </UnsavedChangesDialog>
     <v-card class="tw-pt-4">
-      <div class="tw-flex tw-rounded sm:-tw-mt-4 sm:tw-px-8">
-        <div v-if="!_noTabs" class="tw-pt-4">
+      <div v-if="!_noTabs" class="tw-flex tw-rounded sm:-tw-mt-4 sm:tw-px-8">
+        <div class="tw-pt-4">
           <v-btn
             v-for="t in tabs"
             :key="t.type"
@@ -30,9 +30,10 @@
         </div>
         <v-spacer />
         <v-btn
-          absolute
           icon
-          class="tw-right-0 tw-mr-2 tw-self-center"
+          variant="text"
+          size="small"
+          class="tw-mr-2 tw-self-center"
           @click="handleDialogInput"
         >
           <v-icon>mdi-close</v-icon>
@@ -49,7 +50,7 @@
         :contacts-payload="type == 'event' ? contactsPayload : {}"
         :show-help="!_noTabs"
         :folder-id="folderId"
-        hide-dialog-actions
+        :hide-dialog-actions="!_noTabs"
         @update:model-value="handleDialogInput"
         @sign-in="emit('signIn')"
       />
@@ -61,7 +62,7 @@
         :edit="edit"
         :show-help="!_noTabs"
         :folder-id="folderId"
-        hide-dialog-actions
+        :hide-dialog-actions="!_noTabs"
         :contacts-payload="type == 'group' ? contactsPayload : {}"
         @update:model-value="handleDialogInput"
       />
@@ -73,7 +74,7 @@
         :edit="edit"
         :show-help="!_noTabs"
         :folder-id="folderId"
-        hide-dialog-actions
+        :hide-dialog-actions="!_noTabs"
         :contacts-payload="type == 'signup' ? contactsPayload : {}"
         @update:model-value="handleDialogInput"
       />

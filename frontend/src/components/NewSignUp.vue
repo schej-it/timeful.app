@@ -4,35 +4,22 @@
     :class="{ 'tw-py-4': !dialog, 'tw-flex-1': dialog }"
     class="tw-relative tw-flex tw-max-w-[28rem] tw-flex-col tw-overflow-hidden tw-rounded-lg tw-transition-all"
   >
-    <v-card-title class="tw-mb-2 tw-flex tw-gap-2 tw-px-4 sm:tw-px-8">
-      <div>
-        <div class="tw-mb-1">
-          {{ edit ? "Edit sign up" : "New sign up" }}
+    <EditorDialogHeader
+      :title="edit ? 'Edit sign up' : 'New sign up'"
+      subtitle="Ideal for events with sign up slots"
+      help-header="Events"
+      :dialog="dialog"
+      :show-help="showHelp"
+      :hide-dialog-actions="hideDialogActions"
+      @close="emit('update:modelValue', false)"
+    >
+      <template #help-content>
+        <div class="tw-mb-4">
+          Use events to collect people's availabilities and compare them
+          across certain days.
         </div>
-        <div
-          v-if="dialog && showHelp"
-          class="tw-text-xs tw-font-normal tw-italic tw-text-dark-gray"
-        >
-          Ideal for events with sign up slots
-        </div>
-      </div>
-      <v-spacer />
-      <template v-if="dialog && !hideDialogActions">
-        <v-btn v-if="showHelp" icon @click="helpDialog = true">
-          <v-icon>mdi-information-outline</v-icon>
-        </v-btn>
-        <v-btn v-else icon @click="emit('update:modelValue', false)">
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
-        <HelpDialog v-model="helpDialog">
-          <template #header>Events</template>
-          <div class="tw-mb-4">
-            Use events to collect people's availabilities and compare them
-            across certain days.
-          </div>
-        </HelpDialog>
       </template>
-    </v-card-title>
+    </EditorDialogHeader>
     <v-card-text
       ref="cardText"
       class="tw-relative tw-flex-1 tw-overflow-auto tw-px-4 tw-py-1 sm:tw-px-8"
@@ -279,7 +266,7 @@ import {
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import TimezoneSelector from "./schedule_overlap/TimezoneSelector.vue"
-import HelpDialog from "./HelpDialog.vue"
+import EditorDialogHeader from "./EditorDialogHeader.vue"
 import DatePicker from "@/components/DatePicker.vue"
 import OverflowGradient from "@/components/OverflowGradient.vue"
 import ExpandableSection from "./ExpandableSection.vue"
@@ -368,8 +355,6 @@ const blindAvailabilityEnabled = ref(false)
 const timezone = ref<Timezone>({ value: "", label: "", gmtString: "", offset: durations.ZERO })
 const sendEmailAfterXResponsesEnabled = ref(false)
 const sendEmailAfterXResponses = ref(3)
-
-const helpDialog = ref(false)
 
 const initialEventData = ref<Record<string, unknown>>({})
 
