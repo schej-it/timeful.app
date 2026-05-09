@@ -207,6 +207,14 @@ describe("NewEvent", () => {
     ])
   })
 
+  it("renders time-range menu items with an explicit legacy active palette", () => {
+    expect(newEventSource).toContain('<template #item="{ item, props: itemProps }">')
+    expect(newEventSource).toContain("'time-range-select-item--active':")
+    expect(newEventStyleBlock).toMatch(
+      /\.time-range-select-item--active\s*\{\s*background-color:\s*#f2faf6;\s*color:\s*#00994c;/
+    )
+  })
+
   it("uses Vuetify 3 false-icon for disabled unchecked advanced-option checkboxes", () => {
     expect(newEventSource).toContain('false-icon="mdi-checkbox-blank-off-outline"')
     expect(newEventSource).not.toContain('off-icon="mdi-checkbox-blank-off-outline"')

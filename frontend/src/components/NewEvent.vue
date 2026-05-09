@@ -78,7 +78,20 @@
                       :menu-props="{ minWidth: 176, maxWidth: 176 }"
                       variant="solo"
                       @update:model-value="(t: any) => (startTimeNum = t.time ?? t)"
-                    ></v-select>
+                    >
+                      <template #item="{ item, props: itemProps }">
+                        <div
+                          v-bind="itemProps"
+                          class="time-range-select-item"
+                          :class="{
+                            'time-range-select-item--active':
+                              item.raw.value === startTimeNum,
+                          }"
+                        >
+                          {{ item.raw.text }}
+                        </div>
+                      </template>
+                    </v-select>
                     <div class="time-range-separator">to</div>
                     <v-select
                       :model-value="endTimeNum"
@@ -92,7 +105,20 @@
                       :menu-props="{ minWidth: 176, maxWidth: 176 }"
                       variant="solo"
                       @update:model-value="(t: any) => (endTimeNum = t.time ?? t)"
-                    ></v-select>
+                    >
+                      <template #item="{ item, props: itemProps }">
+                        <div
+                          v-bind="itemProps"
+                          class="time-range-select-item"
+                          :class="{
+                            'time-range-select-item--active':
+                              item.raw.value === endTimeNum,
+                          }"
+                        >
+                          {{ item.raw.text }}
+                        </div>
+                      </template>
+                    </v-select>
                   </div>
                 </div>
               </v-expand-transition>
@@ -1219,5 +1245,19 @@ watch(
 .time-range-select {
   flex: 0 0 var(--time-range-select-width);
   width: var(--time-range-select-width);
+}
+
+.time-range-select-item {
+  align-items: center;
+  color: rgba(0, 0, 0, 0.87);
+  cursor: pointer;
+  display: flex;
+  min-height: 48px;
+  padding: 0 16px;
+}
+
+.time-range-select-item--active {
+  background-color: #f2faf6;
+  color: #00994c;
 }
 </style>
