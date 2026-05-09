@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { shallowMount } from "@vue/test-utils"
-import { defineComponent, nextTick, ref } from "vue"
+import { nextTick, ref } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { durations } from "@/constants"
 import { Temporal } from "temporal-polyfill"
@@ -69,7 +69,7 @@ const formRefMethods = {
 
 const defaultStubs: ComponentStubMap = buildEventEditorStubs(formRefMethods)
 
-const DatePickerModelStub = defineComponent({
+const DatePickerModelStub = {
   name: "DatePicker",
   props: {
     modelValue: {
@@ -79,7 +79,33 @@ const DatePickerModelStub = defineComponent({
   },
   emits: ["update:modelValue"],
   template: "<div />",
-})
+}
+
+const VCheckboxSlotStub = {
+  name: "VCheckbox",
+  inheritAttrs: false,
+  props: {
+    class: {
+      type: [String, Array, Object],
+      default: undefined,
+    },
+    messages: {
+      type: String,
+      default: "",
+    },
+  },
+  template: `
+    <div class="v-checkbox-stub" :class="$props.class">
+      <div class="v-checkbox-stub__label"><slot name="label" /></div>
+      <div class="v-checkbox-stub__message">
+        <slot name="message" :message="messages" />
+      </div>
+    </div>
+  `,
+}
+
+const newEventStyleBlock =
+  /<style>([\s\S]*)<\/style>/.exec(newEventSource)?.[1] ?? ""
 
 describe("NewEvent", () => {
   beforeEach(() => {
@@ -150,6 +176,49 @@ describe("NewEvent", () => {
     expect(newEventSource).not.toContain('off-icon="mdi-checkbox-blank-off-outline"')
   })
 
+  it("renders all signed-out gated helpers with the legacy-emphasis helper markup", () => {
+    const wrapper = shallowMount(NewEvent, {
+      global: {
+        stubs: {
+          ...defaultStubs,
+          "v-checkbox": VCheckboxSlotStub,
+        },
+      },
+    })
+
+    expect(wrapper.findAll(".gated-feature-checkbox")).toHaveLength(3)
+    expect(wrapper.findAll(".advanced-options-disabled-label")).toHaveLength(3)
+    expect(wrapper.findAll(".advanced-options-disabled-message")).toHaveLength(3)
+    expect(wrapper.findAll(".advanced-options-disabled-copy")).toHaveLength(3)
+    expect(wrapper.findAll(".advanced-options-sign-in-link")).toHaveLength(3)
+  })
+
+  it("keeps disabled helper text at full opacity without restoring the checkbox icon", () => {
+    expect(newEventStyleBlock).toMatch(
+      /\.gated-feature-checkbox\s*\{\s*--v-disabled-opacity:\s*1;/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.gated-feature-checkbox\.v-input--disabled\s*\{\s*opacity:\s*1 !important;/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.gated-feature-checkbox \.v-selection-control--disabled\s*\{\s*opacity:\s*1 !important;/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.gated-feature-checkbox \.v-input__details,\s*\.gated-feature-checkbox \.v-messages,\s*\.gated-feature-checkbox \.v-messages__message\s*\{\s*opacity:\s*1 !important;/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.gated-feature-checkbox\.v-input--density-default \.advanced-options-disabled-message\s*\{\s*margin-left:\s*40px !important;/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.gated-feature-checkbox\.v-input--density-compact \.advanced-options-disabled-message\s*\{\s*margin-left:\s*28px !important;/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.gated-feature-checkbox \.v-selection-control__input > \.v-icon\s*\{\s*opacity:\s*0\.38 !important;/
+    )
+    expect(newEventStyleBlock).not.toMatch(/:deep\(/)
+    expect(newEventStyleBlock).not.toMatch(/v-selection-control--disabled \.v-label/)
+  })
+
   it("normalizes edit-flow time increment objects into a numeric advanced-options select value", () => {
     const wrapper = shallowMount(NewEvent, {
       props: {
@@ -191,9 +260,11 @@ describe("NewEvent", () => {
       },
     })
 
-    wrapper
-      .getComponent(DatePickerModelStub)
-      .vm.$emit("update:modelValue", ["2026-05-15"])
+    const datePicker = wrapper.getComponent(DatePickerModelStub)
+    ;(datePicker.vm as { $emit: (event: string, payload: string[]) => void }).$emit(
+      "update:modelValue",
+      ["2026-05-15"]
+    )
     await nextTick()
 
     const selectedDays = (wrapper.vm as unknown as {

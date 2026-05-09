@@ -218,22 +218,25 @@
         </v-checkbox>
         <v-checkbox
           v-else-if="!guestEvent"
+          class="gated-feature-checkbox tw-mt-2"
           disabled
           messages="test"
           false-icon="mdi-checkbox-blank-off-outline"
-          class="tw-mt-2"
         >
           <template #label>
-            <span class="tw-text-sm"
+            <span class="advanced-options-disabled-label tw-text-sm"
               >Email me each time someone joins my event</span
             >
           </template>
           <template #message>
             <div
-              class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
+              class="advanced-options-disabled-message tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
             >
-              <span class="tw-font-medium tw-text-very-dark-gray"
-                ><a @click="emit('signIn')">Sign in</a>
+              <span
+                class="advanced-options-disabled-copy tw-font-medium tw-text-very-dark-gray"
+                ><a class="advanced-options-sign-in-link" @click="emit('signIn')"
+                  >Sign in</a
+                >
                 to use this feature
               </span>
             </div>
@@ -290,7 +293,7 @@
             :auto-scroll="dialog"
           >
             <div
-              class="advanced-options-panel tw-flex tw-flex-col tw-gap-3 tw-pt-2 tw-text-[rgba(0,0,0,0.6)]"
+              class="advanced-options-panel tw-flex tw-flex-col tw-gap-5 tw-pt-2 tw-text-[rgba(0,0,0,0.6)]"
             >
               <div v-if="!edit" class="tw-flex tw-items-center tw-gap-x-2">
                 <div class="tw-text-sm tw-text-black">Time increment:</div>
@@ -327,22 +330,26 @@
               </v-checkbox>
               <v-checkbox
                 v-else-if="!guestEvent"
+                class="gated-feature-checkbox"
                 disabled
                 density="compact"
                 messages="test"
                 false-icon="mdi-checkbox-blank-off-outline"
               >
                 <template #label>
-                  <span class="tw-text-sm"
+                  <span class="advanced-options-disabled-label tw-text-sm"
                     >Collect respondents' email addresses</span
                   >
                 </template>
                 <template #message>
                   <div
-                    class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
+                    class="advanced-options-disabled-message tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
                   >
-                    <span class="tw-font-medium tw-text-very-dark-gray"
-                      ><a @click="emit('signIn')">Sign in</a>
+                    <span
+                      class="advanced-options-disabled-copy tw-font-medium tw-text-very-dark-gray"
+                      ><a class="advanced-options-sign-in-link" @click="emit('signIn')"
+                        >Sign in</a
+                      >
                       to use this feature
                     </span>
                   </div>
@@ -369,23 +376,27 @@
               </v-checkbox>
               <v-checkbox
                 v-else-if="!guestEvent"
+                class="gated-feature-checkbox"
                 disabled
                 density="compact"
                 messages="Only show responses to event creator. "
                 false-icon="mdi-checkbox-blank-off-outline"
               >
                 <template #label>
-                  <span class="tw-text-sm"
+                  <span class="advanced-options-disabled-label tw-text-sm"
                     >Hide responses from respondents</span
                   >
                 </template>
                 <template #message="{ message }">
                   <div
-                    class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
+                    class="advanced-options-disabled-message tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
                   >
                     {{ message }}
-                    <span class="tw-font-medium tw-text-very-dark-gray"
-                      ><a @click="emit('signIn')">Sign in</a>
+                    <span
+                      class="advanced-options-disabled-copy tw-font-medium tw-text-very-dark-gray"
+                      ><a class="advanced-options-sign-in-link" @click="emit('signIn')"
+                        >Sign in</a
+                      >
                       to use this feature
                     </span>
                   </div>
@@ -1066,6 +1077,54 @@ watch(
 .advanced-options-panel {
   letter-spacing: 0.1px;
   line-height: 22px;
+}
+
+.gated-feature-checkbox .v-selection-control--disabled {
+  opacity: 1 !important;
+}
+
+.gated-feature-checkbox {
+  --v-disabled-opacity: 1;
+}
+
+.gated-feature-checkbox.v-input--disabled {
+  opacity: 1 !important;
+}
+
+.gated-feature-checkbox .v-selection-control__input > .v-icon {
+  opacity: 0.38 !important;
+}
+
+.gated-feature-checkbox .v-input__details,
+.gated-feature-checkbox .v-messages,
+.gated-feature-checkbox .v-messages__message {
+  opacity: 1 !important;
+}
+
+.advanced-options-disabled-label {
+  color: rgba(0, 0, 0, 0.38) !important;
+}
+
+.advanced-options-disabled-message {
+  color: rgba(0, 0, 0, 0.6) !important;
+  line-height: 16px !important;
+}
+
+.gated-feature-checkbox.v-input--density-default .advanced-options-disabled-message {
+  margin-left: 40px !important;
+}
+
+.gated-feature-checkbox.v-input--density-compact .advanced-options-disabled-message {
+  margin-left: 28px !important;
+}
+
+.advanced-options-disabled-copy {
+  color: rgb(79, 79, 79) !important;
+}
+
+.advanced-options-sign-in-link {
+  color: #00994c !important;
+  cursor: pointer;
 }
 
 .compact-inline-select,
