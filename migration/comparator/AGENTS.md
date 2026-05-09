@@ -48,6 +48,20 @@ Example:
 - keep selector discovery, page preparation, and diff collection inside the shared comparator flow
 - preserve existing behavior for current scenarios unless the change is intentional and verified
 
+## Comparator Flow
+
+- when comparator output and the browser disagree, inspect the live migrated DOM and computed styles before changing selectors again
+- prefer explaining parity decisions with comparator output first, then use live DOM inspection to resolve cases the diff does not explain cleanly
+- after a style-only parity fix, refresh the running migrated app and re-check the exact scenario state before assuming the change took effect
+
+## Styling Checks
+
+- keep these checks scoped to comparator-driven styling parity work; they are not a blanket frontend styling policy
+- for Vuetify disabled-state parity work, verify wrapper opacity on rendered ancestors such as `.v-input`, `.v-input__details`, `.v-messages`, and `.v-selection-control`, not just the leaf helper text node
+- in non-scoped Vue style blocks, prefer plain selectors over `:deep(...)` for framework wrapper overrides
+- use `:deep(...)` only when scoped styles actually need to cross component boundaries
+- confirm the final selector matches the rendered class structure in the browser
+
 ## Maintenance
 
 - keep this package TypeScript-based
