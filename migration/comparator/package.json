@@ -1,0 +1,21 @@
+{
+  "name": "timeful-comparator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compare": "node --import tsx ./src/compare.ts",
+    "compare:landing-styles": "node --import tsx ./src/compare.ts --target landing",
+    "compare:new-event-form-styles": "node --import tsx ./src/compare.ts --target new-event-form",
+    "compare:new-event-calendar-styles": "node --import tsx ./src/compare.ts --target new-event-calendar",
+    "compare:new-event-calendar-interaction": "node --import tsx ./src/compare.ts --target new-event-calendar-interaction",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.59.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
