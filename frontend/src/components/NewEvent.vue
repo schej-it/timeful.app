@@ -432,19 +432,26 @@
     <v-card-actions class="tw-relative tw-px-4 sm:tw-px-8">
       <div class="tw-relative tw-w-full">
         <v-btn
-          :disabled="!formValid"
+          :disabled="loading"
+          :aria-disabled="submitInvalid"
           block
+          variant="flat"
           :loading="loading"
-          color="primary"
-          class="tw-mt-4 tw-bg-green"
-          @click="submit"
+          :class="
+            submitInvalid
+              ? 'tw-mt-4 tw-cursor-default tw-bg-light-gray tw-text-dark-gray tw-pointer-events-none'
+              : 'tw-mt-4 tw-bg-green tw-text-white'
+          "
+          :ripple="!submitInvalid"
+          :tabindex="submitInvalid ? -1 : undefined"
+          @click="submitIfAllowed"
         >
           {{
             specificTimesEnabled ? "Next" : edit ? "Save edits" : "Create event"
           }}
         </v-btn>
         <div
-          :class="formValid ? 'tw-invisible' : 'tw-visible'"
+          :class="showSubmitError ? 'tw-visible' : 'tw-invisible'"
           class="tw-mt-1 tw-text-xs tw-text-red"
         >
           Please fix form errors before continuing
@@ -609,6 +616,11 @@ const hasMounted = ref(false)
 const nameRules = computed(() => [
   (v: string) => !!v || "Event name is required",
 ])
+const hasName = computed(() => !!name.value.trim())
+const submitInvalid = computed(() => !formValid.value || !hasName.value)
+const showSubmitError = computed(
+  () => !loading.value && submitInvalid.value
+)
 const showNameFieldError = computed(
   () => !name.value.trim() && hasBlurredNameField.value && !isNameFieldFocused.value
 )
@@ -880,6 +892,11 @@ const submit = async () => {
         loading.value = false
       })
   }
+}
+
+function submitIfAllowed() {
+  if (loading.value || submitInvalid.value) return
+  void submit()
 }
 
 const toggleEmailReminders = (delayed = false) => {

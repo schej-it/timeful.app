@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { shallowMount } from "@vue/test-utils"
-import { nextTick, ref } from "vue"
+import { defineComponent, nextTick, ref } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { durations } from "@/constants"
 import { Temporal } from "temporal-polyfill"
@@ -104,6 +104,34 @@ const VCheckboxSlotStub = {
   `,
 }
 
+const VBtnStub = defineComponent({
+  name: "VBtn",
+  props: {
+    class: {
+      type: [String, Array, Object],
+      default: undefined,
+    },
+    color: {
+      type: String,
+      default: undefined,
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  template: `
+    <button
+      class="v-btn-stub"
+      :class="$props.class"
+      :data-color="color"
+      :disabled="disabled"
+    >
+      <slot />
+    </button>
+  `,
+})
+
 const newEventStyleBlock =
   /<style>([\s\S]*)<\/style>/.exec(newEventSource)?.[1] ?? ""
 
@@ -188,6 +216,32 @@ describe("NewEvent", () => {
     expect(newEventSource).toContain("<EditorDialogHeader")
     expect(newEventSource).toContain('help-header="Events"')
     expect(newEventSource).toContain(`@close="emit('update:modelValue', false)"`)
+  })
+
+  it("keeps the create button disabled and grey until the event name is entered", async () => {
+    const wrapper = shallowMount(NewEvent, {
+      global: {
+        stubs: {
+          ...defaultStubs,
+          "v-btn": VBtnStub,
+        },
+      },
+    })
+
+    const button = wrapper.get(".v-btn-stub")
+    expect(button.attributes("aria-disabled")).toBe("true")
+    expect(button.attributes("tabindex")).toBe("-1")
+    expect(button.classes()).not.toContain("tw-bg-green")
+    expect(button.classes()).toContain("tw-bg-light-gray")
+    expect(button.classes()).toContain("tw-text-dark-gray")
+
+    ;(wrapper.vm as unknown as { name: string }).name = "Planning sync"
+    await nextTick()
+
+    expect(button.attributes("aria-disabled")).toBe("false")
+    expect(button.attributes("tabindex")).toBeUndefined()
+    expect(button.classes()).toContain("tw-bg-green")
+    expect(button.classes()).toContain("tw-text-white")
   })
 
   it("renders all signed-out gated helpers with the legacy-emphasis helper markup", () => {
