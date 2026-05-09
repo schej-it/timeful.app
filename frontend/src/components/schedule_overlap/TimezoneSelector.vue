@@ -21,7 +21,7 @@
       @update:model-value="onChangeValue"
     >
       <template #item="{ item, props: itemProps }">
-        <v-list-item v-bind="itemProps">
+        <v-list-item v-bind="stripGeneratedTitle(itemProps)">
           <v-list-item-title>
             {{ item.raw.timezone.gmtString }} {{ item.raw.timezone.label }}
           </v-list-item-title>
@@ -126,6 +126,13 @@ function toTimezoneSelectItem(timezone: Timezone): TimezoneSelectItem {
     value: normalizedTimezone.value,
     timezone: normalizedTimezone,
   }
+}
+
+function stripGeneratedTitle(
+  itemProps: Record<string, unknown>
+): Record<string, unknown> {
+  const { title: _title, ...rest } = itemProps
+  return rest
 }
 
 const timezones = computed<Timezone[]>(() => {

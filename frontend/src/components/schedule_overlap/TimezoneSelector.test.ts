@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+/* eslint-disable vue/one-component-per-file */
 
 import { shallowMount } from "@vue/test-utils"
 import { computed, defineComponent, type PropType } from "vue"
@@ -52,6 +53,49 @@ const RenderingVSelectStub = defineComponent({
       <div v-else>{{ renderedLabel }}</div>
     </div>
   `,
+})
+
+const ItemSlotRenderingVSelectStub = defineComponent({
+  name: "ItemSlotRenderingVSelectStub",
+  props: {
+    items: {
+      type: Array as PropType<Record<string, unknown>[]>,
+      default: () => [],
+    },
+  },
+  template: `
+    <div>
+      <slot
+        v-for="item in items"
+        :key="String(item.value)"
+        name="item"
+        :item="{ raw: item }"
+        :props="{ title: item.title, value: item.value }"
+      />
+    </div>
+  `,
+})
+
+const DuplicatingListItemStub = defineComponent({
+  name: "DuplicatingListItemStub",
+  props: {
+    title: {
+      type: String,
+      required: false,
+      default: undefined,
+    },
+  },
+  template: `
+    <div>
+      <div v-if="title" class="generated-title">{{ title }}</div>
+      <slot />
+    </div>
+  `,
+})
+
+const PassThroughListItemTitleStub = defineComponent({
+  name: "PassThroughListItemTitleStub",
+  template: "<div><slot /></div>",
 })
 
 const mountTimezoneSelector = (modelValue?: Timezone) =>
@@ -202,5 +246,30 @@ describe("TimezoneSelector", () => {
 
     expect(selection.text()).toContain("(GMT+3:00)")
     expect(selection.text()).toContain("Istanbul, Minsk, Moscow")
+  })
+
+  it("does not render duplicate timezone item titles when using a custom item slot", () => {
+    const wrapper = shallowMount(TimezoneSelector, {
+      props: {
+        modelValue: {
+          value: "Europe/Moscow",
+          label: "Istanbul, Minsk, Moscow, St. Petersburg, Volgograd",
+          gmtString: "(GMT+3:00)",
+          offset: Temporal.Duration.from({ hours: 3 }),
+        },
+      },
+      global: {
+        stubs: {
+          "v-btn": true,
+          "v-icon": true,
+          "v-list-item": DuplicatingListItemStub,
+          "v-list-item-title": PassThroughListItemTitleStub,
+          "v-select": ItemSlotRenderingVSelectStub,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain("Istanbul, Minsk, Moscow")
+    expect(wrapper.find(".generated-title").exists()).toBe(false)
   })
 })
