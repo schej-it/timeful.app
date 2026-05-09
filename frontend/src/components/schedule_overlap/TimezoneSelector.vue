@@ -2,42 +2,53 @@
 <template>
   <div
     id="timezone-select-container"
-    class="tw-flex tw-items-center tw-justify-center tw-text-[rgba(0,0,0,0.6)]"
+    class="tw-flex tw-min-w-0 tw-items-center tw-justify-center tw-text-[rgba(0,0,0,0.6)]"
   >
     <div :class="`tw-mr-2 tw-mt-px ${labelColor}`">{{ label }}</div>
-    <v-select
-      id="timezone-select"
-      :model-value="selectedTimezoneValue"
-      :items="visibleTimezoneItems"
-      class="compact-inline-select tw-z-20 -tw-mt-px tw-w-52 tw-text-sm tw-text-black"
-      color="#219653"
-      density="compact"
-      item-color="green"
-      hide-details
-      item-title="title"
-      item-value="value"
-      single-line
-      variant="plain"
-      @update:model-value="onChangeValue"
-    >
-      <template #item="{ item, props: itemProps }">
-        <v-list-item v-bind="stripGeneratedTitle(itemProps)">
-          <v-list-item-title>
+    <div class="timezone-select__field-row tw-flex tw-min-w-0 tw-items-center">
+      <v-select
+        id="timezone-select"
+        :model-value="selectedTimezoneValue"
+        :items="visibleTimezoneItems"
+        class="compact-inline-select tw-z-20 -tw-mt-px tw-w-64 tw-min-w-0 tw-text-sm tw-text-black"
+        color="#219653"
+        density="compact"
+        item-color="green"
+        hide-details
+        item-title="title"
+        item-value="value"
+        single-line
+        variant="underlined"
+        @update:model-value="onChangeValue"
+      >
+        <template #item="{ item, props: itemProps }">
+          <v-list-item v-bind="stripGeneratedTitle(itemProps)">
+            <v-list-item-title>
+              {{ item.raw.timezone.gmtString }} {{ item.raw.timezone.label }}
+            </v-list-item-title>
+          </v-list-item>
+        </template>
+        <template #selection="{ item }">
+          <div
+            class="timezone-select__selection-text v-select__selection v-select__selection--comma"
+          >
             {{ item.raw.timezone.gmtString }} {{ item.raw.timezone.label }}
-          </v-list-item-title>
-        </v-list-item>
-      </template>
-      <template #selection="{ item }">
-        <div
-          class="timezone-select__selection-text v-select__selection v-select__selection--comma"
-        >
-          {{ item.raw.timezone.gmtString }} {{ item.raw.timezone.label }}
-        </div>
-      </template>
-    </v-select>
-    <v-btn v-if="timezoneModified" icon color="primary" @click="resetTimezone"
-      ><v-icon>mdi-refresh</v-icon></v-btn
-    >
+          </div>
+        </template>
+      </v-select>
+      <v-btn
+        v-if="timezoneModified"
+        icon
+        color="primary"
+        variant="text"
+        class="timezone-select__reset-button"
+        @mousedown.stop.prevent
+        @pointerdown.stop.prevent
+        @click.stop="resetTimezone"
+      >
+        <v-icon>mdi-refresh</v-icon>
+      </v-btn>
+    </div>
   </div>
 </template>
 
@@ -356,6 +367,7 @@ watch(
   --v-field-padding-bottom: 0px;
   --v-field-padding-start: 0px;
   --v-field-padding-end: 0px;
+  min-width: 0;
 }
 
 .compact-inline-select,
@@ -368,30 +380,24 @@ watch(
   letter-spacing: normal !important;
 }
 
+.compact-inline-select:deep(.v-input),
+.compact-inline-select :deep(.v-input),
+.compact-inline-select :deep(.v-field),
+.compact-inline-select :deep(.v-field__field),
+.compact-inline-select :deep(.v-select__selection),
+.compact-inline-select :deep(.v-select__selection-text) {
+  min-width: 0 !important;
+}
+
 .compact-inline-select :deep(.v-field) {
   background: transparent;
   border: 0;
   border-radius: 0;
-  align-items: center !important;
-  display: flex !important;
-  height: 26px !important;
-  min-height: 26px !important;
-}
-
-.compact-inline-select :deep(.v-input__control),
-.compact-inline-select :deep(.v-field__field) {
-  align-items: center !important;
-  display: flex !important;
-  height: 26px !important;
-  min-height: 26px !important;
 }
 
 .compact-inline-select :deep(.v-field__input) {
-  align-items: center !important;
-  display: flex !important;
   flex-wrap: nowrap !important;
-  height: 26px !important;
-  min-height: 26px;
+  min-width: 0 !important;
   overflow: hidden !important;
   padding-inline: 0 !important;
   padding-bottom: 0;
@@ -399,6 +405,9 @@ watch(
 }
 
 .compact-inline-select :deep(.v-select__selection) {
+  display: block !important;
+  flex: 1 1 0% !important;
+  max-width: 100% !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
@@ -406,13 +415,18 @@ watch(
 
 .compact-inline-select :deep(.v-field__append-inner) {
   align-items: center !important;
+  align-self: center !important;
+  display: flex !important;
   height: 26px !important;
   min-height: 26px !important;
+  padding-inline-start: 4px !important;
   padding-bottom: 0 !important;
   padding-top: 0 !important;
 }
 
 .compact-inline-select :deep(.v-select__selection-text) {
+  display: block !important;
+  max-width: 100% !important;
   line-height: 22px !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
@@ -423,7 +437,15 @@ watch(
   opacity: 0;
 }
 
-.compact-inline-select :deep(.v-field__outline) {
-  display: none;
+.compact-inline-select :deep(.v-select__menu-icon) {
+  order: 1;
+}
+
+.timezone-select__field-row {
+  gap: 2px;
+}
+
+.timezone-select__reset-button {
+  margin-inline-start: -2px;
 }
 </style>

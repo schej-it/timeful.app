@@ -304,7 +304,7 @@
                 <div class="tw-text-sm tw-text-black">Time increment:</div>
                 <v-select
                   v-model="timeIncrement"
-                  class="compact-inline-select -tw-mt-[2px] tw-w-24 tw-grow-0 tw-text-sm tw-text-black"
+                  class="time-increment-select -tw-mt-[2px] tw-w-24 tw-grow-0 tw-text-sm tw-text-black"
                   density="compact"
                   hide-details
                   :items="timeIncrementItems"
@@ -1071,7 +1071,7 @@ watch(
   border-radius: 3px;
 }
 
-.compact-inline-select {
+.time-increment-select {
   --v-input-control-height: 26px;
   --v-field-padding-top: 0px;
   --v-field-padding-bottom: 0px;
@@ -1132,17 +1132,17 @@ watch(
   cursor: pointer;
 }
 
-.compact-inline-select,
-.compact-inline-select.v-input,
-.compact-inline-select .v-input,
-.compact-inline-select .v-field,
-.compact-inline-select .v-field__input,
-.compact-inline-select .v-select__selection,
-.compact-inline-select .v-select__selection-text {
+.time-increment-select,
+.time-increment-select.v-input,
+.time-increment-select .v-input,
+.time-increment-select .v-field,
+.time-increment-select .v-field__input,
+.time-increment-select .v-select__selection,
+.time-increment-select .v-select__selection-text {
   letter-spacing: normal !important;
 }
 
-.compact-inline-select .v-field {
+.time-increment-select .v-field {
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -1152,15 +1152,15 @@ watch(
   min-height: 26px !important;
 }
 
-.compact-inline-select .v-input__control,
-.compact-inline-select .v-field__field {
+.time-increment-select .v-input__control,
+.time-increment-select .v-field__field {
   align-items: center !important;
   display: flex !important;
   height: 26px !important;
   min-height: 26px !important;
 }
 
-.compact-inline-select .v-field__input {
+.time-increment-select .v-field__input {
   align-items: center !important;
   display: flex !important;
   flex-wrap: nowrap !important;
@@ -1172,11 +1172,11 @@ watch(
   padding-top: 0px;
 }
 
-.compact-inline-select .v-select__selection {
+.time-increment-select .v-select__selection {
   overflow: hidden !important;
 }
 
-.compact-inline-select .v-field__append-inner {
+.time-increment-select .v-field__append-inner {
   align-items: center !important;
   height: 26px !important;
   min-height: 26px !important;
@@ -1184,18 +1184,18 @@ watch(
   padding-top: 0px !important;
 }
 
-.compact-inline-select .v-select__selection-text {
+.time-increment-select .v-select__selection-text {
   line-height: 22px !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
 }
 
-.compact-inline-select .v-field__overlay {
+.time-increment-select .v-field__overlay {
   opacity: 0;
 }
 
-.compact-inline-select .v-field__outline {
+.time-increment-select .v-field__outline {
   display: none;
 }
 
