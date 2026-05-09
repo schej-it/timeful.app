@@ -12,6 +12,12 @@ export const newEventFormScenario = {
       selector: "div, span, h1, h2, h3",
       text: "New event",
     },
+    {
+      name: "newEventCloseButton",
+      kind: "selector",
+      selector:
+        ".v-card .v-card-title .v-btn:last-child, .v-card .v-card-title button:last-child, .v-card > .tw-flex.tw-rounded > .v-btn:last-child, .v-card > .tw-flex.tw-rounded > button:last-child",
+    },
     { name: "daysOnlyToggle", kind: "daysOnlyToggle" },
     { name: "daysOnlyToggleFrame", kind: "daysOnlyToggleFrame" },
     { name: "daysOnlyToggleActiveLabel", kind: "daysOnlyToggleActiveLabel" },
