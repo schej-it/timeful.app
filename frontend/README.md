@@ -1,23 +1,18 @@
-# timeful
+# Timeful frontend
 
-## Project setup
+Vue 2 app for Timeful.
 
-```
-npm install
-```
+## Quick start
+- Install: `npm install`
+- Dev server: `npm run serve` (http://localhost:8080 or 8081 if 8080 is busy)
+- API base (dev): `http://localhost:3002/api` (see `src/constants.js`)
+- Build for production: `npm run build` (Go API serves `frontend/dist`)
 
-### Compiles and hot-reloads for development
+## Backend API docs
+- http://localhost:3002/swagger/index.html (server must be running)
 
-```
-npm run serve
-```
+## Optional demo data
+- From repo root: `cd server/scripts/seed_demo && MONGODB_URI=mongodb://localhost:27017 go run main.go` (adds demo user + event)
 
-### Compiles and minifies for production
-
-```
-npm run build
-```
-
-### Customize configuration
-
-See [Configuration Reference](https://cli.vuejs.org/config/).
+## Customize configuration
+- Vue CLI reference: https://cli.vuejs.org/config/ 
