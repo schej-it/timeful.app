@@ -24,6 +24,7 @@ export type Event = Omit<
   | "dates"
   | "times"
   | "duration"
+  | "timeIncrement"
   | "scheduledEvent"
   | "responses"
   | "signUpBlocks"
@@ -35,6 +36,7 @@ export type Event = Omit<
   startTime?: Temporal.PlainTime
   endTime?: Temporal.PlainTime
   duration?: Temporal.Duration
+  timeIncrement?: Temporal.Duration
   scheduledEvent?: CalendarEvent
   responses?: Record<string, Response>
   signUpBlocks?: SignUpBlock[]

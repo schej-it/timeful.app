@@ -769,6 +769,10 @@ interface PluginDebugPayload {
   timeIncrement?: number
 }
 
+function getTimeIncrementMinutes(event: Pick<Event, "timeIncrement">): number {
+  return event.timeIncrement?.total("minutes") ?? 15
+}
+
 function handleMessage(e: MessageEvent<PluginMessageData>) {
   if (!isValidPluginMessage(e)) return
   const payload = e.data.payload
@@ -833,7 +837,7 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
     return
   }
   const ev = event.value
-  const timeIncrement = ev.timeIncrement ?? 15
+  const timeIncrement = getTimeIncrementMinutes(ev)
   const payloadGuestName = e.data.payload?.guestName
   const hasGuestName = Boolean(payloadGuestName && payloadGuestName.length > 0)
   if (ev.blindAvailabilityEnabled) {
@@ -1072,7 +1076,7 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
       timezoneValue,
       eventType: ev.type,
     })
-    const timeIncrement = ev.timeIncrement ?? 15
+    const timeIncrement = getTimeIncrementMinutes(ev)
     sendPluginSuccess(requestId, command, { slots: allSlots, timeIncrement, timezone: timezoneValue })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error"

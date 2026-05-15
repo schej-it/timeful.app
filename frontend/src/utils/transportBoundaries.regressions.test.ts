@@ -80,6 +80,53 @@ describe("transport and timezone regression boundaries", () => {
     ).not.toThrow()
   })
 
+  it("decodes ISO instant transport fields at the boundary before event rendering", () => {
+    const rawEvent = {
+      dates: ["2026-05-15T06:00:00Z", "2026-05-21T06:00:00Z"],
+      times: ["2026-05-15T08:00:00Z"],
+      duration: 8,
+      timeIncrement: 15,
+      responses: {
+        user_1: {
+          availability: ["2026-05-15T08:00:00Z"],
+          ifNeeded: ["2026-05-15T09:00:00Z"],
+          manualAvailability: {
+            "2026-05-15": ["2026-05-15T10:00:00Z"],
+          },
+        },
+      },
+      signUpBlocks: [
+        {
+          startDate: "2026-05-15T08:00:00Z",
+          endDate: "2026-05-15T09:00:00Z",
+        },
+      ],
+      scheduledEvent: {
+        startDate: "2026-05-15T12:00:00Z",
+        endDate: "2026-05-15T13:00:00Z",
+      },
+    } as unknown as Parameters<typeof fromRawEvent>[0]
+
+    const event = fromRawEvent(rawEvent)
+
+    expect(event.timeSeed?.toString()).toBe("2026-05-15T06:00:00+00:00[UTC]")
+    expect(event.dates?.map((date) => date.toString())).toEqual([
+      "2026-05-15",
+      "2026-05-21",
+    ])
+    expect(event.timeIncrement?.toString()).toBe("PT15M")
+    expect(event.times?.[0]?.toString()).toBe("2026-05-15T08:00:00+00:00[UTC]")
+    expect(event.responses?.user_1.availability?.[0]?.toString()).toBe(
+      "2026-05-15T08:00:00+00:00[UTC]"
+    )
+    expect(event.signUpBlocks?.[0]?.startDate?.toString()).toBe(
+      "2026-05-15T08:00:00+00:00[UTC]"
+    )
+    expect(event.scheduledEvent?.startDate?.toString()).toBe(
+      "2026-05-15T12:00:00+00:00[UTC]"
+    )
+  })
+
   it("exposes an explicit time seed alongside decoded event dates", () => {
     const event = fromRawEvent({
       dates: [epochMs("2026-01-02T09:30:00Z")],

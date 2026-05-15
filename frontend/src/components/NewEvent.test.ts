@@ -516,9 +516,7 @@ describe("NewEvent", () => {
           dates: [Temporal.PlainDate.from("2026-01-02")],
           timeSeed: Temporal.ZonedDateTime.from("2026-01-02T09:00:00+00:00[UTC]"),
           duration: durations.ONE_HOUR,
-          // Force a bad runtime shape through the typed boundary to cover
-          // the select-normalization regression from object-valued increments.
-          timeIncrement: Temporal.Duration.from({ minutes: 30 }) as unknown as number,
+          timeIncrement: Temporal.Duration.from({ minutes: 30 }),
         },
       },
       global: {

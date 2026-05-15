@@ -41,6 +41,8 @@ export type RawAttendee = Schemas["models.Attendee"]
 export type RawBufferTimeOptions = Schemas["models.BufferTimeOptions"]
 export type RawWorkingHoursOptions = Schemas["models.WorkingHoursOptions"]
 
+type RawInstantValue = number | string
+
 const toEventMembershipTimeSeed = (
   dates?: Temporal.PlainDate[],
   timeSeed?: Temporal.ZonedDateTime
@@ -65,6 +67,14 @@ const toEventMembershipTimeSeed = (
 
 const toEpochMilliseconds = (zonedDateTime: string): number =>
   Temporal.ZonedDateTime.from(zonedDateTime).epochMilliseconds
+
+const fromRawInstantValue = (value: RawInstantValue): Temporal.ZonedDateTime => {
+  if (typeof value === "number") {
+    return fromEpochMillisecondsToZDT(value)
+  }
+
+  return Temporal.Instant.from(value).toZonedDateTimeISO("UTC")
+}
 
 export const toTransportDateTimeStrings = (
   dateTimes: Temporal.ZonedDateTime[] | undefined
@@ -198,16 +208,20 @@ export function toRawFolder(folder: Folder): RawFolder {
 }
 
 export function fromRawEvent(raw: RawEvent): Event {
-  const dateSeeds = raw.dates?.map((ms) => fromEpochMillisecondsToZDT(ms))
+  const dateSeeds = raw.dates?.map((value) => fromRawInstantValue(value))
 
   return {
     ...raw,
     dates: dateSeeds?.map((seed) => seed.toPlainDate()),
     timeSeed: dateSeeds?.[0],
-    times: raw.times?.map((ms) => fromEpochMillisecondsToZDT(ms)),
+    times: raw.times?.map((value) => fromRawInstantValue(value)),
     duration:
       raw.duration != null
         ? Temporal.Duration.from({ hours: raw.duration })
+        : undefined,
+    timeIncrement:
+      raw.timeIncrement != null
+        ? Temporal.Duration.from({ minutes: raw.timeIncrement })
         : undefined,
     scheduledEvent: raw.scheduledEvent
       ? fromRawCalendarEvent(raw.scheduledEvent)
@@ -238,6 +252,7 @@ export function toRawEvent(event: Event): RawEvent {
     dates: toEventMembershipTimeSeed(event.dates, event.timeSeed)?.map(toEpochMilliseconds),
     times: event.times?.map((instant) => instant.epochMilliseconds),
     duration: event.duration?.total("hours"),
+    timeIncrement: event.timeIncrement?.total("minutes"),
     scheduledEvent: event.scheduledEvent
       ? toRawCalendarEvent(event.scheduledEvent)
       : undefined,
@@ -273,13 +288,13 @@ export const toEventDateStrings = (
 export function fromRawResponse(raw: RawResponse): Response {
   return {
     ...raw,
-    availability: raw.availability?.map((ms) => fromEpochMillisecondsToZDT(ms)),
-    ifNeeded: raw.ifNeeded?.map((ms) => fromEpochMillisecondsToZDT(ms)),
+    availability: raw.availability?.map((value) => fromRawInstantValue(value)),
+    ifNeeded: raw.ifNeeded?.map((value) => fromRawInstantValue(value)),
     manualAvailability: raw.manualAvailability
       ? Object.fromEntries(
-          Object.entries(raw.manualAvailability).map(([date, msArray]) => [
+          Object.entries(raw.manualAvailability).map(([date, values]) => [
             date,
-            msArray.map((ms) => fromEpochMillisecondsToZDT(ms)),
+            values.map((value) => fromRawInstantValue(value)),
           ])
         )
       : undefined,
@@ -318,9 +333,9 @@ export function fromRawSignUpBlock(raw: RawSignUpBlock): SignUpBlock {
   return {
     ...raw,
     startDate:
-      raw.startDate != null ? fromEpochMillisecondsToZDT(raw.startDate) : undefined,
+      raw.startDate != null ? fromRawInstantValue(raw.startDate) : undefined,
     endDate:
-      raw.endDate != null ? fromEpochMillisecondsToZDT(raw.endDate) : undefined,
+      raw.endDate != null ? fromRawInstantValue(raw.endDate) : undefined,
   }
 }
 
@@ -352,9 +367,9 @@ export function fromRawCalendarEvent(raw: RawCalendarEvent): CalendarEvent {
   return {
     ...raw,
     startDate:
-      raw.startDate != null ? fromEpochMillisecondsToZDT(raw.startDate) : undefined,
+      raw.startDate != null ? fromRawInstantValue(raw.startDate) : undefined,
     endDate:
-      raw.endDate != null ? fromEpochMillisecondsToZDT(raw.endDate) : undefined,
+      raw.endDate != null ? fromRawInstantValue(raw.endDate) : undefined,
   }
 }
 
