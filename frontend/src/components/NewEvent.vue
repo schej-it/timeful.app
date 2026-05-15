@@ -507,17 +507,17 @@
       <div class="tw-relative tw-w-full">
         <v-btn
           :disabled="loading"
-          :aria-disabled="submitInvalid"
+          :aria-disabled="submitBlocked"
           block
           :loading="loading"
           :style="submitButtonStyle"
           :class="
-            submitInvalid
+            submitBlocked
               ? 'new-event-submit-button new-event-submit-button--disabled tw-mt-4 tw-cursor-default tw-pointer-events-none'
               : 'new-event-submit-button new-event-submit-button--enabled tw-mt-4'
           "
-          :ripple="!submitInvalid"
-          :tabindex="submitInvalid ? -1 : undefined"
+          :ripple="!submitBlocked"
+          :tabindex="submitBlocked ? -1 : undefined"
           @click="submitIfAllowed"
         >
           {{
@@ -686,23 +686,33 @@ const sendEmailAfterXResponses = ref(3)
 
 const initialEventData = ref<Record<string, unknown>>({})
 const hasMounted = ref(false)
+const submitAttempted = ref(false)
 
 const nameRules = computed(() => [
   (v: string) => !!v || "Event name is required",
 ])
 const hasName = computed(() => !!name.value.trim())
-const submitInvalid = computed(() => !formValid.value || !hasName.value)
+const hasSelectedDayCriteria = computed(() => {
+  if (daysOnly.value || selectedDateOption.value === dateOptions.SPECIFIC) {
+    return selectedDays.value.length > 0
+  }
+
+  return selectedDaysOfWeek.value.length > 0
+})
+const submitBlocked = computed(
+  () => !hasName.value || !hasSelectedDayCriteria.value
+)
 const showSubmitError = computed(
-  () => !loading.value && submitInvalid.value
+  () => submitAttempted.value && !loading.value && !formValid.value
 )
 const showNameFieldError = computed(
   () => !name.value.trim() && hasBlurredNameField.value && !isNameFieldFocused.value
 )
 const submitButtonStyle = computed<Record<string, string>>(() => ({
-  backgroundColor: submitInvalid.value
+  backgroundColor: submitBlocked.value
     ? "var(--timeful-primary-action-disabled-bg)"
     : "var(--timeful-primary-action-bg)",
-  color: submitInvalid.value
+  color: submitBlocked.value
     ? "var(--timeful-primary-action-disabled-fg)"
     : "var(--timeful-primary-action-fg)",
   border: "none",
@@ -710,7 +720,7 @@ const submitButtonStyle = computed<Record<string, string>>(() => ({
   paddingRight: "16px",
   paddingLeft: "16px",
   whiteSpace: "nowrap",
-  lineHeight: submitInvalid.value ? "21px" : "normal",
+  lineHeight: submitBlocked.value ? "21px" : "normal",
 }))
 const selectedDaysRules = computed(() => [
   (s: unknown[]) => s.length > 0 || "Please select at least one day",
@@ -810,6 +820,7 @@ const handleNameFieldBlur = () => {
 }
 
 const reset = () => {
+  submitAttempted.value = false
   name.value = ""
   hasBlurredNameField.value = false
   isNameFieldFocused.value = true
@@ -987,7 +998,8 @@ const submit = async () => {
 }
 
 function submitIfAllowed() {
-  if (loading.value || submitInvalid.value) return
+  if (loading.value || submitBlocked.value) return
+  submitAttempted.value = true
   void submit()
 }
 

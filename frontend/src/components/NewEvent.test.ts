@@ -260,7 +260,7 @@ describe("NewEvent", () => {
     expect(newEventSource).toContain(`@close="emit('update:modelValue', false)"`)
   })
 
-  it("keeps the create button blocked while the form is invalid and enables it once validity is restored", async () => {
+  it("blocks the create button until the required name and date selection are present", async () => {
     const wrapper = shallowMount(NewEvent, {
       global: {
         stubs: {
@@ -270,9 +270,14 @@ describe("NewEvent", () => {
       },
     })
 
-    const vm = wrapper.vm as unknown as { formValid: boolean; name: string }
+    const vm = wrapper.vm as unknown as {
+      formValid: boolean
+      name: string
+      selectedDays: Temporal.PlainDate[]
+    }
     vm.formValid = false
     vm.name = ""
+    vm.selectedDays = []
     await nextTick()
 
     const button = wrapper.get(".v-btn-stub")
@@ -288,8 +293,15 @@ describe("NewEvent", () => {
       "--timeful-primary-action-disabled-fg"
     )
 
-    vm.formValid = true
+    vm.formValid = false
     vm.name = "Planning sync"
+    vm.selectedDays = []
+    await nextTick()
+
+    expect(button.attributes("aria-disabled")).toBe("true")
+    expect(button.classes()).toContain("new-event-submit-button--disabled")
+
+    vm.selectedDays = [Temporal.PlainDate.from("2026-01-02")]
     await nextTick()
 
     expect(button.attributes("aria-disabled")).toBe("false")
@@ -299,6 +311,121 @@ describe("NewEvent", () => {
     expect(button.classes()).not.toContain("new-event-submit-button--disabled")
     expect(button.attributes("style")).toContain("--timeful-primary-action-bg")
     expect(button.attributes("style")).toContain("--timeful-primary-action-fg")
+  })
+
+  it("blocks the create button in day-of-week mode until a weekday is selected", async () => {
+    const wrapper = shallowMount(NewEvent, {
+      global: {
+        stubs: {
+          ...defaultStubs,
+          "v-btn": VBtnStub,
+        },
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      name: string
+      selectedDateOption: string
+      selectedDays: Temporal.PlainDate[]
+      selectedDaysOfWeek: number[]
+    }
+
+    vm.name = "Weekly sync"
+    vm.selectedDateOption = "Days of the week"
+    vm.selectedDays = []
+    vm.selectedDaysOfWeek = []
+    await nextTick()
+
+    const button = wrapper.get(".v-btn-stub")
+    expect(button.attributes("aria-disabled")).toBe("true")
+
+    vm.selectedDaysOfWeek = [1]
+    await nextTick()
+
+    expect(button.attributes("aria-disabled")).toBe("false")
+  })
+
+  it("submits when the current form data is valid even if lazy form validity is stale", async () => {
+    const wrapper = shallowMount(NewEvent, {
+      props: {
+        contactsPayload: {
+          name: "Planning sync",
+          startTime: Temporal.PlainTime.from("09:00"),
+          endTime: Temporal.PlainTime.from("10:00"),
+          daysOnly: false,
+          selectedDateOption: "Specific dates",
+          selectedDays: [Temporal.PlainDate.from("2026-01-02")],
+          notificationsEnabled: false,
+          timezone: {
+            value: "UTC",
+            label: "UTC",
+            gmtString: "GMT",
+            offset: durations.ZERO,
+          },
+        },
+      },
+      global: {
+        stubs: {
+          ...defaultStubs,
+          "v-btn": VBtnStub,
+        },
+      },
+    })
+
+    const vm = wrapper.vm as unknown as { formValid: boolean }
+    vm.formValid = false
+    await nextTick()
+
+    await wrapper.get(".v-btn-stub").trigger("click")
+    await Promise.resolve()
+
+    expect(formRefMethods.validate).toHaveBeenCalledTimes(1)
+    expect(postMock).toHaveBeenCalledTimes(1)
+    expect(postMock.mock.calls[0]?.[0]).toBe("/events")
+  })
+
+  it("shows the submit error only after an attempted submit fails validation", async () => {
+    formRefMethods.validate.mockResolvedValueOnce({ valid: false })
+
+    const wrapper = shallowMount(NewEvent, {
+      props: {
+        contactsPayload: {
+          name: "Planning sync",
+          startTime: Temporal.PlainTime.from("09:00"),
+          endTime: Temporal.PlainTime.from("10:00"),
+          daysOnly: false,
+          selectedDateOption: "Specific dates",
+          selectedDays: [Temporal.PlainDate.from("2026-01-02")],
+          notificationsEnabled: false,
+          timezone: {
+            value: "UTC",
+            label: "UTC",
+            gmtString: "GMT",
+            offset: durations.ZERO,
+          },
+        },
+      },
+      global: {
+        stubs: {
+          ...defaultStubs,
+          "v-btn": VBtnStub,
+        },
+      },
+    })
+
+    const vm = wrapper.vm as unknown as { formValid: boolean }
+    vm.formValid = false
+    await nextTick()
+
+    const error = wrapper.get(".new-event-submit-error")
+    expect(error.classes()).toContain("tw-invisible")
+
+    await wrapper.get(".v-btn-stub").trigger("click")
+    await nextTick()
+
+    expect(formRefMethods.validate).toHaveBeenCalledTimes(1)
+    expect(postMock).not.toHaveBeenCalled()
+    expect(error.classes()).toContain("tw-visible")
   })
 
   it("uses semantic tokens for submit error and invalid-name state styling", () => {
