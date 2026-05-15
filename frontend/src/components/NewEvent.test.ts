@@ -907,9 +907,18 @@ describe("NewEvent", () => {
       (
         postMock.mock.calls[0]?.[1] as {
           duration: number
+          dates: string[]
         }
       ).duration
     ).toBe(1.5)
+    expect(
+      (
+        postMock.mock.calls[0]?.[1] as {
+          duration: number
+          dates: string[]
+        }
+      ).dates
+    ).toEqual(["2026-01-02T23:30:00Z"])
   })
 
   it("treats equal start and end times as a 24-hour event duration", async () => {

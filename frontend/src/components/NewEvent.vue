@@ -585,6 +585,7 @@ import EditorDialogHeader from "./EditorDialogHeader.vue"
 import type { Event as EventModel } from "@/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
 import type { EventDraft } from "@/composables/event/types"
+import { toTransportDateTimeStrings } from "@/types/transport"
 import {
   getDraftEndTime,
   getDraftSelectedDays,
@@ -910,7 +911,7 @@ const submit = async () => {
   const payload = {
     name: name.value,
     duration: duration.total("hours"),
-    dates,
+    dates: toTransportDateTimeStrings(dates),
     hasSpecificTimes: specificTimesEnabled.value,
     notificationsEnabled: !authUser.value ? false : notificationsEnabled.value,
     blindAvailabilityEnabled: blindAvailabilityEnabled.value,

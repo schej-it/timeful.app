@@ -472,7 +472,7 @@ describe("transport and timezone regression boundaries", () => {
     expect(payload).toEqual({
       name: "Planning",
       duration: 2,
-      dates: ["2026-01-05T09:00:00+00:00[UTC]"],
+      dates: ["2026-01-05T09:00:00Z"],
       type: eventTypes.SPECIFIC_DATES,
       description: undefined,
       signUpBlocks: [

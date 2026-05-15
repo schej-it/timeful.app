@@ -66,6 +66,11 @@ const toEventMembershipTimeSeed = (
 const toEpochMilliseconds = (zonedDateTime: string): number =>
   Temporal.ZonedDateTime.from(zonedDateTime).epochMilliseconds
 
+export const toTransportDateTimeStrings = (
+  dateTimes: Temporal.ZonedDateTime[] | undefined
+): string[] | undefined =>
+  dateTimes?.map((dateTime) => dateTime.toInstant().toString())
+
 export function fromRawBufferTimeOptions(
   raw?: RawBufferTimeOptions
 ): BufferTimeOptions | undefined {
@@ -256,8 +261,14 @@ export function toRawEvent(event: Event): RawEvent {
   }
 }
 
-export const toEventDateStrings = (event: Pick<Event, "dates" | "timeSeed">): string[] | undefined =>
-  toEventMembershipTimeSeed(event.dates, event.timeSeed)
+export const toEventDateStrings = (
+  event: Pick<Event, "dates" | "timeSeed">
+): string[] | undefined =>
+  toTransportDateTimeStrings(
+    toEventMembershipTimeSeed(event.dates, event.timeSeed)?.map((dateTime) =>
+      Temporal.ZonedDateTime.from(dateTime)
+    )
+  )
 
 export function fromRawResponse(raw: RawResponse): Response {
   return {
