@@ -18,6 +18,13 @@ export const newEventFormScenario = {
       selector:
         ".v-card .v-card-title .v-btn:last-child, .v-card .v-card-title button:last-child, .v-card > .tw-flex.tw-rounded > .v-btn:last-child, .v-card > .tw-flex.tw-rounded > button:last-child",
     },
+    {
+      name: "newEventSubmitButton",
+      kind: "containsText",
+      selector:
+        ".v-card__actions .v-btn, .v-card__actions button, .v-card-actions .v-btn, .v-card-actions button",
+      text: "Create event",
+    },
     { name: "daysOnlyToggle", kind: "daysOnlyToggle" },
     { name: "daysOnlyToggleFrame", kind: "daysOnlyToggleFrame" },
     { name: "daysOnlyToggleActiveLabel", kind: "daysOnlyToggleActiveLabel" },

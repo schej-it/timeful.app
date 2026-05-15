@@ -220,8 +220,8 @@ describe("NewEvent", () => {
     expect(appCssSource).toMatch(/--timeful-emphasis-foreground:\s*#4f4f4f;/i)
     expect(appCssSource).toMatch(/--timeful-primary-action-bg:\s*#00994c;/i)
     expect(appCssSource).toMatch(/--timeful-primary-action-fg:\s*#ffffff;/i)
-    expect(appCssSource).toMatch(/--timeful-primary-action-disabled-bg:\s*#f3f3f3;/i)
-    expect(appCssSource).toMatch(/--timeful-primary-action-disabled-fg:\s*#4f4f4f;/i)
+    expect(appCssSource).toMatch(/--timeful-primary-action-disabled-bg:\s*rgba\(0,\s*0,\s*0,\s*0\.12\);/i)
+    expect(appCssSource).toMatch(/--timeful-primary-action-disabled-fg:\s*rgba\(0,\s*0,\s*0,\s*0\.26\);/i)
   })
 
   it("renders time-range menu items with shared semantic selection tokens", () => {
@@ -260,7 +260,7 @@ describe("NewEvent", () => {
     expect(newEventSource).toContain(`@close="emit('update:modelValue', false)"`)
   })
 
-  it("keeps the create button disabled and grey until the event name is entered", async () => {
+  it("keeps the create button blocked while the form is invalid and enables it once validity is restored", async () => {
     const wrapper = shallowMount(NewEvent, {
       global: {
         stubs: {
@@ -270,14 +270,26 @@ describe("NewEvent", () => {
       },
     })
 
+    const vm = wrapper.vm as unknown as { formValid: boolean; name: string }
+    vm.formValid = false
+    vm.name = ""
+    await nextTick()
+
     const button = wrapper.get(".v-btn-stub")
     expect(button.attributes("aria-disabled")).toBe("true")
     expect(button.attributes("tabindex")).toBe("-1")
     expect(button.classes()).toContain("new-event-submit-button")
     expect(button.classes()).toContain("new-event-submit-button--disabled")
     expect(button.classes()).not.toContain("new-event-submit-button--enabled")
+    expect(button.attributes("style")).toContain(
+      "--timeful-primary-action-disabled-bg"
+    )
+    expect(button.attributes("style")).toContain(
+      "--timeful-primary-action-disabled-fg"
+    )
 
-    ;(wrapper.vm as unknown as { name: string }).name = "Planning sync"
+    vm.formValid = true
+    vm.name = "Planning sync"
     await nextTick()
 
     expect(button.attributes("aria-disabled")).toBe("false")
@@ -285,6 +297,8 @@ describe("NewEvent", () => {
     expect(button.classes()).toContain("new-event-submit-button")
     expect(button.classes()).toContain("new-event-submit-button--enabled")
     expect(button.classes()).not.toContain("new-event-submit-button--disabled")
+    expect(button.attributes("style")).toContain("--timeful-primary-action-bg")
+    expect(button.attributes("style")).toContain("--timeful-primary-action-fg")
   })
 
   it("uses semantic tokens for submit error and invalid-name state styling", () => {
@@ -296,10 +310,7 @@ describe("NewEvent", () => {
       /\.new-event-submit-error\s*\{\s*color:\s*var\(--timeful-error-foreground\);/
     )
     expect(newEventStyleBlock).toMatch(
-      /\.new-event-submit-button--enabled\s*\{\s*background-color:\s*var\(--timeful-primary-action-bg\);\s*color:\s*var\(--timeful-primary-action-fg\);/
-    )
-    expect(newEventStyleBlock).toMatch(
-      /\.new-event-submit-button--disabled\s*\{\s*background-color:\s*var\(--timeful-primary-action-disabled-bg\);\s*color:\s*var\(--timeful-primary-action-disabled-fg\);/
+      /\.new-event-submit-button \.v-btn__content,\s*\.new-event-submit-button \.v-progress-circular,\s*\.new-event-submit-button \.v-icon\s*\{\s*color:\s*inherit;/
     )
   })
 

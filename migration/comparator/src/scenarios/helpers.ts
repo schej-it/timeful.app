@@ -1,11 +1,11 @@
 import type { Page } from "@playwright/test"
 
 export async function clickExactText(page: Page, selector: string, text: string) {
-  await page.locator(selector).filter({ hasText: text }).first().click()
+  await page.locator(selector).filter({ hasText: text }).first().click({ force: true })
 }
 
 export async function clickContainsText(page: Page, selector: string, text: string) {
-  await page.locator(selector).filter({ hasText: text }).first().click()
+  await page.locator(selector).filter({ hasText: text }).first().click({ force: true })
 }
 
 export async function openNewEventDialog(page: Page) {

@@ -12,6 +12,6 @@
   --timeful-emphasis-foreground: #4f4f4f;
   --timeful-primary-action-bg: #00994c;
   --timeful-primary-action-fg: #ffffff;
-  --timeful-primary-action-disabled-bg: #f3f3f3;
-  --timeful-primary-action-disabled-fg: #4f4f4f;
+  --timeful-primary-action-disabled-bg: rgba(0, 0, 0, 0.12);
+  --timeful-primary-action-disabled-fg: rgba(0, 0, 0, 0.26);
 }

@@ -509,8 +509,8 @@
           :disabled="loading"
           :aria-disabled="submitInvalid"
           block
-          variant="flat"
           :loading="loading"
+          :style="submitButtonStyle"
           :class="
             submitInvalid
               ? 'new-event-submit-button new-event-submit-button--disabled tw-mt-4 tw-cursor-default tw-pointer-events-none'
@@ -698,6 +698,20 @@ const showSubmitError = computed(
 const showNameFieldError = computed(
   () => !name.value.trim() && hasBlurredNameField.value && !isNameFieldFocused.value
 )
+const submitButtonStyle = computed<Record<string, string>>(() => ({
+  backgroundColor: submitInvalid.value
+    ? "var(--timeful-primary-action-disabled-bg)"
+    : "var(--timeful-primary-action-bg)",
+  color: submitInvalid.value
+    ? "var(--timeful-primary-action-disabled-fg)"
+    : "var(--timeful-primary-action-fg)",
+  border: "none",
+  borderRadius: "6px",
+  paddingRight: "16px",
+  paddingLeft: "16px",
+  whiteSpace: "nowrap",
+  lineHeight: submitInvalid.value ? "21px" : "normal",
+}))
 const selectedDaysRules = computed(() => [
   (s: unknown[]) => s.length > 0 || "Please select at least one day",
 ])
@@ -1165,14 +1179,10 @@ watch(
   color: var(--timeful-selection-fg);
 }
 
-.new-event-submit-button--enabled {
-  background-color: var(--timeful-primary-action-bg);
-  color: var(--timeful-primary-action-fg);
-}
-
-.new-event-submit-button--disabled {
-  background-color: var(--timeful-primary-action-disabled-bg);
-  color: var(--timeful-primary-action-disabled-fg);
+.new-event-submit-button .v-btn__content,
+.new-event-submit-button .v-progress-circular,
+.new-event-submit-button .v-icon {
+  color: inherit;
 }
 
 .new-event-submit-error {
