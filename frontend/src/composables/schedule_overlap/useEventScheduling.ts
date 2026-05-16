@@ -15,6 +15,7 @@ import type { Event, Location } from "@/types"
 import {
   HOUR_HEIGHT,
   SPLIT_GAP_HEIGHT,
+  getScheduledEventFromDragRange,
   states,
   type RowCol,
   type ScheduleOverlapEvent,
@@ -81,10 +82,17 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
     let height: number
     let isSecondSplit: boolean
     if (opts.dragging.value && opts.dragStart.value && opts.dragCur.value) {
-      top = opts.dragStart.value.row
-      height = opts.dragCur.value.row - opts.dragStart.value.row + 1
-      isSecondSplit =
-        opts.dragStart.value.row >= opts.splitTimes.value[0].length
+      const scheduledEvent = getScheduledEventFromDragRange(
+        opts.dragStart.value,
+        opts.dragCur.value
+      )
+      if (!scheduledEvent) {
+        return style
+      }
+
+      top = scheduledEvent.row
+      height = scheduledEvent.numRows
+      isSecondSplit = scheduledEvent.row >= opts.splitTimes.value[0].length
     } else if (curScheduledEvent.value) {
       top = curScheduledEvent.value.row
       height = curScheduledEvent.value.numRows

@@ -1,8 +1,9 @@
 import "@/test/regressionTestSetup"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { computed, ref } from "vue"
+import { computed, ref, shallowRef } from "vue"
 import { Temporal } from "temporal-polyfill"
 import { stubRegressionLocalStorage } from "@/test/regressionTestSetup"
+import { ZdtMap, ZdtSet } from "@/utils"
 import {
   epochMs,
   makeAvailabilityData,
@@ -13,7 +14,12 @@ import {
 import { durations, eventTypes, hoursPlainTime, UTC } from "@/constants"
 import { useCalendarEvents } from "@/composables/schedule_overlap/useCalendarEvents"
 import { useCalendarGrid } from "@/composables/schedule_overlap/useCalendarGrid"
-import { states } from "@/composables/schedule_overlap/types"
+import { useDragPaint } from "@/composables/schedule_overlap/useDragPaint"
+import { useEventScheduling } from "@/composables/schedule_overlap/useEventScheduling"
+import {
+  getScheduledEventFromDragRange,
+  states,
+} from "@/composables/schedule_overlap/types"
 
 describe("schedule-overlap Temporal regressions", () => {
   beforeEach(() => {
@@ -441,5 +447,129 @@ describe("schedule-overlap Temporal regressions", () => {
     expect(
       grid.allDays.value.map((day) => `${day.dayText} ${day.dateString}`)
     ).toEqual(["sat mar 7", "sun mar 8", "mon mar 9", "tue mar 10"])
+  })
+
+  it("normalizes upward schedule-event drags into a positive-height selection", () => {
+    expect(
+      getScheduledEventFromDragRange(
+        { row: 8, col: 1 },
+        { row: 5, col: 1 }
+      )
+    ).toEqual({
+      row: 5,
+      col: 1,
+      numRows: 4,
+    })
+  })
+
+  it("anchors the scheduling preview to the earliest dragged row", () => {
+    const dragging = ref(true)
+    const dragStart = ref({ row: 8, col: 0 })
+    const dragCur = ref({ row: 5, col: 0 })
+    const scheduling = useEventScheduling({
+      event: ref({
+        _id: "evt-1",
+        shortId: "abc123",
+        name: "Planning Session",
+        type: eventTypes.SPECIFIC_DATES,
+        dates: [Temporal.PlainDate.from("2026-01-01")],
+        timeSeed: zdt("2026-01-01T00:00:00Z"),
+        duration: durations.ONE_HOUR,
+      }),
+      weekOffset: ref(0),
+      curTimezone: ref({
+        value: UTC,
+        offset: durations.ZERO,
+        label: "UTC",
+        gmtString: "GMT",
+      }),
+      state: ref(states.SCHEDULE_EVENT),
+      defaultState: computed(() => states.EDIT_AVAILABILITY),
+      splitTimes: computed(() => [[{ hoursOffset: durations.ZERO, text: "slot" }], []]),
+      timeslotDuration: computed(() => durations.ONE_HOUR),
+      timeslotHeight: computed(() => 16),
+      timezoneOffset: computed(() => durations.ZERO),
+      isWeekly: computed(() => false),
+      isGroup: computed(() => false),
+      isSpecificTimes: computed(() => true),
+      getDateFromRowCol: () => zdt("2026-01-01T09:00:00Z"),
+      getMinMaxHoursFromTimes: () => ({
+        minHours: Temporal.PlainTime.from("09:00"),
+        maxHours: Temporal.PlainTime.from("10:00"),
+      }),
+      dragging,
+      dragStart,
+      dragCur,
+      tempTimes: shallowRef(new ZdtSet()),
+      respondents: computed(() => []),
+    })
+
+    expect(scheduling.scheduledEventStyle.value).toEqual({
+      top: "calc(5 * 16px + 40px)",
+      height: "calc(4 * 16px)",
+    })
+  })
+
+  it("commits upward schedule drags using the normalized row range", () => {
+    const dragging = ref(true)
+    const dragStart = ref({ row: 8, col: 0 })
+    const dragCur = ref({ row: 5, col: 0 })
+    const curScheduledEvent = shallowRef<ReturnType<
+      typeof getScheduledEventFromDragRange
+    >>(null)
+
+    const dragPaint = useDragPaint({
+      event: ref({
+        _id: "evt-1",
+        type: eventTypes.SPECIFIC_DATES,
+        dates: [Temporal.PlainDate.from("2026-01-01")],
+        timeSeed: zdt("2026-01-01T00:00:00Z"),
+        duration: durations.ONE_HOUR,
+        daysOnly: false,
+      } as never),
+      state: ref(states.SCHEDULE_EVENT),
+      isSignUp: computed(() => false),
+      weekOffset: ref(0),
+      dragging,
+      dragStart,
+      dragCur,
+      splitTimes: computed(() => [[{ hoursOffset: durations.ZERO, text: "slot" }], []]),
+      times: computed(() => [{ hoursOffset: durations.ZERO, text: "slot" }]),
+      days: computed(() => [
+        {
+          dayText: "thu",
+          dateString: "jan 1",
+          dateObject: zdt("2026-01-01T00:00:00Z"),
+          isConsecutive: true,
+        },
+      ]),
+      monthDays: computed(() => []),
+      monthDayIncluded: computed(() => new ZdtMap<boolean>()),
+      columnOffsets: computed(() => [0, 100]),
+      timeslot: ref({ width: 100, height: 16 }),
+      availability: shallowRef(new ZdtSet()),
+      ifNeeded: shallowRef(new ZdtSet()),
+      tempTimes: shallowRef(new ZdtSet()),
+      availabilityType: ref("available"),
+      signUpBlocksByDay: ref([[]]),
+      signUpBlocksToAddByDay: ref([[]]),
+      manualAvailability: shallowRef(new ZdtMap<ZdtSet>()),
+      curScheduledEvent,
+      maxSignUpBlockRowSize: computed(() => null),
+      allowDrag: computed(() => true),
+      getDateFromRowCol: () => null,
+      getAvailabilityForColumn: () => new ZdtSet(),
+      createSignUpBlock: () => {
+        throw new Error("not used in schedule-event regression")
+      },
+    })
+
+    dragPaint.endDrag()
+
+    expect(curScheduledEvent.value).toEqual({
+      row: 5,
+      col: 0,
+      numRows: 4,
+    })
   })
 })

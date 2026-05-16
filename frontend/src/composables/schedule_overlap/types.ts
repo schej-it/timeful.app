@@ -67,6 +67,24 @@ export interface ScheduledEvent {
   numRows: number
 }
 
+export const getScheduledEventFromDragRange = (
+  dragStart: RowCol,
+  dragCur: RowCol
+): ScheduledEvent | null => {
+  const row = Math.min(dragStart.row, dragCur.row)
+  const numRows = Math.abs(dragCur.row - dragStart.row) + 1
+
+  if (numRows <= 0) {
+    return null
+  }
+
+  return {
+    col: dragStart.col,
+    row,
+    numRows,
+  }
+}
+
 export interface SharedSubCalendarSelection {
   enabled: boolean
 }

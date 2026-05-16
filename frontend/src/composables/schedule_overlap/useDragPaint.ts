@@ -21,6 +21,7 @@ import {
 import {
   DRAG_TYPES,
   SPLIT_GAP_HEIGHT,
+  getScheduledEventFromDragRange,
   states,
   type DragType,
   type RowCol,
@@ -382,15 +383,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
         }
       }
     } else if (opts.state.value === states.SCHEDULE_EVENT) {
-      const col = ds.col
-      const row = ds.row
-      const numRows = dc.row - ds.row + 1
-
-      if (numRows > 0) {
-        opts.curScheduledEvent.value = { col, row, numRows }
-      } else {
-        opts.curScheduledEvent.value = null
-      }
+      opts.curScheduledEvent.value = getScheduledEventFromDragRange(ds, dc)
     } else if (opts.state.value === states.EDIT_SIGN_UP_BLOCKS) {
       const dayIndex = ds.col
       const hoursOffsetNum = ds.row / 4

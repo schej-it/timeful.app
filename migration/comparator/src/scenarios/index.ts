@@ -6,6 +6,7 @@ import {
   newEventCalendarScenario,
 } from "./new-event-calendar.js"
 import { newEventFormScenario } from "./new-event-form.js"
+import { scheduleEventUpwardDragScenario } from "./schedule-event-upward-drag.js"
 
 import type { ScenarioDefinition } from "../types.js"
 
@@ -16,6 +17,7 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
   "new-event-calendar-interaction": newEventCalendarInteractionScenario,
   "event-options-interaction": eventOptionsInteractionScenario,
   "event-timezone-menu": eventTimezoneMenuScenario,
+  "schedule-event-upward-drag": scheduleEventUpwardDragScenario,
 } as const
 
 export type CompareTarget = keyof typeof SCENARIOS
