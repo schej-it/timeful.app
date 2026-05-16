@@ -880,57 +880,57 @@ const toolRowActions = computed<ScheduleOverlapToolRowActions>(() => ({
 }))
 
 const sharedRespondentListeners = {
-  "mouse-over-respondent": mouseOverRespondent,
-  "mouse-leave-respondent": mouseLeaveRespondent,
-  "click-respondent": clickRespondent,
-  "edit-guest-availability": editGuestAvailability,
+  mouseOverRespondent,
+  mouseLeaveRespondent,
+  clickRespondent,
+  editGuestAvailability,
 }
 
 const sharedDisplayListeners = {
-  "update:show-calendar-events": updateShowCalendarEvents,
-  "update:show-best-times": updateShowBestTimes,
-  "update:hide-if-needed": updateHideIfNeeded,
-  "toggle-show-event-options": toggleShowEventOptions,
+  "update:showCalendarEvents": updateShowCalendarEvents,
+  "update:showBestTimes": updateShowBestTimes,
+  "update:hideIfNeeded": updateHideIfNeeded,
+  toggleShowEventOptions,
 }
 
 const sharedParentRelayListeners = {
-  "add-availability": emitAddAvailability,
-  "add-availability-as-guest": emitAddAvailabilityAsGuest,
-  "refresh-event": refreshEvent,
+  addAvailability: emitAddAvailability,
+  addAvailabilityAsGuest: emitAddAvailabilityAsGuest,
+  refreshEvent,
 }
 
 const sidebarListeners = {
-  "save-temp-times": saveTempTimes,
-  "open-edit-guest-name-dialog": openEditGuestNameDialog,
-  "save-guest-name": saveGuestName,
-  "update:new-guest-name": updateNewGuestName,
-  "update:edit-guest-name-dialog": updateEditGuestNameDialog,
-  "update:availability-type": updateAvailabilityType,
-  "toggle-calendar-account": toggleCalendarAccount,
-  "toggle-sub-calendar-account": toggleSubCalendarAccount,
-  "update-overlay-availability": updateOverlayAvailability,
-  "toggle-show-edit-options": toggleShowEditOptions,
-  "update:calendar-options-dialog": updateCalendarOptionsDialog,
-  "update:buffer-time": updateBufferTime,
-  "update:working-hours": updateWorkingHours,
-  "update:delete-availability-dialog": updateDeleteAvailabilityDialog,
-  "delete-availability": handleDeleteAvailability,
-  "update-sign-up-block": editSignUpBlock,
-  "delete-sign-up-block": deleteSignUpBlock,
-  "sign-up-for-block": emitSignUpForBlock,
+  saveTempTimes,
+  openEditGuestNameDialog,
+  saveGuestName,
+  "update:newGuestName": updateNewGuestName,
+  "update:editGuestNameDialog": updateEditGuestNameDialog,
+  "update:availabilityType": updateAvailabilityType,
+  toggleCalendarAccount,
+  toggleSubCalendarAccount,
+  updateOverlayAvailability,
+  toggleShowEditOptions,
+  "update:calendarOptionsDialog": updateCalendarOptionsDialog,
+  "update:bufferTime": updateBufferTime,
+  "update:workingHours": updateWorkingHours,
+  "update:deleteAvailabilityDialog": updateDeleteAvailabilityDialog,
+  deleteAvailability: handleDeleteAvailability,
+  updateSignUpBlock: editSignUpBlock,
+  deleteSignUpBlock: deleteSignUpBlock,
+  signUpForBlock: emitSignUpForBlock,
   ...sharedDisplayListeners,
   ...sharedParentRelayListeners,
   ...sharedRespondentListeners,
 }
 
 const mobileOverlayListeners = {
-  "close-hint": closeHint,
-  "update:availability-type": updateAvailabilityType,
-  "update:week-offset": emitWeekOffsetUpdate,
+  closeHint,
+  "update:availabilityType": updateAvailabilityType,
+  "update:weekOffset": emitWeekOffsetUpdate,
   ...sharedDisplayListeners,
   ...sharedParentRelayListeners,
   ...sharedRespondentListeners,
-  "save-temp-times": saveTempTimes,
+  saveTempTimes,
 }
 
 const daysOnlyGridActions = computed<ScheduleOverlapDaysOnlyGridActions>(() => ({

@@ -45,4 +45,42 @@ describe("ScheduleOverlapRespondentsPanel", () => {
     expect(handleMouseOverRespondent).toHaveBeenCalledTimes(1)
     expect(handleMouseOverRespondent.mock.calls[0]?.[1]).toBe("user-1")
   })
+
+  it("forwards Options toggles through the presentational boundary", async () => {
+    const handleToggleShowEventOptions = vi.fn()
+    const wrapper = mount(
+      defineComponent({
+        components: {
+          ScheduleOverlapRespondentsPanel,
+        },
+        data: () => ({
+          panel: buildRespondentsPanelViewModel(),
+        }),
+        methods: {
+          handleToggleShowEventOptions,
+        },
+        template: `
+          <ScheduleOverlapRespondentsPanel
+            :panel="panel"
+            @toggle-show-event-options="handleToggleShowEventOptions"
+          />
+        `,
+      }),
+      {
+        global: {
+          stubs: {
+            RespondentsList: {
+              name: "RespondentsList",
+              emits: ["toggleShowEventOptions"],
+              template: "<button @click=\"$emit('toggleShowEventOptions')\" />",
+            },
+          },
+        },
+      },
+    )
+
+    await wrapper.find("button").trigger("click")
+
+    expect(handleToggleShowEventOptions).toHaveBeenCalledTimes(1)
+  })
 })

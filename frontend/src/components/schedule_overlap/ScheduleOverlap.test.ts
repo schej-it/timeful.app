@@ -191,9 +191,10 @@ describe("ScheduleOverlap", () => {
             },
             template: `
               <div>
-                <button class="sidebar-name" @click="$emit('update:new-guest-name', 'Renamed guest')" />
-                <button class="sidebar-best-times" @click="$emit('update:show-best-times', true)" />
-                <button class="sidebar-add-availability" @click="$emit('add-availability')" />
+                <button class="sidebar-name" @click="$emit('update:newGuestName', 'Renamed guest')" />
+                <button class="sidebar-best-times" @click="$emit('update:showBestTimes', true)" />
+                <button class="sidebar-options" @click="$emit('toggleShowEventOptions')" />
+                <button class="sidebar-add-availability" @click="$emit('addAvailability')" />
               </div>
             `,
           },
@@ -207,9 +208,9 @@ describe("ScheduleOverlap", () => {
             },
             template: `
               <div>
-                <button class="overlay-type" @click="$emit('update:availability-type', 'ifNeeded')" />
-                <button class="overlay-week-offset" @click="$emit('update:week-offset', 2)" />
-                <button class="overlay-add-guest" @click="$emit('add-availability-as-guest')" />
+                <button class="overlay-type" @click="$emit('update:availabilityType', 'ifNeeded')" />
+                <button class="overlay-week-offset" @click="$emit('update:weekOffset', 2)" />
+                <button class="overlay-add-guest" @click="$emit('addAvailabilityAsGuest')" />
               </div>
             `,
           },
@@ -219,13 +220,14 @@ describe("ScheduleOverlap", () => {
 
     await wrapper.get(".sidebar-name").trigger("click")
     await wrapper.get(".sidebar-best-times").trigger("click")
+    await wrapper.get(".sidebar-options").trigger("click")
     await wrapper.get(".overlay-type").trigger("click")
     await nextTick()
 
     const sidebarViewModel = wrapper.findComponent({ name: "ScheduleOverlapSidebar" })
       .props("sidebar") as {
       newGuestName: string
-      respondentsPanel: { showBestTimes: boolean }
+      respondentsPanel: { showBestTimes: boolean; showEventOptions: boolean }
     }
     const overlayViewModel = wrapper.findComponent({
       name: "ScheduleOverlapMobileOverlay",
@@ -235,6 +237,7 @@ describe("ScheduleOverlap", () => {
 
     expect(sidebarViewModel.newGuestName).toBe("Renamed guest")
     expect(sidebarViewModel.respondentsPanel.showBestTimes).toBe(true)
+    expect(sidebarViewModel.respondentsPanel.showEventOptions).toBe(true)
     expect(overlayViewModel.availabilityType).toBe("ifNeeded")
 
     await wrapper.get(".sidebar-add-availability").trigger("click")
