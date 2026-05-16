@@ -1,6 +1,8 @@
 import { landingScenario } from "./landing.js"
 import { eventLegacyNoteScenario } from "./event-legacy-note.js"
 import { eventOptionsInteractionScenario } from "./event-options.js"
+import { eventOptionsStyleScenario } from "./event-options-style.js"
+import { eventOptionsStyleOnScenario } from "./event-options-style-on.js"
 import { eventTimezoneMenuScenario } from "./event-timezone-menu.js"
 import {
   newEventCalendarInteractionScenario,
@@ -18,6 +20,8 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
   "new-event-calendar": newEventCalendarScenario,
   "new-event-calendar-interaction": newEventCalendarInteractionScenario,
   "event-options-interaction": eventOptionsInteractionScenario,
+  "event-options-style": eventOptionsStyleScenario,
+  "event-options-style-on": eventOptionsStyleOnScenario,
   "event-timezone-menu": eventTimezoneMenuScenario,
   "schedule-event-upward-drag": scheduleEventUpwardDragScenario,
 } as const

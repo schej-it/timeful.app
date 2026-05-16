@@ -24,10 +24,46 @@ async function clickOptions(page: Page) {
 }
 
 async function assertOptionsContent(page: Page, app: AppLabel) {
-  const option = page.getByText(EXPECTED_OPTION_TEXT, { exact: true })
-  await option.waitFor({ state: "visible", timeout: 5000 })
+  await page.waitForFunction(
+    (expectedText) =>
+      Array.from(document.querySelectorAll("div, span, label")).some((node) => {
+        if (node.textContent?.trim() !== expectedText) {
+          return false
+        }
 
-  const visibleText = await option.textContent()
+        const computed = window.getComputedStyle(node)
+        const box = node.getBoundingClientRect()
+        return (
+          computed.display !== "none" &&
+          computed.visibility !== "hidden" &&
+          computed.opacity !== "0" &&
+          box.width > 0 &&
+          box.height > 0
+        )
+      }),
+    EXPECTED_OPTION_TEXT,
+  )
+
+  const visibleText = await page.evaluate((expectedText) => {
+    const visibleNode = Array.from(document.querySelectorAll("div, span, label")).find((node) => {
+      if (node.textContent?.trim() !== expectedText) {
+        return false
+      }
+
+      const computed = window.getComputedStyle(node)
+      const box = node.getBoundingClientRect()
+      return (
+        computed.display !== "none" &&
+        computed.visibility !== "hidden" &&
+        computed.opacity !== "0" &&
+        box.width > 0 &&
+        box.height > 0
+      )
+    })
+
+    return visibleNode?.textContent?.trim() ?? null
+  }, EXPECTED_OPTION_TEXT)
+
   if (visibleText?.trim() !== EXPECTED_OPTION_TEXT) {
     throw new Error(
       `${app.name} Options content mismatch: expected ${JSON.stringify(EXPECTED_OPTION_TEXT)}, got ${JSON.stringify(visibleText?.trim())}`,

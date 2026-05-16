@@ -66,6 +66,18 @@ export function resolveSnapshotEntries({
     return findVisibleTimezoneRow()?.parentElement ?? null
   }
 
+  function findEventOptionsSection() {
+    const optionLabel = findByText("div, span, label", "Hide if needed times")
+    return optionLabel?.closest(".v-selection-control, .v-input") ?? null
+  }
+
+  function findEventOptionsSwitchRoot() {
+    const optionLabel = findByText("div, span, label", "Hide if needed times")
+    return (
+      optionLabel?.closest(".v-input, .v-switch, .v-input--switch, .v-selection-control") ?? null
+    )
+  }
+
   function findDaysOnlyToggleRoot() {
     const label = findByText("div, span, button", "Dates and times")
     return (
@@ -206,6 +218,26 @@ export function resolveSnapshotEntries({
         )
       case "advancedOptionsSignInLink":
         return findByTextWithin(findAdvancedOptionsContent(), "a, button, span", "Sign in")
+      case "eventOptionsSection":
+        return findEventOptionsSection()
+      case "eventOptionsSwitch":
+        return (
+          findEventOptionsSwitchRoot()?.querySelector(
+            ".v-switch__thumb, .v-input--selection-controls__input",
+          )?.parentElement ?? findEventOptionsSwitchRoot()
+        )
+      case "eventOptionsSwitchTrack":
+        return (
+          findEventOptionsSwitchRoot()?.querySelector(
+            ".v-switch__track, .v-input--switch__track",
+          ) ?? null
+        )
+      case "eventOptionsSwitchThumb":
+        return (
+          findEventOptionsSwitchRoot()?.querySelector(
+            ".v-switch__thumb, .v-input--selection-controls__input",
+          ) ?? null
+        )
       case "timeIncrementSelect":
         return (
           findTimeIncrementLabel()?.parentElement?.querySelector(
