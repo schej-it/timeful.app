@@ -33,6 +33,7 @@ import { fetchUserEvents } from "@/utils/services/EventService"
 import { fetchUserFolders } from "@/utils/services/FolderService"
 import { toScheduleOverlapEvent } from "@/composables/schedule_overlap/types"
 import { toGroupResponseSubmissionPayload } from "@/composables/event/responseSubmissionBoundary"
+import { encodeEventResponseSubmissionPayload } from "@/composables/event/responseSubmissionBoundary"
 import type { SignUpBlockWithResponses } from "@/types"
 
 vi.mock("@/utils/fetch_utils", async () => {
@@ -125,6 +126,28 @@ describe("transport and timezone regression boundaries", () => {
     expect(event.scheduledEvent?.startDate?.toString()).toBe(
       "2026-05-15T12:00:00+00:00[UTC]"
     )
+  })
+
+  it("drops malformed response instants instead of failing the whole availability decode", () => {
+    const response = fromRawResponse(({
+      availability: ["2026-05-15T08:00:00Z", ""],
+      ifNeeded: ["not-an-instant", "2026-05-15T09:00:00Z"],
+      manualAvailability: {
+        "2026-05-15": ["2026-05-15T10:00:00Z", "bad-value"],
+      },
+    }) as unknown as Parameters<typeof fromRawResponse>[0])
+
+    expect(response.availability?.map((value) => value.toString())).toEqual([
+      "2026-05-15T08:00:00+00:00[UTC]",
+    ])
+    expect(response.ifNeeded?.map((value) => value.toString())).toEqual([
+      "2026-05-15T09:00:00+00:00[UTC]",
+    ])
+    expect(
+      response.manualAvailability?.["2026-05-15"]?.map((value) =>
+        value.toString()
+      )
+    ).toEqual(["2026-05-15T10:00:00+00:00[UTC]"])
   })
 
   it("exposes an explicit time seed alongside decoded event dates", () => {
@@ -581,6 +604,24 @@ describe("transport and timezone regression boundaries", () => {
     expect(payload.manualAvailability["2026-01-03T00:00:00+00:00[UTC]"]).toEqual([
       epochMs("2026-01-03T09:00:00Z"),
     ])
+  })
+
+  it("encodes event response availability as ISO instant strings for the backend boundary", () => {
+    const payload = encodeEventResponseSubmissionPayload({
+      availability: [zdt("2026-01-03T09:00:00Z")],
+      ifNeeded: [zdt("2026-01-03T10:00:00Z")],
+      guest: true,
+      name: "guest",
+      email: "",
+    })
+
+    expect(payload).toEqual({
+      availability: ["2026-01-03T09:00:00Z"],
+      ifNeeded: ["2026-01-03T10:00:00Z"],
+      guest: true,
+      name: "guest",
+      email: "",
+    })
   })
 
   it("reuses the shared populated sign-up block model instead of redefining nested user shapes", () => {

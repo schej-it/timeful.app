@@ -229,7 +229,7 @@
                       min-width="10.25rem"
                       class="tw-bg-green tw-text-white tw-transition-opacity"
                       :style="{ opacity: availabilityBtnOpacity }"
-                      @click="editGuestAvailability"
+                      @click="editSelectedGuestAvailability"
                     >
                       {{
                         event.blindAvailabilityEnabled
@@ -244,7 +244,7 @@
                       :class="'tw-bg-green'"
                       :disabled="loading && !userHasResponded"
                       :style="{ opacity: availabilityBtnOpacity }"
-                      @click="() => addAvailability()"
+                      @click="addAvailability"
                     >
                       {{ actionButtonText }}
                     </v-btn>
@@ -260,7 +260,7 @@
                     <v-btn
                       class="tw-w-20 tw-text-white"
                       :class="'tw-bg-green'"
-                      @click="() => saveChanges()"
+                      @click="saveChanges"
                     >
                       Save
                     </v-btn></template
@@ -407,7 +407,7 @@
               v-if="!isGroup && !authUser && selectedGuestRespondent"
               class="tw-bg-white tw-text-green tw-transition-opacity"
               :style="{ opacity: availabilityBtnOpacity }"
-              @click="editGuestAvailability"
+              @click="editSelectedGuestAvailability"
             >
               {{ mobileGuestActionButtonText }}
             </v-btn>
@@ -416,7 +416,7 @@
               class="tw-bg-white tw-text-green tw-transition-opacity"
               :disabled="loading && !userHasResponded"
               :style="{ opacity: availabilityBtnOpacity }"
-              @click="() => addAvailability()"
+              @click="addAvailability"
             >
               {{ mobileActionButtonText }}
             </v-btn>
@@ -428,7 +428,7 @@
             <v-spacer />
             <v-btn
               class="tw-bg-white tw-text-green"
-              @click="() => saveChanges()"
+              @click="saveChanges"
             >
               Save
             </v-btn>
@@ -541,6 +541,7 @@ import {
 } from "@/composables/schedule_overlap/types"
 import type { Event, User } from "@/types"
 import { fetchAuthUserProfile } from "@/utils/services/UserService"
+import { toQueryInstantString } from "@/utils/temporalQuery"
 
 defineOptions({ name: "AppEvent" })
 
@@ -686,6 +687,10 @@ const {
 const scheduleOverlapEvent = computed(() =>
   toScheduleOverlapEvent(event.value as Event)
 )
+
+function editSelectedGuestAvailability() {
+  editGuestAvailability(selectedGuestRespondent.value)
+}
 
 function resetWeekOffset() {
   weekOffset.value = 0
@@ -1057,7 +1062,7 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
       const guestNameKey = `${ev._id}.guestName`
       guestName = localStorage[guestNameKey] as string | null
     }
-    let url = `/events/${sanitizedId}/responses?timeMin=${timeMin.toString()}&timeMax=${timeMax.toString()}`
+    let url = `/events/${sanitizedId}/responses?timeMin=${toQueryInstantString(timeMin)}&timeMax=${toQueryInstantString(timeMax)}`
     if (guestName && guestName.length > 0) {
       url += `&guestName=${encodeURIComponent(guestName)}`
     }

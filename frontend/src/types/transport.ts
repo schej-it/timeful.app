@@ -76,6 +76,22 @@ const fromRawInstantValue = (value: RawInstantValue): Temporal.ZonedDateTime => 
   return Temporal.Instant.from(value).toZonedDateTimeISO("UTC")
 }
 
+const decodeRawInstantValues = (
+  values: RawInstantValue[] | undefined
+): Temporal.ZonedDateTime[] | undefined => {
+  if (!values) {
+    return undefined
+  }
+
+  return values.flatMap((value) => {
+    try {
+      return [fromRawInstantValue(value)]
+    } catch {
+      return []
+    }
+  })
+}
+
 export const toTransportDateTimeStrings = (
   dateTimes: Temporal.ZonedDateTime[] | undefined
 ): string[] | undefined =>
@@ -288,13 +304,13 @@ export const toEventDateStrings = (
 export function fromRawResponse(raw: RawResponse): Response {
   return {
     ...raw,
-    availability: raw.availability?.map((value) => fromRawInstantValue(value)),
-    ifNeeded: raw.ifNeeded?.map((value) => fromRawInstantValue(value)),
+    availability: decodeRawInstantValues(raw.availability),
+    ifNeeded: decodeRawInstantValues(raw.ifNeeded),
     manualAvailability: raw.manualAvailability
       ? Object.fromEntries(
           Object.entries(raw.manualAvailability).map(([date, values]) => [
             date,
-            values.map((value) => fromRawInstantValue(value)),
+            decodeRawInstantValues(values) ?? [],
           ])
         )
       : undefined,

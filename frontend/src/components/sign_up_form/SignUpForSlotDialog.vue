@@ -29,21 +29,21 @@
             <v-text-field
               v-model="name"
               :rules="nameRules"
+              variant="solo"
               placeholder="Enter your name..."
               autofocus
               hide-details="auto"
               autocomplete="off"
-              solo
               @keyup.enter="submit"
             ></v-text-field>
             <v-text-field
               v-if="event.collectEmails"
               v-model="email"
               :rules="emailRules"
+              variant="solo"
               placeholder="Enter your email..."
               hint="The event creator has requested your email. It will only be visible to them."
               persistent-hint
-              solo
               @keyup.enter="submit"
             ></v-text-field>
           </div>
@@ -67,7 +67,7 @@
             <v-spacer />
             <v-btn
               class="tw-bg-green tw-text-white"
-              :disabled="!formValid"
+              :disabled="!canSubmit"
               @click="submit"
             >
               Join slot
@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from "vue"
+import { computed, nextTick, ref, watch } from "vue"
 import { storeToRefs } from "pinia"
 import { validateEmail } from "@/utils"
 import { useMainStore } from "@/stores/main"
@@ -115,6 +115,12 @@ const name = ref("")
 const email = ref("")
 const nameRules = ref<Rule[]>([])
 const emailRules = ref<Rule[]>([])
+const trimmedName = computed(() => name.value.trim())
+const trimmedEmail = computed(() => email.value.trim())
+const canSubmit = computed(() =>
+  trimmedName.value.length > 0 &&
+  (!props.event.collectEmails || trimmedEmail.value.length > 0)
+)
 
 const submit = async () => {
   nameRules.value = [(n) => !!n || "Name is required"]
@@ -127,7 +133,7 @@ const submit = async () => {
   const result = await formRef.value?.validate()
   const valid = typeof result === "boolean" ? result : result?.valid
   if (!valid) return
-  emit("submit", { name: name.value, email: email.value })
+  emit("submit", { name: trimmedName.value, email: trimmedEmail.value })
 }
 
 watch(

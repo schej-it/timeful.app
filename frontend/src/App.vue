@@ -116,6 +116,15 @@ import { getSignInRestoreQuery } from "@/router/authRestoreState"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import type { User } from "@/types"
 import { fetchAuthUserProfile } from "@/utils/services/UserService"
+import AutoSnackbar from "@/components/AutoSnackbar.vue"
+import AuthUserMenu from "@/components/AuthUserMenu.vue"
+import DiscordBanner from "@/components/DiscordBanner.vue"
+import Logo from "@/components/Logo.vue"
+import NewDialog from "@/components/NewDialog.vue"
+import SignInDialog from "@/components/SignInDialog.vue"
+import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
+import UpvoteRedditSnackbar from "@/components/UpvoteRedditSnackbar.vue"
+import UpgradeDialog from "@/components/pricing/UpgradeDialog.vue"
 
 useHead({ htmlAttrs: { lang: "en-US" } })
 

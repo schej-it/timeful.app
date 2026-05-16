@@ -4,7 +4,7 @@ import type { ZdtMap, ZdtSet } from "@/utils"
 import type { SharedCalendarAccounts } from "@/composables/schedule_overlap/types"
 import { generateEnabledCalendarsPayload } from "@/utils"
 import type { RawCalendarOptions } from "@/types/transport"
-import { toRawCalendarOptions } from "@/types/transport"
+import { toRawCalendarOptions, toTransportDateTimeStrings } from "@/types/transport"
 
 interface GuestPayload {
   name: string
@@ -20,8 +20,8 @@ export interface EventResponseSubmissionPayload {
 }
 
 export interface EncodedEventResponseSubmissionPayload {
-  availability: number[]
-  ifNeeded: number[]
+  availability: string[]
+  ifNeeded: string[]
   guest: boolean
   name?: string
   email?: string
@@ -97,8 +97,8 @@ export function encodeEventResponseSubmissionPayload(
   payload: EventResponseSubmissionPayload
 ): EncodedEventResponseSubmissionPayload {
   return {
-    availability: payload.availability.map((slot) => slot.epochMilliseconds),
-    ifNeeded: payload.ifNeeded.map((slot) => slot.epochMilliseconds),
+    availability: toTransportDateTimeStrings(payload.availability) ?? [],
+    ifNeeded: toTransportDateTimeStrings(payload.ifNeeded) ?? [],
     guest: payload.guest,
     name: payload.name,
     email: payload.email,

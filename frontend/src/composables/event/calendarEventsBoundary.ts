@@ -1,6 +1,7 @@
 import type { RawCalendarEvent } from "@/types/transport"
 import { fromRawCalendarEvent } from "@/types/transport"
 import { get } from "@/utils/fetch_utils"
+import { toQueryInstantString } from "@/utils/temporalQuery"
 import {
   fetchCalendarAvailabilitiesTransportMap,
   fetchCalendarEventsTransportMap,
@@ -100,7 +101,7 @@ export const fetchUserCalendarEventsMap = async ({
   timeMax: Temporal.Instant
 }): Promise<CalendarEventsMap> => {
   const result = await get<CalendarEventsTransportMap>(
-    `/user/calendars?timeMin=${timeMin.toString()}&timeMax=${timeMax.toString()}`
+    `/user/calendars?timeMin=${toQueryInstantString(timeMin)}&timeMax=${toQueryInstantString(timeMax)}`
   )
 
   return fromCalendarEventsTransportMap(result)

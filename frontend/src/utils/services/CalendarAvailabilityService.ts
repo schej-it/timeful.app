@@ -6,6 +6,7 @@ import type { Temporal } from "temporal-polyfill"
 import { getEventDateSeeds } from "../eventDateRules"
 import { get } from "../fetch_utils"
 import { dateToDowDate, getRenderedWeekStart } from "../scheduleDateRules"
+import { toQueryInstantString } from "../temporalQuery"
 
 export interface CalendarAvailabilityQueryOptions {
   weekOffset?: number
@@ -161,7 +162,7 @@ export const fetchCalendarEventsTransportMap = async (
     : "/user/calendars"
 
   const result = await get(
-    `${route}?timeMin=${queryWindow.timeMin.toString()}&timeMax=${queryWindow.timeMax.toString()}`
+    `${route}?timeMin=${toQueryInstantString(queryWindow.timeMin)}&timeMax=${toQueryInstantString(queryWindow.timeMax)}`
   )
 
   return toCalendarEventsTransportMap(result)
@@ -181,7 +182,7 @@ export const fetchCalendarAvailabilitiesTransportMap = async (
     : "/user/calendars"
 
   const result = await get(
-    `${route}?timeMin=${queryWindow.timeMin.toString()}&timeMax=${queryWindow.timeMax.toString()}`
+    `${route}?timeMin=${toQueryInstantString(queryWindow.timeMin)}&timeMax=${toQueryInstantString(queryWindow.timeMax)}`
   )
 
   return toCalendarAvailabilitiesTransportMap(result)

@@ -44,6 +44,20 @@ export function useEventEditing(opts: UseEventEditingOptions) {
   const pagesNotVisitedDialog = ref(false)
   const availabilityBtnOpacity = ref(1)
 
+  function getErrorMessage(err: unknown, fallback: string) {
+    if (typeof err === "object" && err !== null) {
+      const parsedError = (
+        err as { parsed?: { error?: string }; message?: string }
+      ).parsed?.error
+      if (parsedError) return parsedError
+
+      const message = (err as { message?: string }).message
+      if (message) return message
+    }
+
+    return fallback
+  }
+
   function addAvailability() {
     const so = opts.scheduleOverlapRef.value
     if (!so) return
@@ -123,12 +137,14 @@ export function useEventEditing(opts: UseEventEditingOptions) {
     if (!opts.authUser.value || opts.addingAvailabilityAsGuest.value) {
       if (opts.curGuestId.value) {
         const ev = opts.event.value
-        await saveChangesAsGuest({
+        const guestChangesSaved = await saveChangesAsGuest({
           name: opts.curGuestId.value,
           email: ev?.responses?.[opts.curGuestId.value]?.email ?? "",
         })
-        opts.curGuestId.value = ""
-        opts.addingAvailabilityAsGuest.value = false
+        if (guestChangesSaved) {
+          opts.curGuestId.value = ""
+          opts.addingAvailabilityAsGuest.value = false
+        }
       } else {
         guestDialog.value = true
       }
@@ -148,15 +164,24 @@ export function useEventEditing(opts: UseEventEditingOptions) {
 
   async function saveChangesAsGuest(payload: { name: string; email: string }) {
     const so = opts.scheduleOverlapRef.value
-    if (!so) return
+    if (!so) return false
     if (payload.name.length > 0) {
-      await so.submitAvailability(payload)
-      mainStore.showInfo("Changes saved!")
-      so.resetCurUserAvailability()
-      so.stopEditing()
-      guestDialog.value = false
-      opts.addingAvailabilityAsGuest.value = false
+      try {
+        await so.submitAvailability(payload)
+        mainStore.showInfo("Changes saved!")
+        so.resetCurUserAvailability()
+        so.stopEditing()
+        guestDialog.value = false
+        opts.addingAvailabilityAsGuest.value = false
+        return true
+      } catch (err: unknown) {
+        mainStore.showError(
+          getErrorMessage(err, "Failed to save availability as guest")
+        )
+      }
     }
+
+    return false
   }
 
   function setAvailabilityAutomatically(calendarType: string = calendarTypes.GOOGLE) {

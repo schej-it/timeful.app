@@ -31,6 +31,7 @@ import {
   toSharedCalendarAccounts,
 } from "./types"
 import { fetchEventResponses } from "@/composables/event/eventTransportBoundary"
+import { toQueryInstantString } from "@/utils/temporalQuery"
 
 export interface UseCalendarEventsOptions {
   event: Ref<ScheduleOverlapEvent>
@@ -428,7 +429,7 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
 
     const eventId =
       typeof opts.event.value._id === "string" ? opts.event.value._id : ""
-    let url = `/events/${eventId}/responses?timeMin=${timeMin.toString()}&timeMax=${timeMax.toString()}`
+    let url = `/events/${eventId}/responses?timeMin=${toQueryInstantString(timeMin)}&timeMax=${toQueryInstantString(timeMax)}`
     if (opts.guestName.value && opts.guestName.value.length > 0) {
       url += `&guestName=${encodeURIComponent(opts.guestName.value)}`
     }
