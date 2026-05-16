@@ -2,6 +2,8 @@ import { timeTypes } from "@/constants"
 
 type StorageWithTimeType = Storage & { timeType?: unknown }
 
+const DEFAULT_LOCALE = "en-US"
+
 const getNavigator = (): Navigator | undefined => {
   return typeof globalThis.navigator === "undefined" ? undefined : globalThis.navigator
 }
@@ -24,12 +26,40 @@ const getStoredTimeType = (storage: Storage | undefined): string | undefined => 
   return storedValue ?? undefined
 }
 
+const normalizeLocaleCandidate = (candidate: unknown): string | undefined => {
+  if (typeof candidate !== "string") {
+    return undefined
+  }
+
+  const trimmedCandidate = candidate.trim()
+  if (!trimmedCandidate) {
+    return undefined
+  }
+
+  try {
+    return Intl.getCanonicalLocales(trimmedCandidate)[0]
+  } catch {
+    return undefined
+  }
+}
+
 export const getLocale = (): string => {
   const navigator = getNavigator()
+
+  for (const candidate of navigator?.languages ?? []) {
+    const normalizedLocale = normalizeLocaleCandidate(candidate)
+    if (normalizedLocale) {
+      return normalizedLocale
+    }
+  }
+
+  const navigatorLanguage = normalizeLocaleCandidate(navigator?.language)
+  if (navigatorLanguage) {
+    return navigatorLanguage
+  }
+
   return (
-    (navigator ? navigator.languages[0] : undefined) ??
-    navigator?.language ??
-    Intl.DateTimeFormat().resolvedOptions().locale
+    normalizeLocaleCandidate(Intl.DateTimeFormat().resolvedOptions().locale) ?? DEFAULT_LOCALE
   )
 }
 

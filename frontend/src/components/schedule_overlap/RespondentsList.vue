@@ -126,6 +126,7 @@
         <template v-else>
           <transition-group
             name="list"
+            tag="div"
             class="tw-grid tw-grid-cols-2 tw-gap-x-2 sm:tw-block"
           >
             <div
@@ -148,16 +149,18 @@
                   </v-avatar>
                 </div>
 
-                <v-simple-checkbox
+                <v-checkbox-btn
                   color="primary"
-                  :value="respondentSelected(user._id ?? '')"
+                  :model-value="respondentSelected(user._id ?? '')"
+                  density="compact"
+                  hide-details
                   class="tw-absolute -tw-top-[2px] tw-left-0 tw-bg-white tw-opacity-0 group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
                   :class="
                     respondentSelected(user._id ?? '')
                       ? 'tw-opacity-100'
                       : 'tw-opacity-0'
                   "
-                  @click="(e: MouseEvent) => $emit('clickRespondent', e, user._id ?? '')"
+                  @click.stop="(e: MouseEvent) => $emit('clickRespondent', e, user._id ?? '')"
                 />
               </div>
               <div class="tw-flex tw-flex-col">

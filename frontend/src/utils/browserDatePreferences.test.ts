@@ -7,6 +7,7 @@ import { getLocale, getTimeOptions, userPrefers12h } from "./browserDatePreferen
 describe("browserDatePreferences", () => {
   beforeEach(() => {
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   it("prefers navigator.languages over navigator.language", () => {
@@ -25,6 +26,39 @@ describe("browserDatePreferences", () => {
     })
 
     expect(getLocale()).toBe("de-DE")
+  })
+
+  it("ignores invalid navigator.languages entries when navigator.language is usable", () => {
+    vi.stubGlobal("navigator", {
+      languages: [undefined],
+      language: "en-GB",
+    })
+
+    expect(getLocale()).toBe("en-GB")
+  })
+
+  it("ignores blank navigator locale values before falling back", () => {
+    vi.stubGlobal("navigator", {
+      languages: [""],
+      language: "fr-FR",
+    })
+
+    expect(getLocale()).toBe("fr-FR")
+  })
+
+  it("falls back to Intl resolved locale when navigator values are unusable", () => {
+    vi.stubGlobal("navigator", {
+      languages: [undefined, ""],
+      language: "",
+    })
+    vi.spyOn(Intl, "DateTimeFormat").mockImplementation(
+      () =>
+        ({
+          resolvedOptions: () => ({ locale: "es-419" }),
+        }) as Intl.DateTimeFormat,
+    )
+
+    expect(getLocale()).toBe("es-419")
   })
 
   it("derives 12-hour preferences from the browser locale when no override is stored", () => {

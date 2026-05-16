@@ -167,9 +167,9 @@
                   height="20"
                   width="20"
                 />
-                <v-list-item-content>
+                <div class="tw-flex tw-min-w-0 tw-flex-col">
                   <v-list-item-title>Google Calendar</v-list-item-title>
-                </v-list-item-content>
+                </div>
               </v-list-item>
               <v-list-item @click="toolRow.actions.confirmScheduleEvent(false)">
                 <v-img
@@ -178,9 +178,9 @@
                   height="20"
                   width="20"
                 />
-                <v-list-item-content>
+                <div class="tw-flex tw-min-w-0 tw-flex-col">
                   <v-list-item-title>Outlook</v-list-item-title>
-                </v-list-item-content>
+                </div>
               </v-list-item>
             </v-list>
           </v-menu>
