@@ -77,6 +77,55 @@ const ItemSlotRenderingVSelectStub = defineComponent({
   `,
 })
 
+const RenderingVListItemStub = defineComponent({
+  name: "RenderingVListItemStub",
+  template: `<div><slot /></div>`,
+})
+
+const RenderingVListItemTitleStub = defineComponent({
+  name: "RenderingVListItemTitleStub",
+  template: `<div><slot /></div>`,
+})
+
+const DirectRawItemVSelectStub = defineComponent({
+  name: "DirectRawItemVSelectStub",
+  props: {
+    items: {
+      type: Array as PropType<({ timezone?: Timezone } & Record<string, unknown>)[]>,
+      default: () => [],
+    },
+    modelValue: {
+      type: String,
+      required: false,
+      default: undefined,
+    },
+  },
+  setup(props) {
+    const selectedTimezone = computed(
+      () =>
+        props.items.find((item) => item.value === props.modelValue)?.timezone ??
+        props.items[0]?.timezone
+    )
+
+    return { selectedTimezone }
+  },
+  template: `
+    <div>
+      <slot
+        v-if="selectedTimezone"
+        name="item"
+        :item="{ raw: selectedTimezone }"
+        :props="{ title: { text: '[object Object]' }, value: selectedTimezone.value }"
+      />
+      <slot
+        v-if="selectedTimezone"
+        name="selection"
+        :item="{ raw: selectedTimezone }"
+      />
+    </div>
+  `,
+})
+
 const mountTimezoneSelector = (modelValue?: Timezone) =>
   shallowMount(TimezoneSelector, {
     props: {
@@ -283,6 +332,8 @@ describe("TimezoneSelector", () => {
         stubs: {
           "v-btn": true,
           "v-icon": true,
+          "v-list-item": RenderingVListItemStub,
+          "v-list-item-title": RenderingVListItemTitleStub,
           "v-select": ItemSlotRenderingVSelectStub,
         },
       },
@@ -292,14 +343,48 @@ describe("TimezoneSelector", () => {
     expect(wrapper.find(".generated-title").exists()).toBe(false)
   })
 
+  it("renders timezone labels when Vuetify exposes the raw timezone object", () => {
+    const wrapper = shallowMount(TimezoneSelector, {
+      props: {
+        modelValue: {
+          value: "Europe/Moscow",
+          label: "Istanbul, Minsk, Moscow, St. Petersburg, Volgograd",
+          gmtString: "(GMT+3:00)",
+          offset: Temporal.Duration.from({ hours: 3 }),
+        },
+      },
+      global: {
+        stubs: {
+          "v-btn": true,
+          "v-icon": true,
+          "v-list-item": RenderingVListItemStub,
+          "v-list-item-title": RenderingVListItemTitleStub,
+          "v-select": DirectRawItemVSelectStub,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain("(GMT+3:00) Istanbul, Minsk, Moscow")
+    expect(wrapper.text()).not.toContain("[object Object]")
+  })
+
   it("uses the shared selection palette for the active timezone dropdown item", () => {
     expect(timezoneSelectorSource).toContain("class=\"timezone-select__item\"")
     expect(timezoneSelectorSource).toContain("'timezone-select__item--active':")
     expect(timezoneSelectorSource).toContain(
-      ".timezone-select__item {\n  align-items: center;\n  color: rgba(0, 0, 0, 0.87);\n  cursor: pointer;\n  display: flex;\n  min-height: 48px;\n  padding: 0 16px;\n}"
+      "class=\"timezone-select__item-title\""
     )
     expect(timezoneSelectorSource).toContain(
-      ".timezone-select__item--active {\n  background-color: var(--timeful-selection-bg);\n  color: var(--timeful-selection-fg);\n}"
+      ".timezone-select__item {\n  min-height: 48px;\n}"
+    )
+    expect(timezoneSelectorSource).toContain(
+      ".timezone-select__item-title {\n  color: rgba(0, 0, 0, 0.87);\n}"
+    )
+    expect(timezoneSelectorSource).toContain(
+      ".timezone-select__item--active {\n  background-color: var(--timeful-selection-bg);\n}"
+    )
+    expect(timezoneSelectorSource).toContain(
+      ".timezone-select__item--active :deep(.timezone-select__item-title) {\n  color: var(--timeful-selection-fg);\n}"
     )
   })
 })

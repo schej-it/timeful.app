@@ -20,15 +20,32 @@
             @update:model-value="(val) => toolRow.actions.updateCurTimezone(val)"
           />
           <v-select
-            :value="toolRow.timeType"
+            :model-value="toolRow.timeType"
             :items="timeTypeOptions"
-            item-text="label"
+            item-title="label"
             item-value="value"
-            class="tw-z-20 -tw-mt-px tw-w-16 tw-text-sm"
-            dense
+            class="tool-row-inline-select tool-row-inline-select--compact tw-z-20 -tw-mt-px tw-w-16 tw-text-sm"
+            density="compact"
             hide-details
-            @input="toolRow.actions.updateTimeType($event)"
-          />
+            variant="underlined"
+            @update:model-value="(value) => value && toolRow.actions.updateTimeType(value)"
+          >
+            <template #item="{ item, props: itemProps }">
+              <v-list-item
+                v-bind="stripGeneratedTitle(itemProps)"
+                class="tool-row-inline-select__item"
+              >
+                <v-list-item-title class="tool-row-inline-select__item-title">
+                  {{ item.raw.label }}
+                </v-list-item-title>
+              </v-list-item>
+            </template>
+            <template #selection="{ item }">
+              <div class="tool-row-inline-select__selection-text">
+                {{ item.raw.label }}
+              </div>
+            </template>
+          </v-select>
         </div>
         <div
           v-if="isPhone && !toolRow.event.daysOnly"
@@ -36,15 +53,34 @@
         >
           Show
           <v-select
-            :value="toolRow.mobileNumDays"
+            :model-value="toolRow.mobileNumDays"
             :items="mobileNumDaysOptions"
-            item-text="label"
+            item-title="label"
             item-value="value"
-            class="-tw-mt-px tw-flex-none tw-shrink tw-basis-24 tw-text-sm"
-            dense
+            class="tool-row-inline-select -tw-mt-px tw-flex-none tw-shrink tw-basis-24 tw-text-sm"
+            density="compact"
             hide-details
-            @input="toolRow.actions.updateMobileNumDays($event)"
-          />
+            variant="underlined"
+            @update:model-value="
+              (value) => typeof value === 'number' && toolRow.actions.updateMobileNumDays(value)
+            "
+          >
+            <template #item="{ item, props: itemProps }">
+              <v-list-item
+                v-bind="stripGeneratedTitle(itemProps)"
+                class="tool-row-inline-select__item"
+              >
+                <v-list-item-title class="tool-row-inline-select__item-title">
+                  {{ item.raw.label }}
+                </v-list-item-title>
+              </v-list-item>
+            </template>
+            <template #selection="{ item }">
+              <div class="tool-row-inline-select__selection-text">
+                {{ item.raw.label }}
+              </div>
+            </template>
+          </v-select>
           at a time
         </div>
 
@@ -205,4 +241,28 @@ const showScheduleEventButton = computed(
     props.toolRow.state !== props.toolRow.states.EDIT_AVAILABILITY &&
     (guestEvent.value || isOwner.value)
 )
+
+function stripGeneratedTitle(
+  itemProps: Record<string, unknown>
+): Record<string, unknown> {
+  const { title: _title, ...rest } = itemProps
+  return rest
+}
 </script>
+
+<style scoped>
+.tool-row-inline-select :deep(.v-field__input) {
+  padding-inline: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.tool-row-inline-select--compact :deep(.v-field__append-inner) {
+  padding-inline-start: 4px !important;
+}
+
+.tool-row-inline-select__item-title,
+.tool-row-inline-select__selection-text {
+  color: rgba(0, 0, 0, 0.87);
+}
+</style>

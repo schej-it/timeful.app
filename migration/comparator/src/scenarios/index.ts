@@ -1,5 +1,6 @@
 import { landingScenario } from "./landing.js"
 import { eventOptionsInteractionScenario } from "./event-options.js"
+import { eventTimezoneMenuScenario } from "./event-timezone-menu.js"
 import {
   newEventCalendarInteractionScenario,
   newEventCalendarScenario,
@@ -14,6 +15,7 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
   "new-event-calendar": newEventCalendarScenario,
   "new-event-calendar-interaction": newEventCalendarInteractionScenario,
   "event-options-interaction": eventOptionsInteractionScenario,
+  "event-timezone-menu": eventTimezoneMenuScenario,
 } as const
 
 export type CompareTarget = keyof typeof SCENARIOS

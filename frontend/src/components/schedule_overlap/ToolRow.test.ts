@@ -7,6 +7,7 @@ import { eventTypes, timeTypes, UTC } from "@/constants"
 import { states } from "@/composables/schedule_overlap/types"
 import { Temporal } from "temporal-polyfill"
 import ToolRow from "./ToolRow.vue"
+import toolRowSource from "./ToolRow.vue?raw"
 
 vi.mock("pinia", () => ({
   storeToRefs: (store: { authUser: unknown }) => ({
@@ -135,5 +136,16 @@ describe("ToolRow", () => {
     })
 
     expect(cancelWrapper.find("button").attributes("data-variant")).toBe("outlined")
+  })
+
+  it("uses explicit Vuetify 3 select semantics for the time type control", () => {
+    expect(toolRowSource).toContain(':model-value="toolRow.timeType"')
+    expect(toolRowSource).toContain('item-title="label"')
+    expect(toolRowSource).toContain('item-value="value"')
+    expect(toolRowSource).toContain('density="compact"')
+    expect(toolRowSource).toContain('variant="underlined"')
+    expect(toolRowSource).toContain('class="tool-row-inline-select tool-row-inline-select--compact')
+    expect(toolRowSource).toContain("@update:model-value=\"(value) => value && toolRow.actions.updateTimeType(value)\"")
+    expect(toolRowSource).toContain('class="tool-row-inline-select__selection-text"')
   })
 })

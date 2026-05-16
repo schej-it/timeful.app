@@ -22,21 +22,23 @@
         @update:model-value="onChangeValue"
       >
         <template #item="{ item, props: itemProps }">
-          <div
+          <v-list-item
             v-bind="stripGeneratedTitle(itemProps)"
             class="timezone-select__item"
             :class="{
-              'timezone-select__item--active': item.raw.value === selectedTimezoneValue,
+              'timezone-select__item--active': getTimezoneFromSelectItem(item.raw).value === selectedTimezoneValue,
             }"
           >
-            {{ item.raw.timezone.gmtString }} {{ item.raw.timezone.label }}
-          </div>
+            <v-list-item-title class="timezone-select__item-title">
+              {{ formatTimezoneSelectItemLabel(item.raw) }}
+            </v-list-item-title>
+          </v-list-item>
         </template>
         <template #selection="{ item }">
           <div
             class="timezone-select__selection-text v-select__selection v-select__selection--comma"
           >
-            {{ item.raw.timezone.gmtString }} {{ item.raw.timezone.label }}
+            {{ formatTimezoneSelectItemLabel(item.raw) }}
           </div>
         </template>
       </v-select>
@@ -103,6 +105,18 @@ const effectiveReferenceDate = computed(() => {
 
 function formatTimezoneTitle(timezone: Timezone): string {
   return `${timezone.gmtString} ${timezone.label}`.trim()
+}
+
+function isTimezoneSelectItem(item: TimezoneSelectItem | Timezone): item is TimezoneSelectItem {
+  return "timezone" in item
+}
+
+function getTimezoneFromSelectItem(item: TimezoneSelectItem | Timezone): Timezone {
+  return isTimezoneSelectItem(item) ? item.timezone : item
+}
+
+function formatTimezoneSelectItemLabel(item: TimezoneSelectItem | Timezone): string {
+  return formatTimezoneTitle(getTimezoneFromSelectItem(item))
 }
 
 function normalizeTimezone(timezone: Timezone): Timezone {
@@ -454,16 +468,18 @@ watch(
 }
 
 .timezone-select__item {
-  align-items: center;
-  color: rgba(0, 0, 0, 0.87);
-  cursor: pointer;
-  display: flex;
   min-height: 48px;
-  padding: 0 16px;
+}
+
+.timezone-select__item-title {
+  color: rgba(0, 0, 0, 0.87);
 }
 
 .timezone-select__item--active {
   background-color: var(--timeful-selection-bg);
+}
+
+.timezone-select__item--active :deep(.timezone-select__item-title) {
   color: var(--timeful-selection-fg);
 }
 </style>
