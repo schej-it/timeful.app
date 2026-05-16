@@ -31,14 +31,15 @@
             @update:model-value="(value) => value && toolRow.actions.updateTimeType(value)"
           >
             <template #item="{ item, props: itemProps }">
-              <v-list-item
+              <div
                 v-bind="stripGeneratedTitle(itemProps)"
                 class="tool-row-inline-select__item"
+                :class="{
+                  'tool-row-inline-select__item--active': item.raw.value === toolRow.timeType,
+                }"
               >
-                <v-list-item-title class="tool-row-inline-select__item-title">
-                  {{ item.raw.label }}
-                </v-list-item-title>
-              </v-list-item>
+                {{ item.raw.label }}
+              </div>
             </template>
             <template #selection="{ item }">
               <div class="tool-row-inline-select__selection-text">
@@ -66,14 +67,16 @@
             "
           >
             <template #item="{ item, props: itemProps }">
-              <v-list-item
+              <div
                 v-bind="stripGeneratedTitle(itemProps)"
                 class="tool-row-inline-select__item"
+                :class="{
+                  'tool-row-inline-select__item--active':
+                    item.raw.value === toolRow.mobileNumDays,
+                }"
               >
-                <v-list-item-title class="tool-row-inline-select__item-title">
-                  {{ item.raw.label }}
-                </v-list-item-title>
-              </v-list-item>
+                {{ item.raw.label }}
+              </div>
             </template>
             <template #selection="{ item }">
               <div class="tool-row-inline-select__selection-text">
@@ -261,8 +264,21 @@ function stripGeneratedTitle(
   padding-inline-start: 4px !important;
 }
 
-.tool-row-inline-select__item-title,
+.tool-row-inline-select__item,
 .tool-row-inline-select__selection-text {
   color: rgba(0, 0, 0, 0.87);
+}
+
+.tool-row-inline-select__item {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  min-height: 48px;
+  padding: 0 16px;
+}
+
+.tool-row-inline-select__item--active {
+  background-color: var(--timeful-selection-bg);
+  color: var(--timeful-selection-fg);
 }
 </style>
