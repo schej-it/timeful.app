@@ -1,4 +1,5 @@
 import { landingScenario } from "./landing.js"
+import { eventLegacyNoteScenario } from "./event-legacy-note.js"
 import { eventOptionsInteractionScenario } from "./event-options.js"
 import { eventTimezoneMenuScenario } from "./event-timezone-menu.js"
 import {
@@ -12,6 +13,7 @@ import type { ScenarioDefinition } from "../types.js"
 
 export const SCENARIOS: Record<string, ScenarioDefinition> = {
   landing: landingScenario,
+  "event-legacy-note": eventLegacyNoteScenario,
   "new-event-form": newEventFormScenario,
   "new-event-calendar": newEventCalendarScenario,
   "new-event-calendar-interaction": newEventCalendarInteractionScenario,

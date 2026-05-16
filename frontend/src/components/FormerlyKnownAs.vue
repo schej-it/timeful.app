@@ -1,8 +1,6 @@
 <template>
   <div class="formerly-known-as-shell tw-relative tw-mt-2 tw-flex tw-items-center tw-justify-center">
-    <div
-      class="formerly-known-as-row tw-absolute tw-flex tw-items-center"
-    >
+    <div class="formerly-known-as-row tw-absolute tw-flex tw-items-center">
       <div class="formerly-known-as-icon-wrap -tw-mt-3.5 tw-text-dark-gray">
         <v-icon>mdi-arrow-up-left</v-icon>
       </div>
@@ -29,8 +27,8 @@
 }
 
 .formerly-known-as-icon-wrap {
-  width: 18.67px;
-  min-width: 18.67px;
+  width: 24px;
+  min-width: 24px;
 }
 
 .formerly-known-as-link,
