@@ -28,7 +28,7 @@
           <v-spacer />
           <v-menu right offset-x>
             <template #activator="{ props: activatorProps }">
-              <v-btn icon v-bind="activatorProps"
+              <v-btn variant="text" size="small" icon v-bind="activatorProps"
                 ><v-icon>mdi-dots-vertical</v-icon></v-btn
               >
             </template>
@@ -105,153 +105,153 @@
           : ''
       "
     >
-      <div
-        ref="respondentsScrollView"
-        class="-tw-ml-2 tw-pl-2 tw-pt-2 tw-text-sm"
-        :class="
-          isPhone && !maxHeight
-            ? 'tw-overflow-hidden'
-            : 'tw-overflow-y-auto tw-overflow-x-hidden'
-        "
-      >
-        <div v-if="respondents.length === 0" class="tw-mb-6">
-          <span
-            v-if="!isOwner && event.blindAvailabilityEnabled"
-            class="tw-text-very-dark-gray"
-          >
-            No response yet!
-          </span>
-          <span v-else class="tw-text-very-dark-gray">No responses yet!</span>
-        </div>
-        <template v-else>
-          <transition-group
-            name="list"
-            tag="div"
-            class="tw-grid tw-grid-cols-2 tw-gap-x-2 sm:tw-block"
-          >
-            <div
-              v-for="user in orderedRespondents"
-              :key="user._id"
-              class="tw-group tw-relative tw-flex tw-cursor-pointer tw-items-center tw-py-1"
-              @mouseover="(e: MouseEvent) => $emit('mouseOverRespondent', e, user._id ?? '')"
-              @mouseleave="$emit('mouseLeaveRespondent')"
-              @click="(e: MouseEvent) => clickRespondent(e, user._id ?? '')"
+      <div class="tw-relative tw-overflow-hidden">
+        <div
+          ref="respondentsScrollView"
+          class="-tw-ml-2 tw-pl-2 tw-pt-2 tw-text-sm"
+          :class="
+            isPhone && !maxHeight
+              ? 'tw-overflow-hidden'
+              : 'tw-overflow-y-auto tw-overflow-x-hidden'
+          "
+        >
+          <div v-if="respondents.length === 0" class="tw-mb-6">
+            <span
+              v-if="!isOwner && event.blindAvailabilityEnabled"
+              class="tw-text-very-dark-gray"
             >
-              <div class="tw-relative tw-flex tw-items-center">
-                <div class="tw-ml-1 tw-mr-3">
-                  <UserAvatarContent
-                    v-if="!isGuest(user)"
-                    :user="user"
-                    :size="16"
-                  ></UserAvatarContent>
-                  <v-avatar v-else :size="16">
-                    <v-icon small>mdi-account</v-icon>
-                  </v-avatar>
-                </div>
-
-                <v-checkbox-btn
-                  color="primary"
-                  :model-value="respondentSelected(user._id ?? '')"
-                  density="compact"
-                  hide-details
-                  class="tw-absolute -tw-top-[2px] tw-left-0 tw-bg-white tw-opacity-0 group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
-                  :class="
-                    respondentSelected(user._id ?? '')
-                      ? 'tw-opacity-100'
-                      : 'tw-opacity-0'
-                  "
-                  @click.stop="(e: MouseEvent) => $emit('clickRespondent', e, user._id ?? '')"
-                />
-              </div>
-              <div class="tw-flex tw-flex-col">
-                <div
-                  class="tw-mr-1 tw-transition-all"
-                  :class="respondentClass(user._id ?? '')"
-                >
-                  {{
-                    user.firstName +
-                    " " +
-                    user.lastName +
-                    (respondentIfNeeded(user._id ?? '') ? "*" : "")
-                  }}
-                </div>
-                <div
-                  v-if="isOwner && event.collectEmails"
-                  class="email-hover-target tw-flex tw-items-center tw-rounded-sm tw-p-px tw-text-xs tw-text-dark-gray tw-transition-all hover:tw-bg-light-gray"
-                  :class="respondentClass(user._id ?? '')"
-                  @mouseover.stop
-                  @click.stop="copyEmailToClipboard(user.email)"
-                >
-                  {{ user.email }}
-                  <v-icon class="tw-ml-1 tw-text-xs">mdi-content-copy</v-icon>
-                </div>
-              </div>
+              No response yet!
+            </span>
+            <span v-else class="tw-text-very-dark-gray">No responses yet!</span>
+          </div>
+          <template v-else>
+            <transition-group
+              name="list"
+              tag="div"
+              class="tw-grid tw-grid-cols-2 tw-gap-x-2 sm:tw-block"
+            >
               <div
-                class="tw-absolute tw-right-0 tw-transition-none group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
-                :class="isPhone ? 'tw-opacity-100' : 'tw-opacity-0'"
+                v-for="user in orderedRespondents"
+                :key="user._id"
+                class="tw-group tw-relative tw-flex tw-cursor-pointer tw-items-center tw-py-1"
+                @mouseover="(e: MouseEvent) => $emit('mouseOverRespondent', e, user._id ?? '')"
+                @mouseleave="$emit('mouseLeaveRespondent')"
+                @click="(e: MouseEvent) => clickRespondent(e, user._id ?? '')"
               >
-                <template
-                  v-if="isPhone && (isGuest(user) || (isOwner && !isGroup))"
+                <div class="tw-relative tw-flex tw-items-center">
+                  <div class="tw-ml-1 tw-mr-3">
+                    <UserAvatarContent
+                      v-if="!isGuest(user)"
+                      :user="user"
+                      :size="16"
+                    ></UserAvatarContent>
+                    <v-avatar v-else :size="16">
+                      <v-icon small>mdi-account</v-icon>
+                    </v-avatar>
+                  </div>
+
+                  <v-checkbox-btn
+                    color="primary"
+                    :model-value="respondentSelected(user._id ?? '')"
+                    density="compact"
+                    hide-details
+                    class="tw-absolute -tw-top-[2px] tw-left-0 tw-bg-white tw-opacity-0 group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
+                    :class="
+                      respondentSelected(user._id ?? '')
+                        ? 'tw-opacity-100'
+                        : 'tw-opacity-0'
+                    "
+                    @click.stop="(e: MouseEvent) => $emit('clickRespondent', e, user._id ?? '')"
+                  />
+                </div>
+                <div class="tw-flex tw-flex-col">
+                  <div
+                    class="tw-mr-1 tw-transition-all"
+                    :class="respondentClass(user._id ?? '')"
+                  >
+                    {{
+                      user.firstName +
+                      " " +
+                      user.lastName +
+                      (respondentIfNeeded(user._id ?? '') ? "*" : "")
+                    }}
+                  </div>
+                  <div
+                    v-if="isOwner && event.collectEmails"
+                    class="email-hover-target tw-flex tw-items-center tw-rounded-sm tw-p-px tw-text-xs tw-text-dark-gray tw-transition-all hover:tw-bg-light-gray"
+                    :class="respondentClass(user._id ?? '')"
+                    @mouseover.stop
+                    @click.stop="copyEmailToClipboard(user.email)"
+                  >
+                    {{ user.email }}
+                    <v-icon class="tw-ml-1 tw-text-xs">mdi-content-copy</v-icon>
+                  </div>
+                </div>
+                <div
+                  class="tw-absolute tw-right-0 tw-transition-none group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
+                  :class="isPhone ? 'tw-opacity-100' : 'tw-opacity-0'"
                 >
-                  <v-menu right offset-x>
-                    <template #activator="{ props: activatorProps }">
-                      <v-btn icon v-bind="activatorProps">
-                        <v-icon small color="#4F4F4F">mdi-dots-vertical</v-icon>
-                      </v-btn>
-                    </template>
-                    <v-list class="tw-py-1" dense>
-                      <v-list-item
-                        v-if="isGuest(user)"
-                        @click="$emit('editGuestAvailability', user._id ?? '')"
-                      >
-                        <v-list-item-title class="tw-flex tw-items-center">
-                          <v-icon small class="tw-mr-2" color="#4F4F4F"
-                            >mdi-pencil</v-icon
-                          >
-                          Edit
-                        </v-list-item-title>
-                      </v-list-item>
-                      <v-list-item
-                        v-if="isOwner && !isGroup"
-                        @click="() => showDeleteAvailabilityDialog(user)"
-                      >
-                        <v-list-item-title class="tw-flex tw-items-center">
-                          <v-icon small class="tw-mr-2" color="#4F4F4F"
-                            >mdi-delete</v-icon
-                          >
-                          Delete
-                        </v-list-item-title>
-                      </v-list-item>
-                    </v-list>
-                  </v-menu>
-                </template>
-                <template v-else>
-                  <v-btn
-                    v-if="isGuest(user)"
-                    icon
-                    size="small"
-                    class="tw-bg-white"
-                    @click="$emit('editGuestAvailability', user._id ?? '')"
-                    ><v-icon small color="#4F4F4F">mdi-pencil</v-icon></v-btn
+                  <template
+                    v-if="isPhone && (isGuest(user) || (isOwner && !isGroup))"
                   >
-                  <v-btn
-                    v-if="isOwner && !isGroup"
-                    icon
-                    size="small"
-                    class="tw-bg-white"
-                    @click="() => showDeleteAvailabilityDialog(user)"
-                    ><v-icon small class="hover:tw-text-red" color="#4F4F4F"
-                      >mdi-delete</v-icon
-                    ></v-btn
-                  >
-                </template>
+                    <v-menu right offset-x>
+                      <template #activator="{ props: activatorProps }">
+                        <v-btn icon v-bind="activatorProps">
+                          <v-icon small color="#4F4F4F">mdi-dots-vertical</v-icon>
+                        </v-btn>
+                      </template>
+                      <v-list class="tw-py-1" dense>
+                        <v-list-item
+                          v-if="isGuest(user)"
+                          @click="$emit('editGuestAvailability', user._id ?? '')"
+                        >
+                          <v-list-item-title class="tw-flex tw-items-center">
+                            <v-icon small class="tw-mr-2" color="#4F4F4F"
+                              >mdi-pencil</v-icon
+                            >
+                            Edit
+                          </v-list-item-title>
+                        </v-list-item>
+                        <v-list-item
+                          v-if="isOwner && !isGroup"
+                          @click="() => showDeleteAvailabilityDialog(user)"
+                        >
+                          <v-list-item-title class="tw-flex tw-items-center">
+                            <v-icon small class="tw-mr-2" color="#4F4F4F"
+                              >mdi-delete</v-icon
+                            >
+                            Delete
+                          </v-list-item-title>
+                        </v-list-item>
+                      </v-list>
+                    </v-menu>
+                  </template>
+                  <template v-else>
+                    <v-btn
+                      v-if="isGuest(user)"
+                      icon
+                      size="small"
+                      class="tw-bg-white"
+                      @click="$emit('editGuestAvailability', user._id ?? '')"
+                      ><v-icon small color="#4F4F4F">mdi-pencil</v-icon></v-btn
+                    >
+                    <v-btn
+                      v-if="isOwner && !isGroup"
+                      icon
+                      size="small"
+                      class="tw-bg-white"
+                      @click="() => showDeleteAvailabilityDialog(user)"
+                      ><v-icon small class="hover:tw-text-red" color="#4F4F4F"
+                        >mdi-delete</v-icon
+                      ></v-btn
+                    >
+                  </template>
+                </div>
               </div>
-            </div>
-          </transition-group>
-          <div class="tw-h-2"></div>
-        </template>
-      </div>
-      <div class="tw-relative">
+            </transition-group>
+            <div class="tw-h-2"></div>
+          </template>
+        </div>
         <OverflowGradient
           v-if="hasMounted && !isPhone && respondentsScrollView"
           class="tw-h-16"
