@@ -138,6 +138,7 @@ export const toScheduleOverlapEvent = (
   event: Event
 ): ScheduleOverlapEvent => ({
   ...event,
+  responses: event.responses,
   signUpBlocks: event.signUpBlocks?.flatMap((block) => {
     if (
       !(block.startDate instanceof Temporal.ZonedDateTime) ||
@@ -155,6 +156,8 @@ export const toScheduleOverlapEvent = (
       hoursLength: Temporal.Duration.from({ minutes: 0 }),
     }]
   }),
+  signUpResponses: event.signUpResponses,
+  attendees: event.attendees,
 })
 
 export type SignUpBlockLite = ScheduleOverlapSignUpBlock

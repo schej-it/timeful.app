@@ -150,19 +150,26 @@
                     </v-avatar>
                   </div>
 
-                  <v-checkbox-btn
-                    color="primary"
-                    :model-value="respondentSelected(user._id ?? '')"
-                    density="compact"
-                    hide-details
-                    class="tw-absolute -tw-top-[2px] tw-left-0 tw-bg-white tw-opacity-0 group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
+                  <v-btn
+                    icon
+                    variant="text"
+                    size="x-small"
+                    class="tw-absolute -tw-top-[3px] -tw-left-[6px] tw-min-w-0 tw-bg-white tw-p-0 tw-opacity-0 group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
                     :class="
                       respondentSelected(user._id ?? '')
                         ? 'tw-opacity-100'
                         : 'tw-opacity-0'
                     "
                     @click.stop="(e: MouseEvent) => $emit('clickRespondent', e, user._id ?? '')"
-                  />
+                  >
+                    <v-icon size="18" color="primary">
+                      {{
+                        respondentSelected(user._id ?? '')
+                          ? "mdi-checkbox-marked"
+                          : "mdi-checkbox-blank-outline"
+                      }}
+                    </v-icon>
+                  </v-btn>
                 </div>
                 <div class="tw-flex tw-flex-col">
                   <div
@@ -253,7 +260,7 @@
           </template>
         </div>
         <OverflowGradient
-          v-if="hasMounted && !isPhone && respondentsScrollView"
+          v-if="hasMounted && !isPhone && respondentsScrollView && !maxHeight"
           class="tw-h-16"
           :scroll-container="respondentsScrollView"
           :show-arrow="false"

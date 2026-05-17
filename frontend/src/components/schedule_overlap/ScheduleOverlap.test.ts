@@ -175,6 +175,57 @@ describe("ScheduleOverlap", () => {
     expect(typeof daysOnlyGrid.toolRow.actions.toggleShowEventOptions).toBe("function")
   })
 
+  it("keeps respondents in the sidebar view model for specific-date events", () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        event: {
+          ...buildScheduleOverlapProps().event,
+          responses: {
+            khh: {
+              user: {
+                _id: "000000000000000000000000",
+                firstName: "khh",
+                lastName: "",
+                email: "",
+              },
+              availability: [],
+              ifNeeded: [],
+              manualAvailability: {},
+            },
+          },
+        },
+      },
+      global: {
+        stubs: {
+          ScheduleOverlapSidebar: {
+            name: "ScheduleOverlapSidebar",
+            props: {
+              sidebar: {
+                type: Object,
+                required: true,
+              },
+            },
+            template: "<div />",
+          },
+        },
+      },
+    })
+
+    const sidebarViewModel = wrapper.findComponent({ name: "ScheduleOverlapSidebar" })
+      .props("sidebar") as {
+      respondentsPanel: {
+        respondents: { _id?: string; firstName?: string }[]
+      }
+    }
+
+    expect(sidebarViewModel.respondentsPanel.respondents).toEqual([
+      expect.objectContaining({
+        _id: "khh",
+        firstName: "khh",
+      }),
+    ])
+  })
+
   it("keeps grouped sidebar and mobile overlay listeners wired to local state and parent emits", async () => {
     smAndDown.value = true
 

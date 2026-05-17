@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from "vue"
+import { onBeforeUnmount, onMounted, ref, watch } from "vue"
 
 const props = withDefaults(
   defineProps<{
@@ -31,6 +31,15 @@ const props = withDefaults(
 )
 
 const showGradient = ref(false)
+let resizeObserver: ResizeObserver | null = null
+let mutationObserver: MutationObserver | null = null
+
+const detachObserver = () => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
+  mutationObserver?.disconnect()
+  mutationObserver = null
+}
 
 const checkScroll = () => {
   if (!props.scrollContainer) return
@@ -49,9 +58,54 @@ const scrollToBottom = () => {
 onMounted(() => {
   checkScroll()
   props.scrollContainer?.addEventListener("scroll", checkScroll)
+  if (props.scrollContainer && typeof ResizeObserver !== "undefined") {
+    resizeObserver = new ResizeObserver(() => {
+      checkScroll()
+    })
+    resizeObserver.observe(props.scrollContainer)
+  }
+  if (props.scrollContainer && typeof MutationObserver !== "undefined") {
+    mutationObserver = new MutationObserver(() => {
+      checkScroll()
+    })
+    mutationObserver.observe(props.scrollContainer, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    })
+  }
 })
 
 onBeforeUnmount(() => {
   props.scrollContainer?.removeEventListener("scroll", checkScroll)
+  detachObserver()
 })
+
+watch(
+  () => props.scrollContainer,
+  (nextContainer, prevContainer) => {
+    prevContainer?.removeEventListener("scroll", checkScroll)
+    detachObserver()
+
+    nextContainer?.addEventListener("scroll", checkScroll)
+    if (nextContainer && typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(() => {
+        checkScroll()
+      })
+      resizeObserver.observe(nextContainer)
+    }
+    if (nextContainer && typeof MutationObserver !== "undefined") {
+      mutationObserver = new MutationObserver(() => {
+        checkScroll()
+      })
+      mutationObserver.observe(nextContainer, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      })
+    }
+
+    checkScroll()
+  }
+)
 </script>

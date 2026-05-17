@@ -4,6 +4,7 @@ import { eventOptionsInteractionScenario } from "./event-options.js"
 import { eventOptionsStyleScenario } from "./event-options-style.js"
 import { eventOptionsStyleOnScenario } from "./event-options-style-on.js"
 import { eventTimezoneMenuScenario } from "./event-timezone-menu.js"
+import { eventRespondentsPanelScenario } from "./event-respondents-panel.js"
 import {
   newEventCalendarInteractionScenario,
   newEventCalendarScenario,
@@ -22,6 +23,7 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
   "event-options-interaction": eventOptionsInteractionScenario,
   "event-options-style": eventOptionsStyleScenario,
   "event-options-style-on": eventOptionsStyleOnScenario,
+  "event-respondents-panel": eventRespondentsPanelScenario,
   "event-timezone-menu": eventTimezoneMenuScenario,
   "schedule-event-upward-drag": scheduleEventUpwardDragScenario,
 } as const

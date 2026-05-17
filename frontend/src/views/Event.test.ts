@@ -54,6 +54,12 @@ vi.mock("@/composables/event/useEventLoader", () => ({
       responses: {
         khh: {
           name: "khh",
+          user: {
+            _id: "000000000000000000000000",
+            firstName: "khh",
+            lastName: "",
+            email: "",
+          },
           availability: [],
         },
       },
@@ -117,6 +123,13 @@ vi.mock("@/utils/services/UserService", () => ({
 
 const ScheduleOverlapStub = defineComponent({
   name: "ScheduleOverlap",
+  props: {
+    event: {
+      type: Object,
+      required: false,
+      default: null,
+    },
+  },
   setup(_, { expose }) {
     expose({
       selectedGuestRespondent: "khh",
@@ -190,5 +203,54 @@ describe("Event guest edit action", () => {
     await guestEditButton.trigger("click")
 
     expect(editGuestAvailabilityMock).toHaveBeenCalledWith("khh")
+  })
+
+  it("passes loaded event responses through to the schedule-overlap boundary", async () => {
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          PubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": true,
+        },
+      },
+    })
+
+    await nextTick()
+
+    const scheduleOverlapEvent = wrapper.findComponent(ScheduleOverlapStub).props("event") as {
+      responses?: Record<string, { user?: { firstName?: string } }>
+    }
+
+    expect(scheduleOverlapEvent.responses).toMatchObject({
+      khh: {
+        user: {
+          firstName: "khh",
+        },
+      },
+    })
   })
 })

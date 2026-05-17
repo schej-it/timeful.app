@@ -260,7 +260,6 @@
 
         <ScheduleOverlapRespondentsPanel
           ref="respondentsPanelRef"
-          :max-height="100"
           :panel="sidebar.respondentsPanel"
           @update:show-calendar-events="emit('update:showCalendarEvents', $event)"
           @update:show-best-times="emit('update:showBestTimes', $event)"
