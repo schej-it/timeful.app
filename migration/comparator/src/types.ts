@@ -43,6 +43,7 @@ export type SpecialElementDescriptor = {
     | "calendarMonthLabel"
     | "calendarYearLabel"
     | "calendarSelectedDay"
+    | "respondentSelectionControl"
 }
 
 export type ElementDescriptor =

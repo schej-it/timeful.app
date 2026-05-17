@@ -279,6 +279,7 @@
           <!-- Calendar -->
 
           <ScheduleOverlap
+            v-if="scheduleOverlapReady"
             ref="scheduleOverlap"
             v-model:week-offset="weekOffset"
             :event="scheduleOverlapEvent"
@@ -299,6 +300,10 @@
             @set-cur-guest-id="(id) => (curGuestId = id)"
             @sign-up-for-block="initiateSignUpFlow"
           />
+          <div
+            v-else
+            class="tw-mx-4 tw-mt-6 tw-h-[28rem] tw-rounded-xl tw-border tw-border-light-gray tw-bg-white"
+          ></div>
         </div>
         <PubliftAd
           :show-ad="showAds"
@@ -480,6 +485,8 @@ import {
   toRef,
   onMounted,
   onBeforeUnmount,
+  nextTick,
+  defineAsyncComponent,
   type PropType,
 } from "vue"
 import { useRouter, useRoute } from "vue-router"
@@ -504,7 +511,6 @@ import {
 } from "@/views/event/pluginResponsesBoundary"
 
 import NewDialog from "@/components/NewDialog.vue"
-import ScheduleOverlap from "@/components/schedule_overlap/ScheduleOverlap.vue"
 import GuestDialog from "@/components/GuestDialog.vue"
 import SignUpForSlotDialog from "@/components/sign_up_form/SignUpForSlotDialog.vue"
 import {
@@ -543,6 +549,10 @@ import type { Event, User } from "@/types"
 import { fetchAuthUserProfile } from "@/utils/services/UserService"
 import { toQueryInstantString } from "@/utils/temporalQuery"
 
+const ScheduleOverlap = defineAsyncComponent(
+  () => import("@/components/schedule_overlap/ScheduleOverlap.vue")
+)
+
 defineOptions({ name: "AppEvent" })
 
 const props = defineProps({
@@ -574,6 +584,9 @@ const weekOffset = ref(0)
 const invitationDialog = ref(false)
 const helpDialog = ref(false)
 const scheduleOverlapLoaded = ref(false)
+const scheduleOverlapReady = ref(false)
+const adsBootstrapped = ref(false)
+const secondaryBootQueued = ref(false)
 
 const isEditing = computed(() => scheduleOverlap.value?.editing ?? false)
 const isScheduling = computed(() => scheduleOverlap.value?.scheduling ?? false)
@@ -724,6 +737,63 @@ function initFusetag() {
       ],
     })
   })
+}
+
+function queueSecondaryBootWork() {
+  if (secondaryBootQueued.value) return
+  secondaryBootQueued.value = true
+
+  const run = () => {
+    loader.loading.value = true
+    const promises = [
+      Promise.resolve(loader.fetchCalendarAvailabilities()),
+      Promise.resolve(loader.fetchAuthUserCalendarEvents()),
+    ]
+    Promise.allSettled(promises)
+      .then(() => {
+        loader.loading.value = false
+      })
+      .catch(() => undefined)
+
+    void fetchAuthUserProfile()
+      .then((user) => {
+        mainStore.setAuthUser(user)
+      })
+      .catch(() => {
+        mainStore.setAuthUser(null)
+      })
+
+    adsBootstrapped.value = true
+    loadVideoAd()
+  }
+
+  if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+    window.requestIdleCallback(() => {
+      void nextTick().then(run)
+    }, { timeout: 1500 })
+    return
+  }
+
+  globalThis.setTimeout(() => {
+    void nextTick().then(run)
+  }, 150)
+}
+
+function queueScheduleOverlapMount() {
+  if (scheduleOverlapReady.value) return
+
+  const run = () => {
+    scheduleOverlapReady.value = true
+  }
+
+  if (typeof window !== "undefined" && "requestAnimationFrame" in window) {
+    window.requestAnimationFrame(() => {
+      globalThis.setTimeout(run, 0)
+    })
+    return
+  }
+
+  globalThis.setTimeout(run, 0)
 }
 
 const scheduleEvent = () => { scheduleOverlap.value?.scheduleEvent() }
@@ -1129,16 +1199,6 @@ void (async () => {
     }
   }
 
-  loader.loading.value = true
-  const promises = [
-    Promise.resolve(loader.fetchCalendarAvailabilities()),
-    Promise.resolve(loader.fetchAuthUserCalendarEvents()),
-  ]
-  Promise.allSettled(promises).then(() => { loader.loading.value = false }).catch(() => undefined)
-
-  fetchAuthUserProfile()
-    .then((user) => { mainStore.setAuthUser(user) })
-    .catch(() => { mainStore.setAuthUser(null) })
 })()
 
 onBeforeUnmount(() => {
@@ -1151,7 +1211,8 @@ onBeforeUnmount(() => {
 onMounted(() => {
   editEventDialog.value = hasEventDraftData(props.contactsPayload)
   if (props.linkApple) choiceDialog.value = true
-  loadVideoAd()
+  queueScheduleOverlapMount()
+  queueSecondaryBootWork()
 })
 
 watch(loader.event, (ev) => {
@@ -1162,7 +1223,7 @@ watch(loader.event, (ev) => {
 })
 
 watch(loader.ownerPremiumChecked, () => {
-  if (showAds.value) {
+  if (adsBootstrapped.value && showAds.value) {
     window.enableStickyFooter = true
     initFusetag()
   }

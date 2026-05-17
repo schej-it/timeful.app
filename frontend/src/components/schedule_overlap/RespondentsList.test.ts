@@ -72,11 +72,17 @@ const mountRespondentsList = ({
           _id: "user-1",
           firstName: "Ada",
           lastName: "Lovelace",
+          picture: "https://example.com/ada.png",
         },
       ],
       parsedResponses: {
         "user-1": {
-          user: { _id: "user-1", firstName: "Ada", lastName: "Lovelace" },
+          user: {
+            _id: "user-1",
+            firstName: "Ada",
+            lastName: "Lovelace",
+            picture: "https://example.com/ada.png",
+          },
           availability: new ZdtSet(),
           ifNeeded: new ZdtSet([setEntry]),
         },
@@ -103,6 +109,48 @@ const mountRespondentsList = ({
   })
 
 describe("RespondentsList", () => {
+  it("uses a fixed respondent control slot with hover-visible checkbox shell", () => {
+    const wrapper = mountRespondentsList({
+      curDate: zdt("2026-01-01T09:00:00Z"),
+      setEntry: zdt("2026-01-01T09:00:00Z"),
+    })
+
+    const respondentRow = wrapper.find(".respondent-row")
+    const labelColumn = wrapper.find(".tw-flex.tw-flex-col.tw-justify-center")
+    const nameLabel = wrapper.find(".tw-mr-1.tw-text-sm.tw-leading-5.tw-transition-all")
+    const controlSlot = wrapper.find(
+      ".tw-ml-1.tw-mr-3.tw-flex.tw-h-5.tw-w-5.tw-shrink-0.tw-items-center.tw-justify-center"
+    )
+
+    expect(respondentRow.classes()).toContain("tw-text-sm")
+    expect(respondentRow.classes()).toContain("tw-leading-5")
+    expect(labelColumn.exists()).toBe(true)
+    expect(nameLabel.exists()).toBe(true)
+    expect(controlSlot.exists()).toBe(true)
+    expect(wrapper.findComponent({ name: "UserAvatarContent" }).exists()).toBe(true)
+    const selectionButton = wrapper.find('button[aria-pressed="false"]')
+    const checkboxShell = selectionButton.find(".respondent-control__checkbox")
+    const avatar = selectionButton.find(".respondent-control__avatar")
+
+    expect(selectionButton.exists()).toBe(true)
+    expect(selectionButton.classes()).toContain("tw-appearance-none")
+    expect(selectionButton.classes()).toContain("tw-h-5")
+    expect(selectionButton.classes()).toContain("tw-w-5")
+    expect(selectionButton.classes()).toContain("respondent-control")
+    expect(avatar.exists()).toBe(true)
+    expect(avatar.classes()).toContain("tw-flex")
+    expect(checkboxShell.exists()).toBe(true)
+    expect(checkboxShell.classes()).toContain("tw-flex")
+    expect(checkboxShell.classes()).toContain("tw-h-4")
+    expect(checkboxShell.classes()).toContain("tw-w-4")
+    expect(checkboxShell.classes()).toContain("tw-border-2")
+    expect(checkboxShell.classes()).toContain("tw-border-solid")
+    expect(checkboxShell.classes()).not.toContain("tw-border-primary")
+    expect(checkboxShell.attributes("style")).toContain(
+      "border-color: var(--timeful-primary-action-bg);"
+    )
+  })
+
   it("treats equal ZonedDateTime values as matching respondent if-needed slots", () => {
     const matchingDate = zdt("2026-01-01T09:00:00Z")
     const setEntry = zdt("2026-01-01T09:00:00Z")

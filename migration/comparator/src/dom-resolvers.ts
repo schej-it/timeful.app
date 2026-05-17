@@ -117,6 +117,28 @@ export function resolveSnapshotEntries({
     )
   }
 
+  function findRespondentRow() {
+    const respondentName = findByContainsText("div, span", "khh")
+    return (
+      respondentName?.closest(".respondent-row, .tw-group") ??
+      respondentName?.parentElement?.parentElement ??
+      null
+    )
+  }
+
+  function findRespondentSelectionControl() {
+    return (
+      findVisibleCandidate(Array.from(document.querySelectorAll(".respondent-control__checkbox"))) ??
+      findVisibleCandidate(
+        Array.from(
+          findRespondentRow()?.querySelectorAll(
+            ".respondent-control__checkbox, .v-simple-checkbox",
+          ) ?? [],
+        ),
+      ) ?? null
+    )
+  }
+
   function findByText(selector: string, text: string) {
     const candidates = Array.from(document.querySelectorAll(selector))
     const exactMatches = candidates.filter((node) => node.textContent?.trim() === text)
@@ -260,6 +282,8 @@ export function resolveSnapshotEntries({
         )
       case "calendarSelectedDay":
         return findCalendarSelectedDay()
+      case "respondentSelectionControl":
+        return findRespondentSelectionControl()
       case "selector":
         return findVisibleCandidate(Array.from(document.querySelectorAll(descriptor.selector)))
       case "text":

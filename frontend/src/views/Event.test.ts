@@ -151,7 +151,14 @@ const ScheduleOverlapStub = defineComponent({
 describe("Event guest edit action", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useFakeTimers()
   })
+
+  async function flushDeferredMount() {
+    await nextTick()
+    vi.runAllTimers()
+    await nextTick()
+  }
 
   it("passes the selected guest respondent id instead of the click event", async () => {
     const wrapper = shallowMount(EventView, {
@@ -189,7 +196,7 @@ describe("Event guest edit action", () => {
       },
     })
 
-    await nextTick()
+    await flushDeferredMount()
 
     const guestEditButton = wrapper
       .findAll("button")
@@ -239,7 +246,7 @@ describe("Event guest edit action", () => {
       },
     })
 
-    await nextTick()
+    await flushDeferredMount()
 
     const scheduleOverlapEvent = wrapper.findComponent(ScheduleOverlapStub).props("event") as {
       responses?: Record<string, { user?: { firstName?: string } }>

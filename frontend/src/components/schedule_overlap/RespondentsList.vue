@@ -133,47 +133,55 @@
               <div
                 v-for="user in orderedRespondents"
                 :key="user._id"
-                class="tw-group tw-relative tw-flex tw-cursor-pointer tw-items-center tw-py-1"
+                class="respondent-row tw-group tw-relative tw-flex tw-cursor-pointer tw-items-center tw-py-1 tw-text-sm tw-leading-5"
                 @mouseover="(e: MouseEvent) => $emit('mouseOverRespondent', e, user._id ?? '')"
                 @mouseleave="$emit('mouseLeaveRespondent')"
                 @click="(e: MouseEvent) => clickRespondent(e, user._id ?? '')"
               >
-                <div class="tw-relative tw-flex tw-items-center">
-                  <div class="tw-ml-1 tw-mr-3">
-                    <UserAvatarContent
-                      v-if="!isGuest(user)"
-                      :user="user"
-                      :size="16"
-                    ></UserAvatarContent>
-                    <v-avatar v-else :size="16">
-                      <v-icon small>mdi-account</v-icon>
-                    </v-avatar>
-                  </div>
-
-                  <v-btn
-                    icon
-                    variant="text"
-                    size="x-small"
-                    class="tw-absolute -tw-top-[3px] -tw-left-[6px] tw-min-w-0 tw-bg-white tw-p-0 tw-opacity-0 group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
-                    :class="
+                <div
+                  class="tw-ml-1 tw-mr-3 tw-flex tw-h-5 tw-w-5 tw-shrink-0 tw-items-center tw-justify-center"
+                >
+                  <button
+                    type="button"
+                    class="respondent-control tw-flex tw-h-5 tw-w-5 tw-appearance-none tw-items-center tw-justify-center tw-border-0 tw-bg-transparent tw-p-0 tw-leading-none tw-shadow-none"
+                    :aria-pressed="respondentSelected(user._id ?? '')"
+                    :aria-label="
                       respondentSelected(user._id ?? '')
-                        ? 'tw-opacity-100'
-                        : 'tw-opacity-0'
+                        ? `Deselect ${user.firstName ?? 'respondent'}`
+                        : `Select ${user.firstName ?? 'respondent'}`
                     "
                     @click.stop="(e: MouseEvent) => $emit('clickRespondent', e, user._id ?? '')"
                   >
-                    <v-icon size="18" color="primary">
-                      {{
-                        respondentSelected(user._id ?? '')
-                          ? "mdi-checkbox-marked"
-                          : "mdi-checkbox-blank-outline"
-                      }}
-                    </v-icon>
-                  </v-btn>
+                    <span
+                      class="respondent-control__checkbox tw-flex tw-h-4 tw-w-4 tw-items-center tw-justify-center tw-rounded-[2px] tw-border-2 tw-border-solid tw-bg-white"
+                      style="border-color: var(--timeful-primary-action-bg);"
+                    >
+                      <v-icon
+                        v-if="respondentSelected(user._id ?? '')"
+                        size="12"
+                        color="primary"
+                        class="tw-block"
+                      >
+                        mdi-check
+                      </v-icon>
+                    </span>
+                    <span
+                      class="respondent-control__avatar tw-flex tw-h-4 tw-w-4 tw-items-center tw-justify-center"
+                    >
+                      <UserAvatarContent
+                        v-if="shouldUseRichAvatar(user)"
+                        :user="user"
+                        :size="16"
+                      ></UserAvatarContent>
+                      <v-avatar v-else :size="16">
+                        <v-icon small>mdi-account</v-icon>
+                      </v-avatar>
+                    </span>
+                  </button>
                 </div>
-                <div class="tw-flex tw-flex-col">
+                <div class="tw-flex tw-flex-col tw-justify-center">
                   <div
-                    class="tw-mr-1 tw-transition-all"
+                    class="tw-mr-1 tw-text-sm tw-leading-5 tw-transition-all"
                     :class="respondentClass(user._id ?? '')"
                   >
                     {{
@@ -432,6 +440,7 @@ import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } 
 import { storeToRefs } from "pinia"
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import { calendarTypes } from "@/constants"
 import { _delete, getEventDateSeeds, getLocale, zdtSetHas } from "@/utils"
 import { posthog } from "@/plugins/posthog"
 import UserAvatarContent from "../UserAvatarContent.vue"
@@ -630,6 +639,17 @@ function respondentSelected(id: string) {
   return curRespondentsSet.value.has(id)
 }
 
+function shouldUseRichAvatar(user: User) {
+  const calendarType =
+    "calendarType" in user ? user.calendarType : undefined
+  return (
+    !isGuest(user) &&
+    ((user.picture?.length ?? 0) > 0 ||
+      calendarType === calendarTypes.APPLE ||
+      calendarType === calendarTypes.OUTLOOK)
+  )
+}
+
 function isGuest(user: User) {
   return user._id === user.firstName
 }
@@ -821,5 +841,41 @@ watch(
 <style scoped>
 .list-move {
   transition: transform 0.5s;
+}
+
+.respondent-control {
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+
+.respondent-control__checkbox,
+.respondent-control__avatar {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.respondent-control__checkbox {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.respondent-control__avatar {
+  opacity: 1;
+  visibility: visible;
+}
+
+.respondent-row:hover .respondent-control__checkbox,
+.respondent-control[aria-pressed="true"] .respondent-control__checkbox {
+  opacity: 1;
+  visibility: visible;
+}
+
+.respondent-row:hover .respondent-control__avatar,
+.respondent-control[aria-pressed="true"] .respondent-control__avatar {
+  opacity: 0;
+  visibility: hidden;
 }
 </style>
