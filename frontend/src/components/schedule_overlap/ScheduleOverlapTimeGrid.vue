@@ -255,12 +255,12 @@
                       style="pointer-events: none"
                     >
                       <div
-                        class="tw-h-full tw-w-full tw-border-2"
-                        :class="
+                        class="time-grid-overlay-block tw-h-full tw-w-full"
+                        :class="[
                           timeBlock.type === 'available'
-                            ? 'overlay-avail-shadow-green tw-border-[#00994CB3] tw-bg-[#00994C66]'
-                            : 'overlay-avail-shadow-yellow tw-border-[#997700CC] tw-bg-[#FFE8B8B3]'
-                        "
+                            ? 'time-grid-overlay-block--available overlay-avail-shadow-green'
+                            : 'time-grid-overlay-block--if-needed overlay-avail-shadow-yellow',
+                        ]"
                       ></div>
                     </div>
                   </div>
@@ -361,5 +361,22 @@ defineProps<{
 <style>
 .time-grid-day-separator {
   background-color: var(--timeful-grid-separator);
+}
+
+.time-grid-overlay-block {
+  border-style: solid;
+  border-width: 2px;
+}
+
+.time-grid-overlay-block--available {
+  background-color: var(--timeful-overlay-availability-available-bg);
+  border-color: var(--timeful-overlay-availability-available-border);
+  box-shadow: 0px 3px 6px 0px var(--timeful-overlay-availability-available-shadow);
+}
+
+.time-grid-overlay-block--if-needed {
+  background-color: var(--timeful-overlay-availability-if-needed-bg);
+  border-color: var(--timeful-overlay-availability-if-needed-border);
+  box-shadow: 0px 2px 8px 0px var(--timeful-overlay-availability-if-needed-shadow);
 }
 </style>

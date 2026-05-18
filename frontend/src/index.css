@@ -21,4 +21,10 @@
   --timeful-primary-action-fg: #ffffff;
   --timeful-primary-action-disabled-bg: rgba(0, 0, 0, 0.12);
   --timeful-primary-action-disabled-fg: rgba(0, 0, 0, 0.26);
+  --timeful-overlay-availability-available-bg: #00994c66;
+  --timeful-overlay-availability-available-border: #00994cb3;
+  --timeful-overlay-availability-available-shadow: #1c7d454d;
+  --timeful-overlay-availability-if-needed-bg: #ffe8b8b3;
+  --timeful-overlay-availability-if-needed-border: #997700cc;
+  --timeful-overlay-availability-if-needed-shadow: #e5a8004d;
 }

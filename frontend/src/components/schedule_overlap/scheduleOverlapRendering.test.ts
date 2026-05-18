@@ -217,7 +217,7 @@ describe("scheduleOverlapRendering", () => {
     expect(style.top).toBe(
       `calc(2 * 15px + ${String(SPLIT_GAP_HEIGHT)}px + 0 * ${String(HOUR_HEIGHT)}px)`
     )
-    expect(style.height).toBe(`calc(PT30M * ${String(HOUR_HEIGHT)}px)`)
+    expect(style.height).toBe(`calc(0.5 * ${String(HOUR_HEIGHT)}px)`)
   })
 
   it("formats sign-up block styles from normalized durations", () => {
@@ -227,8 +227,8 @@ describe("scheduleOverlapRendering", () => {
     })
 
     expect(style).toEqual({
-      top: "calc(PT1H30M * 4 * 1rem)",
-      height: "calc(PT45M * 4 * 1rem)",
+      top: "calc(1.5 * 4 * 1rem)",
+      height: "calc(0.75 * 4 * 1rem)",
     })
   })
 

@@ -303,6 +303,38 @@ describe("ScheduleOverlap grid drag bindings", () => {
     }
   })
 
+  it("renders owned overlay availability frame classes for available and if-needed blocks", () => {
+    const { timedGrid } = createTimeGridViewModel()
+    timedGrid.overlayAvailability = true
+    timedGrid.overlaidAvailability = [
+      [
+        {
+          hoursOffset: Temporal.Duration.from({ hours: 9 }),
+          hoursLength: Temporal.Duration.from({ minutes: 30 }),
+          type: "available",
+        },
+        {
+          hoursOffset: Temporal.Duration.from({ hours: 10 }),
+          hoursLength: Temporal.Duration.from({ minutes: 30 }),
+          type: "if_needed",
+        },
+      ],
+    ]
+
+    const wrapper = mount(ScheduleOverlapTimeGrid, {
+      props: { timedGrid },
+      global,
+    })
+
+    const availableBlock = wrapper.get(".time-grid-overlay-block--available")
+    const ifNeededBlock = wrapper.get(".time-grid-overlay-block--if-needed")
+
+    expect(availableBlock.classes()).toContain("time-grid-overlay-block")
+    expect(availableBlock.classes()).toContain("overlay-avail-shadow-green")
+    expect(ifNeededBlock.classes()).toContain("time-grid-overlay-block")
+    expect(ifNeededBlock.classes()).toContain("overlay-avail-shadow-yellow")
+  })
+
   it("forwards days-only drag events through the rendered drag surface", async () => {
     const { daysOnlyGrid, actions } = createDaysOnlyGridViewModel()
     const wrapper = mount(ScheduleOverlapDaysOnlyGrid, {

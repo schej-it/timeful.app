@@ -662,7 +662,9 @@ export const getTimeBlockStyle = ({
         .subtract(firstSplitTimes[0]?.hoursOffset ?? durations.ZERO)
         .total("hours")
     )} * ${String(HOUR_HEIGHT)}px)`
-    style.height = `calc(${String(hoursLength)} * ${String(HOUR_HEIGHT)}px)`
+    style.height = `calc(${String(hoursLength.total("hours"))} * ${String(
+      HOUR_HEIGHT
+    )}px)`
     return style
   }
 
@@ -673,7 +675,9 @@ export const getTimeBlockStyle = ({
       .subtract(secondSplitTimes[0]?.hoursOffset ?? durations.ZERO)
       .total("hours")
   )} * ${String(HOUR_HEIGHT)}px)`
-  style.height = `calc(${String(hoursLength)} * ${String(HOUR_HEIGHT)}px)`
+  style.height = `calc(${String(hoursLength.total("hours"))} * ${String(
+    HOUR_HEIGHT
+  )}px)`
 
   return style
 }
@@ -685,6 +689,6 @@ export const getSignUpBlockStyle = ({
   hoursOffset?: Temporal.Duration
   hoursLength?: Temporal.Duration
 }): Record<string, string> => ({
-  top: `calc(${String(hoursOffset ?? durations.ZERO)} * 4 * 1rem)`,
-  height: `calc(${String(hoursLength ?? durations.ZERO)} * 4 * 1rem)`,
+  top: `calc(${String((hoursOffset ?? durations.ZERO).total("hours"))} * 4 * 1rem)`,
+  height: `calc(${String((hoursLength ?? durations.ZERO).total("hours"))} * 4 * 1rem)`,
 })
