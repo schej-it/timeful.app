@@ -15,7 +15,7 @@ import type { AppLabel } from "./types.js"
 async function main() {
   const target = parseArgs(process.argv.slice(2), SUPPORTED_TARGETS)
   const scenario = SCENARIOS[target]
-  const browserName = process.env.PLAYWRIGHT_BROWSER ?? "chromium"
+  const browserName = process.env.PLAYWRIGHT_BROWSER ?? "firefox"
   const oldApp: AppLabel = {
     name: "old",
     url: process.env.OLD_APP_URL || DEFAULT_OLD_APP_URL,

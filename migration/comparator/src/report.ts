@@ -1,5 +1,5 @@
 import type { CompareTarget } from "./scenarios/index.js"
-import type { Diff } from "./types.js"
+import type { Diff, Snapshot, SnapshotElement } from "./types.js"
 
 export function printDiff(target: CompareTarget, diff: Diff) {
   console.log(`target=${target}`)
@@ -27,5 +27,36 @@ export function printDiff(target: CompareTarget, diff: Diff) {
         )
       }
     }
+  }
+}
+
+function printSnapshotElement(elementName: string, element: SnapshotElement | null) {
+  if (element == null) {
+    console.log(`\n[${elementName}] missing`)
+    return
+  }
+
+  console.log(`\n[${elementName}] found`)
+  console.log(
+    JSON.stringify(
+      {
+        tagName: element.tagName,
+        className: element.className,
+        text: element.text,
+        box: element.box,
+        properties: element.properties,
+      },
+      null,
+      2,
+    ),
+  )
+}
+
+export function printSnapshot(target: CompareTarget, app: string, snapshot: Snapshot) {
+  console.log(`target=${target}`)
+  console.log(`app=${app}`)
+
+  for (const [elementName, element] of Object.entries(snapshot)) {
+    printSnapshotElement(elementName, element)
   }
 }
