@@ -90,4 +90,47 @@ describe("ScheduleOverlapSidebar", () => {
     expect(vm.respondentsPanelEl).toBeInstanceOf(HTMLElement)
     expect(vm.respondentsPanelEl?.className).toContain("respondents-panel-stub")
   })
+
+  it("renders the overlay availability switch with the compact switch styling", () => {
+    const wrapper = mount(ScheduleOverlapSidebar, {
+      props: {
+        sidebar: {
+          ...buildScheduleOverlapSidebarViewModel(),
+          showOverlayAvailabilityToggle: true,
+        },
+      },
+      global: {
+        stubs: {
+          ...scheduleOverlapGlobalStubs,
+        },
+      },
+    })
+
+    const overlaySwitch = wrapper.find("#overlay-availabilities-toggle")
+
+    expect(overlaySwitch.exists()).toBe(true)
+    expect(overlaySwitch.classes()).toContain("schedule-overlap-compact-switch")
+  })
+
+  it("does not render the ad wrapper when the sidebar view model disables ads", () => {
+    const wrapper = mount(ScheduleOverlapSidebar, {
+      props: {
+        sidebar: {
+          ...buildScheduleOverlapSidebarViewModel(),
+          state: states.HEATMAP,
+          showAds: false,
+        },
+      },
+      global: {
+        stubs: {
+          ...scheduleOverlapGlobalStubs,
+          AsyncPubliftAd: {
+            template: "<div class='async-publift-ad-stub'><slot /></div>",
+          },
+        },
+      },
+    })
+
+    expect(wrapper.find(".async-publift-ad-stub").exists()).toBe(false)
+  })
 })

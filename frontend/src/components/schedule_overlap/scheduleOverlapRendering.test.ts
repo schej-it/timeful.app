@@ -30,6 +30,7 @@ describe("scheduleOverlapRendering", () => {
         { hoursOffset: Temporal.Duration.from({ minutes: 15 }) },
       ],
       secondSplitTimes: [],
+      timeslotDuration: Temporal.Duration.from({ minutes: 15 }),
       getDateFromRowCol: (row, col) => slots.get(`${String(row)}-${String(col)}`) ?? null,
       dragging: false,
       inDragRange: () => false,
@@ -43,6 +44,37 @@ describe("scheduleOverlapRendering", () => {
     expect(blocks[0]).toHaveLength(1)
     expect(blocks[0][0].hoursLength.total("minutes")).toBe(30)
     expect(blocks[0][0].type).toBe(availabilityTypes.AVAILABLE)
+  })
+
+  it("uses the actual timeslot duration for overlay blocks in 30-minute grids", () => {
+    const first = zdt("2026-01-01T09:00:00Z")
+    const second = zdt("2026-01-01T09:30:00Z")
+    const slots = new Map([
+      ["0-0", first],
+      ["1-0", second],
+    ])
+
+    const blocks = buildOverlaidAvailability({
+      daysLength: 1,
+      firstSplitTimes: [
+        { hoursOffset: Temporal.Duration.from({ hours: 9 }) },
+        { hoursOffset: Temporal.Duration.from({ hours: 9, minutes: 30 }) },
+      ],
+      secondSplitTimes: [],
+      timeslotDuration: Temporal.Duration.from({ minutes: 30 }),
+      getDateFromRowCol: (row, col) => slots.get(`${String(row)}-${String(col)}`) ?? null,
+      dragging: false,
+      inDragRange: () => false,
+      dragType: availabilityTypes.AVAILABLE,
+      availabilityType: availabilityTypes.AVAILABLE,
+      availability: new ZdtSet([first, second]),
+      ifNeeded: new ZdtSet(),
+    })
+
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0]).toHaveLength(1)
+    expect(blocks[0][0].hoursOffset.total("minutes")).toBe(540)
+    expect(blocks[0][0].hoursLength.total("minutes")).toBe(60)
   })
 
   it("formats tooltip content from the normalized slot time", () => {

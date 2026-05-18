@@ -1,6 +1,7 @@
 import { ref, nextTick, type Ref, type ComputedRef } from "vue"
 import { get, getRenderedWeekStart, processEvent } from "@/utils"
 import { eventTypes, guestUserId } from "@/constants"
+import { logEventBoot } from "@/utils/eventBootDebug"
 import type { Event, User } from "@/types"
 import type {
   NormalizedCalendarEvent,
@@ -49,6 +50,11 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
   }
 
   async function refreshEvent() {
+    logEventBoot("useEventLoader", "refreshEvent:start", {
+      eventId: opts.eventId.value,
+      weekOffset: opts.weekOffset.value,
+      existingEventId: event.value?._id ?? null,
+    })
     const sanitizedId = opts.eventId.value.replaceAll(".", "")
     let resolvedLongId = event.value?._id ?? ""
     try {
@@ -65,9 +71,18 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     if (guestName && guestName.length > 0) url += `?guestName=${encodeURIComponent(guestName)}`
     event.value = await fetchEventFromPath(url)
     processEvent(event.value, getEventRenderedWeekStart())
+    logEventBoot("useEventLoader", "refreshEvent:done", {
+      resolvedLongId,
+      fetchedEventId: event.value?._id ?? null,
+      type: event.value?.type ?? null,
+      hasResponses: Object.keys(event.value?.responses ?? {}).length,
+    })
   }
 
   async function checkOwnerPremium() {
+    logEventBoot("useEventLoader", "checkOwnerPremium:start", {
+      ownerId: event.value?.ownerId ?? null,
+    })
     const ownerId = event.value?.ownerId
     if (ownerId && ownerId !== guestUserId) {
       try {
@@ -78,6 +93,10 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
       }
     }
     ownerPremiumChecked.value = true
+    logEventBoot("useEventLoader", "checkOwnerPremium:done", {
+      ownerId: event.value?.ownerId ?? null,
+      ownerIsPremium: ownerIsPremium.value,
+    })
   }
 
   function fetchCalendarAvailabilities() {
@@ -85,6 +104,11 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     const curWeekOffset = opts.weekOffset.value
     const ev = event.value as Event & { _id: string; type: string }
     const renderedWeekStart = getEventRenderedWeekStart()
+    logEventBoot("useEventLoader", "fetchCalendarAvailabilities:start", {
+      eventId: ev._id,
+      weekOffset: curWeekOffset,
+      renderedWeekStart: renderedWeekStart?.toString() ?? null,
+    })
     return fetchCalendarAvailabilitiesBoundary(ev, {
       weekOffset: curWeekOffset,
       eventId: ev._id,
@@ -93,19 +117,35 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
       .then((result) => {
         if (curWeekOffset !== opts.weekOffset.value) return
         calendarAvailabilities.value = result
+        logEventBoot("useEventLoader", "fetchCalendarAvailabilities:done", {
+          weekOffset: curWeekOffset,
+          calendars: Object.keys(result).length,
+        })
         // With Temporal, DST is handled automatically - no manual adjustment needed
       })
-      .catch((err: unknown) => { console.error(err) })
+      .catch((err: unknown) => {
+        console.error(err)
+        logEventBoot("useEventLoader", "fetchCalendarAvailabilities:error", {
+          weekOffset: curWeekOffset,
+          error: err instanceof Error ? err.message : String(err),
+        })
+      })
   }
 
   async function fetchAuthUserCalendarEvents() {
     if (!opts.authUser.value) {
       calendarPermissionGranted.value = false
+      logEventBoot("useEventLoader", "fetchAuthUserCalendarEvents:skip-no-auth")
       return
     }
     const curWeekOffset = opts.weekOffset.value
     if (!event.value) return
     const renderedWeekStart = getEventRenderedWeekStart()
+    logEventBoot("useEventLoader", "fetchAuthUserCalendarEvents:start", {
+      eventId: event.value._id ?? null,
+      weekOffset: curWeekOffset,
+      renderedWeekStart: renderedWeekStart?.toString() ?? null,
+    })
     return fetchCalendarEventsMap(event.value, {
       weekOffset: curWeekOffset,
       renderedWeekStart,
@@ -137,11 +177,20 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
         calendarPermissionGranted.value = !Object.values(calendarEventsMap.value).every(
           (c) => Boolean(c.error)
         )
+        logEventBoot("useEventLoader", "fetchAuthUserCalendarEvents:done", {
+          weekOffset: curWeekOffset,
+          calendars: Object.keys(result).length,
+          calendarPermissionGranted: calendarPermissionGranted.value,
+          hasAnyError: Object.values(result).some((c) => Boolean(c.error)),
+        })
 
         if (!hasRefetchedAuthUserCalendarEvents.value) {
           const hasError = Object.values(calendarEventsMap.value).some((c) => Boolean(c.error))
           if (hasError) {
             hasRefetchedAuthUserCalendarEvents.value = true
+            logEventBoot("useEventLoader", "fetchAuthUserCalendarEvents:retry-scheduled", {
+              weekOffset: curWeekOffset,
+            })
             setTimeout(() => { void fetchAuthUserCalendarEvents() }, 1000)
           }
         }
@@ -149,10 +198,18 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
       .catch((err: unknown) => {
         console.error(err)
         calendarPermissionGranted.value = false
+        logEventBoot("useEventLoader", "fetchAuthUserCalendarEvents:error", {
+          weekOffset: curWeekOffset,
+          error: err instanceof Error ? err.message : String(err),
+        })
       })
   }
 
   function refreshCalendar() {
+    logEventBoot("useEventLoader", "refreshCalendar:start", {
+      weekOffset: opts.weekOffset.value,
+      eventId: event.value?._id ?? null,
+    })
     const promises = [
       Promise.resolve(fetchCalendarAvailabilities()),
       Promise.resolve(fetchAuthUserCalendarEvents()),
@@ -161,6 +218,10 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     loading.value = true
     void Promise.allSettled(promises).then(() => {
       if (curWeekOffset === opts.weekOffset.value) loading.value = false
+      logEventBoot("useEventLoader", "refreshCalendar:done", {
+        weekOffset: curWeekOffset,
+        loading: loading.value,
+      })
     })
   }
 

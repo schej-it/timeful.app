@@ -35,7 +35,7 @@ export const scheduleOverlapGlobalStubs = {
   ColorLegend: true,
   ExpandableSection: true,
   GCalWeekSelector: true,
-  PubliftAd: true,
+  AsyncPubliftAd: true,
   RespondentsList: true,
   ScheduleOverlapMobileOverlay: true,
   SignUpBlocksList: true,

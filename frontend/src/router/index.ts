@@ -3,7 +3,6 @@ import {
   createWebHistory,
   type RouteRecordRaw,
 } from "vue-router"
-import Landing from "@/views/Landing.vue"
 import { get } from "@/utils"
 import {
   getEventRouteProps,
@@ -16,7 +15,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: "/",
     name: "landing",
-    component: Landing,
+    component: () => import("@/views/Landing.vue"),
   },
   {
     path: "/home",

@@ -121,6 +121,7 @@
         <div v-if="sidebar.showOverlayAvailabilityToggle">
           <v-switch
             id="overlay-availabilities-toggle"
+            class="schedule-overlap-compact-switch"
             inset
             :model-value="sidebar.overlayAvailability"
             hide-details
@@ -246,7 +247,8 @@
       </div>
 
       <template v-else>
-        <PubliftAd
+        <AsyncPubliftAd
+          v-if="sidebar.showAds"
           :show-ad="sidebar.showAds"
           fuse-id="meet_incontent"
           class="-tw-mx-4 tw-my-4 tw-block !tw-rounded-none sm:tw-hidden"
@@ -258,7 +260,7 @@
               class="tw-flex tw-items-center tw-justify-center"
             ></div>
           </div>
-        </PubliftAd>
+        </AsyncPubliftAd>
 
         <ScheduleOverlapRespondentsPanel
           ref="respondentsPanelRef"
@@ -288,7 +290,7 @@ import type {
 } from "@/composables/schedule_overlap/types"
 import { states } from "@/composables/schedule_overlap/types"
 import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
-import PubliftAd from "@/components/event/PubliftAd.vue"
+import { AsyncPubliftAd } from "@/components/event/asyncPubliftAd"
 import SignUpBlocksList from "@/components/sign_up_form/SignUpBlocksList.vue"
 import ExpandableSection from "../ExpandableSection.vue"
 import AlertText from "../AlertText.vue"
@@ -416,3 +418,5 @@ defineExpose({
   ),
 })
 </script>
+
+<style scoped src="./ScheduleOverlapCompactSwitch.css"></style>

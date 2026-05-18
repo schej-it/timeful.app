@@ -8,6 +8,7 @@ import "@/plugins/posthog"
 import App from "./App.vue"
 import router from "./router"
 import vuetify from "./plugins/vuetify"
+import { isThirdPartyShellEnabled } from "@/utils/thirdPartyShell"
 
 const app = createApp(App)
 
@@ -16,10 +17,7 @@ app.use(createPinia())
 app.use(vuetify)
 app.use(createHead())
 
-if (
-  window.location.hostname !== "127.0.0.1" &&
-  window.location.hostname !== "localhost"
-) {
+if (isThirdPartyShellEnabled()) {
   app.use(createGtm({ id: "GTM-M677X6V", vueRouter: router }))
 }
 

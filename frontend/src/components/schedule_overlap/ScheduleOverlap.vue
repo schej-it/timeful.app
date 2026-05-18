@@ -101,6 +101,7 @@ const props = withDefaults(
   defineProps<{
     event: ScheduleOverlapEvent
     ownerIsPremium?: boolean
+    ownerPremiumChecked?: boolean
     fromEditEvent?: boolean
     loadingCalendarEvents?: boolean
     calendarEventsMap?: CalendarEventsMap
@@ -121,6 +122,7 @@ const props = withDefaults(
   }>(),
   {
     ownerIsPremium: false,
+    ownerPremiumChecked: false,
     fromEditEvent: false,
     loadingCalendarEvents: false,
     calendarEventsMap: () => ({}),
@@ -503,6 +505,7 @@ useScheduleOverlapController({
 const showAds = computed(
   () =>
     freemiumEnabled &&
+    props.ownerPremiumChecked &&
     !props.ownerIsPremium &&
     !mainStore.viewerHasPremiumAccess &&
     state.value !== states.SET_SPECIFIC_TIMES
@@ -704,6 +707,7 @@ const overlaidAvailability = computed(() => {
     daysLength: days.value.length,
     firstSplitTimes: splitTimes.value[0],
     secondSplitTimes: splitTimes.value[1],
+    timeslotDuration: timeslotDuration.value,
     getDateFromRowCol,
     dragging: dragging.value,
     inDragRange,

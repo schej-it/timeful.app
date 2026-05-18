@@ -15,3 +15,12 @@ Semi-structured TODO list
 - [ ] use clean layout-based fixes
 - [ ] avoid !important
 - [ ] make a design system
+- [ ] use `.env.example` instead of `.env.template`
+- [ ] why is the button not blocked when none of the dates is selected
+- [ ] doesn't show time on hover after clicking and moving the cursor - <http://127.0.0.1:4173/e/dEeaF>
+- [ ] In Firefox, when not editing, after I click inside the grid, then release, then move cursor within the grid, the selection doesn't follow like it does if I don't click first and just move the cursor within the grid. Why so?
+- [ ] multi-day <http://127.0.0.1:4173/e/5Ef6f>
+- [ ] Let's nest all toggles under Options dropdown and make it open by default
+- [ ] refactoring - get rid of duplication
+- [ ] overlay availabilities - each slot has a solid frame <https://timeful.app/e/c762cA>
+- [ ] there should be a space between grids for non-consecutive days

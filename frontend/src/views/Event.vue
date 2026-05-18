@@ -99,7 +99,8 @@
       <div
         class="tw-mx-auto tw-mt-4 lg:tw-flex lg:tw-items-start lg:tw-justify-center lg:tw-gap-6"
       >
-        <PubliftAd
+        <AsyncPubliftAd
+          v-if="showAds"
           :show-ad="showAds"
           fuse-id="meet_vrec_lhs"
           class="tw-hidden publift-l:tw-block"
@@ -113,7 +114,7 @@
               class="tw-flex tw-items-center tw-justify-center"
             ></div>
           </div>
-        </PubliftAd>
+        </AsyncPubliftAd>
         <div class="tw-mx-auto tw-max-w-5xl tw-flex-1">
           <div v-if="!isSettingSpecificTimes" class="tw-mx-4">
             <!-- Title and copy link -->
@@ -284,6 +285,7 @@
             v-model:week-offset="weekOffset"
             :event="scheduleOverlapEvent"
             :owner-is-premium="ownerIsPremium"
+            :owner-premium-checked="ownerPremiumChecked"
             :from-edit-event="fromEditEvent"
             :loading-calendar-events="loading"
             :calendar-events-map="calendarEventsMap"
@@ -305,7 +307,8 @@
             class="tw-mx-4 tw-mt-6 tw-h-[28rem] tw-rounded-xl tw-border tw-border-light-gray tw-bg-white"
           ></div>
         </div>
-        <PubliftAd
+        <AsyncPubliftAd
+          v-if="showAds"
           :show-ad="showAds"
           fuse-id="meet_vrec_rhs"
           class="tw-hidden publift-l:tw-block"
@@ -319,10 +322,11 @@
               class="tw-flex tw-items-center tw-justify-center"
             ></div>
           </div>
-        </PubliftAd>
+        </AsyncPubliftAd>
       </div>
 
-      <PubliftAd
+      <AsyncPubliftAd
+        v-if="showAds"
         :show-ad="showAds"
         fuse-id="meet_incontent_md"
         class="tw-my-4 tw-hidden !tw-rounded-none sm:tw-block publift-l:tw-hidden"
@@ -334,7 +338,7 @@
             class="tw-flex tw-items-center tw-justify-center"
           ></div>
         </div>
-      </PubliftAd>
+      </AsyncPubliftAd>
 
       <!-- <CarbonAd :ownerIsPremium="ownerIsPremium" /> -->
 
@@ -452,26 +456,27 @@
             </v-btn>
           </template>
         </div>
-        <PubliftAd
+        <AsyncPubliftAd
+          v-if="showAds"
           :show-ad="showAds"
           fuse-id=""
           class="tw-h-[115px] tw-w-full !tw-rounded-none !tw-p-0"
         >
           <div class="tw-h-[115px]"></div>
-        </PubliftAd>
+        </AsyncPubliftAd>
       </div>
       <!-- Fixed bottom ad for desktop -->
       <div
         v-if="!isPhone && showAds"
         class="tw-fixed tw-bottom-0 tw-left-0 tw-z-20 tw-w-full"
       >
-        <PubliftAd
+        <AsyncPubliftAd
           :show-ad="showAds"
           fuse-id=""
           class="tw-h-[115px] tw-w-full !tw-rounded-none !tw-p-0"
         >
           <div class="tw-h-[115px]"></div>
-        </PubliftAd>
+        </AsyncPubliftAd>
       </div>
     </div>
   </span>
@@ -504,6 +509,7 @@ import {
   resolvePluginTimezoneValue,
 } from "@/utils"
 import { validateEmail } from "@/utils"
+import { logEventBoot } from "@/utils/eventBootDebug"
 import {
   getPluginEventTimeRange,
   normalizePluginResponses,
@@ -525,7 +531,7 @@ import InvitationDialog from "@/components/groups/InvitationDialog.vue"
 import HelpDialog from "@/components/HelpDialog.vue"
 import EventDescription from "@/components/event/EventDescription.vue"
 import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
-import PubliftAd from "@/components/event/PubliftAd.vue"
+import { AsyncPubliftAd } from "@/components/event/asyncPubliftAd"
 import { freemiumEnabled } from "@/utils/freemium"
 
 import { useMainStore } from "@/stores/main"
@@ -625,6 +631,7 @@ const dateString = computed(() => loader.event.value ? getDateRangeStringForEven
 const showAds = computed(
   () =>
     freemiumEnabled &&
+    loader.ownerPremiumChecked.value &&
     !loader.ownerIsPremium.value &&
     !viewerHasPremiumAccess.value &&
     !isSettingSpecificTimes.value
@@ -693,8 +700,9 @@ const {
 } = respondent
 
 const {
-  event, loading, ownerIsPremium, calendarEventsMap, calendarAvailabilities,
-  calendarPermissionGranted, fromEditEvent, refreshEvent, refreshCalendar,
+  event, loading, ownerIsPremium, ownerPremiumChecked, calendarEventsMap,
+  calendarAvailabilities, calendarPermissionGranted, fromEditEvent,
+  refreshEvent, refreshCalendar,
 } = loader
 
 const scheduleOverlapEvent = computed(() =>
@@ -742,8 +750,10 @@ function initFusetag() {
 function queueSecondaryBootWork() {
   if (secondaryBootQueued.value) return
   secondaryBootQueued.value = true
+  logEventBoot("EventView", "queueSecondaryBootWork:scheduled")
 
   const run = () => {
+    logEventBoot("EventView", "queueSecondaryBootWork:run")
     loader.loading.value = true
     const promises = [
       Promise.resolve(loader.fetchCalendarAvailabilities()),
@@ -783,8 +793,11 @@ function queueScheduleOverlapMount() {
   if (scheduleOverlapReady.value) return
 
   const run = () => {
+    logEventBoot("EventView", "queueScheduleOverlapMount:run")
     scheduleOverlapReady.value = true
   }
+
+  logEventBoot("EventView", "queueScheduleOverlapMount:scheduled")
 
   if (typeof window !== "undefined" && "requestAnimationFrame" in window) {
     window.requestAnimationFrame(() => {
@@ -1161,6 +1174,10 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
 
 // Initialization — equivalent to created()
 void (async () => {
+  logEventBoot("EventView", "bootstrap:start", {
+    eventId: props.eventId,
+    routeName: String(route.name ?? ""),
+  })
   window.addEventListener("beforeunload", onBeforeUnload)
   window.addEventListener("message", handleMessage)
   // for dev:
@@ -1169,16 +1186,22 @@ void (async () => {
   try {
     await loader.refreshEvent()
     await loader.checkOwnerPremium()
+    logEventBoot("EventView", "bootstrap:event-ready", {
+      eventId: loader.event.value?._id ?? null,
+      type: loader.event.value?.type ?? null,
+    })
 
     const ev = loader.event.value
     if (ev) {
       if (ev.type === eventTypes.GROUP) {
         if (route.name === "event") {
+          logEventBoot("EventView", "bootstrap:redirect-group-route")
           void router.replace({ name: "group", params: { groupId: props.eventId } })
           return
         }
       } else {
         if (route.name === "group") {
+          logEventBoot("EventView", "bootstrap:redirect-event-route")
           void router.replace({ name: "event", params: { eventId: props.eventId } })
           return
         }
@@ -1188,9 +1211,13 @@ void (async () => {
       if (storedFlag) {
         localStorage.removeItem(`from-edit-event-${ev._id ?? ""}`)
         loader.fromEditEvent.value = true
+        logEventBoot("EventView", "bootstrap:from-edit-event")
       }
     }
   } catch (err: unknown) {
+    logEventBoot("EventView", "bootstrap:error", {
+      error: err instanceof Error ? err.message : String(err),
+    })
     const errObj = err as Record<string, unknown>
     if (errObj.error === errors.EventNotFound) {
       mainStore.showError("The specified event does not exist!")
@@ -1199,6 +1226,7 @@ void (async () => {
     }
   }
 
+  logEventBoot("EventView", "bootstrap:done")
 })()
 
 onBeforeUnmount(() => {
@@ -1209,6 +1237,7 @@ onBeforeUnmount(() => {
 })
 
 onMounted(() => {
+  logEventBoot("EventView", "onMounted")
   editEventDialog.value = hasEventDraftData(props.contactsPayload)
   if (props.linkApple) choiceDialog.value = true
   queueScheduleOverlapMount()
@@ -1219,10 +1248,19 @@ watch(loader.event, (ev) => {
   if (ev) {
     weekOffset.value = 0
     document.title = `${ev.name ?? ""} - Timeful`
+    logEventBoot("EventView", "watch:event", {
+      eventId: ev._id ?? null,
+      type: ev.type ?? null,
+      responses: Object.keys(ev.responses ?? {}).length,
+    })
   }
 })
 
 watch(loader.ownerPremiumChecked, () => {
+  logEventBoot("EventView", "watch:ownerPremiumChecked", {
+    ownerPremiumChecked: loader.ownerPremiumChecked.value,
+    showAds: showAds.value,
+  })
   if (adsBootstrapped.value && showAds.value) {
     window.enableStickyFooter = true
     initFusetag()
@@ -1232,16 +1270,30 @@ watch(loader.ownerPremiumChecked, () => {
 watch(scheduleOverlap, (so) => {
   if (so && !scheduleOverlapLoaded.value) {
     scheduleOverlapLoaded.value = true
+    logEventBoot("EventView", "watch:scheduleOverlap-mounted", {
+      state: so.state,
+      respondents: so.respondents.length,
+    })
     if ((props.fromSignIn || props.editingMode) && !isGroup.value) {
       so.startEditing()
+      logEventBoot("EventView", "watch:scheduleOverlap-startEditing")
     }
     if (isGroup.value && !userHasResponded.value) {
       invitationDialog.value = true
+      logEventBoot("EventView", "watch:scheduleOverlap-openInvitation")
     }
   }
 })
 
-watch(weekOffset, () => { loader.refreshCalendar() })
+watch(weekOffset, () => {
+  logEventBoot("EventView", "watch:weekOffset", {
+    weekOffset: weekOffset.value,
+  })
+  loader.refreshCalendar()
+})
 
-watch(() => authUser.value?.calendarAccounts, () => { void loader.fetchAuthUserCalendarEvents() })
+watch(() => authUser.value?.calendarAccounts, () => {
+  logEventBoot("EventView", "watch:authUser.calendarAccounts")
+  void loader.fetchAuthUserCalendarEvents()
+})
 </script>

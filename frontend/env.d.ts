@@ -17,6 +17,7 @@ interface Window {
     destroySticky?: () => void
   }
   enableStickyFooter?: boolean
+  __timefulThirdPartyShellEnabled?: boolean
 }
 
 interface ImportMetaEnv {
@@ -25,6 +26,7 @@ interface ImportMetaEnv {
   readonly VITE_GOOGLE_CLIENT_ID: string
   readonly VITE_MICROSOFT_CLIENT_ID: string
   readonly VITE_ENABLE_FREEMIUM?: string
+  readonly VITE_ENABLE_THIRD_PARTY_SHELL?: string
 }
 
 interface ImportMeta {

@@ -502,6 +502,7 @@ interface BuildOverlaidAvailabilityArgs {
   daysLength: number
   firstSplitTimes: TimeItem[]
   secondSplitTimes: TimeItem[]
+  timeslotDuration: Temporal.Duration
   getDateFromRowCol: (row: number, col: number) => Temporal.ZonedDateTime | null
   dragging: boolean
   inDragRange: (row: number, col: number) => boolean
@@ -515,6 +516,7 @@ export const buildOverlaidAvailability = ({
   daysLength,
   firstSplitTimes,
   secondSplitTimes,
+  timeslotDuration,
   getDateFromRowCol,
   dragging,
   inDragRange,
@@ -554,11 +556,11 @@ export const buildOverlaidAvailability = ({
         if (idx in result[dayIndex]) {
           if (result[dayIndex][idx].type === blockType) {
             result[dayIndex][idx].hoursLength =
-              result[dayIndex][idx].hoursLength.add(durations.FIFTEEN_MINUTES)
+              result[dayIndex][idx].hoursLength.add(timeslotDuration)
           } else {
             result[dayIndex].push({
               hoursOffset: time.hoursOffset,
-              hoursLength: durations.FIFTEEN_MINUTES,
+              hoursLength: timeslotDuration,
               type: blockType,
             })
             idx += 1
@@ -566,7 +568,7 @@ export const buildOverlaidAvailability = ({
         } else {
           result[dayIndex].push({
             hoursOffset: time.hoursOffset,
-            hoursLength: durations.FIFTEEN_MINUTES,
+            hoursLength: timeslotDuration,
             type: blockType,
           })
         }
