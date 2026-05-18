@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 
 import { mount } from "@vue/test-utils"
+import { defineComponent, h } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { eventTypes } from "@/constants"
@@ -299,6 +300,44 @@ describe("ScheduleOverlap grid drag bindings", () => {
     expect(gaps).toHaveLength(2)
     for (const gap of gaps) {
       expect(gap.attributes("style")).toContain("width: 20px;")
+    }
+  })
+
+  it("renders timed-grid navigation buttons at a 36px box size", () => {
+    const { timedGrid } = createTimeGridViewModel()
+    timedGrid.hasPrevPage = true
+    timedGrid.hasNextPage = true
+
+    const wrapper = mount(ScheduleOverlapTimeGrid, {
+      props: { timedGrid },
+      global: {
+        ...global,
+        stubs: {
+          ...global.stubs,
+          "v-btn": defineComponent({
+            name: "VBtnStub",
+            inheritAttrs: false,
+            setup(_, { attrs, slots }) {
+              return () => h("button", attrs, slots.default?.())
+            },
+          }),
+          "v-icon": defineComponent({
+            name: "VIconStub",
+            setup(_, { slots }) {
+              return () => h("span", slots.default?.())
+            },
+          }),
+        },
+      },
+    })
+
+    const navButtons = wrapper.findAll("button")
+
+    expect(navButtons).toHaveLength(2)
+    for (const button of navButtons) {
+      expect(button.classes()).toContain("tw-h-[36px]")
+      expect(button.classes()).toContain("tw-w-[36px]")
+      expect(button.classes()).toContain("tw-min-w-[36px]")
     }
   })
 

@@ -12,7 +12,7 @@
           class="tw-sticky tw-top-14 tw-ml-0.5 tw-self-start tw-pt-1.5 sm:tw-top-16 sm:-tw-ml-2"
         >
           <v-btn
-            class="tw-border-gray"
+            class="tw-border-gray tw-h-[36px] tw-w-[36px] tw-min-w-[36px]"
             variant="outlined"
             icon
             @click="timedGrid.actions.prevPage"
@@ -319,7 +319,11 @@
       :class="timedGrid.hasNextPage ? 'tw-visible' : 'tw-invisible'"
       class="tw-sticky tw-top-14 -tw-mr-2 tw-self-start tw-pt-1.5 sm:tw-top-16"
     >
-      <v-btn class="tw-border-gray" variant="outlined" icon @click="timedGrid.actions.nextPage"
+      <v-btn
+        class="tw-border-gray tw-h-[36px] tw-w-[36px] tw-min-w-[36px]"
+        variant="outlined"
+        icon
+        @click="timedGrid.actions.nextPage"
         ><v-icon>mdi-chevron-right</v-icon></v-btn
       >
     </div>
