@@ -195,7 +195,7 @@ export const getBaseTimeslotClassStyle = ({
           totalRespondents === 1 || overlayAvailability
             ? "#00994C88"
             : "#00994C"
-      } else if (totalRespondents > 0) {
+      } else {
         s.backgroundColor = UNAVAILABLE_BG
       }
     } else if (defaultState === states.HEATMAP) {
@@ -241,7 +241,7 @@ export const getBaseTimeslotClassStyle = ({
           }
           s.backgroundColor = "#00994C" + alpha
         }
-      } else if (totalRespondents > 0) {
+      } else {
         s.backgroundColor = UNAVAILABLE_BG
       }
     }
@@ -303,6 +303,9 @@ export const getTimeGridTimeslotClassStyle = ({
     cs.class += "animate-bg-color "
   }
   cs.style.height = `${String(timeslotHeight)}px`
+  const isLeftDateBoundary = baseArgs.col === 0 || !isColConsecutive(baseArgs.col)
+  const isRightDateBoundary =
+    baseArgs.col === daysLength - 1 || !isColConsecutive(baseArgs.col + 1)
 
   if (
     (respondents.length > 0 ||
@@ -338,11 +341,11 @@ export const getTimeGridTimeslotClassStyle = ({
 
     cs.class += "tw-border-r "
     cs.style.borderRightStyle = "solid"
-    if (baseArgs.col === 0 || !isColConsecutive(baseArgs.col)) {
+    if (isLeftDateBoundary) {
       cs.class += "tw-border-l tw-border-l-gray "
       cs.style.borderLeftStyle = "solid"
     }
-    if (baseArgs.col === daysLength - 1 || !isColConsecutive(baseArgs.col + 1)) {
+    if (isRightDateBoundary) {
       cs.class += "tw-border-r-gray "
     }
     if (!isFirstSplit && baseArgs.row === baseArgs.firstSplitLength) {
@@ -371,8 +374,8 @@ export const getTimeGridTimeslotClassStyle = ({
       cs.style.borderRightColor = GRID_SEPARATOR_STRONG
       cs.style.borderBottomColor = GRID_SEPARATOR_STRONG
     } else {
-      cs.style.borderLeftColor = GRID_SEPARATOR_SOFT
-      cs.style.borderRightColor = GRID_SEPARATOR_SOFT
+      cs.style.borderLeftColor = GRID_SEPARATOR_STRONG
+      cs.style.borderRightColor = GRID_SEPARATOR_STRONG
       cs.style.borderBottomColor = GRID_SEPARATOR_SOFT
     }
   }
@@ -461,8 +464,10 @@ export const getDayGridTimeslotClassStyle = ({
       cs.class += "tw-cursor-pointer "
     }
     const bg = cs.style.backgroundColor
-    if (bg && lightOrDark(removeTransparencyFromHex(bg)) === "dark") {
-      cs.class += "tw-text-white "
+    if (typeof bg === "string" && bg.startsWith("#")) {
+      if (lightOrDark(removeTransparencyFromHex(bg)) === "dark") {
+        cs.class += "tw-text-white "
+      }
     }
   } else {
     cs = { class: "tw-bg-off-white tw-text-gray ", style: {} }

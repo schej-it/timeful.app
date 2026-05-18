@@ -148,8 +148,8 @@ describe("scheduleOverlapRendering", () => {
     expect(styles[0].style.boxShadow).toBeUndefined()
     expect(styles[0].style.borderLeftStyle).toBe("solid")
     expect(styles[0].style.borderRightStyle).toBe("solid")
-    expect(styles[0].style.borderLeftColor).toBe("var(--timeful-grid-separator-soft)")
-    expect(styles[0].style.borderRightColor).toBe("var(--timeful-grid-separator-soft)")
+    expect(styles[0].style.borderLeftColor).toBe("var(--timeful-grid-separator-strong)")
+    expect(styles[0].style.borderRightColor).toBe("var(--timeful-grid-separator-strong)")
     expect(styles[0].style.borderBottomColor).toBe("var(--timeful-grid-separator-soft)")
     expect(styles[2].class).toContain("tw-bg-light-gray-stroke")
   })
@@ -324,9 +324,53 @@ describe("scheduleOverlapRendering", () => {
     expect(classStyle.style.backgroundColor).toBe("var(--timeful-unavailable-bg-time-grid)")
     expect(classStyle.style.borderLeftStyle).toBe("solid")
     expect(classStyle.style.borderRightStyle).toBe("solid")
-    expect(classStyle.style.borderLeftColor).toBe("var(--timeful-grid-separator-soft)")
-    expect(classStyle.style.borderRightColor).toBe("var(--timeful-grid-separator-soft)")
+    expect(classStyle.style.borderLeftColor).toBe("var(--timeful-grid-separator-strong)")
+    expect(classStyle.style.borderRightColor).toBe("var(--timeful-grid-separator-strong)")
     expect(classStyle.style.borderBottomColor).toBe("var(--timeful-grid-separator-soft)")
+  })
+
+  it("uses the timed-grid unavailable token for zero-response heatmap slots", () => {
+    const slot = zdt("2026-01-01T09:00:00Z")
+
+    const classStyle = getTimeGridTimeslotClassStyle({
+      date: slot,
+      row: 0,
+      col: 0,
+      isFirstSplit: true,
+      isDisabled: false,
+      animateTimeslotAlways: false,
+      availabilityAnimEnabled: false,
+      timeslotHeight: 15,
+      timezoneOffset: Temporal.Duration.from({ minutes: 0 }),
+      curTimeslot: { row: -1, col: -1 },
+      editing: false,
+      isColConsecutive: () => true,
+      daysLength: 1,
+      firstSplitLength: 1,
+      lastRow: 0,
+      state: states.HEATMAP,
+      overlayAvailability: false,
+      dragType: DRAG_TYPES.ADD,
+      availabilityType: availabilityTypes.AVAILABLE,
+      availability: new ZdtSet(),
+      ifNeeded: new ZdtSet(),
+      tempTimes: new ZdtSet(),
+      responsesFormatted: new ZdtMap(),
+      parsedResponses: {},
+      curRespondent: "",
+      curRespondents: [],
+      curRespondentsSet: new Set<string>(),
+      respondents: [],
+      curRespondentsMax: 0,
+      max: 0,
+      defaultState: states.HEATMAP,
+      userHasResponded: false,
+      curGuestId: "",
+      authUserId: undefined,
+      inDragRange: () => false,
+    })
+
+    expect(classStyle.style.backgroundColor).toBe("var(--timeful-unavailable-bg-time-grid)")
   })
 
   it("uses the timed-grid unavailable token for zero-availability best-times slots", () => {
@@ -373,9 +417,53 @@ describe("scheduleOverlapRendering", () => {
     expect(classStyle.style.backgroundColor).toBe("var(--timeful-unavailable-bg-time-grid)")
     expect(classStyle.style.borderLeftStyle).toBe("solid")
     expect(classStyle.style.borderRightStyle).toBe("solid")
-    expect(classStyle.style.borderLeftColor).toBe("var(--timeful-grid-separator-soft)")
-    expect(classStyle.style.borderRightColor).toBe("var(--timeful-grid-separator-soft)")
+    expect(classStyle.style.borderLeftColor).toBe("var(--timeful-grid-separator-strong)")
+    expect(classStyle.style.borderRightColor).toBe("var(--timeful-grid-separator-strong)")
     expect(classStyle.style.borderBottomColor).toBe("var(--timeful-grid-separator-soft)")
+  })
+
+  it("uses the timed-grid unavailable token for zero-response best-times slots", () => {
+    const slot = zdt("2026-01-01T09:00:00Z")
+
+    const classStyle = getTimeGridTimeslotClassStyle({
+      date: slot,
+      row: 0,
+      col: 0,
+      isFirstSplit: true,
+      isDisabled: false,
+      animateTimeslotAlways: false,
+      availabilityAnimEnabled: false,
+      timeslotHeight: 15,
+      timezoneOffset: Temporal.Duration.from({ minutes: 0 }),
+      curTimeslot: { row: -1, col: -1 },
+      editing: false,
+      isColConsecutive: () => true,
+      daysLength: 1,
+      firstSplitLength: 1,
+      lastRow: 0,
+      state: states.BEST_TIMES,
+      overlayAvailability: false,
+      dragType: DRAG_TYPES.ADD,
+      availabilityType: availabilityTypes.AVAILABLE,
+      availability: new ZdtSet(),
+      ifNeeded: new ZdtSet(),
+      tempTimes: new ZdtSet(),
+      responsesFormatted: new ZdtMap(),
+      parsedResponses: {},
+      curRespondent: "",
+      curRespondents: [],
+      curRespondentsSet: new Set<string>(),
+      respondents: [],
+      curRespondentsMax: 0,
+      max: 0,
+      defaultState: states.BEST_TIMES,
+      userHasResponded: false,
+      curGuestId: "",
+      authUserId: undefined,
+      inDragRange: () => false,
+    })
+
+    expect(classStyle.style.backgroundColor).toBe("var(--timeful-unavailable-bg-time-grid)")
   })
 
   it("keeps standalone day-grid cells framed when Tailwind preflight is disabled", () => {
@@ -421,5 +509,49 @@ describe("scheduleOverlapRendering", () => {
     expect(classStyle.style.borderRightStyle).toBe("solid")
     expect(classStyle.class).toContain("tw-border-l")
     expect(classStyle.class).toContain("tw-border-r")
+  })
+
+  it("uses strong vertical separators at non-consecutive date boundaries in the default timed grid", () => {
+    const classStyle = getTimeGridTimeslotClassStyle({
+      date: zdt("2026-01-02T09:00:00Z"),
+      row: 0,
+      col: 1,
+      isFirstSplit: true,
+      isDisabled: false,
+      animateTimeslotAlways: false,
+      availabilityAnimEnabled: false,
+      timeslotHeight: 15,
+      timezoneOffset: Temporal.Duration.from({ minutes: 0 }),
+      curTimeslot: { row: -1, col: -1 },
+      editing: false,
+      isColConsecutive: (col) => col !== 1,
+      daysLength: 3,
+      firstSplitLength: 1,
+      lastRow: 0,
+      state: states.BEST_TIMES,
+      overlayAvailability: false,
+      dragType: DRAG_TYPES.ADD,
+      availabilityType: availabilityTypes.AVAILABLE,
+      availability: new ZdtSet(),
+      ifNeeded: new ZdtSet(),
+      tempTimes: new ZdtSet(),
+      responsesFormatted: new ZdtMap(),
+      parsedResponses: {},
+      curRespondent: "",
+      curRespondents: [],
+      curRespondentsSet: new Set<string>(),
+      respondents: [{ _id: "user-1" }, { _id: "user-2" }],
+      curRespondentsMax: 0,
+      max: 2,
+      defaultState: states.BEST_TIMES,
+      userHasResponded: false,
+      curGuestId: "",
+      authUserId: undefined,
+      inDragRange: () => false,
+    })
+
+    expect(classStyle.style.borderLeftColor).toBe("var(--timeful-grid-separator-strong)")
+    expect(classStyle.style.borderRightColor).toBe("var(--timeful-grid-separator-strong)")
+    expect(classStyle.style.borderBottomColor).toBe("var(--timeful-grid-separator-soft)")
   })
 })
