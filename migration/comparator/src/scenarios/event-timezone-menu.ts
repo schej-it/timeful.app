@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test"
+import { dismissConsentIfPresent } from "./helpers.js"
 
 import type { AppLabel, ScenarioDefinition } from "../types.js"
 
@@ -10,6 +11,7 @@ const EXPECTED_TIME_TYPE_TEXT = "12h"
 
 async function openEvent(page: Page, app: AppLabel) {
   await page.goto(new URL(EVENT_PATH, app.url).toString(), { waitUntil: "domcontentloaded" })
+  await dismissConsentIfPresent(page)
   await page.locator(TIMEZONE_SELECTOR).waitFor({ state: "visible", timeout: 15000 })
 }
 

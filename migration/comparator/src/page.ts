@@ -130,7 +130,7 @@ export async function gotoComparatorUrl(page: Page, url: string) {
   console.error(`[comparator] goto:start ${url}`)
   await runWithPhaseTimeout(
     `goto ${url}`,
-    page.goto(url, { waitUntil: "commit" }),
+    page.goto(url, { waitUntil: "domcontentloaded" }),
   )
   console.error(`[comparator] goto:done ${url}`)
 }
@@ -140,7 +140,16 @@ export async function preparePage(page: Page, label: AppLabel, scenario: Scenari
     await page.route(`${domainPrefix}**`, (route) => route.abort())
   }
   await installStableBrowserLocale(page)
-  await gotoComparatorUrl(page, label.url)
+  if (!scenario.skipInitialGoto) {
+    await gotoComparatorUrl(page, label.url)
+  }
+  console.error(`[comparator] scenario-prepare:start ${label.name}`)
+  await runWithPhaseTimeout(
+    `scenario.prepare ${label.name}`,
+    scenario.prepare(page, label),
+    DEFAULT_PHASE_TIMEOUT_MS,
+  )
+  console.error(`[comparator] scenario-prepare:done ${label.name}`)
   console.error(`[comparator] ready:start ${label.name} selector=${scenario.readySelector}`)
   await runWithPhaseTimeout(
     `waitForSelector ${label.name} ${scenario.readySelector}`,
@@ -150,11 +159,4 @@ export async function preparePage(page: Page, label: AppLabel, scenario: Scenari
     (scenario.readyTimeoutMs ?? DEFAULT_PHASE_TIMEOUT_MS) + 1_000,
   )
   console.error(`[comparator] ready:done ${label.name} selector=${scenario.readySelector}`)
-  console.error(`[comparator] scenario-prepare:start ${label.name}`)
-  await runWithPhaseTimeout(
-    `scenario.prepare ${label.name}`,
-    scenario.prepare(page, label),
-    DEFAULT_PHASE_TIMEOUT_MS,
-  )
-  console.error(`[comparator] scenario-prepare:done ${label.name}`)
 }

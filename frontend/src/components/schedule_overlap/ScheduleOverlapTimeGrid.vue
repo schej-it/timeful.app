@@ -112,6 +112,16 @@
                 <v-progress-circular class="tw-text-green" indeterminate />
               </div>
 
+              <div class="tw-pointer-events-none tw-absolute tw-inset-x-0 tw-top-0 tw-z-[1] tw-h-[2px]">
+                <div class="tw-h-px tw-bg-white"></div>
+                <div
+                  class="tw-h-px"
+                  style="
+                    background-color: var(--timeful-grid-separator);
+                  "
+                ></div>
+              </div>
+
               <template v-for="(day, d) in timedGrid.days" :key="d">
                 <div
                   v-if="!day.isConsecutive"

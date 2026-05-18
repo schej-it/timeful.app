@@ -1,4 +1,4 @@
-import { clickContainsText } from "./helpers.js"
+import { clickContainsText, dismissConsentIfPresent } from "./helpers.js"
 
 import type { AppLabel } from "../types.js"
 import type { ScenarioDefinition } from "../types.js"
@@ -18,11 +18,7 @@ type Box = {
 async function openEventPage(page: import("@playwright/test").Page, label: AppLabel) {
   const url = new URL(EVENT_PATH, label.url).toString()
   await page.goto(url, { waitUntil: "domcontentloaded" })
-  const agreeButton = page.getByRole("button", { name: /^agree$/i })
-  if (await agreeButton.isVisible().catch(() => false)) {
-    await agreeButton.click({ force: true })
-    await page.waitForTimeout(500)
-  }
+  await dismissConsentIfPresent(page)
   await page.addStyleTag({
     content: `
       .qc-cmp-cleanslate,

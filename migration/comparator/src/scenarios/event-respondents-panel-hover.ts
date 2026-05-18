@@ -1,5 +1,5 @@
 import type { ScenarioDefinition } from "../types.js"
-import { gotoComparatorUrl } from "../page.js"
+import { dismissConsentIfPresent } from "./helpers.js"
 
 const EVENT_PATH = "/e/dEeaF"
 
@@ -25,17 +25,8 @@ export const eventRespondentsPanelHoverScenario = {
     },
   ],
   prepare: async (page, label) => {
-    await gotoComparatorUrl(page, new URL(EVENT_PATH, label.url).toString())
-
-    const agreeButton = page.getByRole("button", { name: /^agree$/i })
-    if (await agreeButton.isVisible().catch(() => false)) {
-      await agreeButton.click({ force: true })
-      await page.waitForTimeout(500)
-    }
-
-    await page.evaluate(() => {
-      document.getElementById("qc-cmp2-container")?.remove()
-    })
+    await page.goto(new URL(EVENT_PATH, label.url).toString(), { waitUntil: "domcontentloaded" })
+    await dismissConsentIfPresent(page)
     await page.waitForTimeout(1500)
 
     const hoverTarget = await page.evaluate(() => {

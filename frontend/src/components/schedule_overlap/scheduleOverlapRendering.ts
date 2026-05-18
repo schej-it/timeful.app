@@ -41,6 +41,14 @@ export interface OverlaidAvailabilityBlock {
   type: AvailabilityType
 }
 
+const UNAVAILABLE_BG = "var(--timeful-unavailable-bg)"
+const UNAVAILABLE_BG_TIME_GRID = "var(--timeful-unavailable-bg-time-grid)"
+const UNAVAILABLE_BG_DAY_GRID = "var(--timeful-unavailable-bg-day-grid)"
+const GRID_SEPARATOR = "var(--timeful-grid-separator)"
+const GRID_HOUR_SEPARATOR = "var(--timeful-grid-hour-separator)"
+const GRID_SEPARATOR_STRONG = "var(--timeful-grid-separator-strong)"
+const GRID_SEPARATOR_SOFT = "var(--timeful-grid-separator-soft)"
+
 interface TimeslotBaseArgs {
   date: Temporal.ZonedDateTime | null
   row: number
@@ -103,7 +111,7 @@ export const getBaseTimeslotClassStyle = ({
     (!overlayAvailability && state === states.EDIT_AVAILABILITY) ||
     state === states.SET_SPECIFIC_TIMES
   ) {
-    s.backgroundColor = "#E523230D"
+    s.backgroundColor = UNAVAILABLE_BG
     const inRange = inDragRange(row, col)
     if (inRange) {
       if (dragType === DRAG_TYPES.ADD) {
@@ -137,7 +145,7 @@ export const getBaseTimeslotClassStyle = ({
         s.backgroundColor = "#00994C77"
       }
     } else {
-      s.backgroundColor = "#E523230D"
+      s.backgroundColor = UNAVAILABLE_BG
     }
     return { class: c, style: s }
   }
@@ -187,6 +195,8 @@ export const getBaseTimeslotClassStyle = ({
           totalRespondents === 1 || overlayAvailability
             ? "#00994C88"
             : "#00994C"
+      } else if (totalRespondents > 0) {
+        s.backgroundColor = UNAVAILABLE_BG
       }
     } else if (defaultState === states.HEATMAP) {
       if (numRespondents > 0) {
@@ -231,8 +241,8 @@ export const getBaseTimeslotClassStyle = ({
           }
           s.backgroundColor = "#00994C" + alpha
         }
-      } else if (totalRespondents === 1) {
-        s.backgroundColor = "#E523230D"
+      } else if (totalRespondents > 0) {
+        s.backgroundColor = UNAVAILABLE_BG
       }
     }
   }
@@ -308,10 +318,16 @@ export const getTimeGridTimeslotClassStyle = ({
       const offsetMinutes = timezoneOffset.total("minutes")
       const localDate = baseArgs.date.subtract({ minutes: offsetMinutes })
       const frac = localDate.minute
-      if (frac === 0) cs.class += "tw-border-t "
-      else if (frac === 30) {
+      if (!(isFirstSplit && baseArgs.row === 0) && frac === 0) {
+        cs.class += "tw-border-t "
+        cs.style.borderTopStyle = "solid"
+        cs.style.borderTopWidth = "0.5px"
+        cs.style.borderTopColor = GRID_HOUR_SEPARATOR
+      } else if (frac === 30) {
         cs.class += "tw-border-t "
         cs.style.borderTopStyle = "dashed"
+        cs.style.borderTopWidth = "1px"
+        cs.style.borderTopColor = GRID_SEPARATOR
       }
     }
 
@@ -321,9 +337,6 @@ export const getTimeGridTimeslotClassStyle = ({
     }
     if (baseArgs.col === daysLength - 1 || !isColConsecutive(baseArgs.col + 1)) {
       cs.class += "tw-border-r-gray "
-    }
-    if (isFirstSplit && baseArgs.row === 0) {
-      cs.class += "tw-border-t tw-border-t-gray "
     }
     if (!isFirstSplit && baseArgs.row === baseArgs.firstSplitLength) {
       cs.class += "tw-border-t tw-border-t-gray "
@@ -344,17 +357,21 @@ export const getTimeGridTimeslotClassStyle = ({
       state === states.SINGLE_AVAILABILITY ||
       total === 1
     ) {
-      cs.class += "tw-border-[#999999] "
+      cs.style.borderLeftColor = GRID_SEPARATOR_STRONG
+      cs.style.borderRightColor = GRID_SEPARATOR_STRONG
+      cs.style.borderBottomColor = GRID_SEPARATOR_STRONG
     } else {
-      cs.class += "tw-border-[#DDDDDD99] "
+      cs.style.borderLeftColor = GRID_SEPARATOR_SOFT
+      cs.style.borderRightColor = GRID_SEPARATOR_SOFT
+      cs.style.borderBottomColor = GRID_SEPARATOR_SOFT
     }
   }
 
   if (isDisabled) {
     cs.class += "tw-bg-light-gray-stroke tw-border-light-gray-stroke "
   }
-  if (cs.style.backgroundColor === "#E523230D") {
-    cs.style.backgroundColor = "#E5232333"
+  if (cs.style.backgroundColor === UNAVAILABLE_BG) {
+    cs.style.backgroundColor = UNAVAILABLE_BG_TIME_GRID
   }
 
   return cs
@@ -441,8 +458,8 @@ export const getDayGridTimeslotClassStyle = ({
     cs = { class: "tw-bg-off-white tw-text-gray ", style: {} }
   }
 
-  if (cs.style.backgroundColor === "#E523230D") {
-    cs.style.backgroundColor = "#E523233B"
+  if (cs.style.backgroundColor === UNAVAILABLE_BG) {
+    cs.style.backgroundColor = UNAVAILABLE_BG_DAY_GRID
   }
 
   if (

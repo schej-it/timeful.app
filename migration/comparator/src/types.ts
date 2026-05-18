@@ -55,6 +55,7 @@ export type ScenarioDefinition = {
   readySelector: string
   elements: ElementDescriptor[]
   readyTimeoutMs?: number
+  skipInitialGoto?: boolean
   prepare: (page: Page, label: AppLabel) => Promise<void>
   runInteraction?: (oldPage: Page, newPage: Page) => Promise<void>
 }

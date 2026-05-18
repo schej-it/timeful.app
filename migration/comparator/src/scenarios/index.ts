@@ -6,6 +6,8 @@ import { eventOptionsStyleOnScenario } from "./event-options-style-on.js"
 import { eventTimezoneMenuScenario } from "./event-timezone-menu.js"
 import { eventRespondentsPanelScenario } from "./event-respondents-panel.js"
 import { eventRespondentsPanelHoverScenario } from "./event-respondents-panel-hover.js"
+import { eventBestTimesGridScenario } from "./event-best-times-grid.js"
+import { eventHeatmapGridScenario } from "./event-heatmap-grid.js"
 import {
   newEventCalendarInteractionScenario,
   newEventCalendarScenario,
@@ -26,6 +28,8 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
   "event-options-style-on": eventOptionsStyleOnScenario,
   "event-respondents-panel": eventRespondentsPanelScenario,
   "event-respondents-panel-hover": eventRespondentsPanelHoverScenario,
+  "event-best-times-grid": eventBestTimesGridScenario,
+  "event-heatmap-grid": eventHeatmapGridScenario,
   "event-timezone-menu": eventTimezoneMenuScenario,
   "schedule-event-upward-drag": scheduleEventUpwardDragScenario,
 } as const
