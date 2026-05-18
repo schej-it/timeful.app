@@ -57,6 +57,7 @@ import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
 import isWebview from "is-ua-webview"
 import type { Event, User } from "@/types"
+import { getRealOwnerId } from "@/composables/event/eventOwnership"
 import { fetchUserById } from "@/utils/services/UserService"
 
 const props = defineProps<{
@@ -107,7 +108,8 @@ const signIn = () => {
 }
 
 void (async () => {
-  owner.value = await fetchUserById(props.event.ownerId ?? "")
+  const ownerId = getRealOwnerId(props.event)
+  if (ownerId) owner.value = await fetchUserById(ownerId)
   loaded.value = true
 })()
 </script>

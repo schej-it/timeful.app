@@ -210,6 +210,7 @@ import { getDateRangeStringForEvent, _delete, post } from "@/utils"
 import { eventTypes } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
+import { isSignedInOwner } from "@/composables/event/eventOwnership"
 import type { Event } from "@/types"
 
 const props = withDefaults(
@@ -233,7 +234,7 @@ const duplicateDialogOptions = ref({
 const removeDialog = ref(false)
 
 const dateString = computed(() => getDateRangeStringForEvent(props.event))
-const isOwner = computed(() => props.event.ownerId === authUser.value?._id)
+const isOwner = computed(() => isSignedInOwner(props.event, authUser.value))
 const isGroup = computed(() => props.event.type === eventTypes.GROUP)
 const isDow = computed(() => props.event.type === eventTypes.DOW)
 const isSignUp = computed(() => props.event.isSignUpForm)

@@ -1,12 +1,13 @@
 import { ref, nextTick, type Ref, type ComputedRef } from "vue"
 import { get, getRenderedWeekStart, processEvent } from "@/utils"
-import { eventTypes, guestUserId } from "@/constants"
+import { eventTypes } from "@/constants"
 import { logEventBoot } from "@/utils/eventBootDebug"
 import type { Event, User } from "@/types"
 import type {
   NormalizedCalendarEvent,
   CalendarEventsMap,
 } from "@/composables/schedule_overlap/types"
+import { getRealOwnerId } from "@/composables/event/eventOwnership"
 import type { ScheduleOverlapInstance } from "./types"
 import { fetchEventFromPath } from "./eventTransportBoundary"
 import {
@@ -83,8 +84,8 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     logEventBoot("useEventLoader", "checkOwnerPremium:start", {
       ownerId: event.value?.ownerId ?? null,
     })
-    const ownerId = event.value?.ownerId
-    if (ownerId && ownerId !== guestUserId) {
+    const ownerId = getRealOwnerId(event.value)
+    if (ownerId) {
       try {
         const res = await get<{ isPremium: boolean }>(`/users/${ownerId}/is-premium`)
         ownerIsPremium.value = res.isPremium

@@ -353,7 +353,7 @@ describe("Event guest edit action", () => {
     expect(ownerEditButton.attributes("data-color")).toBe("primary")
   })
 
-  it("renders the edit action for events created while not signed in", async () => {
+  it("keeps availability editing but hides metadata editing for events created while not signed in", async () => {
     loaderEventState.value = {
       ...loaderEventState.value,
       ownerId: guestUserId,
@@ -425,7 +425,62 @@ describe("Event guest edit action", () => {
 
     await flushDeferredMount()
 
-    expect(wrapper.get("#edit-event-btn").text()).toContain("Edit event")
-    expect(wrapper.find('[data-can-edit="true"]').exists()).toBe(true)
+    expect(wrapper.find("#edit-event-btn").exists()).toBe(false)
+    expect(wrapper.find('[data-can-edit="true"]').exists()).toBe(false)
+  })
+
+  it("treats an empty owner id like an anonymous-created event", async () => {
+    loaderEventState.value = {
+      ...loaderEventState.value,
+      ownerId: "",
+    }
+
+    const EventDescriptionStub = defineComponent({
+      name: "EventDescriptionStub",
+      props: {
+        canEdit: { type: Boolean, required: true },
+      },
+      setup(props) {
+        return () => h("div", { "data-can-edit": String(props.canEdit) })
+      },
+    })
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: EventDescriptionStub,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": true,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.find("#edit-event-btn").exists()).toBe(false)
+    expect(wrapper.find('[data-can-edit="true"]').exists()).toBe(false)
   })
 })

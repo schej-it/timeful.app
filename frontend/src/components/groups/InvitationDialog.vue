@@ -128,6 +128,7 @@ import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
 import CalendarPermissionsCard from "@/components/calendar_permission_dialogs/CalendarPermissionsCard.vue"
 import UserChip from "@/components/general/UserChip.vue"
+import { isSignedInOwner } from "@/composables/event/eventOwnership"
 import type { Event } from "@/types"
 
 interface CalendarAccount {
@@ -161,9 +162,7 @@ onMounted(() => {
   ) as typeof calendarAccounts.value
 })
 
-const isOwner = computed(
-  () => authUser.value?._id === props.group?.ownerId
-)
+const isOwner = computed(() => isSignedInOwner(props.group, authUser.value))
 const membersToShareWith = computed(
   () =>
     props.group?.attendees?.filter(

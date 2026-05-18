@@ -51,8 +51,12 @@ import {
   ZdtSet,
 } from "@/utils"
 import {
-  availabilityTypes, eventTypes, guestUserId, UTC, type AvailabilityType
+  availabilityTypes, eventTypes, UTC, type AvailabilityType
 } from "@/constants"
+import {
+  isAnonymousOwnerEvent,
+  isSignedInOwner,
+} from "@/composables/event/eventOwnership"
 import { useMainStore } from "@/stores/main"
 import { freemiumEnabled } from "@/utils/freemium"
 import ScheduleOverlapDaysOnlyGrid from "./ScheduleOverlapDaysOnlyGrid.vue"
@@ -160,8 +164,8 @@ const { smAndDown } = useDisplay()
 const isPhone = computed(() => smAndDown.value)
 const isSignUp = computed(() => Boolean(props.event.isSignUpForm))
 const isGroup = computed(() => props.event.type === eventTypes.GROUP)
-const isOwner = computed(() => mainStore.authUser?._id === props.event.ownerId)
-const _isGuestEvent = computed(() => props.event.ownerId === guestUserId)
+const isOwner = computed(() => isSignedInOwner(props.event, mainStore.authUser))
+const _isGuestEvent = computed(() => isAnonymousOwnerEvent(props.event))
 const authUser = computed(() => mainStore.authUser)
 
 const eventRef = computed(() => props.event)

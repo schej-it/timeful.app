@@ -216,7 +216,8 @@ import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import TimezoneSelector from "./TimezoneSelector.vue"
 import GCalWeekSelector from "./GCalWeekSelector.vue"
 import EventOptions from "./EventOptions.vue"
-import { guestUserId, timeTypes } from "@/constants"
+import { timeTypes } from "@/constants"
+import { isAnonymousOwnerEvent, isSignedInOwner } from "@/composables/event/eventOwnership"
 import type { ScheduleOverlapToolRowViewModel } from "./scheduleOverlapViewModels"
 
 const props = defineProps<{
@@ -237,8 +238,8 @@ const timeTypeOptions = [
   { label: "24h", value: timeTypes.HOUR24 },
 ]
 
-const guestEvent = computed(() => props.toolRow.event.ownerId == guestUserId)
-const isOwner = computed(() => props.toolRow.event.ownerId == authUser.value?._id)
+const guestEvent = computed(() => isAnonymousOwnerEvent(props.toolRow.event))
+const isOwner = computed(() => isSignedInOwner(props.toolRow.event, authUser.value))
 const showScheduleEventButton = computed(
   () =>
     !props.toolRow.event.daysOnly &&

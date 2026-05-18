@@ -548,13 +548,13 @@ import { storeToRefs } from "pinia"
 import {
   eventTypes,
   authTypes,
-  guestUserId,
   durations,
   hoursPlainTime,
   UTC,
   dateOptions,
   type DateOptionType
 } from "@/constants"
+import { isAnonymousOwnerEvent } from "@/composables/event/eventOwnership"
 import {
   post,
   put,
@@ -751,9 +751,7 @@ const minCalendarDate = computed(() => {
   const today = Temporal.Now.plainDateISO()
   return today.toString()
 })
-const guestEvent = computed(
-  () => props.event?.ownerId === guestUserId
-)
+const guestEvent = computed(() => isAnonymousOwnerEvent(props.event))
 const getDayOfWeekButtonClass = (dayIndex: number) => ({
   "new-event-dow-button": true,
   "new-event-dow-button--selected": selectedDaysOfWeek.value.includes(dayIndex),

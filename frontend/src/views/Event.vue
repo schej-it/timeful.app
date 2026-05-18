@@ -126,10 +126,10 @@
                   <div
                     class="tw-text-xl sm:tw-text-3xl"
                     :class="
-                      canEdit &&
+                      canEditMetadata &&
                       '-tw-mx-2 -tw-my-1 tw-cursor-pointer tw-rounded tw-px-2 tw-py-1 tw-transition-all hover:tw-bg-light-gray'
                     "
-                    @click="canEdit && editEvent()"
+                    @click="canEditMetadata && editEvent()"
                   >
                     {{ event.name }}
                   </div>
@@ -165,7 +165,7 @@
                   >
                     {{ dateString }}
                   </div>
-                  <template v-if="canEdit">
+                  <template v-if="canEditMetadata">
                     <v-btn
                       id="edit-event-btn"
                       variant="text"
@@ -222,7 +222,7 @@
                   </v-btn>
                 </div>
                 <div
-                  v-if="!isPhone && (!isSignUp || canEdit)"
+                  v-if="!isPhone && (!isSignUp || canEditAvailability)"
                   class="tw-flex tw-w-40"
                 >
                   <template v-if="!isEditing">
@@ -274,7 +274,7 @@
             <!-- Description -->
             <EventDescription
               v-model:event="event"
-              :can-edit="canEdit"
+              :can-edit="canEditMetadata"
             />
           </div>
 
@@ -394,7 +394,7 @@
       ></div>
       <!-- Bottom bar for phones -->
       <div
-        v-if="!isSettingSpecificTimes && isPhone && (!isSignUp || canEdit)"
+        v-if="!isSettingSpecificTimes && isPhone && (!isSignUp || canEditAvailability)"
         class="tw-fixed tw-bottom-0 tw-z-20 tw-flex tw-w-full tw-flex-col"
         :style="showAds ? { bottom: '115px' } : {}"
       >
@@ -525,7 +525,6 @@ import {
   eventTypes,
   calendarTypes,
   allTimezones,
-  guestUserId,
 } from "@/constants"
 import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
 import MarkAvailabilityDialog from "@/components/calendar_permission_dialogs/MarkAvailabilityDialog.vue"
@@ -556,6 +555,11 @@ import {
 import type { Event, User } from "@/types"
 import { fetchAuthUserProfile } from "@/utils/services/UserService"
 import { toQueryInstantString } from "@/utils/temporalQuery"
+import {
+  canEditAvailabilityAsCurrentViewer,
+  canEditEventMetadata,
+  isSignedInOwner,
+} from "@/composables/event/eventOwnership"
 
 const ScheduleOverlap = defineAsyncComponent(
   () => import("@/components/schedule_overlap/ScheduleOverlap.vue")
@@ -621,10 +625,12 @@ const eventType = computed(() => {
   else if (isSignUp.value) return "signup"
   return "event"
 })
-const canEdit = computed(() => {
-  const ev = loader.event.value
-  return ev?.ownerId === guestUserId || authUser.value?._id === ev?.ownerId
-})
+const canEditAvailability = computed(() =>
+  canEditAvailabilityAsCurrentViewer(loader.event.value, authUser.value)
+)
+const canEditMetadata = computed(() =>
+  canEditEventMetadata(loader.event.value, authUser.value)
+)
 const userHasResponded = computed(() => {
   const ev = loader.event.value
   return Boolean(authUser.value?._id && ev?.responses && authUser.value._id in ev.responses)
@@ -931,7 +937,7 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
   const payloadGuestName = e.data.payload?.guestName
   const hasGuestName = Boolean(payloadGuestName && payloadGuestName.length > 0)
   if (ev.blindAvailabilityEnabled) {
-    const isOwner = ev.ownerId && authUser.value?._id === ev.ownerId
+    const isOwner = isSignedInOwner(ev, authUser.value)
     if (!isOwner && hasGuestName) {
       sendPluginError(
         requestId,

@@ -21,9 +21,9 @@ import { storeToRefs } from "pinia"
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { freemiumEnabled } from "@/utils/freemium"
-import { guestUserId } from "@/constants"
 import { posthog } from "@/plugins/posthog"
 import type { User } from "@/types"
+import { getRealOwnerId } from "@/composables/event/eventOwnership"
 import { fetchUserById } from "@/utils/services/UserService"
 
 defineOptions({ name: 'EventAdvertisement' })
@@ -47,9 +47,9 @@ const adImageUrl = computed(() => {
 })
 
 async function loadOwner() {
-  if (props.ownerId && props.ownerId !== guestUserId) {
-    owner.value = await fetchUserById(props.ownerId)
-  }
+  const ownerId = getRealOwnerId(props)
+  if (!ownerId) return
+  owner.value = await fetchUserById(ownerId)
 }
 
 function navigateToAd() {

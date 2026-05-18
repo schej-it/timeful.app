@@ -22,6 +22,7 @@ import { useMainStore } from "@/stores/main"
 import AccessDenied from "@/components/groups/AccessDenied.vue"
 import NotSignedIn from "@/components/groups/NotSignedIn.vue"
 import type { EventDraft } from "@/composables/event/types"
+import { isSignedInOwner } from "@/composables/event/eventOwnership"
 import { fetchEventById } from "@/composables/event/eventTransportBoundary"
 import { serializeRouteContactsPayload, serializeRouteTimezone } from "@/router/routeProps"
 import type { Event as EventType } from "@/types"
@@ -44,7 +45,7 @@ const event = ref<EventType | null>(null)
 
 const accessDenied = computed(() => {
   if (!event.value) return false
-  if (event.value.ownerId === authUser.value?._id) return false
+  if (isSignedInOwner(event.value, authUser.value)) return false
 
   const attendees = event.value.attendees
   if (!attendees) return true

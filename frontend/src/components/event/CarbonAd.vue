@@ -12,7 +12,7 @@ import { storeToRefs } from "pinia"
 import { useMainStore } from "@/stores/main"
 import { get } from "@/utils"
 import { freemiumEnabled } from "@/utils/freemium"
-import { guestUserId } from "@/constants"
+import { getRealOwnerId } from "@/composables/event/eventOwnership"
 
 const props = defineProps<{
   ownerId?: string
@@ -26,9 +26,10 @@ const ownerIsPremium = ref(false)
 const ownerLoaded = ref(false)
 
 async function loadOwnerStatus() {
-  if (props.ownerId && props.ownerId !== guestUserId) {
+  const ownerId = getRealOwnerId(props)
+  if (ownerId) {
     try {
-      const res = await get<{ isPremium: boolean }>(`/users/${props.ownerId}/is-premium`)
+      const res = await get<{ isPremium: boolean }>(`/users/${ownerId}/is-premium`)
       ownerIsPremium.value = res.isPremium
     } catch {
       ownerIsPremium.value = false
