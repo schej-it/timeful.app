@@ -353,7 +353,7 @@ describe("Event guest edit action", () => {
     expect(ownerEditButton.attributes("data-color")).toBe("primary")
   })
 
-  it("keeps availability editing but hides metadata editing for events created while not signed in", async () => {
+  it("keeps metadata editing available for events created while not signed in", async () => {
     loaderEventState.value = {
       ...loaderEventState.value,
       ownerId: guestUserId,
@@ -425,11 +425,11 @@ describe("Event guest edit action", () => {
 
     await flushDeferredMount()
 
-    expect(wrapper.find("#edit-event-btn").exists()).toBe(false)
-    expect(wrapper.find('[data-can-edit="true"]').exists()).toBe(false)
+    expect(wrapper.find("#edit-event-btn").exists()).toBe(true)
+    expect(wrapper.find('[data-can-edit="true"]').exists()).toBe(true)
   })
 
-  it("treats an empty owner id like an anonymous-created event", async () => {
+  it("treats an empty owner id like an anonymous-created editable event", async () => {
     loaderEventState.value = {
       ...loaderEventState.value,
       ownerId: "",
@@ -480,7 +480,7 @@ describe("Event guest edit action", () => {
 
     await flushDeferredMount()
 
-    expect(wrapper.find("#edit-event-btn").exists()).toBe(false)
-    expect(wrapper.find('[data-can-edit="true"]').exists()).toBe(false)
+    expect(wrapper.find("#edit-event-btn").exists()).toBe(true)
+    expect(wrapper.find('[data-can-edit="true"]').exists()).toBe(true)
   })
 })

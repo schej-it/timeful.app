@@ -23,10 +23,10 @@ describe("event ownership semantics", () => {
         { ownerId: "" } as { ownerId: string },
         { _id: "user-1" } as { _id: string }
       )
-    ).toBe(false)
+    ).toBe(true)
   })
 
-  it("keeps guest sentinel events anonymous and non-owner-editable", () => {
+  it("keeps guest sentinel events anonymous while allowing legacy metadata editing", () => {
     expect(isAnonymousOwnerId(guestUserId)).toBe(true)
     expect(
       isSignedInOwner(
@@ -34,5 +34,11 @@ describe("event ownership semantics", () => {
         { _id: guestUserId } as { _id: string }
       )
     ).toBe(false)
+    expect(
+      canEditEventMetadata(
+        { ownerId: guestUserId } as { ownerId: string },
+        null
+      )
+    ).toBe(true)
   })
 })

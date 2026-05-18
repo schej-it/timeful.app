@@ -40,5 +40,5 @@ export function canEditEventMetadata(
   event: EventOwnerCarrier,
   authUser: AuthUserCarrier
 ): boolean {
-  return isRealOwnedEvent(event) && isSignedInOwner(event, authUser)
+  return isAnonymousOwnerEvent(event) || isSignedInOwner(event, authUser)
 }
