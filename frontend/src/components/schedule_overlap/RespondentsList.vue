@@ -328,7 +328,7 @@
         <v-switch
           v-if="respondents.length > 1"
           id="show-best-times-toggle"
-          class="tw-mb-4"
+          class="schedule-overlap-compact-switch tw-mb-4"
           inset
           :model-value="showBestTimes"
           hide-details
@@ -841,6 +841,8 @@ watch(
   { deep: true }
 )
 </script>
+
+<style scoped src="./ScheduleOverlapCompactSwitch.css"></style>
 
 <style scoped>
 .list-move {

@@ -1,0 +1,65 @@
+.schedule-overlap-compact-switch {
+  --v-input-control-height: 28px;
+  --v-input-padding-top: 0px;
+}
+
+.schedule-overlap-compact-switch :deep(.v-input__control) {
+  max-width: 100%;
+}
+
+.schedule-overlap-compact-switch :deep(.v-selection-control) {
+  min-height: 28px;
+  align-items: flex-start;
+}
+
+.schedule-overlap-compact-switch :deep(.v-selection-control__wrapper) {
+  margin-top: 1px;
+}
+
+.schedule-overlap-compact-switch :deep(.v-selection-control__wrapper) {
+  width: 38.4px !important;
+  height: 22.4px !important;
+}
+
+.schedule-overlap-compact-switch :deep(.v-switch__track) {
+  min-width: 38.4px !important;
+  width: 38.4px !important;
+  height: 22.4px !important;
+  padding: 0 !important;
+  border: 2px solid #bdbdbd !important;
+  border-radius: 14px !important;
+  background-color: #bdbdbd !important;
+  box-shadow: 0px 0.74px 4.46px 0px rgba(0, 0, 0, 0.1) !important;
+  opacity: 1 !important;
+}
+
+.schedule-overlap-compact-switch :deep(.v-selection-control__input) {
+  width: 15.2px !important;
+  height: 15.2px !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(calc(-50% - 8px), -50%) !important;
+}
+
+.schedule-overlap-compact-switch :deep(.v-switch__thumb) {
+  width: 15.2px !important;
+  height: 15.2px !important;
+  transform: none !important;
+  background-color: #fff !important;
+}
+
+.schedule-overlap-compact-switch :deep(.v-selection-control--dirty .v-selection-control__input) {
+  transform: translate(calc(-50% + 8px), -50%) !important;
+}
+
+.schedule-overlap-compact-switch :deep(.v-selection-control--dirty .v-switch__track) {
+  border-color: #29bc68 !important;
+  background-color: #00994c !important;
+  box-shadow: 0px 1.5px 4.5px 0px rgba(0, 0, 0, 0.2) !important;
+  opacity: 1 !important;
+}
+
+.schedule-overlap-compact-switch :deep(.v-label) {
+  letter-spacing: normal;
+  text-align: left;
+}
