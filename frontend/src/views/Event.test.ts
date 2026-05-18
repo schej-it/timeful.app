@@ -1,15 +1,40 @@
 // @vitest-environment happy-dom
 
 import { shallowMount } from "@vue/test-utils"
-import { defineComponent, h, nextTick, ref } from "vue"
+import { computed, defineComponent, h, nextTick, ref } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { eventTypes } from "@/constants"
+import { eventTypes, guestUserId } from "@/constants"
 import EventView from "./Event.vue"
 
 const {
   editGuestAvailabilityMock,
+  authUserState,
+  loaderEventState,
 } = vi.hoisted(() => ({
   editGuestAvailabilityMock: vi.fn(),
+  authUserState: { value: null as null | { _id: string } },
+  loaderEventState: {
+    value: {
+      _id: "evt-1",
+      shortId: "dEeaF",
+      ownerId: "owner-1",
+      name: "dfg",
+      type: "specific_dates",
+      responses: {
+        khh: {
+          name: "khh",
+          user: {
+            _id: "000000000000000000000000",
+            firstName: "khh",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+        },
+      },
+      blindAvailabilityEnabled: false,
+    },
+  },
 }))
 
 vi.mock("vue-router", () => ({
@@ -24,7 +49,7 @@ vi.mock("vue-router", () => ({
 
 vi.mock("pinia", () => ({
   storeToRefs: () => ({
-    authUser: ref(null),
+    authUser: computed(() => authUserState.value),
     viewerHasPremiumAccess: ref(false),
   }),
 }))
@@ -45,26 +70,7 @@ vi.mock("@/utils/useDisplayHelpers", () => ({
 
 vi.mock("@/composables/event/useEventLoader", () => ({
   useEventLoader: () => ({
-    event: ref({
-      _id: "evt-1",
-      shortId: "dEeaF",
-      ownerId: "owner-1",
-      name: "dfg",
-      type: eventTypes.SPECIFIC_DATES,
-      responses: {
-        khh: {
-          name: "khh",
-          user: {
-            _id: "000000000000000000000000",
-            firstName: "khh",
-            lastName: "",
-            email: "",
-          },
-          availability: [],
-        },
-      },
-      blindAvailabilityEnabled: false,
-    }),
+    event: computed(() => loaderEventState.value),
     loading: ref(false),
     ownerIsPremium: ref(false),
     calendarEventsMap: ref({}),
@@ -152,6 +158,27 @@ describe("Event guest edit action", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
+    authUserState.value = null
+    loaderEventState.value = {
+      _id: "evt-1",
+      shortId: "dEeaF",
+      ownerId: "owner-1",
+      name: "dfg",
+      type: eventTypes.SPECIFIC_DATES,
+      responses: {
+        khh: {
+          name: "khh",
+          user: {
+            _id: "000000000000000000000000",
+            firstName: "khh",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+        },
+      },
+      blindAvailabilityEnabled: false,
+    }
   })
 
   async function flushDeferredMount() {
@@ -259,5 +286,146 @@ describe("Event guest edit action", () => {
         },
       },
     })
+  })
+
+  it("renders the owner edit button with explicit primary text-button semantics", async () => {
+    authUserState.value = { _id: "owner-1" }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": defineComponent({
+            name: "VBtnStub",
+            inheritAttrs: false,
+            props: {
+              id: { type: String, default: "" },
+              variant: { type: String, default: "" },
+              color: { type: String, default: "" },
+            },
+            setup(props, { slots, attrs }) {
+              return () =>
+                h(
+                  "button",
+                  {
+                    ...attrs,
+                    id: props.id,
+                    "data-variant": props.variant,
+                    "data-color": props.color,
+                  },
+                  slots.default?.()
+                )
+            },
+          }),
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    const ownerEditButton = wrapper.get("#edit-event-btn")
+    expect(ownerEditButton.text()).toContain("Edit event")
+    expect(ownerEditButton.attributes("data-variant")).toBe("text")
+    expect(ownerEditButton.attributes("data-color")).toBe("primary")
+  })
+
+  it("renders the edit action for events created while not signed in", async () => {
+    loaderEventState.value = {
+      ...loaderEventState.value,
+      ownerId: guestUserId,
+    }
+
+    const EventDescriptionStub = defineComponent({
+      name: "EventDescriptionStub",
+      props: {
+        canEdit: { type: Boolean, required: true },
+      },
+      setup(props) {
+        return () => h("div", { "data-can-edit": String(props.canEdit) })
+      },
+    })
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: EventDescriptionStub,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": defineComponent({
+            name: "VBtnStub",
+            inheritAttrs: false,
+            props: {
+              id: { type: String, default: "" },
+              variant: { type: String, default: "" },
+              color: { type: String, default: "" },
+            },
+            setup(props, { slots, attrs }) {
+              return () =>
+                h(
+                  "button",
+                  {
+                    ...attrs,
+                    id: props.id,
+                    "data-variant": props.variant,
+                    "data-color": props.color,
+                  },
+                  slots.default?.()
+                )
+            },
+          }),
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.get("#edit-event-btn").text()).toContain("Edit event")
+    expect(wrapper.find('[data-can-edit="true"]').exists()).toBe(true)
   })
 })

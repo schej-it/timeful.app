@@ -169,6 +169,7 @@
                     <v-btn
                       id="edit-event-btn"
                       variant="text"
+                      color="primary"
                       class="tw-px-2 tw-text-sm tw-text-green"
                       @click="editEvent"
                     >
@@ -273,7 +274,7 @@
             <!-- Description -->
             <EventDescription
               v-model:event="event"
-              :can-edit="String(event.ownerId ?? '') !== '0' && canEdit"
+              :can-edit="canEdit"
             />
           </div>
 
@@ -524,6 +525,7 @@ import {
   eventTypes,
   calendarTypes,
   allTimezones,
+  guestUserId,
 } from "@/constants"
 import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
 import MarkAvailabilityDialog from "@/components/calendar_permission_dialogs/MarkAvailabilityDialog.vue"
@@ -621,7 +623,7 @@ const eventType = computed(() => {
 })
 const canEdit = computed(() => {
   const ev = loader.event.value
-  return (ev?.ownerId ?? '') === '0' || authUser.value?._id === ev?.ownerId
+  return ev?.ownerId === guestUserId || authUser.value?._id === ev?.ownerId
 })
 const userHasResponded = computed(() => {
   const ev = loader.event.value
