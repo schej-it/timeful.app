@@ -1,9 +1,11 @@
 import type { ScenarioDefinition } from "../types.js"
+import { gotoComparatorUrl } from "../page.js"
 
 const EVENT_PATH = "/e/dEeaF"
 
 export const eventRespondentsPanelHoverScenario = {
-  readySelector: "body",
+  readySelector: "#drag-section, .respondent-row",
+  readyTimeoutMs: 20_000,
   elements: [
     {
       name: "responsesHeading",
@@ -23,9 +25,7 @@ export const eventRespondentsPanelHoverScenario = {
     },
   ],
   prepare: async (page, label) => {
-    await page.goto(new URL(EVENT_PATH, label.url).toString(), {
-      waitUntil: "domcontentloaded",
-    })
+    await gotoComparatorUrl(page, new URL(EVENT_PATH, label.url).toString())
 
     const agreeButton = page.getByRole("button", { name: /^agree$/i })
     if (await agreeButton.isVisible().catch(() => false)) {

@@ -54,6 +54,7 @@ export type ElementDescriptor =
 export type ScenarioDefinition = {
   readySelector: string
   elements: ElementDescriptor[]
+  readyTimeoutMs?: number
   prepare: (page: Page, label: AppLabel) => Promise<void>
   runInteraction?: (oldPage: Page, newPage: Page) => Promise<void>
 }

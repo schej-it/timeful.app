@@ -51,10 +51,16 @@ async function main() {
     return
   }
 
-  const [oldSnapshot, newSnapshot] = await Promise.all([
-    collectStyles(oldPage, oldApp, scenario),
-    collectStyles(newPage, newApp, scenario),
-  ])
+  const [oldSnapshot, newSnapshot] =
+    browserName === "firefox"
+      ? [
+          await collectStyles(oldPage, oldApp, scenario),
+          await collectStyles(newPage, newApp, scenario),
+        ]
+      : await Promise.all([
+          collectStyles(oldPage, oldApp, scenario),
+          collectStyles(newPage, newApp, scenario),
+        ])
 
   await browser.close()
 
