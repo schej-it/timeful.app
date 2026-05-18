@@ -94,6 +94,15 @@
               id="drag-section"
               data-long-press-delay="500"
               class="tw-relative tw-flex"
+              style="touch-action: none"
+              @pointerdown="timedGrid.actions.startDrag"
+              @pointermove="timedGrid.actions.moveDrag"
+              @pointerup="timedGrid.actions.endDrag"
+              @pointercancel="timedGrid.actions.endDrag"
+              @lostpointercapture="timedGrid.actions.endDrag"
+              @mousedown="timedGrid.actions.startDrag"
+              @mousemove="timedGrid.actions.moveDrag"
+              @mouseup="timedGrid.actions.endDrag"
               @mouseleave="timedGrid.actions.resetCurTimeslot()"
             >
               <div

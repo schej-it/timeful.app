@@ -18,8 +18,36 @@ type Box = {
 async function openEventPage(page: import("@playwright/test").Page, label: AppLabel) {
   const url = new URL(EVENT_PATH, label.url).toString()
   await page.goto(url, { waitUntil: "domcontentloaded" })
+  const agreeButton = page.getByRole("button", { name: /^agree$/i })
+  if (await agreeButton.isVisible().catch(() => false)) {
+    await agreeButton.click({ force: true })
+    await page.waitForTimeout(500)
+  }
+  await page.addStyleTag({
+    content: `
+      .qc-cmp-cleanslate,
+      #qc-cmp2-container {
+        opacity: 0 !important;
+        pointer-events: none !important;
+        visibility: hidden !important;
+      }
+    `,
+  })
+  await page.evaluate(() => {
+    document.getElementById("qc-cmp2-container")?.remove()
+    for (const element of document.querySelectorAll(".qc-cmp-cleanslate")) {
+      if (element instanceof HTMLElement) {
+        element.style.pointerEvents = "none"
+        element.style.opacity = "0"
+      }
+    }
+  })
+  await page.waitForTimeout(1000)
   await page.waitForSelector("#drag-section .timeslot")
-  await page.waitForSelector("button")
+  await page.getByRole("button", { name: /schedule event/i }).waitFor({
+    state: "visible",
+    timeout: 30000,
+  })
 }
 
 async function enterScheduleEventMode(page: import("@playwright/test").Page) {
@@ -66,7 +94,6 @@ async function dragScheduleUpward(page: import("@playwright/test").Page) {
   await page.waitForTimeout(500)
 
   const scheduledBlock = await maybeGetBox(page.locator("#drag-section .tw-bg-blue").last())
-
   return {
     timeslotCount,
     startBox,
@@ -81,7 +108,9 @@ function assertExpandedUpward(label: AppLabel, boxes: {
   scheduledBlock: Box | null
 }) {
   if (!boxes.scheduledBlock) {
-    throw new Error(`${label.name} did not render a scheduled block after the upward drag`)
+    throw new Error(
+      `${label.name} did not render a scheduled block after the upward drag`
+    )
   }
 
   const expectedTop = Math.min(boxes.startBox.y, boxes.endBox.y)
@@ -159,7 +188,7 @@ function assertParity(oldBoxes: { scheduledBlock: Box | null }, newBoxes: { sche
 }
 
 export const scheduleEventUpwardDragScenario = {
-  readySelector: "button",
+  readySelector: "body",
   elements: [],
   prepare: async () => {},
   runInteraction: async (oldPage, newPage) => {

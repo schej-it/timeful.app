@@ -88,9 +88,51 @@ export function useDragPaint(opts: UseDragPaintOptions) {
   const dragType = ref<DragType>(DRAG_TYPES.ADD)
   const dragStart = opts.dragStart
   const dragCur = opts.dragCur
+  const activePointerId = ref<number | null>(null)
+  const activePointerTarget = ref<HTMLElement | null>(null)
+
+  const getPointerTarget = (
+    e: PointerEvent | MouseEvent | TouchEvent
+  ): HTMLElement | null => {
+    if (!(e.currentTarget instanceof HTMLElement)) {
+      return null
+    }
+    return e.currentTarget
+  }
+
+  const isPointerLikeEvent = (
+    e?: PointerEvent | MouseEvent | TouchEvent
+  ): e is PointerEvent => e != null && "pointerId" in e
+
+  const capturePointer = (e: PointerEvent | MouseEvent | TouchEvent) => {
+    if (!isPointerLikeEvent(e)) {
+      return
+    }
+    const target = getPointerTarget(e)
+    if (!target?.setPointerCapture) {
+      return
+    }
+    target.setPointerCapture(e.pointerId)
+    activePointerId.value = e.pointerId
+    activePointerTarget.value = target
+  }
+
+  const releasePointer = () => {
+    const pointerId = activePointerId.value
+    const target = activePointerTarget.value
+    if (
+      pointerId != null &&
+      target?.releasePointerCapture &&
+      target.hasPointerCapture(pointerId)
+    ) {
+      target.releasePointerCapture(pointerId)
+    }
+    activePointerId.value = null
+    activePointerTarget.value = null
+  }
 
   const normalizeXY = (
-    e: MouseEvent | TouchEvent
+    e: PointerEvent | MouseEvent | TouchEvent
   ): { x: number; y: number } => {
     let clientX: number
     let clientY: number
@@ -177,7 +219,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
     )
   }
 
-  const startDrag = (e: MouseEvent | TouchEvent) => {
+  const startDrag = (e: PointerEvent | MouseEvent | TouchEvent) => {
     const { x, y } = normalizeXY(e)
     const { row, col } = getRowColFromXY(x, y)
 
@@ -203,6 +245,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
 
     if (!opts.allowDrag.value) return
     if ("touches" in e && e.touches.length > 1) return
+    if (dragging.value) return
 
     const date = opts.getDateFromRowCol(row, col)
     if (!date) return
@@ -218,6 +261,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
     dragCur.value = { row, col }
 
     e.preventDefault()
+    capturePointer(e)
 
     if (opts.isSignUp.value) {
       dragType.value = DRAG_TYPES.ADD
@@ -235,10 +279,11 @@ export function useDragPaint(opts: UseDragPaintOptions) {
     }
   }
 
-  const moveDrag = (e: MouseEvent | TouchEvent) => {
+  const moveDrag = (e: PointerEvent | MouseEvent | TouchEvent) => {
     if (!opts.allowDrag.value) return
     if ("touches" in e && e.touches.length > 1) return
     if (!dragStart.value) return
+    if (isPointerLikeEvent(e) && activePointerId.value !== e.pointerId) return
 
     e.preventDefault()
     const { x, y } = normalizeXY(e)
@@ -258,8 +303,9 @@ export function useDragPaint(opts: UseDragPaintOptions) {
     dragCur.value = { row, col }
   }
 
-  const endDrag = () => {
+  const endDrag = (e?: PointerEvent | MouseEvent | TouchEvent) => {
     if (!opts.allowDrag.value) return
+    if (isPointerLikeEvent(e) && activePointerId.value !== e.pointerId) return
     if (!dragStart.value || !dragCur.value) return
 
     const ds = dragStart.value
@@ -401,6 +447,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
     dragging.value = false
     dragStart.value = null
     dragCur.value = null
+    releasePointer()
   }
 
   return {

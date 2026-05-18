@@ -299,4 +299,40 @@ describe("ScheduleOverlap", () => {
     expect(wrapper.emitted("update:weekOffset")).toEqual([[2]])
     expect(wrapper.emitted("addAvailabilityAsGuest")).toEqual([[]])
   })
+
+  it("keeps non-editing hover following the cursor after a click", async () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        event: {
+          ...buildScheduleOverlapProps().event,
+          responses: {
+            khh: {
+              user: {
+                _id: "000000000000000000000000",
+                firstName: "khh",
+                lastName: "",
+                email: "",
+              },
+              availability: [],
+              ifNeeded: [],
+              manualAvailability: {},
+            },
+          },
+        },
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      curTimeslot: { row: number; col: number }
+      timeslotSelected: boolean
+      getTimeslotVon: (row: number, col: number) => Record<string, () => void>
+    }
+
+    vm.getTimeslotVon(0, 0).click()
+    vm.getTimeslotVon(1, 0).mouseover()
+    await nextTick()
+
+    expect(vm.timeslotSelected).toBe(false)
+    expect(vm.curTimeslot).toEqual({ row: 1, col: 0 })
+  })
 })

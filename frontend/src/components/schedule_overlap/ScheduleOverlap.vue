@@ -487,9 +487,6 @@ useScheduleOverlapController({
   setTimeslotSize,
   onResize,
   onScroll,
-  startDrag,
-  moveDrag,
-  endDrag,
   deselectRespondents,
   resetSignUpForm: _resetSignUpForm,
   resetCurUserAvailability,
@@ -936,6 +933,9 @@ const mobileOverlayListeners = {
 const daysOnlyGridActions = computed<ScheduleOverlapDaysOnlyGridActions>(() => ({
   prevPage,
   nextPage,
+  startDrag,
+  moveDrag,
+  endDrag,
   resetCurTimeslot,
   closeHint,
 }))
@@ -944,6 +944,9 @@ const timedGridActions = computed<ScheduleOverlapTimeGridActions>(() => ({
   prevPage,
   nextPage,
   calendarScroll: onCalendarScroll,
+  startDrag,
+  moveDrag,
+  endDrag,
   resetCurTimeslot,
   closeHint,
   signUpForBlock: (block) => {
@@ -955,16 +958,6 @@ function getTimeslotVon(row: number, col: number): Record<string, () => void> {
   if (!props.interactable) return {}
   return {
     click: () => {
-      if (timeslotSelected.value) {
-        if (row === curTimeslot.value.row && col === curTimeslot.value.col) {
-          timeslotSelected.value = false
-        }
-      } else if (
-        state.value !== states.EDIT_AVAILABILITY &&
-        (userHasResponded.value || guestAddedAvailability.value)
-      ) {
-        timeslotSelected.value = true
-      }
       showAvailability(row, col)
     },
     mousedown: () => {

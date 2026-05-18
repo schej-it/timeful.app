@@ -41,6 +41,9 @@ export interface ScheduleOverlapToolRowActions {
 export interface ScheduleOverlapDaysOnlyGridActions {
   prevPage: (e?: Event) => void
   nextPage: (e?: Event) => void
+  startDrag: (e: PointerEvent | MouseEvent) => void
+  moveDrag: (e: PointerEvent | MouseEvent) => void
+  endDrag: (e?: PointerEvent | MouseEvent) => void
   resetCurTimeslot: () => void
   closeHint: () => void
 }
@@ -49,6 +52,9 @@ export interface ScheduleOverlapTimeGridActions {
   prevPage: (e?: Event) => void
   nextPage: (e?: Event) => void
   calendarScroll: (event: Event) => void
+  startDrag: (e: PointerEvent | MouseEvent) => void
+  moveDrag: (e: PointerEvent | MouseEvent) => void
+  endDrag: (e?: PointerEvent | MouseEvent) => void
   resetCurTimeslot: () => void
   closeHint: () => void
   signUpForBlock: (block: SignUpBlockLite) => void

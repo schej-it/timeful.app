@@ -1,6 +1,6 @@
 import process from "node:process"
 
-import { chromium } from "@playwright/test"
+import { chromium, firefox } from "@playwright/test"
 
 import { parseArgs } from "./cli.js"
 import { DEFAULT_NEW_APP_URL, DEFAULT_OLD_APP_URL, VIEWPORT } from "./config.js"
@@ -15,6 +15,7 @@ import type { AppLabel } from "./types.js"
 async function main() {
   const target = parseArgs(process.argv.slice(2), SUPPORTED_TARGETS)
   const scenario = SCENARIOS[target]
+  const browserName = process.env.PLAYWRIGHT_BROWSER ?? "chromium"
   const oldApp: AppLabel = {
     name: "old",
     url: process.env.OLD_APP_URL || DEFAULT_OLD_APP_URL,
@@ -26,7 +27,11 @@ async function main() {
 
   await Promise.all([waitForUrl(oldApp.url), waitForUrl(newApp.url)])
 
-  const browser = await chromium.launch()
+  const browserType =
+    browserName === "firefox"
+      ? firefox
+      : chromium
+  const browser = await browserType.launch()
   const oldPage = await browser.newPage({ viewport: VIEWPORT })
   const newPage = await browser.newPage({ viewport: VIEWPORT })
 
@@ -40,14 +45,6 @@ async function main() {
       newPage.route("https://player.vimeo.com/**", (route) => route.abort()),
       newPage.route("https://i.vimeocdn.com/**", (route) => route.abort()),
       newPage.route("https://f.vimeocdn.com/**", (route) => route.abort()),
-    ])
-    await Promise.all([
-      oldPage.goto(oldApp.url, { waitUntil: "domcontentloaded" }),
-      newPage.goto(newApp.url, { waitUntil: "domcontentloaded" }),
-    ])
-    await Promise.all([
-      oldPage.waitForSelector(scenario.readySelector),
-      newPage.waitForSelector(scenario.readySelector),
     ])
     await scenario.runInteraction(oldPage, newPage)
     await browser.close()

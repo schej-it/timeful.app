@@ -34,6 +34,15 @@
       <div
         id="drag-section"
         class="tw-grid tw-grid-cols-7"
+        style="touch-action: none"
+        @pointerdown="daysOnlyGrid.actions.startDrag"
+        @pointermove="daysOnlyGrid.actions.moveDrag"
+        @pointerup="daysOnlyGrid.actions.endDrag"
+        @pointercancel="daysOnlyGrid.actions.endDrag"
+        @lostpointercapture="daysOnlyGrid.actions.endDrag"
+        @mousedown="daysOnlyGrid.actions.startDrag"
+        @mousemove="daysOnlyGrid.actions.moveDrag"
+        @mouseup="daysOnlyGrid.actions.endDrag"
         @mouseleave="daysOnlyGrid.actions.resetCurTimeslot()"
       >
         <div

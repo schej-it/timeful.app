@@ -7,7 +7,7 @@ import {
   type Ref,
 } from "vue"
 import { eventTypes } from "@/constants"
-import { isTouchEnabled, ZdtSet } from "@/utils"
+import { ZdtSet } from "@/utils"
 import {
   normalizeCalendarOptions,
   states,
@@ -55,9 +55,6 @@ export interface UseScheduleOverlapControllerOptions {
   setTimeslotSize: () => void
   onResize: (e: Event) => void
   onScroll: (e: Event) => void
-  startDrag: (e: MouseEvent | TouchEvent) => void
-  moveDrag: (e: MouseEvent | TouchEvent) => void
-  endDrag: (e?: MouseEvent | TouchEvent) => void
   deselectRespondents: (e: Event) => void
   resetSignUpForm: () => void
   resetCurUserAvailability: (initSharedCalendarAccounts?: () => void) => void
@@ -316,18 +313,6 @@ export function useScheduleOverlapController(
         opts.setTimeslotSize()
       })
       resizeObserver.observe(dragSection)
-    }
-
-    if (!opts.calendarOnly.value && dragSection) {
-      if (isTouchEnabled()) {
-        dragSection.addEventListener("touchstart", opts.startDrag)
-        dragSection.addEventListener("touchmove", opts.moveDrag)
-        dragSection.addEventListener("touchend", opts.endDrag)
-        dragSection.addEventListener("touchcancel", opts.endDrag)
-      }
-      dragSection.addEventListener("mousedown", opts.startDrag)
-      dragSection.addEventListener("mousemove", opts.moveDrag)
-      dragSection.addEventListener("mouseup", opts.endDrag)
     }
 
     opts.resetSignUpForm()

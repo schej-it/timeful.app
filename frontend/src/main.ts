@@ -9,10 +9,18 @@ import App from "./App.vue"
 import router from "./router"
 import vuetify from "./plugins/vuetify"
 
-createApp(App)
-  .use(router)
-  .use(createPinia())
-  .use(vuetify)
-  .use(createHead())
-  .use(createGtm({ id: "GTM-M677X6V", vueRouter: router }))
-  .mount("#app")
+const app = createApp(App)
+
+app.use(router)
+app.use(createPinia())
+app.use(vuetify)
+app.use(createHead())
+
+if (
+  window.location.hostname !== "127.0.0.1" &&
+  window.location.hostname !== "localhost"
+) {
+  app.use(createGtm({ id: "GTM-M677X6V", vueRouter: router }))
+}
+
+app.mount("#app")
