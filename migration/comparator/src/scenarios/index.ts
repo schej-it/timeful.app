@@ -3,6 +3,8 @@ import { eventLegacyNoteScenario } from "./event-legacy-note.js"
 import { eventOptionsInteractionScenario } from "./event-options.js"
 import { eventOptionsStyleScenario } from "./event-options-style.js"
 import { eventOptionsStyleOnScenario } from "./event-options-style-on.js"
+import { eventDescriptionStyleScenario } from "./event-description-style.js"
+import { eventDescriptionRealScenario } from "./event-description-real.js"
 import { eventTimezoneMenuScenario } from "./event-timezone-menu.js"
 import { eventRespondentsPanelScenario } from "./event-respondents-panel.js"
 import { eventRespondentsPanelHoverScenario } from "./event-respondents-panel-hover.js"
@@ -27,6 +29,8 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
   "event-options-interaction": eventOptionsInteractionScenario,
   "event-options-style": eventOptionsStyleScenario,
   "event-options-style-on": eventOptionsStyleOnScenario,
+  "event-description-style": eventDescriptionStyleScenario,
+  "event-description-real": eventDescriptionRealScenario,
   "event-respondents-panel": eventRespondentsPanelScenario,
   "event-respondents-panel-hover": eventRespondentsPanelHoverScenario,
   "event-best-times-grid": eventBestTimesGridScenario,

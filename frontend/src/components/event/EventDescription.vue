@@ -16,12 +16,13 @@
       <v-btn
         v-if="canEdit"
         key="edit-description-btn"
-        class="-tw-my-1"
+        class="event-description-action-button event-description-edit-button -tw-my-1 tw-h-9 tw-w-9"
         icon
+        variant="text"
         size="small"
         @click="isEditing = true"
       >
-        <v-icon small>mdi-pencil</v-icon>
+        <v-icon size="24">mdi-pencil</v-icon>
       </v-btn>
     </div>
 
@@ -41,27 +42,38 @@
       "
     >
       <div
-        class="-tw-mt-[6px] tw-flex tw-w-full tw-flex-grow tw-items-center tw-gap-2"
+        class="event-description-editor tw-flex tw-w-full tw-flex-grow tw-items-center tw-gap-2 tw-px-2 tw-py-2"
       >
         <v-textarea
           v-model="newDescription"
           placeholder="Enter a description..."
-          class="tw-flex-grow tw-p-2 tw-text-xs sm:tw-text-sm"
+          class="tw-flex-grow tw-text-xs sm:tw-text-sm"
           autofocus
           :rows="1"
           auto-grow
           hide-details
+          density="comfortable"
+          variant="underlined"
         ></v-textarea>
         <v-btn
+          class="event-description-action-button event-description-cancel-button tw-h-9 tw-w-9"
           icon
-          :size="isPhone ? 'small' : undefined"
+          variant="text"
+          size="small"
           @click="cancelEditing"
         >
-          <v-icon>mdi-close</v-icon>
+          <v-icon size="24">mdi-close</v-icon>
         </v-btn>
-        <v-btn icon :size="isPhone ? 'small' : undefined" color="primary" @click="saveDescription"
-          ><v-icon>mdi-check</v-icon></v-btn
+        <v-btn
+          class="event-description-action-button event-description-save-button tw-h-9 tw-w-9"
+          icon
+          variant="text"
+          size="small"
+          color="primary"
+          @click="saveDescription"
         >
+          <v-icon size="24">mdi-check</v-icon>
+        </v-btn>
       </div>
     </div>
   </div>
