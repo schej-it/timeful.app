@@ -318,7 +318,12 @@ export const getTimeGridTimeslotClassStyle = ({
       const offsetMinutes = timezoneOffset.total("minutes")
       const localDate = baseArgs.date.subtract({ minutes: offsetMinutes })
       const frac = localDate.minute
-      if (!(isFirstSplit && baseArgs.row === 0) && frac === 0) {
+      if (isFirstSplit && baseArgs.row === 0) {
+        cs.class += "tw-border-t "
+        cs.style.borderTopStyle = "solid"
+        cs.style.borderTopWidth = "0.5px"
+        cs.style.borderTopColor = GRID_HOUR_SEPARATOR
+      } else if (frac === 0) {
         cs.class += "tw-border-t "
         cs.style.borderTopStyle = "solid"
         cs.style.borderTopWidth = "0.5px"
@@ -332,20 +337,25 @@ export const getTimeGridTimeslotClassStyle = ({
     }
 
     cs.class += "tw-border-r "
+    cs.style.borderRightStyle = "solid"
     if (baseArgs.col === 0 || !isColConsecutive(baseArgs.col)) {
       cs.class += "tw-border-l tw-border-l-gray "
+      cs.style.borderLeftStyle = "solid"
     }
     if (baseArgs.col === daysLength - 1 || !isColConsecutive(baseArgs.col + 1)) {
       cs.class += "tw-border-r-gray "
     }
     if (!isFirstSplit && baseArgs.row === baseArgs.firstSplitLength) {
       cs.class += "tw-border-t tw-border-t-gray "
+      cs.style.borderTopStyle = "solid"
     }
     if (isFirstSplit && baseArgs.row === baseArgs.firstSplitLength - 1) {
       cs.class += "tw-border-b tw-border-b-gray "
+      cs.style.borderBottomStyle = "solid"
     }
     if (!isFirstSplit && baseArgs.row === baseArgs.lastRow) {
       cs.class += "tw-border-b tw-border-b-gray "
+      cs.style.borderBottomStyle = "solid"
     }
 
     const total =
@@ -470,14 +480,19 @@ export const getDayGridTimeslotClassStyle = ({
   ) {
     cs.class += "tw-outline-2 tw-outline-dashed tw-outline-black tw-z-10 "
   } else {
-    if (baseArgs.col === 0) cs.class += "tw-border-l tw-border-l-gray "
-    cs.class += "tw-border-r tw-border-r-gray "
-    if (baseArgs.col !== 6) cs.style.borderRightStyle = "dashed"
-    if (baseArgs.row === 0) cs.class += "tw-border-t tw-border-t-gray "
-    cs.class += "tw-border-b tw-border-b-gray "
-    if (baseArgs.row !== baseArgs.lastMonthRow) {
-      cs.style.borderBottomStyle = "dashed"
+    if (baseArgs.col === 0) {
+      cs.class += "tw-border-l tw-border-l-gray "
+      cs.style.borderLeftStyle = "solid"
     }
+    cs.class += "tw-border-r tw-border-r-gray "
+    cs.style.borderRightStyle = baseArgs.col !== 6 ? "dashed" : "solid"
+    if (baseArgs.row === 0) {
+      cs.class += "tw-border-t tw-border-t-gray "
+      cs.style.borderTopStyle = "solid"
+    }
+    cs.class += "tw-border-b tw-border-b-gray "
+    cs.style.borderBottomStyle =
+      baseArgs.row !== baseArgs.lastMonthRow ? "dashed" : "solid"
   }
 
   return cs

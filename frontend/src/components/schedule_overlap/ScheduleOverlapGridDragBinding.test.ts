@@ -287,19 +287,18 @@ describe("ScheduleOverlap grid drag bindings", () => {
     expect(actions.endDrag).toHaveBeenCalledTimes(1)
   })
 
-  it("renders non-consecutive day gaps as solid separators", () => {
+  it("renders non-consecutive day gaps as wide blank spacing", () => {
     const { timedGrid } = createNonConsecutiveTimeGridViewModel()
     const wrapper = mount(ScheduleOverlapTimeGrid, {
       props: { timedGrid },
       global,
     })
 
-    const separators = wrapper.findAll(".time-grid-day-separator")
+    const gaps = wrapper.findAll('div[style="width: 20px;"]')
 
-    expect(separators).toHaveLength(2)
-    for (const separator of separators) {
-      expect(separator.attributes("style")).toContain("width: 1px;")
-      expect(separator.element.classList.contains("time-grid-day-separator")).toBe(true)
+    expect(gaps).toHaveLength(2)
+    for (const gap of gaps) {
+      expect(gap.attributes("style")).toContain("width: 20px;")
     }
   })
 

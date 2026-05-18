@@ -70,7 +70,6 @@
             <div
               v-if="!day.isConsecutive"
               :key="`${i}-gap`"
-              class="time-grid-day-separator"
               :style="{ width: `${SPLIT_GAP_WIDTH}px` }"
             ></div>
             <div class="tw-flex-1 tw-bg-white">
@@ -113,21 +112,10 @@
                 <v-progress-circular class="tw-text-green" indeterminate />
               </div>
 
-              <div class="tw-pointer-events-none tw-absolute tw-inset-x-0 tw-top-0 tw-z-[1] tw-h-[2px]">
-                <div class="tw-h-px tw-bg-white"></div>
-                <div
-                  class="tw-h-px"
-                  style="
-                    background-color: var(--timeful-grid-separator);
-                  "
-                ></div>
-              </div>
-
               <template v-for="(day, d) in timedGrid.days" :key="d">
                 <div
                   v-if="!day.isConsecutive"
                   :key="`${d}-gap`"
-                  class="time-grid-day-separator"
                   :style="{ width: `${SPLIT_GAP_WIDTH}px` }"
                 ></div>
                 <div
@@ -359,10 +347,6 @@ defineProps<{
 </script>
 
 <style>
-.time-grid-day-separator {
-  background-color: var(--timeful-grid-separator);
-}
-
 .time-grid-overlay-block {
   border-style: solid;
   border-width: 2px;
