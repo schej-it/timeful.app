@@ -142,6 +142,7 @@ describe("ToolRow", () => {
     expect(toolRowSource).toContain(':model-value="toolRow.timeType"')
     expect(toolRowSource).toContain('item-title="label"')
     expect(toolRowSource).toContain('item-value="value"')
+    expect(toolRowSource).toContain('color="primary"')
     expect(toolRowSource).toContain('density="compact"')
     expect(toolRowSource).toContain('variant="underlined"')
     expect(toolRowSource).toContain('class="tool-row-inline-select tool-row-inline-select--compact')

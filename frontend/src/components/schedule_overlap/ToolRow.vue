@@ -25,6 +25,7 @@
             item-title="label"
             item-value="value"
             class="tool-row-inline-select tool-row-inline-select--compact tw-z-20 -tw-mt-px tw-w-16 tw-text-sm"
+            color="primary"
             density="compact"
             hide-details
             variant="underlined"
@@ -59,6 +60,7 @@
             item-title="label"
             item-value="value"
             class="tool-row-inline-select -tw-mt-px tw-flex-none tw-shrink tw-basis-24 tw-text-sm"
+            color="primary"
             density="compact"
             hide-details
             variant="underlined"
