@@ -31,7 +31,7 @@ export const DRAG_TYPES = {
 export type DragType = (typeof DRAG_TYPES)[keyof typeof DRAG_TYPES]
 
 export const SPLIT_GAP_HEIGHT = 40
-export const SPLIT_GAP_WIDTH = 20
+export const SPLIT_GAP_WIDTH = 1
 export const HOUR_HEIGHT = 60
 
 export interface RowCol {

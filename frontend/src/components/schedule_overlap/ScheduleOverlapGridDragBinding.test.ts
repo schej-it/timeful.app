@@ -126,6 +126,36 @@ function createTimeGridViewModel() {
   return { actions, timedGrid }
 }
 
+function createNonConsecutiveTimeGridViewModel() {
+  const { actions, timedGrid } = createTimeGridViewModel()
+
+  timedGrid.days = [
+    {
+      dayText: "thu",
+      dateString: "jan 1",
+      dateObject: Temporal.Instant.from("2026-01-01T09:00:00Z").toZonedDateTimeISO("UTC"),
+      isConsecutive: true,
+    },
+    {
+      dayText: "sat",
+      dateString: "jan 3",
+      dateObject: Temporal.Instant.from("2026-01-03T09:00:00Z").toZonedDateTimeISO("UTC"),
+      isConsecutive: false,
+    },
+  ]
+  timedGrid.calendarEventsByDay = [[], []]
+  timedGrid.signUpBlocksByDay = [[], []]
+  timedGrid.signUpBlocksToAddByDay = [[], []]
+  timedGrid.overlaidAvailability = [[], []]
+  timedGrid.timeslotClassStyle = [
+    { class: "", style: {} },
+    { class: "", style: {} },
+  ]
+  timedGrid.timeslotVon = [{}, {}]
+
+  return { actions, timedGrid }
+}
+
 function createDaysOnlyGridViewModel() {
   const actions = {
     prevPage: vi.fn(),
@@ -255,6 +285,22 @@ describe("ScheduleOverlap grid drag bindings", () => {
     expect(actions.startDrag).toHaveBeenCalledTimes(1)
     expect(actions.moveDrag).toHaveBeenCalledTimes(1)
     expect(actions.endDrag).toHaveBeenCalledTimes(1)
+  })
+
+  it("renders non-consecutive day gaps as solid separators", () => {
+    const { timedGrid } = createNonConsecutiveTimeGridViewModel()
+    const wrapper = mount(ScheduleOverlapTimeGrid, {
+      props: { timedGrid },
+      global,
+    })
+
+    const separators = wrapper.findAll(".time-grid-day-separator")
+
+    expect(separators).toHaveLength(2)
+    for (const separator of separators) {
+      expect(separator.attributes("style")).toContain("width: 1px;")
+      expect(separator.element.classList.contains("time-grid-day-separator")).toBe(true)
+    }
   })
 
   it("forwards days-only drag events through the rendered drag surface", async () => {

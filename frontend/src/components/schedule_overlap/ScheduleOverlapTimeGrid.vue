@@ -70,6 +70,7 @@
             <div
               v-if="!day.isConsecutive"
               :key="`${i}-gap`"
+              class="time-grid-day-separator"
               :style="{ width: `${SPLIT_GAP_WIDTH}px` }"
             ></div>
             <div class="tw-flex-1 tw-bg-white">
@@ -126,6 +127,7 @@
                 <div
                   v-if="!day.isConsecutive"
                   :key="`${d}-gap`"
+                  class="time-grid-day-separator"
                   :style="{ width: `${SPLIT_GAP_WIDTH}px` }"
                 ></div>
                 <div
@@ -355,3 +357,9 @@ defineProps<{
   timedGrid: ScheduleOverlapTimeGridViewModel
 }>()
 </script>
+
+<style>
+.time-grid-day-separator {
+  background-color: var(--timeful-grid-separator);
+}
+</style>

@@ -1,5 +1,5 @@
 import type { ScenarioDefinition } from "../types.js"
-import { dismissConsentIfPresent } from "./helpers.js"
+import { prepareSharedEventGridPage } from "./helpers.js"
 
 const EVENT_PATH = "/e/dEeaF"
 
@@ -15,11 +15,6 @@ export const eventHeatmapGridScenario = {
     { name: "timeslot6", kind: "selector", selector: "#drag-section .timeslot:nth-of-type(6)" },
   ],
   prepare: async (page, label) => {
-    await page.addInitScript(() => {
-      localStorage.showBestTimes = "false"
-    })
-    await page.goto(new URL(EVENT_PATH, label.url).toString(), { waitUntil: "domcontentloaded" })
-    await dismissConsentIfPresent(page)
-    await page.waitForTimeout(1_500)
+    await prepareSharedEventGridPage(page, label, EVENT_PATH, false)
   },
 } satisfies ScenarioDefinition
