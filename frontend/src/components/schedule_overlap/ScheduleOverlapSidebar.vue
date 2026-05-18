@@ -122,9 +122,11 @@
           <v-switch
             id="overlay-availabilities-toggle"
             inset
-            :input-value="sidebar.overlayAvailability"
+            :model-value="sidebar.overlayAvailability"
             hide-details
-            @change="emit('updateOverlayAvailability', $event)"
+            @update:model-value="
+              (value: boolean | null) => emit('updateOverlayAvailability', !!value)
+            "
           >
             <template #label>
               <div class="tw-text-sm tw-text-black">

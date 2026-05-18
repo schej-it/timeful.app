@@ -2,6 +2,7 @@
 
 import { shallowMount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
+import { defineComponent, ref } from "vue"
 import { Temporal } from "temporal-polyfill"
 import { durations, UTC } from "@/constants"
 import {
@@ -31,9 +32,11 @@ vi.mock("@/plugins/posthog", () => ({
   },
 }))
 
+const isPhoneValue = ref(true)
+
 vi.mock("@/utils/useDisplayHelpers", () => ({
   useDisplayHelpers: () => ({
-    isPhone: { value: true },
+    isPhone: isPhoneValue,
   }),
 }))
 
@@ -178,5 +181,95 @@ describe("RespondentsList", () => {
 
     expect(wrapper.text()).toContain("Ada Lovelace*")
     expect(wrapper.text()).toContain("* if needed")
+  })
+
+  it("relays false when the desktop best-times switch is toggled off", async () => {
+    isPhoneValue.value = false
+
+    const baseDate = zdt("2026-01-01T09:00:00Z")
+    const VSwitchStub = defineComponent({
+      emits: ["update:modelValue"],
+      template:
+        '<button class="desktop-best-times-toggle" @click="$emit(\'update:modelValue\', false)" />',
+    })
+
+    const wrapper = shallowMount(RespondentsList, {
+      props: {
+        eventId: "evt-1",
+        event: {
+          blindAvailabilityEnabled: false,
+          collectEmails: false,
+          dates: [baseDate.toPlainDate()],
+          timeSeed: baseDate,
+          duration: durations.ONE_HOUR,
+          daysOnly: false,
+        },
+        days: [],
+        times: [],
+        curDate: baseDate,
+        curRespondent: "",
+        curRespondents: [],
+        curTimeslot: { dayIndex: -1, timeIndex: -1 },
+        curTimeslotAvailability: { "user-1": true, "user-2": true },
+        respondents: [
+          {
+            _id: "user-1",
+            firstName: "Ada",
+            lastName: "Lovelace",
+          },
+          {
+            _id: "user-2",
+            firstName: "Grace",
+            lastName: "Hopper",
+          },
+        ],
+        parsedResponses: {
+          "user-1": {
+            user: {
+              _id: "user-1",
+              firstName: "Ada",
+              lastName: "Lovelace",
+            },
+            availability: new ZdtSet(),
+            ifNeeded: new ZdtSet(),
+          },
+          "user-2": {
+            user: {
+              _id: "user-2",
+              firstName: "Grace",
+              lastName: "Hopper",
+            },
+            availability: new ZdtSet(),
+            ifNeeded: new ZdtSet(),
+          },
+        },
+        isOwner: false,
+        isGroup: false,
+        showCalendarEvents: false,
+        responsesFormatted: new ZdtMap<Set<string>>(),
+        timezone: {
+          value: UTC,
+          offset: durations.ZERO,
+          label: UTC,
+          gmtString: "GMT",
+        },
+        showBestTimes: true,
+        hideIfNeeded: false,
+        showEventOptions: false,
+        guestAddedAvailability: false,
+        addingAvailabilityAsGuest: false,
+      },
+      global: {
+        stubs: {
+          ...sharedRespondentsListStubs,
+          "v-switch": VSwitchStub,
+        },
+      },
+    })
+
+    await wrapper.get(".desktop-best-times-toggle").trigger("click")
+
+    expect(wrapper.emitted("update:showBestTimes")).toEqual([[false]])
+    isPhoneValue.value = true
   })
 })

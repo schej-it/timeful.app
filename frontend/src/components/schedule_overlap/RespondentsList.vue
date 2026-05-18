@@ -330,9 +330,11 @@
           id="show-best-times-toggle"
           class="tw-mb-4"
           inset
-          :input-value="showBestTimes"
+          :model-value="showBestTimes"
           hide-details
-          @change="(val: unknown) => $emit('update:showBestTimes', !!val)"
+          @update:model-value="
+            (val: boolean | null) => $emit('update:showBestTimes', !!val)
+          "
         >
           <template #label>
             <div class="tw-text-sm tw-text-black">
@@ -400,9 +402,11 @@
       :class="maxHeight && 'tw-mt-2'"
       class="tw-mb-4"
       inset
-      :input-value="showCalendarEvents"
+      :model-value="showCalendarEvents"
       hide-details
-      @change="(val: unknown) => $emit('update:showCalendarEvents', Boolean(val))"
+      @update:model-value="
+        (val: boolean | null) => $emit('update:showCalendarEvents', !!val)
+      "
     >
       <template #label>
         <div class="tw-text-sm tw-text-black">Overlay calendar events</div>

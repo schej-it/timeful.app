@@ -11,9 +11,11 @@
         id="show-best-times-toggle"
         class="event-options-switch"
         inset
-        :input-value="showBestTimes"
+        :model-value="showBestTimes"
         hide-details
-        @change="(val: boolean) => $emit('update:showBestTimes', !!val)"
+        @update:model-value="
+          (val: boolean | null) => $emit('update:showBestTimes', !!val)
+        "
       >
         <template #label>
           <div class="tw-text-sm tw-text-black">
@@ -26,9 +28,11 @@
         id="hide-if-needed-toggle"
         class="event-options-switch"
         inset
-        :input-value="hideIfNeeded"
+        :model-value="hideIfNeeded"
         hide-details
-        @change="(val: boolean) => $emit('update:hideIfNeeded', !!val)"
+        @update:model-value="
+          (val: boolean | null) => $emit('update:hideIfNeeded', !!val)
+        "
       >
         <template #label>
           <div class="tw-text-sm tw-text-black">
@@ -40,9 +44,11 @@
         v-if="showCalendarEvents !== undefined && isGroup && !isPhone"
         class="event-options-switch"
         inset
-        :input-value="showCalendarEvents"
+        :model-value="showCalendarEvents"
         hide-details
-        @change="(val: boolean) => $emit('update:showCalendarEvents', Boolean(val))"
+        @update:model-value="
+          (val: boolean | null) => $emit('update:showCalendarEvents', !!val)
+        "
       >
         <template #label>
           <div class="tw-text-sm tw-text-black">Overlay calendar events</div>
@@ -55,9 +61,11 @@
         id="start-calendar-on-monday-toggle"
         class="event-options-switch"
         inset
-        :input-value="startCalendarOnMonday"
+        :model-value="startCalendarOnMonday"
         hide-details
-        @change="(val: boolean) => $emit('update:startCalendarOnMonday', !!val)"
+        @update:model-value="
+          (val: boolean | null) => $emit('update:startCalendarOnMonday', !!val)
+        "
       >
         <template #label>
           <div class="tw-text-sm tw-text-black">Start on Monday</div>
