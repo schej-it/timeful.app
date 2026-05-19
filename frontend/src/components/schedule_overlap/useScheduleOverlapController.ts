@@ -148,6 +148,8 @@ const applyCalendarOptions = ({
 export function useScheduleOverlapController(
   opts: UseScheduleOverlapControllerOptions
 ) {
+  let seededSpecificTimesFromEditEvent = false
+
   opts.resetCurUserAvailability(opts.initSharedCalendarAccounts)
 
   watch(
@@ -263,13 +265,21 @@ export function useScheduleOverlapController(
   })
 
   watch(
-    opts.fromEditEvent,
+    [opts.fromEditEvent, opts.isSpecificTimes, opts.event],
     () => {
-      if (opts.fromEditEvent.value && opts.isSpecificTimes.value) {
-        opts.tempTimes.value = new ZdtSet(opts.event.value.times ?? [])
-        opts.state.value = states.SET_SPECIFIC_TIMES
+      if (
+        seededSpecificTimesFromEditEvent ||
+        !opts.fromEditEvent.value ||
+        !opts.isSpecificTimes.value
+      ) {
+        return
       }
-    }
+
+      opts.tempTimes.value = new ZdtSet(opts.event.value.times ?? [])
+      opts.state.value = states.SET_SPECIFIC_TIMES
+      seededSpecificTimesFromEditEvent = true
+    },
+    { immediate: true }
   )
 
   watch(

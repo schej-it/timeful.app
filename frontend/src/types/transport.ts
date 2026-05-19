@@ -92,6 +92,16 @@ const decodeRawInstantValues = (
   })
 }
 
+const fromRawDurationHours = (
+  rawDuration: number | null | undefined
+): Temporal.Duration | undefined => {
+  if (rawDuration == null) {
+    return undefined
+  }
+
+  return Temporal.Duration.from(`PT${String(rawDuration)}H`)
+}
+
 export const toTransportDateTimeStrings = (
   dateTimes: Temporal.ZonedDateTime[] | undefined
 ): string[] | undefined =>
@@ -231,10 +241,7 @@ export function fromRawEvent(raw: RawEvent): Event {
     dates: dateSeeds?.map((seed) => seed.toPlainDate()),
     timeSeed: dateSeeds?.[0],
     times: raw.times?.map((value) => fromRawInstantValue(value)),
-    duration:
-      raw.duration != null
-        ? Temporal.Duration.from({ hours: raw.duration })
-        : undefined,
+    duration: fromRawDurationHours(raw.duration),
     timeIncrement:
       raw.timeIncrement != null
         ? Temporal.Duration.from({ minutes: raw.timeIncrement })

@@ -4,6 +4,7 @@ import {
   dateToDowDate,
   getEventDateSeeds,
   getFixedOffsetTimeZoneId,
+  processEvent,
   getRenderedWeekStart,
   put,
   type ZdtSet,
@@ -238,7 +239,7 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
       const plainDate = adjustedZDT.toPlainDate()
       const withTime = plainDate.toZonedDateTime({
         timeZone: UTC,
-        plainTime: `${String(minHours).padStart(2, "0")}:00:00`,
+        plainTime: minHours,
       })
       return withTime
     })
@@ -250,6 +251,11 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
     const eventId = eventValue._id ?? ""
     void put(`/events/${eventId}`, toEventPatchPayload(eventValue))
       .then(() => {
+        opts.event.value.dates = eventValue.dates
+        opts.event.value.timeSeed = eventValue.timeSeed
+        opts.event.value.times = eventValue.times
+        opts.event.value.duration = eventValue.duration
+        processEvent(opts.event.value)
         opts.state.value = opts.defaultState.value
       })
       .catch((err: unknown) => {

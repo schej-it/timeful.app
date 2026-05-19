@@ -7,12 +7,14 @@
     <div class="tw-flex tw-flex-col tw-gap-1">
       <div class="tw-text-sm tw-font-medium">Legend:</div>
       <div class="tw-flex tw-items-center tw-gap-2">
-        <div class="tw-h-4 tw-w-4 tw-rounded tw-bg-gray"></div>
+        <div
+          class="specific-times-instructions-swatch tw-bg-gray"
+        ></div>
         <span class="tw-text-sm">Blocked off</span>
       </div>
       <div class="tw-flex tw-items-center tw-gap-2">
         <div
-          class="tw-h-4 tw-w-4 tw-rounded tw-border tw-border-gray tw-bg-white"
+          class="specific-times-instructions-swatch specific-times-instructions-swatch--potential"
         ></div>
         <span class="tw-text-sm">Potential meeting times</span>
       </div>
@@ -33,4 +35,16 @@ const emit = defineEmits<{
 }>()
 </script>
 
-<style scoped></style>
+<style scoped>
+.specific-times-instructions-swatch {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+}
+
+.specific-times-instructions-swatch--potential {
+  background-color: white;
+  box-shadow: inset 0 0 0 1px var(--timeful-grid-separator-strong);
+}
+</style>

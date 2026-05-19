@@ -160,6 +160,15 @@ describe("transport and timezone regression boundaries", () => {
     expect(event.dates?.[0].toString()).toBe("2026-01-02")
   })
 
+  it("decodes fractional-hour event durations from the transport boundary", () => {
+    const event = fromRawEvent({
+      dates: ["2026-05-18T07:15:00Z"],
+      duration: 5.5,
+    } as unknown as Parameters<typeof fromRawEvent>[0])
+
+    expect(event.duration?.toString()).toBe("PT5H30M")
+  })
+
   it("keeps user transport decoding at an explicit boundary", () => {
     const rawUser = {
       _id: "user-1",
@@ -543,7 +552,16 @@ describe("transport and timezone regression boundaries", () => {
       name: "Planning",
       duration: 2,
       dates: ["2026-01-05T09:00:00Z"],
+      hasSpecificTimes: undefined,
+      notificationsEnabled: undefined,
+      blindAvailabilityEnabled: undefined,
+      daysOnly: undefined,
       type: eventTypes.SPECIFIC_DATES,
+      sendEmailAfterXResponses: undefined,
+      collectEmails: undefined,
+      startOnMonday: undefined,
+      timeIncrement: undefined,
+      creatorPosthogId: undefined,
       description: undefined,
       signUpBlocks: [
         {
@@ -554,7 +572,7 @@ describe("transport and timezone regression boundaries", () => {
           endDate: epochMs("2026-01-05T10:00:00Z"),
         },
       ],
-      times: [epochMs("2026-01-05T09:00:00Z")],
+      times: ["2026-01-05T09:00:00Z"],
       remindees: ["ada@example.com"],
     })
   })

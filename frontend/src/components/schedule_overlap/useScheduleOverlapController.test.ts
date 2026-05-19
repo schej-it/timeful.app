@@ -235,4 +235,20 @@ describe("useScheduleOverlapController", () => {
 
     wrapper.unmount()
   })
+
+  it("seeds specific-time edits immediately when mounted from an edit-event redirect", () => {
+    const event = baseEvent()
+    event.hasSpecificTimes = true
+    event.times = [zdt("2026-01-01T09:00:00Z"), zdt("2026-01-01T10:00:00Z")]
+
+    const { wrapper, state, tempTimes } = mountControllerHarness({
+      event,
+      fromEditEvent: true,
+    })
+
+    expect(state.value).toBe(states.SET_SPECIFIC_TIMES)
+    expect([...tempTimes.value]).toEqual(event.times)
+
+    wrapper.unmount()
+  })
 })
