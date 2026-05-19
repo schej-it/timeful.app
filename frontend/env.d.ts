@@ -27,6 +27,7 @@ interface ImportMetaEnv {
   readonly VITE_MICROSOFT_CLIENT_ID: string
   readonly VITE_ENABLE_FREEMIUM?: string
   readonly VITE_ENABLE_THIRD_PARTY_SHELL?: string
+  readonly VITE_SHOW_FORMERLY_KNOWN_AS_SCHEJ?: string
 }
 
 interface ImportMeta {
