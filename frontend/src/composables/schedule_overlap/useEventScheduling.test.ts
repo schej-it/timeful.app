@@ -127,7 +127,7 @@ describe("useEventScheduling", () => {
     expect(showErrorMock).not.toHaveBeenCalled()
   })
 
-  it("rebuilds specific-time event seeds from the schedule timezone instead of mixed slot object timezones", async () => {
+  it("rebuilds specific-time event seeds from the schedule timezone using integer local hours", async () => {
     const state = ref(states.SET_SPECIFIC_TIMES)
     const event = ref<ScheduleOverlapEvent>({
       _id: "evt-2",
@@ -168,7 +168,9 @@ describe("useEventScheduling", () => {
       isSpecificTimes: computed(() => true),
       getDateFromRowCol: () => null,
       getMinMaxHoursFromTimes: (times) => {
-        const plainTimes = times.map((time) => time.withTimeZone("Europe/Moscow").toPlainTime())
+        const plainTimes = times.map((time) =>
+          Temporal.PlainTime.from({ hour: time.withTimeZone("Europe/Moscow").hour })
+        )
         return {
           minHours: plainTimes.reduce((min, time) =>
             Temporal.PlainTime.compare(time, min) < 0 ? time : min
@@ -195,11 +197,12 @@ describe("useEventScheduling", () => {
 
     expect(putMock).toHaveBeenCalledTimes(1)
     expect(putMock.mock.calls[0]?.[1]).toMatchObject({
-      dates: ["2026-05-19T06:15:00Z"],
+      dates: ["2026-05-19T06:00:00Z"],
       times: ["2026-05-19T06:15:00Z", "2026-05-19T06:30:00Z"],
     })
-    expect(event.value.timeSeed?.toString()).toBe("2026-05-19T06:15:00+00:00[UTC]")
-    expect(event.value.startTime?.toString()).toBe("06:15:00")
+    expect(event.value.timeSeed?.toString()).toBe("2026-05-19T06:00:00+00:00[UTC]")
+    expect(event.value.startTime?.toString()).toBe("06:00:00")
+    expect(event.value.duration?.toString()).toBe("PT1H")
     expect(showErrorMock).not.toHaveBeenCalled()
   })
 })

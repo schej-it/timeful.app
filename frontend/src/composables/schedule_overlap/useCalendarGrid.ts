@@ -6,6 +6,7 @@ import {
   getEventDateSeeds,
   getDateInTimezone,
   getDateHoursOffset,
+  getFixedOffsetTimeZoneId,
   getRenderedWeekStart,
   getScheduleTimezoneOffset,
   getSpecificTimesDayStarts,
@@ -157,6 +158,43 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     return new ZdtSet(times ?? [])
   })
 
+  const specificTimesHourBounds = computed<{
+    minHours: Temporal.PlainTime
+    maxHours: Temporal.PlainTime
+  } | null>(() => {
+    const eventTimes = (event.value as { times?: Temporal.ZonedDateTime[] }).times ?? []
+    if (
+      !isSpecificTimes.value ||
+      state.value === states.SET_SPECIFIC_TIMES ||
+      eventTimes.length === 0
+    ) {
+      return null
+    }
+
+    return computeMinMaxHoursFromTimes(eventTimes)
+  })
+
+  const computeMinMaxHoursFromTimes = (
+    timesArr: Temporal.ZonedDateTime[]
+  ): { minHours: Temporal.PlainTime; maxHours: Temporal.PlainTime } => {
+    if (timesArr.length === 0) {
+      const zeroHours = Temporal.PlainTime.from({ hour: 0 })
+      return { minHours: zeroHours, maxHours: zeroHours }
+    }
+
+    const firstLocalHour = getDateInTimezone(timesArr[0], curTimezone.value).hour
+    let minHours = Temporal.PlainTime.from({ hour: firstLocalHour })
+    let maxHours = minHours
+    for (const time of timesArr.slice(1)) {
+      const localHours = Temporal.PlainTime.from({
+        hour: getDateInTimezone(time, curTimezone.value).hour,
+      })
+      if (Temporal.PlainTime.compare(localHours, minHours) < 0) minHours = localHours
+      if (Temporal.PlainTime.compare(localHours, maxHours) > 0) maxHours = localHours
+    }
+    return { minHours, maxHours }
+  }
+
   /**
    * Returns a two dimensional array of times
    * IF endTime < startTime:
@@ -166,9 +204,14 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
    * */
   const splitTimes = computed<TimeItem[][]>(() => {
     const split: TimeItem[][] = [[], []]
-    const utcStartTime =
-      event.value.startTime ?? Temporal.PlainTime.from({ hour: 0 })
-    const durationHours = event.value.duration ?? durations.ZERO
+    const utcStartTime = specificTimesHourBounds.value
+      ? specificTimesHourBounds.value.minHours.add(timezoneOffset.value)
+      : (event.value.startTime ?? Temporal.PlainTime.from({ hour: 0 }))
+    const durationHours = specificTimesHourBounds.value
+      ? specificTimesHourBounds.value.maxHours
+          .since(specificTimesHourBounds.value.minHours)
+          .add({ hours: 1 })
+      : (event.value.duration ?? durations.ZERO)
     const utcEndTime = utcStartTime.add(durationHours)
     const localStartTime = utcTimeToLocalTime(
       utcStartTime,
@@ -307,6 +350,11 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
   const allDays = computed<DayItem[]>(() => {
     const days: DayItem[] = []
     const datesSoFar = new ZdtSet()
+    const displayTimezoneId =
+      curTimezone.value.value ||
+      (curTimezone.value.offset
+        ? getFixedOffsetTimeZoneId(curTimezone.value.offset)
+        : UTC)
 
     const getDateString = (date: Temporal.ZonedDateTime) => {
       let dateString = ""
@@ -363,7 +411,15 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     }
 
     for (const date of eventDates) {
-      const zdt = date
+      const zdt =
+        isSpecificTimes.value && specificTimesHourBounds.value
+          ? getDateInTimezone(date, curTimezone.value)
+              .toPlainDate()
+              .toZonedDateTime({
+                timeZone: displayTimezoneId,
+                plainTime: specificTimesHourBounds.value.minHours,
+              })
+          : date
       datesSoFar.add(date)
       const { dayString, dateString } = getDateString(zdt)
       days.push({ dayText: dayString, dateString, dateObject: zdt })
@@ -470,7 +526,10 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     }
 
     // Add start time to curDate
-    const startTime = event.value.startTime ?? hoursPlainTime.ZERO
+    const startTime =
+      specificTimesHourBounds.value?.minHours ??
+      event.value.startTime ??
+      hoursPlainTime.ZERO
     let curZDT = curDate.toZonedDateTime({
       timeZone: UTC,
       plainTime: `${String(startTime.hour).padStart(2, "0")}:${String(
@@ -698,21 +757,8 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
   const getMinMaxHoursFromTimes = (
     timesArr: Temporal.ZonedDateTime[]
     // TODO
-  ): { minHours: Temporal.PlainTime; maxHours: Temporal.PlainTime } => {
-    if (timesArr.length === 0) {
-      const zeroHours = Temporal.PlainTime.from({ hour: 0 })
-      return { minHours: zeroHours, maxHours: zeroHours }
-    }
-
-    let minHours = getDateInTimezone(timesArr[0], curTimezone.value).toPlainTime()
-    let maxHours = minHours
-    for (const time of timesArr.slice(1)) {
-      const localHours = getDateInTimezone(time, curTimezone.value).toPlainTime()
-      if (Temporal.PlainTime.compare(localHours, minHours) < 0) minHours = localHours
-      if (Temporal.PlainTime.compare(localHours, maxHours) > 0) maxHours = localHours
-    }
-    return { minHours, maxHours }
-  }
+  ): { minHours: Temporal.PlainTime; maxHours: Temporal.PlainTime } =>
+    computeMinMaxHoursFromTimes(timesArr)
 
   watch(maxDaysPerPage, () => {
     if (page.value * maxDaysPerPage.value >= allDays.value.length) {
