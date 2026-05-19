@@ -2,6 +2,7 @@ import { computed, ref, type ComputedRef, type Ref } from "vue"
 import { Temporal } from "temporal-polyfill"
 import {
   dateToDowDate,
+  getDateInTimezone,
   getEventDateSeeds,
   getFixedOffsetTimeZoneId,
   processEvent,
@@ -231,17 +232,17 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
     const { minHours, maxHours } = opts.getMinMaxHoursFromTimes(
       eventValue.times
     )
+    const scheduleTimezoneId =
+      opts.curTimezone.value.value ||
+      getFixedOffsetTimeZoneId(opts.curTimezone.value.offset)
 
     const eventDateInstants = getEventDateSeeds(opts.event.value).map((zdt) => {
-      // Convert Duration to minutes for subtraction
-      const offsetMinutes = opts.timezoneOffset.value.total("minutes")
-      const adjustedZDT = zdt.subtract({ minutes: offsetMinutes })
-      const plainDate = adjustedZDT.toPlainDate()
+      const plainDate = getDateInTimezone(zdt, opts.curTimezone.value).toPlainDate()
       const withTime = plainDate.toZonedDateTime({
-        timeZone: UTC,
+        timeZone: scheduleTimezoneId,
         plainTime: minHours,
       })
-      return withTime
+      return withTime.withTimeZone(UTC)
     })
     eventValue.dates = eventDateInstants.map((date) => date.toPlainDate())
     eventValue.timeSeed = eventDateInstants[0]

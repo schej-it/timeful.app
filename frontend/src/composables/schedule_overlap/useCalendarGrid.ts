@@ -704,10 +704,10 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       return { minHours: zeroHours, maxHours: zeroHours }
     }
 
-    let minHours = timesArr[0].toPlainTime()
+    let minHours = getDateInTimezone(timesArr[0], curTimezone.value).toPlainTime()
     let maxHours = minHours
     for (const time of timesArr.slice(1)) {
-      const localHours = time.toPlainTime()
+      const localHours = getDateInTimezone(time, curTimezone.value).toPlainTime()
       if (Temporal.PlainTime.compare(localHours, minHours) < 0) minHours = localHours
       if (Temporal.PlainTime.compare(localHours, maxHours) > 0) maxHours = localHours
     }
