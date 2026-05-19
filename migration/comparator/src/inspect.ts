@@ -4,7 +4,7 @@ import { chromium, firefox } from "@playwright/test"
 
 import { parseArgs } from "./cli.js"
 import { DEFAULT_NEW_APP_URL, VIEWPORT } from "./config.js"
-import { waitForUrl } from "./page.js"
+import { createComparatorContext, waitForUrl } from "./page.js"
 import { printSnapshot } from "./report.js"
 import { SCENARIOS, SUPPORTED_TARGETS } from "./scenarios/index.js"
 import { collectStyles } from "./snapshot.js"
@@ -26,8 +26,10 @@ async function main() {
   const browser = await browserType.launch()
 
   try {
-    const page = await browser.newPage({ viewport: VIEWPORT })
+    const context = await createComparatorContext(browser, { viewport: VIEWPORT })
+    const page = await context.newPage()
     const snapshot = await collectStyles(page, app, scenario)
+    await context.close()
     printSnapshot(target, app.name, snapshot)
   } finally {
     await browser.close()

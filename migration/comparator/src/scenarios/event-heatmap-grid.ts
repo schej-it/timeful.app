@@ -1,9 +1,8 @@
 import type { ScenarioDefinition } from "../types.js"
-import { prepareSharedEventGridPage } from "./helpers.js"
-
-const EVENT_PATH = "/e/dEeaF"
+import { prepareSharedEventGridPage, resolveComparatorEventPath } from "./helpers.js"
 
 export const eventHeatmapGridScenario = {
+  skipInitialGoto: true,
   readySelector: "#drag-section .timeslot",
   readyTimeoutMs: 30_000,
   elements: [
@@ -15,6 +14,6 @@ export const eventHeatmapGridScenario = {
     { name: "timeslot6", kind: "selector", selector: "#drag-section .timeslot:nth-of-type(6)" },
   ],
   prepare: async (page, label) => {
-    await prepareSharedEventGridPage(page, label, EVENT_PATH, false)
+    await prepareSharedEventGridPage(page, label, resolveComparatorEventPath(), false)
   },
 } satisfies ScenarioDefinition

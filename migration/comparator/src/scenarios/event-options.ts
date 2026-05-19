@@ -1,14 +1,21 @@
 import type { Page } from "@playwright/test"
-import { dismissConsentIfPresent } from "./helpers.js"
+import {
+  dismissConsentIfPresent,
+  gotoComparatorEventUrl,
+  resolveComparatorEventPath,
+} from "./helpers.js"
 
 import type { AppLabel, ScenarioDefinition } from "../types.js"
 
-const EVENT_PATH = "/e/dEeaF"
 const OPTIONS_TEXT = "Options"
 const EXPECTED_OPTION_TEXT = "Hide if needed times"
 
 async function openEvent(page: Page, app: AppLabel) {
-  await page.goto(new URL(EVENT_PATH, app.url).toString(), { waitUntil: "domcontentloaded" })
+  await gotoComparatorEventUrl(
+    page,
+    new URL(resolveComparatorEventPath(), app.url).toString(),
+    "event-options",
+  )
   await dismissConsentIfPresent(page)
   await page
     .locator("button, [role='button'], .v-btn")

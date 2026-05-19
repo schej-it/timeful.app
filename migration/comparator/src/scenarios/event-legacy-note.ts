@@ -1,8 +1,8 @@
 import type { ScenarioDefinition } from "../types.js"
-
-const EVENT_PATH = "/e/dEeaF"
+import { gotoComparatorEventUrl, resolveComparatorEventPath } from "./helpers.js"
 
 export const eventLegacyNoteScenario = {
+  skipInitialGoto: true,
   readySelector: "body",
   elements: [
     {
@@ -15,7 +15,11 @@ export const eventLegacyNoteScenario = {
     { name: "legacyNoteIcon", kind: "legacyNoteIcon" },
   ],
   prepare: async (page, label) => {
-    await page.goto(new URL(EVENT_PATH, label.url).toString(), { waitUntil: "domcontentloaded" })
+    await gotoComparatorEventUrl(
+      page,
+      new URL(resolveComparatorEventPath(), label.url).toString(),
+      "event-legacy-note",
+    )
     await page
       .locator("a")
       .filter({ hasText: 'Formerly known as "Schej"' })

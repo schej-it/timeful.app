@@ -1,13 +1,19 @@
 import type { ScenarioDefinition } from "../types.js"
-import { dismissConsentIfPresent } from "./helpers.js"
-
-const EVENT_PATH = "/e/dEeaF"
+import {
+  dismissConsentIfPresent,
+  gotoComparatorEventUrl,
+  resolveComparatorEventPath,
+} from "./helpers.js"
 
 async function openOptions(page: Parameters<ScenarioDefinition["prepare"]>[0], appUrl: string) {
   await page.addInitScript(() => {
     localStorage.showEventOptions = "false"
   })
-  await page.goto(new URL(EVENT_PATH, appUrl).toString(), { waitUntil: "domcontentloaded" })
+  await gotoComparatorEventUrl(
+    page,
+    new URL(resolveComparatorEventPath(), appUrl).toString(),
+    "event-options-style",
+  )
   await dismissConsentIfPresent(page)
   await page
     .locator("button, [role='button'], .v-btn")
@@ -18,6 +24,7 @@ async function openOptions(page: Parameters<ScenarioDefinition["prepare"]>[0], a
 }
 
 export const eventOptionsStyleScenario = {
+  skipInitialGoto: true,
   readySelector: "body",
   elements: [
     {

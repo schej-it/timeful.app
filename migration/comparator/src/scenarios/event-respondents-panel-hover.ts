@@ -1,9 +1,12 @@
 import type { ScenarioDefinition } from "../types.js"
-import { dismissConsentIfPresent } from "./helpers.js"
-
-const EVENT_PATH = "/e/dEeaF"
+import {
+  dismissConsentIfPresent,
+  gotoComparatorEventUrl,
+  resolveComparatorEventPath,
+} from "./helpers.js"
 
 export const eventRespondentsPanelHoverScenario = {
+  skipInitialGoto: true,
   readySelector: "#drag-section, .respondent-row",
   readyTimeoutMs: 20_000,
   elements: [
@@ -25,7 +28,11 @@ export const eventRespondentsPanelHoverScenario = {
     },
   ],
   prepare: async (page, label) => {
-    await page.goto(new URL(EVENT_PATH, label.url).toString(), { waitUntil: "domcontentloaded" })
+    await gotoComparatorEventUrl(
+      page,
+      new URL(resolveComparatorEventPath(), label.url).toString(),
+      "event-respondents-panel-hover",
+    )
     await dismissConsentIfPresent(page)
     await page.waitForTimeout(1500)
 

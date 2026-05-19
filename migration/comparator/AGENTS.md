@@ -19,6 +19,7 @@ Run commands from `./migration/comparator` from the repo root:
 - `npm run inspect:event-best-times-grid`
 - `npm run inspect:event-overlay-availability`
 - `npm run inspect:event-timezone-menu`
+- `npm run profile:route`
 - `npm run inspect -- --target <scenario-name>`
 - `npm run compare:landing-styles`
 - `npm run compare:new-event-form-styles`
@@ -28,6 +29,7 @@ Run commands from `./migration/comparator` from the repo root:
 - `npm run typecheck`
 
 Prefer `inspect` for migrated-only investigation and selector/debug work. Use `compare` when you specifically need old-vs-new parity evidence.
+Use `profile:route` when you need a migrated-only Firefox navigation summary for a real event route without running the full snapshot collector.
 
 ## Runtime Defaults
 
@@ -37,6 +39,8 @@ Prefer `inspect` for migrated-only investigation and selector/debug work. Use `c
 - legacy app default URL: `http://127.0.0.1:4174`
 - backend default URL: `http://127.0.0.1:3002`
 - override URLs with `OLD_APP_URL` and `NEW_APP_URL` when local ports differ
+- override the shared real-event route with `COMPARATOR_EVENT_PATH=/e/<short-id>` when a scenario supports route-owned event navigation
+- override route-navigation readiness with `COMPARATOR_EVENT_WAIT_UNTIL=commit` or `COMPARATOR_EVENT_WAIT_UNTIL=domcontentloaded` when investigating Firefox event-route failures
 - in this checkout, start the backend first with `docker compose -f compose.yaml -f compose.dev.yaml up --build mongo server`
 - in this checkout, start the migrated app from `../frontend` with `npm run dev -- --host 127.0.0.1 --port 4173`
 - start the legacy app from `timeful.app.js/frontend` with `npm run serve -- --host 127.0.0.1 --port 4174`
@@ -59,6 +63,9 @@ Example:
 
 - `npm run inspect -- --target landing`
 - `OLD_APP_URL=http://127.0.0.1:<old-port> NEW_APP_URL=http://127.0.0.1:<new-port> npm run compare -- --target landing`
+- `COMPARATOR_EVENT_PATH=/e/B2a3A npm run inspect -- --target event-description-real`
+- `COMPARATOR_EVENT_PATH=/e/B2a3A COMPARATOR_EVENT_WAIT_UNTIL=commit npm run inspect -- --target event-description-real`
+- `COMPARATOR_EVENT_PATH=/e/B2a3A npm run profile:route`
 
 ## Checks
 
@@ -69,6 +76,11 @@ Example:
 - keep Firefox comparator runs sequential; do not run multiple Firefox Playwright/comparator commands in parallel while the intermittent `NS_ERROR_OUT_OF_MEMORY` issue is still open
 - for `/e/dEeaF` scenarios, prefer the shared comparator scenarios/helpers so the stable locale shim and consent-dismiss logic run before snapshot collection
 - if you need to reproduce the remaining Firefox browser failure directly, use the collector repro in `../../findings/firefox-fail-repro.md` instead of inventing a new one-off browser script
+- run Firefox comparator commands outside the Codex sandbox by default for this repo, including `inspect`, `compare`, `profile:route`, and `collector-bisect`
+- if Firefox `page.goto(...): NS_ERROR_OUT_OF_MEMORY` only appears inside the sandboxed path, do not treat it as an app/frontend bug without reproducing it outside the sandbox
+- use outside-sandbox execution especially for Firefox repro commands from `findings/firefox-fail-repro.md`, including:
+  - `env NEW_APP_URL=http://127.0.0.1:4173 COMPARATOR_EVENT_PATH=/e/B2a3A node --import tsx ./src/collector-bisect.ts --target event-description-real`
+  - `env NEW_APP_URL=http://127.0.0.1:4173 COMPARATOR_EVENT_PATH=/e/B2a3A npm run inspect -- --target event-description-real`
 
 ## Scenario Rules
 

@@ -1,12 +1,10 @@
 import type { Page } from "@playwright/test"
 
 import type { AppLabel, ScenarioDefinition } from "../types.js"
-import { prepareSharedEventGridPage } from "./helpers.js"
-
-const EVENT_PATH = "/e/dEeaF"
+import { prepareSharedEventGridPage, resolveComparatorEventPath } from "./helpers.js"
 
 async function enterOverlayAvailabilityEditMode(page: Page, label: AppLabel) {
-  await prepareSharedEventGridPage(page, label, EVENT_PATH, false)
+  await prepareSharedEventGridPage(page, label, resolveComparatorEventPath(), false)
 
   await page
     .locator("button, [role='button'], .v-btn")
@@ -27,6 +25,7 @@ async function enterOverlayAvailabilityEditMode(page: Page, label: AppLabel) {
 }
 
 export const eventOverlayAvailabilityScenario = {
+  skipInitialGoto: true,
   readySelector: "#drag-section .overlay-avail-shadow-green",
   readyTimeoutMs: 30_000,
   elements: [

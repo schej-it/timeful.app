@@ -1,6 +1,60 @@
 import type { Page } from "@playwright/test"
 
+import { runWithPhaseTimeout } from "../page.js"
 import type { AppLabel } from "../types.js"
+
+export const DEFAULT_EVENT_PATH = "/e/dEeaF"
+const SUPPORTED_EVENT_WAIT_UNTIL = [
+  "commit",
+  "domcontentloaded",
+  "load",
+  "networkidle",
+] as const
+
+type EventWaitUntil = (typeof SUPPORTED_EVENT_WAIT_UNTIL)[number]
+
+export function resolveComparatorEventPath(defaultPath = DEFAULT_EVENT_PATH) {
+  const overridePath = process.env.COMPARATOR_EVENT_PATH?.trim()
+  if (!overridePath) {
+    return defaultPath
+  }
+
+  return overridePath.startsWith("/") ? overridePath : `/${overridePath}`
+}
+
+export function resolveComparatorEventWaitUntil(
+  defaultWaitUntil: EventWaitUntil = "domcontentloaded",
+): EventWaitUntil {
+  const overrideWaitUntil = process.env.COMPARATOR_EVENT_WAIT_UNTIL?.trim()
+  if (!overrideWaitUntil) {
+    return defaultWaitUntil
+  }
+
+  if (SUPPORTED_EVENT_WAIT_UNTIL.includes(overrideWaitUntil as EventWaitUntil)) {
+    return overrideWaitUntil as EventWaitUntil
+  }
+
+  throw new Error(
+    `Unsupported COMPARATOR_EVENT_WAIT_UNTIL=${JSON.stringify(overrideWaitUntil)}. Expected one of ${SUPPORTED_EVENT_WAIT_UNTIL.join(", ")}`,
+  )
+}
+
+export async function gotoComparatorEventUrl(
+  page: Page,
+  url: string,
+  phaseLabel = "event-route",
+) {
+  const waitUntil = resolveComparatorEventWaitUntil()
+
+  console.error(
+    `[comparator] event-goto:start phase=${phaseLabel} url=${url} waitUntil=${waitUntil}`,
+  )
+  await runWithPhaseTimeout(
+    `event goto ${phaseLabel} ${url}`,
+    page.goto(url, { waitUntil }),
+  )
+  console.error(`[comparator] event-goto:done phase=${phaseLabel} url=${url}`)
+}
 
 export async function clickExactText(page: Page, selector: string, text: string) {
   await page.locator(selector).filter({ hasText: text }).first().click({ force: true })
@@ -49,7 +103,7 @@ export async function prepareSharedEventGridPage(
   )
 
   const eventUrl = new URL(eventPath, label.url).toString()
-  await page.goto(eventUrl, { waitUntil: "domcontentloaded" })
+  await gotoComparatorEventUrl(page, eventUrl, "shared-grid-initial")
   await dismissConsentIfPresent(page)
 
   if (eventId) {
@@ -69,7 +123,7 @@ export async function prepareSharedEventGridPage(
       { shortId: eventId, guestName: SHARED_EVENT_GUEST_NAME },
     )
 
-    await page.goto(eventUrl, { waitUntil: "domcontentloaded" })
+    await gotoComparatorEventUrl(page, eventUrl, "shared-grid-reload")
     await dismissConsentIfPresent(page)
   }
 

@@ -5,7 +5,7 @@ import { chromium, firefox } from "@playwright/test"
 import { parseArgs } from "./cli.js"
 import { DEFAULT_NEW_APP_URL, DEFAULT_OLD_APP_URL, VIEWPORT } from "./config.js"
 import { buildDiff } from "./diff.js"
-import { waitForUrl } from "./page.js"
+import { createComparatorContext, waitForUrl } from "./page.js"
 import { printDiff } from "./report.js"
 import { SCENARIOS, SUPPORTED_TARGETS } from "./scenarios/index.js"
 import { collectStyles } from "./snapshot.js"
@@ -32,21 +32,14 @@ async function main() {
       ? firefox
       : chromium
   const browser = await browserType.launch()
-  const oldPage = await browser.newPage({ viewport: VIEWPORT })
-  const newPage = await browser.newPage({ viewport: VIEWPORT })
+  const oldContext = await createComparatorContext(browser, { viewport: VIEWPORT })
+  const newContext = await createComparatorContext(browser, { viewport: VIEWPORT })
+  const oldPage = await oldContext.newPage()
+  const newPage = await newContext.newPage()
 
   if (scenario.runInteraction) {
-    await Promise.all([
-      oldPage.route("https://buttons.github.io/**", (route) => route.abort()),
-      oldPage.route("https://player.vimeo.com/**", (route) => route.abort()),
-      oldPage.route("https://i.vimeocdn.com/**", (route) => route.abort()),
-      oldPage.route("https://f.vimeocdn.com/**", (route) => route.abort()),
-      newPage.route("https://buttons.github.io/**", (route) => route.abort()),
-      newPage.route("https://player.vimeo.com/**", (route) => route.abort()),
-      newPage.route("https://i.vimeocdn.com/**", (route) => route.abort()),
-      newPage.route("https://f.vimeocdn.com/**", (route) => route.abort()),
-    ])
     await scenario.runInteraction(oldPage, newPage)
+    await Promise.all([oldContext.close(), newContext.close()])
     await browser.close()
     return
   }
@@ -62,6 +55,7 @@ async function main() {
           collectStyles(newPage, newApp, scenario),
         ])
 
+  await Promise.all([oldContext.close(), newContext.close()])
   await browser.close()
 
   printDiff(target, buildDiff(scenario, oldSnapshot, newSnapshot))

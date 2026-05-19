@@ -1,16 +1,23 @@
 import type { Page } from "@playwright/test"
-import { dismissConsentIfPresent } from "./helpers.js"
+import {
+  dismissConsentIfPresent,
+  gotoComparatorEventUrl,
+  resolveComparatorEventPath,
+} from "./helpers.js"
 
 import type { AppLabel, ScenarioDefinition } from "../types.js"
 
-const EVENT_PATH = "/e/dEeaF"
 const TIMEZONE_SELECTOR = "#timezone-select-container"
 const TIME_TYPE_SELECTOR = ".tw-w-16"
 const EXPECTED_TIMEZONE_TEXT = "(GMT+3:00) Istanbul, Minsk, Moscow"
 const EXPECTED_TIME_TYPE_TEXT = "12h"
 
 async function openEvent(page: Page, app: AppLabel) {
-  await page.goto(new URL(EVENT_PATH, app.url).toString(), { waitUntil: "domcontentloaded" })
+  await gotoComparatorEventUrl(
+    page,
+    new URL(resolveComparatorEventPath(), app.url).toString(),
+    "event-timezone-menu",
+  )
   await dismissConsentIfPresent(page)
   await page.locator(TIMEZONE_SELECTOR).waitFor({ state: "visible", timeout: 15000 })
 }

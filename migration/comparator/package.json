@@ -5,6 +5,8 @@
   "scripts": {
     "compare": "node --import tsx ./src/compare.ts",
     "inspect": "node --import tsx ./src/inspect.ts",
+    "profile:route": "node --import tsx ./src/route-profile.ts",
+    "profile:collector-bisect": "node --import tsx ./src/collector-bisect.ts",
     "inspect:landing": "node --import tsx ./src/inspect.ts --target landing",
     "inspect:event-respondents-panel": "node --import tsx ./src/inspect.ts --target event-respondents-panel",
     "inspect:event-heatmap-grid": "node --import tsx ./src/inspect.ts --target event-heatmap-grid",
@@ -18,7 +20,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@playwright/test": "^1.59.1"
+    "@playwright/test": "^1.60.0"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

@@ -1,11 +1,11 @@
 import { setTimeout as delay } from "node:timers/promises"
 
-import type { Page } from "@playwright/test"
+import type { Browser, BrowserContext, Page } from "@playwright/test"
 
 import type { AppLabel, ScenarioDefinition } from "./types.js"
 
 const DEFAULT_PHASE_TIMEOUT_MS = 15_000
-const THIRD_PARTY_BLOCKLIST = [
+export const THIRD_PARTY_BLOCKLIST = [
   "https://buttons.github.io/",
   "https://player.vimeo.com/",
   "https://i.vimeocdn.com/",
@@ -67,7 +67,7 @@ export async function waitForUrl(url: string, timeoutMs = 120_000) {
   throw new Error(`Timed out waiting for ${url}`)
 }
 
-async function installStableBrowserLocale(page: Page) {
+export async function installStableBrowserLocale(page: Page) {
   await page.addInitScript(() => {
     const fallbackLocale = "en-US"
     const normalizeLocale = (candidate: unknown): string | null => {
@@ -135,10 +135,29 @@ export async function gotoComparatorUrl(page: Page, url: string) {
   console.error(`[comparator] goto:done ${url}`)
 }
 
-export async function preparePage(page: Page, label: AppLabel, scenario: ScenarioDefinition) {
+export async function createComparatorContext(
+  browser: Browser,
+  options?: {
+    javaScriptEnabled?: boolean
+    viewport?: {
+      width: number
+      height: number
+    }
+  },
+): Promise<BrowserContext> {
+  const context = await browser.newContext({
+    serviceWorkers: "block",
+    ...options,
+  })
+
   for (const domainPrefix of THIRD_PARTY_BLOCKLIST) {
-    await page.route(`${domainPrefix}**`, (route) => route.abort())
+    await context.route(`${domainPrefix}**`, (route) => route.abort())
   }
+
+  return context
+}
+
+export async function preparePage(page: Page, label: AppLabel, scenario: ScenarioDefinition) {
   await installStableBrowserLocale(page)
   if (!scenario.skipInitialGoto) {
     await gotoComparatorUrl(page, label.url)

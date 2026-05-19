@@ -1,9 +1,13 @@
-import { clickContainsText, dismissConsentIfPresent } from "./helpers.js"
+import {
+  clickContainsText,
+  dismissConsentIfPresent,
+  gotoComparatorEventUrl,
+  resolveComparatorEventPath,
+} from "./helpers.js"
 
 import type { AppLabel } from "../types.js"
 import type { ScenarioDefinition } from "../types.js"
 
-const EVENT_PATH = "/e/dEeaF"
 const DRAG_START_INDEX = 8
 const DRAG_END_INDEX = 5
 const POSITION_TOLERANCE_PX = 8
@@ -16,8 +20,8 @@ type Box = {
 }
 
 async function openEventPage(page: import("@playwright/test").Page, label: AppLabel) {
-  const url = new URL(EVENT_PATH, label.url).toString()
-  await page.goto(url, { waitUntil: "domcontentloaded" })
+  const url = new URL(resolveComparatorEventPath(), label.url).toString()
+  await gotoComparatorEventUrl(page, url, "schedule-event-upward-drag")
   await dismissConsentIfPresent(page)
   await page.addStyleTag({
     content: `
