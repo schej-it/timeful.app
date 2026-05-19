@@ -136,6 +136,8 @@ const VBtnStub = defineComponent({
 const newEventStyleBlock =
   /<style>([\s\S]*)<\/style>/.exec(newEventSource)?.[1] ?? ""
 const appCssSource = readFileSync("src/index.css", "utf8")
+const dayOfWeekButtonSnippet =
+  /<v-btn\s+v-for="dayIndex in dayIndices"[\s\S]*?<\/v-btn>/.exec(newEventSource)?.[0] ?? ""
 
 describe("NewEvent", () => {
   beforeEach(() => {
@@ -250,10 +252,16 @@ describe("NewEvent", () => {
     expect(newEventSource).toContain('class="new-event-dow-toggle"')
     expect(newEventSource).toContain('getDayOfWeekButtonClass(0)')
     expect(newEventSource).toContain('"new-event-dow-button--selected": selectedDaysOfWeek.value.includes(dayIndex)')
-    expect(newEventSource).not.toContain('color="primary"')
+    expect(dayOfWeekButtonSnippet).not.toContain('color="primary"')
     expect(newEventStyleBlock).toMatch(
       /\.new-event-dow-button--selected\s*\{\s*background-color:\s*var\(--timeful-selection-bg\);\s*color:\s*var\(--timeful-selection-fg\);/
     )
+  })
+
+  it("uses explicit primary checkbox semantics for the specific-times toggle", () => {
+    expect(newEventSource).toContain('v-model="specificTimesEnabled"')
+    expect(newEventSource).toContain('color="primary"')
+    expect(newEventSource).toContain('messages="Specify the times in the next step"')
   })
 
   it("uses crossed-out Vuetify 3 false-icon for disabled unchecked gated checkboxes", () => {

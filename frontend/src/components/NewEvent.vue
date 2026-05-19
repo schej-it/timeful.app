@@ -123,6 +123,7 @@
               <div class="tw-mb-2">
                 <v-checkbox
                   v-model="specificTimesEnabled"
+                  color="primary"
                   messages="Specify the times in the next step"
                 >
                   <template #label>
