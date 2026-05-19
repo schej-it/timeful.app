@@ -2,28 +2,32 @@
   <div class="tw-mt-1 tw-max-w-full sm:tw-mt-2 sm:tw-max-w-[calc(100%-236px)]">
     <div
       v-if="showDescription"
-      class="tw-flex tw-w-full tw-cursor-pointer tw-items-center tw-gap-2 tw-rounded-md tw-border tw-border-light-gray-stroke tw-bg-light-gray tw-p-2 tw-text-xs tw-font-normal tw-text-very-dark-gray hover:tw-bg-[#eeeeee] sm:tw-text-sm"
+      class="event-description-shell tw-relative tw-w-full tw-cursor-pointer tw-rounded-md tw-border tw-border-light-gray-stroke tw-bg-light-gray tw-p-2 tw-font-normal tw-text-very-dark-gray hover:tw-bg-[#eeeeee]"
     >
-      <div class="tw-grow tw-space-y-1">
+      <div class="tw-space-y-1" :class="canEdit ? 'tw-pr-10' : ''">
         <div
           v-for="(line, i) in (event.description ?? '').split('\n')"
           :key="i"
-          class="tw-min-h-6 tw-leading-6"
+          class="event-description-copy tw-min-h-6"
         >
           {{ line }}
         </div>
       </div>
-      <v-btn
+      <div
         v-if="canEdit"
-        key="edit-description-btn"
-        class="event-description-action-button event-description-edit-button -tw-my-1 tw-h-9 tw-w-9"
-        icon
-        variant="text"
-        size="small"
-        @click="isEditing = true"
+        class="event-description-actions tw-absolute tw-inset-y-0 tw-right-2 tw-flex tw-items-center"
       >
-        <v-icon size="24">mdi-pencil</v-icon>
-      </v-btn>
+        <v-btn
+          key="edit-description-btn"
+          class="event-description-action-button event-description-edit-button tw-h-9 tw-w-9"
+          icon
+          variant="text"
+          size="small"
+          @click="isEditing = true"
+        >
+          <v-icon size="24">mdi-pencil</v-icon>
+        </v-btn>
+      </div>
     </div>
 
     <v-btn
@@ -35,26 +39,23 @@
       + Add description
     </v-btn>
     <div
-      :class="
-        canEdit && !showDescription && isEditing
-          ? ''
-          : 'tw-absolute tw-opacity-0'
-      "
+      v-else-if="canEdit && isEditing"
+      class="event-description-edit-shell tw-relative tw-w-full tw-px-2 tw-py-2 tw-font-normal tw-text-very-dark-gray"
     >
+      <div class="event-description-editor tw-pr-20">
+        <div
+          ref="descriptionEditor"
+          class="event-description-copy event-description-editor-field tw-min-h-6 tw-border-0 tw-border-b tw-border-solid tw-bg-transparent tw-outline-none"
+          :contenteditable="isEditing ? 'true' : 'false'"
+          :data-placeholder="descriptionPlaceholder"
+          role="textbox"
+          aria-multiline="true"
+          @input="syncDraftDescription"
+        ></div>
+      </div>
       <div
-        class="event-description-editor tw-flex tw-w-full tw-flex-grow tw-items-center tw-gap-2 tw-px-2 tw-py-2"
+        class="event-description-actions tw-absolute tw-inset-y-0 tw-right-2 tw-flex tw-items-center tw-gap-2"
       >
-        <v-textarea
-          v-model="newDescription"
-          placeholder="Enter a description..."
-          class="tw-flex-grow tw-text-xs sm:tw-text-sm"
-          autofocus
-          :rows="1"
-          auto-grow
-          hide-details
-          density="comfortable"
-          variant="underlined"
-        ></v-textarea>
         <v-btn
           class="event-description-action-button event-description-cancel-button tw-h-9 tw-w-9"
           icon
@@ -80,10 +81,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue"
+import { computed, nextTick, ref, watch } from "vue"
 import { put } from "@/utils"
 import { useMainStore } from "@/stores/main"
-import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import type { Event } from "@/types"
 import { toEventPatchPayload } from "@/composables/event/eventMutationBoundary"
 
@@ -97,14 +97,45 @@ const emit = defineEmits<{
 }>()
 
 const mainStore = useMainStore()
-const { isPhone } = useDisplayHelpers()
 
 const isEditing = ref(false)
 const newDescription = ref(props.event.description ?? "")
+const descriptionEditor = ref<HTMLDivElement | null>(null)
+const descriptionPlaceholder = "Enter a description..."
 
 const showDescription = computed(
   () => props.event.description && !isEditing.value
 )
+
+const syncEditorContent = (value: string) => {
+  const editor = descriptionEditor.value
+
+  if (!editor) {
+    return
+  }
+
+  if (editor.textContent !== value) {
+    editor.textContent = value
+  }
+}
+
+const syncDraftDescription = () => {
+  newDescription.value = descriptionEditor.value?.textContent ?? ""
+}
+
+watch(isEditing, async (editing) => {
+  if (!editing) {
+    return
+  }
+
+  await nextTick()
+  syncEditorContent(newDescription.value)
+  descriptionEditor.value?.focus()
+})
+
+watch(newDescription, (value) => {
+  syncEditorContent(value)
+})
 
 const saveDescription = () => {
   const oldEvent = { ...props.event }
@@ -135,3 +166,32 @@ const cancelEditing = () => {
   isEditing.value = false
 }
 </script>
+
+<style scoped>
+.event-description-copy {
+  font-size: 0.75rem;
+  line-height: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .event-description-copy {
+    font-size: 0.875rem;
+    line-height: 1.5rem;
+  }
+}
+
+.event-description-editor-field {
+  border-bottom-color: var(--timeful-grid-hour-separator);
+  color: inherit;
+  font-family: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.event-description-editor-field:empty::before {
+  content: attr(data-placeholder);
+  color: var(--timeful-disabled-foreground);
+}
+</style>

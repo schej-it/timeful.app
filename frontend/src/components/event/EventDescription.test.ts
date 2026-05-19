@@ -16,25 +16,12 @@ vi.mock("@/stores/main", () => ({
   }),
 }))
 
-vi.mock("@/utils/useDisplayHelpers", () => ({
-  useDisplayHelpers: () => ({
-    isPhone: false,
-  }),
-}))
-
 const VBtnStub = {
   inheritAttrs: false,
   props: ["variant", "icon", "size", "color"],
   emits: ["click"],
   template:
     '<button v-bind="$attrs" :data-variant="variant" :data-icon="String(icon)" :data-size="size" :data-color="color" @click="$emit(\'click\')"><slot /></button>',
-}
-
-const VTextareaStub = {
-  props: ["modelValue", "placeholder", "variant", "density"],
-  emits: ["update:modelValue"],
-  template:
-    '<textarea :value="modelValue" :placeholder="placeholder" :data-variant="variant" :data-density="density" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 }
 
 const baseEvent = {
@@ -57,7 +44,6 @@ describe("EventDescription", () => {
         stubs: {
           "v-btn": VBtnStub,
           "v-icon": true,
-          "v-textarea": VTextareaStub,
         },
       },
     })
@@ -66,9 +52,8 @@ describe("EventDescription", () => {
       "text"
     )
     expect(eventDescriptionSource).toContain(
-      'class="event-description-action-button event-description-edit-button -tw-my-1 tw-h-9 tw-w-9"'
+      'class="event-description-action-button event-description-edit-button tw-h-9 tw-w-9"'
     )
-    expect(eventDescriptionSource).toContain("\n        icon\n        variant=\"text\"\n        size=\"small\"")
     expect(eventDescriptionSource).toContain('<v-icon size="24">mdi-pencil</v-icon>')
   })
 
@@ -82,7 +67,6 @@ describe("EventDescription", () => {
         stubs: {
           "v-btn": VBtnStub,
           "v-icon": true,
-          "v-textarea": VTextareaStub,
         },
       },
     })
@@ -99,21 +83,25 @@ describe("EventDescription", () => {
     expect(
       actionButtons.every((button) => button.attributes("data-size") === "small")
     ).toBe(true)
-    expect(wrapper.get("textarea").attributes("data-variant")).toBe("underlined")
-    expect(wrapper.get("textarea").attributes("data-density")).toBe("comfortable")
+    expect(wrapper.get('[role="textbox"]').classes()).toContain(
+      "event-description-editor-field"
+    )
+    expect(wrapper.get('[role="textbox"]').attributes("contenteditable")).toBe(
+      "true"
+    )
     expect(eventDescriptionSource).toContain(
       'class="event-description-action-button event-description-cancel-button tw-h-9 tw-w-9"'
     )
     expect(eventDescriptionSource).toContain(
       'class="event-description-action-button event-description-save-button tw-h-9 tw-w-9"'
     )
-    expect(eventDescriptionSource).toContain(
-      "\n          icon\n          variant=\"text\"\n          size=\"small\""
-    )
     expect(eventDescriptionSource).toContain('<v-icon size="24">mdi-close</v-icon>')
     expect(eventDescriptionSource).toContain('<v-icon size="24">mdi-check</v-icon>')
     expect(eventDescriptionSource).toContain(
-      'class="event-description-editor tw-flex tw-w-full tw-flex-grow tw-items-center tw-gap-2 tw-px-2 tw-py-2"'
+      'class="event-description-editor tw-pr-20"'
+    )
+    expect(eventDescriptionSource).toContain(
+      'class="event-description-copy event-description-editor-field tw-min-h-6 tw-border-0 tw-border-b tw-border-solid tw-bg-transparent tw-outline-none"'
     )
   })
 })
