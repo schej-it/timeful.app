@@ -21,8 +21,11 @@ ENV VITE_POSTHOG_API_KEY=$VITE_POSTHOG_API_KEY
 ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 ENV VITE_MICROSOFT_CLIENT_ID=$VITE_MICROSOFT_CLIENT_ID
 
-# Build the app and move to /build so it's not hidden by volume mount
-RUN npm run build && mv dist /build
+# Build the app
+RUN npm run build
+
+# Move to /build so it's not hidden by volume mount
+RUN mv dist /build
 
 # Output stage - just the dist folder
 FROM scratch AS dist
