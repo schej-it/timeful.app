@@ -3,20 +3,14 @@ import vue from "@vitejs/plugin-vue"
 import vuetify from "vite-plugin-vuetify"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
-import { loadEnv } from "vite"
+import {
+  createFrontendDevServerConfig,
+  createFrontendPreviewServerConfig,
+} from "./config/tooling"
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
 
-export default defineConfig(({ command, mode }) => {
-  const env = loadEnv(mode, rootDir, "")
-  const apiProxyTarget = env.VITE_API_PROXY_TARGET
-
-  if (command === "serve" && !apiProxyTarget) {
-    throw new Error(
-      "Missing VITE_API_PROXY_TARGET. Set it in frontend/.env.local or start Vite with VITE_API_PROXY_TARGET=http://127.0.0.1:3002 npm run dev -- --host 127.0.0.1 --port 4173."
-    )
-  }
-
+export default defineConfig(({ command, mode, isPreview }) => {
   return {
     plugins: [vue(), vuetify({ autoImport: true })],
     resolve: {
@@ -25,22 +19,10 @@ export default defineConfig(({ command, mode }) => {
       },
     },
     server:
-      command === "serve"
-        ? {
-            host: "127.0.0.1",
-            port: 4173,
-            proxy: {
-              "/api": {
-                target: apiProxyTarget,
-                changeOrigin: true,
-              },
-              "/swagger": {
-                target: apiProxyTarget,
-                changeOrigin: true,
-              },
-            },
-          }
+      command === "serve" && !isPreview
+        ? createFrontendDevServerConfig(mode)
         : undefined,
+    preview: isPreview ? createFrontendPreviewServerConfig(mode) : undefined,
     build: {
       outDir: "dist",
     },

@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test"
+import { createFrontendPlaywrightConfig } from "./config/tooling"
 
-const port = 4173
-const baseURL = `http://127.0.0.1:${port}`
+const { baseURL, webServerCommand, webServerPort } =
+  createFrontendPlaywrightConfig("development")
 
 export default defineConfig({
   testDir: "./playwright",
@@ -17,8 +18,8 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: `npm run dev -- --host 127.0.0.1 --port ${port}`,
-    port,
+    command: webServerCommand,
+    port: webServerPort,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
