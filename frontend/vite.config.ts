@@ -7,11 +7,11 @@ import { loadEnv } from "vite"
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, rootDir, "")
   const apiProxyTarget = env.VITE_API_PROXY_TARGET
 
-  if (!apiProxyTarget) {
+  if (command === "serve" && !apiProxyTarget) {
     throw new Error(
       "Missing VITE_API_PROXY_TARGET. Set it in frontend/.env.local or start Vite with VITE_API_PROXY_TARGET=http://127.0.0.1:3002 npm run dev -- --host 127.0.0.1 --port 4173."
     )
@@ -24,20 +24,23 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(rootDir, "./src"),
       },
     },
-    server: {
-      host: "127.0.0.1",
-      port: 4173,
-      proxy: {
-        "/api": {
-          target: apiProxyTarget,
-          changeOrigin: true,
-        },
-        "/swagger": {
-          target: apiProxyTarget,
-          changeOrigin: true,
-        },
-      },
-    },
+    server:
+      command === "serve"
+        ? {
+            host: "127.0.0.1",
+            port: 4173,
+            proxy: {
+              "/api": {
+                target: apiProxyTarget,
+                changeOrigin: true,
+              },
+              "/swagger": {
+                target: apiProxyTarget,
+                changeOrigin: true,
+              },
+            },
+          }
+        : undefined,
     build: {
       outDir: "dist",
     },
