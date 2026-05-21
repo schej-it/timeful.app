@@ -24,3 +24,11 @@ Semi-structured TODO list
 - [ ] refactoring - get rid of duplication
 - [ ] overlay availabilities - each slot has a solid frame <https://timeful.app/e/c762cA>
 - [ ] there should be a space between grids for non-consecutive days
+- [ ] add more instrumentation?
+- [x] edit event button is missing
+- [ ] shown in should be the same size as the timezone and black
+- [ ] the description text should be at the same vertical position when not editing and when editing
+- [ ] don't modify vuetify internals (deep)
+- [ ] replace the Create event button on the main page with the actual form
+- [ ] load all routes lazily
+- [ ] on the event page, near "shown in", the underline colors for the timezone and time should be the same
