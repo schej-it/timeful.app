@@ -63,7 +63,27 @@ services:
       retries: 3
       start_period: 10s
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - frontend_dist:/srv:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+      server:
+        condition: service_healthy
+
 volumes:
   mongo_data:
   frontend_dist:
   server_logs:
+  caddy_data:
+  caddy_config:
