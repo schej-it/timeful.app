@@ -54,7 +54,7 @@ services:
       mongo:
         condition: service_healthy
       frontend:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test:
         ["CMD", "wget", "-q", "--spider", "http://localhost:3002/api/health"]
