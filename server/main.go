@@ -4,13 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
 	"log"
 	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -102,7 +100,17 @@ func main() {
 	// Cors
 	corsOrigins := os.Getenv("CORS_ORIGINS")
 	if corsOrigins == "" {
-		corsOrigins = "https://www.schej.it,https://schej.it,https://www.timeful.app,https://timeful.app,http://localhost:8080"
+		corsOrigins = strings.Join([]string{
+			"https://www.schej.it",
+			"https://schej.it",
+			"https://www.timeful.app",
+			"https://timeful.app",
+			"http://localhost:8080",
+			"http://localhost:4173",
+			"http://localhost:4174",
+			"http://127.0.0.1:4173",
+			"http://127.0.0.1:4174",
+		}, ",")
 	}
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     strings.Split(corsOrigins, ","),
@@ -127,6 +135,9 @@ func main() {
 
 	// Init routes
 	apiRouter := router.Group("/api")
+	apiRouter.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 	routes.InitAuth(apiRouter)
 	routes.InitUser(apiRouter)
 	routes.InitUsers(apiRouter)
@@ -144,30 +155,15 @@ func main() {
 		}
 	}
 
-	err = filepath.WalkDir(frontendDist, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() && d.Name() != "index.html" {
-			// Get the path relative to frontendDist
-			relPath, err := filepath.Rel(frontendDist, path)
-			if err != nil || relPath == "" || relPath == "." {
-				return nil
-			}
-			router.StaticFile(fmt.Sprintf("/%s", relPath), path)
-		}
-		return nil
-	})
-	if err != nil {
-		logger.StdErr.Printf("Warning: failed to walk frontend dist: %s", err)
-	}
-
 	indexPath := filepath.Join(frontendDist, "index.html")
+	hasFrontendIndex := false
 	if _, err := os.Stat(indexPath); err == nil {
 		router.LoadHTMLFiles(indexPath)
+		hasFrontendIndex = true
 	} else {
 		logger.StdErr.Printf("Warning: index.html not found at %s", indexPath)
 	}
+	router.GET("/e/:eventId", eventPageHandler(hasFrontendIndex))
 	router.NoRoute(noRouteHandler())
 
 	// Init swagger documentation
@@ -210,41 +206,34 @@ func validateSessionSecret() {
 	}
 }
 
-func noRouteHandler() gin.HandlerFunc {
+func eventPageHandler(hasFrontendIndex bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if !hasFrontendIndex {
+			c.JSON(http.StatusNotFound, gin.H{"error": "route not found"})
+			return
+		}
+
 		params := gin.H{}
-		path := c.Request.URL.Path
 
-		// Determine meta tags based off URL
-		if match := regexp.MustCompile(`\/e\/(\w+)`).FindStringSubmatchIndex(path); match != nil {
-			// /e/:eventId
-			eventId := path[match[2]:match[3]]
-			event := db.GetEventByEitherId(eventId)
+		eventId := c.Param("eventId")
+		event := db.GetEventByEitherId(eventId)
 
-			// params["enableStickyFooter"] = true
+		if event != nil {
+			title := fmt.Sprintf("%s - Timeful (formerly Schej)", event.Name)
+			params["title"] = title
+			params["ogTitle"] = title
 
-			if event != nil {
-				title := fmt.Sprintf("%s - Timeful (formerly Schej)", event.Name)
-				params["title"] = title
-				params["ogTitle"] = title
-
-				if len(utils.Coalesce(event.When2meetHref)) > 0 {
-					params["ogImage"] = "/img/when2meetOgImage2.png"
-				}
+			if len(utils.Coalesce(event.When2meetHref)) > 0 {
+				params["ogImage"] = "/img/when2meetOgImage2.png"
 			}
-		} else if regexp.MustCompile(`\/g\/`).MatchString(path) {
-			// /g/ routes
-			// params["enableStickyFooter"] = true
 		}
 
 		c.HTML(http.StatusOK, "index.html", params)
 	}
 }
 
-func splitPath(path string) []string {
-	dir, last := filepath.Split(path)
-	if dir == "" {
-		return []string{last}
+func noRouteHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "route not found"})
 	}
-	return append(splitPath(filepath.Clean(dir)), last)
 }
