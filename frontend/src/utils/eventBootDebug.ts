@@ -1,4 +1,6 @@
-type DebugEntry = {
+import { Temporal } from "temporal-polyfill"
+
+interface DebugEntry {
   at: string
   scope: string
   message: string
@@ -30,7 +32,7 @@ export function logEventBoot(scope: string, message: string, data?: unknown) {
   if (!isEventBootDebugEnabled()) return
 
   const entry: DebugEntry = {
-    at: new Date().toISOString(),
+    at: Temporal.Now.instant().toString(),
     scope,
     message,
     data,

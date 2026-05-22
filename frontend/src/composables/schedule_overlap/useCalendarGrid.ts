@@ -350,11 +350,12 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
   const allDays = computed<DayItem[]>(() => {
     const days: DayItem[] = []
     const datesSoFar = new ZdtSet()
+    const displayTimezoneOffset =
+      curTimezone.value.offset instanceof Temporal.Duration
+        ? curTimezone.value.offset
+        : durations.ZERO
     const displayTimezoneId =
-      curTimezone.value.value ||
-      (curTimezone.value.offset
-        ? getFixedOffsetTimeZoneId(curTimezone.value.offset)
-        : UTC)
+      curTimezone.value.value || getFixedOffsetTimeZoneId(displayTimezoneOffset)
 
     const getDateString = (date: Temporal.ZonedDateTime) => {
       let dateString = ""

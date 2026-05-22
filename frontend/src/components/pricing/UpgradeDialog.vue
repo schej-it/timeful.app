@@ -683,7 +683,7 @@ async function handleUpgrade(price: StripePrice) {
   //   posthog?.capture("student_upgrade_attempt", { price })
   //   return
   // }
-  void posthog.capture("upgrade_clicked", {
+  posthog.capture("upgrade_clicked", {
     price: formattedPrice(price),
   })
 
@@ -733,7 +733,7 @@ async function handleUpgrade(price: StripePrice) {
 
 watch(isStudent, (val) => {
   if (val) {
-    void posthog.capture("student_pricing_viewed", {
+    posthog.capture("student_pricing_viewed", {
       prices: pricesShown.value,
     })
   }
@@ -756,7 +756,7 @@ watch(
         price: pricesShown.value,
         type: upgradeDialogType.value,
       })
-      void posthog.capture("upgrade_dialog_viewed", {
+      posthog.capture("upgrade_dialog_viewed", {
         price: pricesShown.value,
         type: upgradeDialogType.value,
       })

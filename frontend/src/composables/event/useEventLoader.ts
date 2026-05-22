@@ -70,13 +70,14 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     }
     let url = `/events/${sanitizedId}`
     if (guestName && guestName.length > 0) url += `?guestName=${encodeURIComponent(guestName)}`
-    event.value = await fetchEventFromPath(url)
-    processEvent(event.value, getEventRenderedWeekStart())
+    const fetchedEvent = await fetchEventFromPath(url)
+    event.value = fetchedEvent
+    processEvent(fetchedEvent, getEventRenderedWeekStart())
     logEventBoot("useEventLoader", "refreshEvent:done", {
       resolvedLongId,
-      fetchedEventId: event.value?._id ?? null,
-      type: event.value?.type ?? null,
-      hasResponses: Object.keys(event.value?.responses ?? {}).length,
+      fetchedEventId: fetchedEvent._id ?? null,
+      type: fetchedEvent.type,
+      hasResponses: Object.keys(fetchedEvent.responses ?? {}).length,
     })
   }
 

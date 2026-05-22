@@ -1,5 +1,6 @@
-type PosthogModule = typeof import("posthog-js")
-type PosthogClient = PosthogModule["default"]
+import type posthogJs from "posthog-js"
+
+type PosthogClient = typeof posthogJs
 
 type PendingCall = (client: PosthogClient) => void
 
@@ -47,7 +48,7 @@ function loadPosthog(): Promise<PosthogClient | null> {
     return Promise.resolve(null)
   }
 
-  const apiKey = import.meta.env.VITE_POSTHOG_API_KEY?.trim()
+  const apiKey = import.meta.env.VITE_POSTHOG_API_KEY.trim()
   if (!apiKey) {
     return Promise.resolve(null)
   }
@@ -84,7 +85,7 @@ function enqueueOrRun(call: PendingCall) {
 export const posthog = {
   capture(...args: Parameters<PosthogClient["capture"]>) {
     enqueueOrRun((client) => {
-      void client.capture(...args)
+      client.capture(...args)
     })
   },
 

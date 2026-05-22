@@ -52,8 +52,13 @@ describe("useCalendarGrid", () => {
     const renderedLabels = grid.splitTimes.value[0].map((time) => time.text).filter(Boolean)
     const firstRenderedTime = grid.splitTimes.value[0][0]
     const secondRenderedTime = grid.splitTimes.value[0][1]
-    const firstSlotBaseline =
-      firstRenderedTime && grid.getDateFromDayHoursOffset(0, firstRenderedTime.hoursOffset)
+    expect(firstRenderedTime).toBeDefined()
+    expect(secondRenderedTime).toBeDefined()
+
+    const firstSlotBaseline = grid.getDateFromDayHoursOffset(
+      0,
+      firstRenderedTime.hoursOffset
+    )
     const firstIncludedSlot = grid.getDateFromDayTimeIndex(0, 1)
 
     expect(renderedLabels[0]).toBe("9 am")
@@ -61,7 +66,7 @@ describe("useCalendarGrid", () => {
     expect(firstSlotBaseline?.withTimeZone("Europe/Moscow").toPlainTime().toString()).toBe(
       "09:00:00"
     )
-    expect(secondRenderedTime?.hoursOffset.total("minutes")).toBe(15)
+    expect(secondRenderedTime.hoursOffset.total("minutes")).toBe(15)
     expect(firstIncludedSlot?.withTimeZone("Europe/Moscow").toPlainTime().toString()).toBe(
       "09:15:00"
     )

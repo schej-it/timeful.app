@@ -525,7 +525,7 @@ function signIn() {
 
 function openHowItWorksDialog() {
   showHowItWorksDialog.value = true
-  void posthog.capture("how_it_works_clicked")
+  posthog.capture("how_it_works_clicked")
 }
 
 function onPlay() {
