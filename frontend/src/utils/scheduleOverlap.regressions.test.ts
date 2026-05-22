@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { computed, ref, shallowRef } from "vue"
 import { Temporal } from "temporal-polyfill"
 import { stubRegressionLocalStorage } from "@/test/regressionTestSetup"
-import { ZdtMap, ZdtSet } from "@/utils"
+import { getFixedOffsetTimeZoneId, ZdtMap, ZdtSet } from "@/utils"
 import {
   epochMs,
   makeAvailabilityData,
@@ -280,7 +280,9 @@ describe("schedule-overlap Temporal regressions", () => {
     const beforeBoundaryCalendarEvents = makeCalendarEventsHarness({
       slotStart: beforeWorkingHours,
       timeslotDuration: durations.THIRTY_MINUTES,
-      curTimezoneValue: "",
+      curTimezoneValue: getFixedOffsetTimeZoneId(
+        Temporal.Duration.from({ hours: -8 })
+      ),
       curTimezoneOffset: Temporal.Duration.from({ hours: -8 }),
     })
 
@@ -295,7 +297,9 @@ describe("schedule-overlap Temporal regressions", () => {
     const startBoundaryCalendarEvents = makeCalendarEventsHarness({
       slotStart: atWorkingHoursStart,
       timeslotDuration: durations.THIRTY_MINUTES,
-      curTimezoneValue: "",
+      curTimezoneValue: getFixedOffsetTimeZoneId(
+        Temporal.Duration.from({ hours: -8 })
+      ),
       curTimezoneOffset: Temporal.Duration.from({ hours: -8 }),
     })
 
@@ -364,7 +368,7 @@ describe("schedule-overlap Temporal regressions", () => {
 
     const googleScheduling = makeEventSchedulingHarness({
       slotStart: slot,
-      curTimezoneValue: "",
+      curTimezoneValue: getFixedOffsetTimeZoneId(scheduleTimezoneOffset),
       curTimezoneOffset: scheduleTimezoneOffset,
     })
     googleScheduling.curScheduledEvent.value = { row: 0, col: 0, numRows: 1 }
@@ -376,7 +380,7 @@ describe("schedule-overlap Temporal regressions", () => {
 
     const outlookScheduling = makeEventSchedulingHarness({
       slotStart: slot,
-      curTimezoneValue: "",
+      curTimezoneValue: getFixedOffsetTimeZoneId(scheduleTimezoneOffset),
       curTimezoneOffset: scheduleTimezoneOffset,
     })
     outlookScheduling.curScheduledEvent.value = { row: 0, col: 0, numRows: 1 }

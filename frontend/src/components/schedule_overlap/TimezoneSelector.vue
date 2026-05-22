@@ -64,10 +64,10 @@ import { Temporal } from "temporal-polyfill"
 import { allTimezones } from "@/constants"
 import type { Timezone } from "@/composables/schedule_overlap/types"
 import {
-  getFixedOffsetTimeZoneId,
+  normalizeOptionalTimezone,
+  normalizeTimezone,
   readSavedTimezone,
-  reviveSavedTimezoneOffset,
-  resolveSavedTimezoneValue,
+  formatTimezoneGmtString,
 } from "@/utils/timezone_utils"
 
 interface TimezoneSelectItem {
@@ -117,34 +117,6 @@ function getTimezoneFromSelectItem(item: TimezoneSelectItem | Timezone): Timezon
 
 function formatTimezoneSelectItemLabel(item: TimezoneSelectItem | Timezone): string {
   return formatTimezoneTitle(getTimezoneFromSelectItem(item))
-}
-
-function normalizeTimezone(timezone: Timezone): Timezone {
-  const rawOffset = timezone.offset
-  const revivedOffset =
-    rawOffset instanceof Temporal.Duration
-      ? rawOffset
-      : typeof rawOffset === "string"
-        ? reviveSavedTimezoneOffset(rawOffset)
-        : undefined
-  const offset = revivedOffset ?? Temporal.Duration.from({ minutes: 0 })
-  const value =
-    typeof timezone.value === "string" && timezone.value
-      ? timezone.value
-      : getFixedOffsetTimeZoneId(offset)
-  const label =
-    typeof timezone.label === "string" && timezone.label ? timezone.label : value
-  const gmtString =
-    typeof timezone.gmtString === "string" && timezone.gmtString
-      ? timezone.gmtString
-      : formatGmtString(offset.total("minutes"))
-
-  return {
-    value,
-    label,
-    gmtString,
-    offset,
-  }
 }
 
 function toTimezoneSelectItem(timezone: Timezone): TimezoneSelectItem {
@@ -210,25 +182,6 @@ const visibleTimezoneItems = computed<TimezoneSelectItem[]>(() => {
 
   return [toTimezoneSelectItem(props.modelValue), ...timezoneItems.value]
 })
-
-function formatGmtString(offsetMinutes: number): string {
-  const hours = Math.trunc(offsetMinutes / 60)
-  const minutes = Math.abs(offsetMinutes % 60)
-  const hr = `${String(hours)}:${minutes === 0 ? "00" : String(minutes).padStart(2, "0")}`
-  return `(GMT${hr.includes("-") ? hr : `+${hr}`})`
-}
-
-function createFixedOffsetTimezone(offset: Temporal.Duration): Timezone {
-  const offsetMinutes = offset.total("minutes")
-  const value = getFixedOffsetTimeZoneId(offset)
-
-  return {
-    value,
-    label: value,
-    gmtString: formatGmtString(offsetMinutes),
-    offset,
-  }
-}
 
 function getLocalTimezone(): Timezone | undefined {
   const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -300,39 +253,33 @@ function getSavedTimezone(): Timezone | undefined {
   }
 
   try {
-    const parsedSavedTimezone = readSavedTimezone(storage)
-    if (!parsedSavedTimezone) {
-      return undefined
-    }
-
-    const savedTimezoneValue = resolveSavedTimezoneValue(
-      parsedSavedTimezone
-    )
-    if (!savedTimezoneValue) {
+    const savedTimezone = normalizeOptionalTimezone(readSavedTimezone(storage))
+    if (!savedTimezone) {
       return undefined
     }
 
     const matchedTimezone = timezones.value.find(
-      (timezone) => timezone.value === savedTimezoneValue
+      (timezone) => timezone.value === savedTimezone.value
     )
     if (matchedTimezone) {
       return matchedTimezone
     }
 
-    if (!savedTimezoneValue.startsWith("+") && !savedTimezoneValue.startsWith("-")) {
+    if (
+      !savedTimezone.value.startsWith("+") &&
+      !savedTimezone.value.startsWith("-")
+    ) {
       return undefined
     }
 
-    if (!parsedSavedTimezone.offset) {
-      return undefined
-    }
-
-    const offset = reviveSavedTimezoneOffset(parsedSavedTimezone.offset)
-    if (!offset) {
-      return undefined
-    }
-
-    return createFixedOffsetTimezone(offset)
+    return normalizeTimezone({
+      value: savedTimezone.value,
+      offset: savedTimezone.offset,
+      label: savedTimezone.label,
+      gmtString:
+        savedTimezone.gmtString ||
+        formatTimezoneGmtString(savedTimezone.offset.total("minutes")),
+    })
   } catch {
     return undefined
   }

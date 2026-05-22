@@ -6,7 +6,6 @@ import {
   getEventDateSeeds,
   getDateHoursOffset,
   getDateInTimezone,
-  getFixedOffsetTimeZoneId,
   getRenderedWeekStart,
   parseTemporalEpochKey,
   rangesOverlap,
@@ -229,7 +228,6 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
     const hours = Math.floor(startTime)
     const minutes = Math.floor((startTime - hours) * 60)
     const timeZone = opts.curTimezone.value.value
-      || getFixedOffsetTimeZoneId(opts.curTimezone.value.offset)
 
     return Temporal.ZonedDateTime.from({
       timeZone,

@@ -1,4 +1,4 @@
-import { durations, hoursPlainTime } from "@/constants"
+import { hoursPlainTime } from "@/constants"
 import type {
   EventDraft,
   SerializedEventDraft,
@@ -6,8 +6,8 @@ import type {
 } from "@/composables/event/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
 import {
-  getFixedOffsetTimeZoneId,
-  reviveSavedTimezoneOffset,
+  normalizeOptionalTimezone,
+  normalizeTimezone,
 } from "@/utils/timezone_utils"
 import { plainTimeToTimeNum, timeNumToPlainTime } from "@/utils"
 import { Temporal } from "temporal-polyfill"
@@ -38,24 +38,7 @@ function parseJsonRecord<T extends object>(value: unknown, fallback: T): T {
 export function normalizeRouteTimezone(
   rawTimezone: SerializedTimezone | undefined
 ): Timezone | undefined {
-  if (!rawTimezone) return undefined
-
-  const offset = reviveSavedTimezoneOffset(rawTimezone.offset)
-  const value =
-    typeof rawTimezone.value === "string" ? rawTimezone.value : undefined
-  const label =
-    typeof rawTimezone.label === "string" ? rawTimezone.label : undefined
-  const gmtString =
-    typeof rawTimezone.gmtString === "string" ? rawTimezone.gmtString : undefined
-
-  if (!value && !offset) return undefined
-
-  return {
-    value: value ?? (offset ? getFixedOffsetTimeZoneId(offset) : ""),
-    offset: offset ?? durations.ZERO,
-    label: label ?? value ?? "",
-    gmtString: gmtString ?? "",
-  }
+  return normalizeOptionalTimezone(rawTimezone)
 }
 
 export function serializeRouteTimezone(timezone: Timezone | undefined): string {
@@ -63,11 +46,13 @@ export function serializeRouteTimezone(timezone: Timezone | undefined): string {
     return JSON.stringify({})
   }
 
+  const normalizedTimezone = normalizeTimezone(timezone)
+
   return JSON.stringify({
-    value: timezone.value,
-    label: timezone.label,
-    gmtString: timezone.gmtString,
-    offset: timezone.offset.toString(),
+    value: normalizedTimezone.value,
+    label: normalizedTimezone.label,
+    gmtString: normalizedTimezone.gmtString,
+    offset: normalizedTimezone.offset.toString(),
   })
 }
 

@@ -308,7 +308,7 @@ describe("transport and timezone regression boundaries", () => {
     })
   })
 
-  it("rejects mixed encoded and Temporal route-draft input at the boundary", () => {
+  it("accepts already-revived timezone offsets through the shared draft boundary", () => {
     const draft = fromSerializedEventDraft({
       name: "Draft",
       startTime: Temporal.PlainTime.from("09:00") as never,
@@ -330,7 +330,7 @@ describe("transport and timezone regression boundaries", () => {
         value: "Asia/Kathmandu",
         label: "Kathmandu",
         gmtString: "GMT+5:45",
-        offset: Temporal.Duration.from("PT0S"),
+        offset: Temporal.Duration.from("PT5H45M"),
       },
     })
   })

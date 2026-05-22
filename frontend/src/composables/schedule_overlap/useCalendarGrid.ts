@@ -6,7 +6,6 @@ import {
   getEventDateSeeds,
   getDateInTimezone,
   getDateHoursOffset,
-  getFixedOffsetTimeZoneId,
   getRenderedWeekStart,
   getScheduleTimezoneOffset,
   getSpecificTimesDayStarts,
@@ -350,12 +349,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
   const allDays = computed<DayItem[]>(() => {
     const days: DayItem[] = []
     const datesSoFar = new ZdtSet()
-    const displayTimezoneOffset =
-      curTimezone.value.offset instanceof Temporal.Duration
-        ? curTimezone.value.offset
-        : durations.ZERO
-    const displayTimezoneId =
-      curTimezone.value.value || getFixedOffsetTimeZoneId(displayTimezoneOffset)
+    const displayTimezoneId = curTimezone.value.value
 
     const getDateString = (date: Temporal.ZonedDateTime) => {
       let dateString = ""

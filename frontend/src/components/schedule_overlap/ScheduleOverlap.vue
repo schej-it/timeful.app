@@ -49,6 +49,7 @@ import { Temporal } from "temporal-polyfill"
 import {
   post,
   ZdtSet,
+  normalizeTimezone,
 } from "@/utils"
 import {
   availabilityTypes, eventTypes, UTC, type AvailabilityType
@@ -142,7 +143,7 @@ const props = withDefaults(
     showHintText: true,
     curGuestId: "",
     addingAvailabilityAsGuest: false,
-    initialTimezone: () => ({} as Timezone),
+    initialTimezone: undefined,
     calendarAvailabilities: () => ({}),
   }
 )
@@ -174,7 +175,7 @@ const weekOffsetRef = computed(() => props.weekOffset)
 const guestNameKey = computed(() => `${String(props.event._id)}.guestName`)
 const guestName = computed<string | undefined>(() => (localStorage[guestNameKey.value] as string | undefined) ?? undefined)
 
-const curTimezone = ref<Timezone>(props.initialTimezone)
+const curTimezone = ref<Timezone>(normalizeTimezone(props.initialTimezone))
 const state = ref<ScheduleOverlapState>(states.BEST_TIMES)
 const showBestTimes = ref<boolean>(
   localStorage.showBestTimes === undefined

@@ -4,7 +4,6 @@ import {
   dateToDowDate,
   getDateInTimezone,
   getEventDateSeeds,
-  getFixedOffsetTimeZoneId,
   processEvent,
   getRenderedWeekStart,
   put,
@@ -182,10 +181,7 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
     const emailsString = encodeURIComponent(emails.filter(Boolean).join(","))
 
     const eventId = opts.event.value.shortId ?? opts.event.value._id ?? ""
-    const scheduleTimezoneId = encodeURIComponent(
-      opts.curTimezone.value.value ||
-        getFixedOffsetTimeZoneId(opts.curTimezone.value.offset)
-    )
+    const scheduleTimezoneId = encodeURIComponent(opts.curTimezone.value.value)
 
     let url: string
     if (googleCalendar) {
@@ -232,9 +228,7 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
     const { minHours, maxHours } = opts.getMinMaxHoursFromTimes(
       eventValue.times
     )
-    const scheduleTimezoneId =
-      opts.curTimezone.value.value ||
-      getFixedOffsetTimeZoneId(opts.curTimezone.value.offset)
+    const scheduleTimezoneId = opts.curTimezone.value.value
 
     const eventDateInstants = getEventDateSeeds(opts.event.value).map((zdt) => {
       const plainDate = getDateInTimezone(zdt, opts.curTimezone.value).toPlainDate()

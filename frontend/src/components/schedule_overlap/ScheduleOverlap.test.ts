@@ -41,6 +41,40 @@ describe("ScheduleOverlap", () => {
     expect(() => mountScheduleOverlap()).not.toThrow()
   })
 
+  it("normalizes a missing initialTimezone before building sidebar view models", () => {
+    const wrapper = mountScheduleOverlap({
+      global: {
+        stubs: {
+          ScheduleOverlapSidebar: {
+            name: "ScheduleOverlapSidebar",
+            props: {
+              sidebar: {
+                type: Object,
+                required: true,
+              },
+            },
+            template: "<div />",
+          },
+        },
+      },
+    })
+
+    const sidebarViewModel = wrapper.findComponent({ name: "ScheduleOverlapSidebar" })
+      .props("sidebar") as {
+      curTimezone: {
+        value: string
+        label: string
+        gmtString: string
+        offset: { total: (unit: string) => number }
+      }
+    }
+
+    expect(sidebarViewModel.curTimezone.value).toBe("+00:00")
+    expect(sidebarViewModel.curTimezone.label).toBe("+00:00")
+    expect(sidebarViewModel.curTimezone.gmtString).toBe("(GMT+0:00)")
+    expect(sidebarViewModel.curTimezone.offset.total("minutes")).toBe(0)
+  })
+
   it("renders the extracted timed grid child for timed events", () => {
     const wrapper = mountScheduleOverlap()
 
