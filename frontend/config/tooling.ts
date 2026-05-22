@@ -6,7 +6,7 @@ const frontendRootDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)
 const repoRootDir = path.dirname(frontendRootDir)
 
 type ToolingMode = string
-type RootEnvMode = "dev" | "prod"
+type RootEnvMode = "development" | "staging" | "production"
 
 interface LoadedRootEnv {
   env: Record<string, string>
@@ -93,8 +93,16 @@ function parseOptionalPort(rawValue: string | undefined, envName: string): numbe
   return port
 }
 
-function resolveRootEnvMode(mode: ToolingMode): RootEnvMode {
-  return mode === "prod" || mode === "production" ? "prod" : "dev"
+function normalizeRootEnvMode(mode: ToolingMode): RootEnvMode {
+  switch (mode.trim().toLowerCase()) {
+    case "staging":
+      return "staging"
+    case "production":
+      return "production"
+    case "development":
+    default:
+      return "development"
+  }
 }
 
 function readProcessEnv(): Record<string, string> {
@@ -104,7 +112,7 @@ function readProcessEnv(): Record<string, string> {
 }
 
 function loadRootEnv(mode: ToolingMode): LoadedRootEnv {
-  const rootEnvMode = resolveRootEnvMode(mode)
+  const rootEnvMode = normalizeRootEnvMode(mode)
   const filePath = path.join(repoRootDir, `.env.${rootEnvMode}`)
   const env = {
     ...loadEnv(rootEnvMode, repoRootDir, ""),
@@ -144,8 +152,7 @@ export function loadFrontendToolingEnv(mode: ToolingMode): FrontendToolingEnv {
 
 export function createFrontendDevServerConfig(mode: ToolingMode): FrontendDevServerConfig {
   const env = loadFrontendToolingEnv(mode)
-  const rootEnvMode = resolveRootEnvMode(mode)
-  const filePath = path.join(repoRootDir, `.env.${rootEnvMode}`)
+  const { filePath } = loadRootEnv(mode)
 
   return {
     host: requireNonEmpty(
@@ -181,8 +188,7 @@ export function createFrontendDevServerConfig(mode: ToolingMode): FrontendDevSer
 
 export function createFrontendPlaywrightConfig(mode: ToolingMode): FrontendPlaywrightConfig {
   const env = loadFrontendToolingEnv(mode)
-  const rootEnvMode = resolveRootEnvMode(mode)
-  const filePath = path.join(repoRootDir, `.env.${rootEnvMode}`)
+  const { filePath } = loadRootEnv(mode)
   const devHost = requireNonEmpty(
     env.devHost,
     "VITE_DEV_HOST",

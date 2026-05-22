@@ -9,11 +9,15 @@ export function getAppEnvironment(
 ): AppEnvironment {
   const value = env.VITE_APP_ENV?.trim().toLowerCase()
 
-  if (value === "staging" || value === "production") {
-    return value
+  switch (value) {
+    case "staging":
+      return "staging"
+    case "production":
+      return "production"
+    case "development":
+    default:
+      return "development"
   }
-
-  return "development"
 }
 
 export const appEnvironment = getAppEnvironment()

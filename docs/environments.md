@@ -2,9 +2,9 @@
 
 Timeful uses one root env file per environment:
 
-- `.env.dev` for local development
+- `.env.development` for local development
 - `.env.staging` for staging deployments and staging-style runs
-- `.env.prod` for production builds and production-style runs
+- `.env.production` for production builds and production-style runs
 
 The application-level deployment environment is defined separately from toolchain mode:
 
@@ -18,20 +18,20 @@ Normal deployments should keep `APP_ENV` and `VITE_APP_ENV` aligned.
 
 Shareable defaults live in:
 
-- `.env.dev.example`
+- `.env.development.example`
 - `.env.staging.example`
-- `.env.prod.example`
+- `.env.production.example`
 
 ## How the env files are used
 
-- Frontend dev tooling reads `.env.dev` through `frontend/config/tooling.ts`.
+- Frontend dev tooling reads `.env.development` through `frontend/config/tooling.ts`.
 - Frontend staging-style builds read `.env.staging`.
-- Frontend production builds and `vite preview` read `.env.prod`.
+- Frontend production builds and `vite preview` read `.env.production`.
 - Vite client env loading uses the repo root as `envDir`, so `import.meta.env.VITE_*` also comes from the same root file for the active mode.
 - Docker Compose reads the selected root env file through `--env-file`.
 - `frontend-artifacts` receives frontend build-time values from that same Compose env file.
 - `server` receives backend runtime variables from Compose interpolation based on that same file.
-- When the Go server is run directly, it prefers `.env.dev` for `APP_ENV=development`, `.env.staging` for `APP_ENV=staging`, and `.env.prod` for `APP_ENV=production`. `GIN_MODE` still controls Gin release/debug behavior, and `ENV_FILE=/path/to/file` overrides the lookup entirely.
+- When the Go server is run directly, it prefers `.env.development` for `APP_ENV=development`, `.env.staging` for `APP_ENV=staging`, and `.env.production` for `APP_ENV=production`. `GIN_MODE` still controls Gin release/debug behavior, and `ENV_FILE=/path/to/file` overrides the lookup entirely.
 
 `NODE_ENV` and Vite mode are toolchain concerns only. They no longer control application behavior.
 
@@ -108,15 +108,14 @@ Backend runtime variables:
 
 Deployment environment semantics:
 
-- `APP_ENV=development` defaults the Go server to port `3002`, prefers `.env.dev`, and defaults Gin to debug unless `GIN_MODE` overrides it.
+- `APP_ENV=development` defaults the Go server to port `3002`, prefers `.env.development`, and defaults Gin to debug unless `GIN_MODE` overrides it.
 - `APP_ENV=staging` defaults the Go server to port `3003`, prefers `.env.staging`, and defaults Gin to release unless `GIN_MODE` overrides it.
-- `APP_ENV=production` defaults the Go server to port `3002`, prefers `.env.prod`, and defaults Gin to release unless `GIN_MODE` overrides it.
+- `APP_ENV=production` defaults the Go server to port `3002`, prefers `.env.production`, and defaults Gin to release unless `GIN_MODE` overrides it.
 - `VITE_APP_ENV` is the frontend-facing mirror for browser-exposed environment-dependent behavior and should normally match `APP_ENV`.
 
 ## Precedence
 
-- For frontend tooling, shell variables override values from `.env.dev` or `.env.prod`.
-- For frontend tooling, shell variables override values from `.env.dev`, `.env.staging`, or `.env.prod`.
+- For frontend tooling, shell variables override values from `.env.development`, `.env.staging`, or `.env.production`.
 - For Compose commands, shell variables passed into `docker compose --env-file ...` override values from the selected env file during interpolation.
 - `ENV_FILE` has highest priority for direct backend runs because it explicitly selects which file the Go server should load.
 
@@ -125,8 +124,8 @@ Deployment environment semantics:
 Development:
 
 ```sh
-cp .env.dev.example .env.dev
-docker compose --env-file .env.dev -f compose.yaml -f compose.dev.yaml up --build mongo server
+cp .env.development.example .env.development
+docker compose --env-file .env.development -f compose.yaml -f compose.development.yaml up --build mongo server
 cd frontend
 npm run dev
 ```
@@ -141,7 +140,7 @@ docker compose --env-file .env.staging -f compose.yaml -f compose.staging.yaml u
 Production-style local build/preview:
 
 ```sh
-cp .env.prod.example .env.prod
+cp .env.production.example .env.production
 cd frontend
 npm run build
 npm run preview
@@ -150,6 +149,6 @@ npm run preview
 Production Docker Compose:
 
 ```sh
-cp .env.prod.example .env.prod
-docker compose --env-file .env.prod up -d --build
+cp .env.production.example .env.production
+docker compose --env-file .env.production up -d --build
 ```

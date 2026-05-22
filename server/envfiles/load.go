@@ -38,9 +38,9 @@ func defaultCandidates() []string {
 	case appenv.Staging:
 		return []string{".env.staging", "../.env.staging"}
 	case appenv.Production:
-		return []string{".env.prod", "../.env.prod"}
+		return []string{".env.production", "../.env.production"}
 	default:
-		return []string{".env.dev", "../.env.dev"}
+		return []string{".env.development", "../.env.development"}
 	}
 }
 
@@ -49,9 +49,9 @@ func MissingFileMessage() string {
 	case appenv.Staging:
 		return "No root env file found, continuing with process environment variables only (expected .env.staging)."
 	case appenv.Production:
-		return "No root env file found, continuing with process environment variables only (expected .env.prod)."
+		return "No root env file found, continuing with process environment variables only (expected .env.production)."
 	default:
-		return "No root env file found, continuing with process environment variables only (expected .env.dev)."
+		return "No root env file found, continuing with process environment variables only (expected .env.development)."
 	}
 }
 

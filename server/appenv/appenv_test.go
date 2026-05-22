@@ -13,7 +13,7 @@ func TestParse(t *testing.T) {
 		"staging":      Staging,
 		" StAgInG ":    Staging,
 		"production":   Production,
-		" Prod ":       Production,
+		" PRODUCTION ": Production,
 		"invalid":      Development,
 	}
 
@@ -44,7 +44,7 @@ func TestShouldUseReleaseMode(t *testing.T) {
 		{name: "staging defaults to release", env: Staging, expected: true},
 		{name: "production defaults to release", env: Production, expected: true},
 		{name: "release override wins in development", ginMode: "release", env: Development, expected: true},
-		{name: "production alias wins in development", ginMode: " production ", env: Development, expected: true},
+		{name: "production string wins in development", ginMode: " production ", env: Development, expected: true},
 		{name: "debug override wins in staging", ginMode: "debug", env: Staging, expected: false},
 		{name: "development override wins in production", ginMode: " DEVELOPMENT ", env: Production, expected: false},
 	}

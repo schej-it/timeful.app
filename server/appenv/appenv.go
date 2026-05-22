@@ -15,9 +15,11 @@ const (
 
 func Parse(value string) Environment {
 	switch strings.ToLower(strings.TrimSpace(value)) {
+	case string(Development):
+		return Development
 	case string(Staging):
 		return Staging
-	case "prod", string(Production):
+	case string(Production):
 		return Production
 	default:
 		return Development
@@ -34,9 +36,9 @@ func IsProductionLike(env Environment) bool {
 
 func ShouldUseReleaseMode(ginMode string, env Environment) bool {
 	switch strings.ToLower(strings.TrimSpace(ginMode)) {
-	case "debug", "dev", string(Development):
+	case "debug", string(Development):
 		return false
-	case "release", "prod", string(Production):
+	case "release", string(Production):
 		return true
 	default:
 		return IsProductionLike(env)

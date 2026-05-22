@@ -16,14 +16,14 @@ git clone https://github.com/schej-it/timeful.app
 cd timeful.app
 
 # 2. Create the root deployment environment file
-cp .env.prod.example .env.prod
+cp .env.production.example .env.production
 # Or for staging:
 # cp .env.staging.example .env.staging
 
 # Edit the selected env file with your values (see Configuration below)
 
 # 3. Build and start services
-docker compose --env-file .env.prod up -d --build
+docker compose --env-file .env.production up -d --build
 # Or for staging:
 # docker compose --env-file .env.staging -f compose.yaml -f compose.staging.yaml up -d --build
 
@@ -58,12 +58,12 @@ Edit `/etc/caddy/Caddyfile` with your domain before reloading.
 ## Commands
 
 ```bash
-docker compose --env-file .env.prod up -d              # Start services
-docker compose --env-file .env.prod logs -f            # View logs
-docker compose --env-file .env.prod logs -f server     # View specific service logs
-docker compose --env-file .env.prod up -d --build      # Rebuild after code changes
-docker compose --env-file .env.prod down               # Stop services
-docker compose --env-file .env.prod down -v            # Stop and remove volumes (deletes data!)
+docker compose --env-file .env.production up -d              # Start services
+docker compose --env-file .env.production logs -f            # View logs
+docker compose --env-file .env.production logs -f server     # View specific service logs
+docker compose --env-file .env.production up -d --build      # Rebuild after code changes
+docker compose --env-file .env.production down               # Stop services
+docker compose --env-file .env.production down -v            # Stop and remove volumes (deletes data!)
 ```
 
 Staging uses the same base commands with the staging env file and override:
@@ -80,28 +80,28 @@ Data is persisted in Docker volumes: `mongo_data`, `frontend_dist`, `server_logs
 
 ```bash
 # Backup MongoDB
-docker compose --env-file .env.prod exec mongo mongodump --db=schej-it --archive=/data/db/backup.archive
-docker compose --env-file .env.prod cp mongo:/data/db/backup.archive ./backup.archive
+docker compose --env-file .env.production exec mongo mongodump --db=schej-it --archive=/data/db/backup.archive
+docker compose --env-file .env.production cp mongo:/data/db/backup.archive ./backup.archive
 
 # Restore MongoDB
-docker compose --env-file .env.prod cp ./backup.archive mongo:/data/db/backup.archive
-docker compose --env-file .env.prod exec mongo mongorestore --drop --db=schej-it --archive=/data/db/backup.archive
+docker compose --env-file .env.production cp ./backup.archive mongo:/data/db/backup.archive
+docker compose --env-file .env.production exec mongo mongorestore --drop --db=schej-it --archive=/data/db/backup.archive
 ```
 
 ## Troubleshooting
 
 ```bash
 # Container won't start
-docker compose --env-file .env.prod logs server
-ls -la .env.prod
+docker compose --env-file .env.production logs server
+ls -la .env.production
 
 # MongoDB connection issues
-docker compose --env-file .env.prod ps
-docker compose --env-file .env.prod exec mongo mongosh --eval "db.adminCommand('ping')"
+docker compose --env-file .env.production ps
+docker compose --env-file .env.production exec mongo mongosh --eval "db.adminCommand('ping')"
 
 # Frontend not loading
-docker compose --env-file .env.prod logs frontend-artifacts
-docker compose --env-file .env.prod exec server ls -la /app/frontend/dist
+docker compose --env-file .env.production logs frontend-artifacts
+docker compose --env-file .env.production exec server ls -la /app/frontend/dist
 ```
 
 ---
@@ -110,7 +110,7 @@ docker compose --env-file .env.prod exec server ls -la /app/frontend/dist
 
 ### Required Environment Variables
 
-Create `.env.prod` from `.env.prod.example` for production, or `.env.staging` from `.env.staging.example` for staging.
+Create `.env.production` from `.env.production.example` for production, or `.env.staging` from `.env.staging.example` for staging.
 
 The selected root env file is the single source of truth for:
 
@@ -161,7 +161,7 @@ See `docs/environments.md` for the full contract and development commands.
 | `LISTMONK_*`                                 | Listmonk email service configuration         |
 | `DISCORD_BOT_TOKEN` / `GUILD_ID`             | Discord bot integration                      |
 
-See `.env.prod.example` and `.env.staging.example` for the complete lists.
+See `.env.production.example` and `.env.staging.example` for the complete lists.
 
 ### Google OAuth Setup
 
