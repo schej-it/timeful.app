@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 
 import { mount } from "@vue/test-utils"
-import { defineComponent, h } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { eventTypes } from "@/constants"
@@ -22,6 +21,15 @@ const baseEvent = {
   timeSeed: Temporal.Instant.from("2026-01-01T09:00:00Z").toZonedDateTimeISO("UTC"),
   daysOnly: false,
   hasSpecificTimes: false,
+}
+
+const buttonStub = {
+  inheritAttrs: false,
+  template: "<button v-bind=\"$attrs\"><slot /></button>",
+}
+
+const iconStub = {
+  template: "<span><slot /></span>",
 }
 
 function createTimeGridViewModel() {
@@ -314,19 +322,8 @@ describe("ScheduleOverlap grid drag bindings", () => {
         ...global,
         stubs: {
           ...global.stubs,
-          "v-btn": defineComponent({
-            name: "VBtnStub",
-            inheritAttrs: false,
-            setup(_, { attrs, slots }) {
-              return () => h("button", attrs, slots.default?.())
-            },
-          }),
-          "v-icon": defineComponent({
-            name: "VIconStub",
-            setup(_, { slots }) {
-              return () => h("span", slots.default?.())
-            },
-          }),
+          "v-btn": buttonStub,
+          "v-icon": iconStub,
         },
       },
     })

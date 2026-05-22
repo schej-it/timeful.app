@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { shallowMount } from "@vue/test-utils"
-import { computed, defineComponent, h, nextTick, ref } from "vue"
+import { computed, nextTick, ref } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { eventTypes, guestUserId } from "@/constants"
 import EventView from "./Event.vue"
@@ -44,6 +44,12 @@ const {
     },
   },
 }))
+
+const scheduleOverlapMethodMocks = {
+  scheduleEvent: vi.fn(),
+  cancelScheduleEvent: vi.fn(),
+  confirmScheduleEvent: vi.fn(),
+}
 
 vi.mock("vue-router", () => ({
   useRouter: () => ({
@@ -136,7 +142,7 @@ vi.mock("@/utils/services/UserService", () => ({
   fetchAuthUserProfile: vi.fn().mockResolvedValue(null),
 }))
 
-const ScheduleOverlapStub = defineComponent({
+const ScheduleOverlapStub = {
   name: "ScheduleOverlap",
   props: {
     event: {
@@ -145,8 +151,8 @@ const ScheduleOverlapStub = defineComponent({
       default: null,
     },
   },
-  setup(_, { expose }) {
-    expose({
+  data() {
+    return {
       selectedGuestRespondent: "khh",
       respondents: [{ _id: "khh", name: "khh" }],
       editing: false,
@@ -157,11 +163,49 @@ const ScheduleOverlapStub = defineComponent({
         SET_SPECIFIC_TIMES: "set_specific_times",
       },
       state: "heatmap",
-    })
-
-    return () => h("div")
+    }
   },
-})
+  methods: {
+    scheduleEvent: scheduleOverlapMethodMocks.scheduleEvent,
+    cancelScheduleEvent: scheduleOverlapMethodMocks.cancelScheduleEvent,
+    confirmScheduleEvent: scheduleOverlapMethodMocks.confirmScheduleEvent,
+    getAllValidTimeRanges() {
+      return []
+    },
+  },
+  template: "<div />",
+}
+
+const eventDescriptionCanEditStub = {
+  name: "EventDescriptionStub",
+  props: {
+    canEdit: { type: Boolean, required: true },
+  },
+  template: "<div :data-can-edit=\"String(canEdit)\" />",
+}
+
+const buttonClickStub = {
+  template: "<button @click=\"$emit('click', $event)\"><slot /></button>",
+}
+
+const buttonSemanticStub = {
+  inheritAttrs: false,
+  props: {
+    id: { type: String, default: "" },
+    variant: { type: String, default: "" },
+    color: { type: String, default: "" },
+  },
+  template: `
+    <button
+      v-bind="$attrs"
+      :id="id"
+      :data-variant="variant"
+      :data-color="color"
+    >
+      <slot />
+    </button>
+  `,
+}
 
 describe("Event guest edit action", () => {
   beforeEach(() => {
@@ -225,9 +269,7 @@ describe("Event guest edit action", () => {
           "v-card-actions": true,
           "v-dialog": true,
           "v-spacer": true,
-          "v-btn": {
-            template: "<button @click=\"$emit('click', $event)\"><slot /></button>",
-          },
+          "v-btn": buttonClickStub,
         },
       },
     })
@@ -328,28 +370,7 @@ describe("Event guest edit action", () => {
           "v-card-actions": true,
           "v-dialog": true,
           "v-spacer": true,
-          "v-btn": defineComponent({
-            name: "VBtnStub",
-            inheritAttrs: false,
-            props: {
-              id: { type: String, default: "" },
-              variant: { type: String, default: "" },
-              color: { type: String, default: "" },
-            },
-            setup(props, { slots, attrs }) {
-              return () =>
-                h(
-                  "button",
-                  {
-                    ...attrs,
-                    id: props.id,
-                    "data-variant": props.variant,
-                    "data-color": props.color,
-                  },
-                  slots.default?.()
-                )
-            },
-          }),
+          "v-btn": buttonSemanticStub,
         },
       },
     })
@@ -368,16 +389,6 @@ describe("Event guest edit action", () => {
       ownerId: guestUserId,
     }
 
-    const EventDescriptionStub = defineComponent({
-      name: "EventDescriptionStub",
-      props: {
-        canEdit: { type: Boolean, required: true },
-      },
-      setup(props) {
-        return () => h("div", { "data-can-edit": String(props.canEdit) })
-      },
-    })
-
     const wrapper = shallowMount(EventView, {
       props: {
         eventId: "dEeaF",
@@ -392,7 +403,7 @@ describe("Event guest edit action", () => {
           MarkAvailabilityDialog: true,
           InvitationDialog: true,
           HelpDialog: true,
-          EventDescription: EventDescriptionStub,
+          EventDescription: eventDescriptionCanEditStub,
           FormerlyKnownAs: true,
           AsyncPubliftAd: true,
           AccessDenied: true,
@@ -406,28 +417,7 @@ describe("Event guest edit action", () => {
           "v-card-actions": true,
           "v-dialog": true,
           "v-spacer": true,
-          "v-btn": defineComponent({
-            name: "VBtnStub",
-            inheritAttrs: false,
-            props: {
-              id: { type: String, default: "" },
-              variant: { type: String, default: "" },
-              color: { type: String, default: "" },
-            },
-            setup(props, { slots, attrs }) {
-              return () =>
-                h(
-                  "button",
-                  {
-                    ...attrs,
-                    id: props.id,
-                    "data-variant": props.variant,
-                    "data-color": props.color,
-                  },
-                  slots.default?.()
-                )
-            },
-          }),
+          "v-btn": buttonSemanticStub,
         },
       },
     })
@@ -444,16 +434,6 @@ describe("Event guest edit action", () => {
       ownerId: "",
     }
 
-    const EventDescriptionStub = defineComponent({
-      name: "EventDescriptionStub",
-      props: {
-        canEdit: { type: Boolean, required: true },
-      },
-      setup(props) {
-        return () => h("div", { "data-can-edit": String(props.canEdit) })
-      },
-    })
-
     const wrapper = shallowMount(EventView, {
       props: {
         eventId: "dEeaF",
@@ -468,7 +448,7 @@ describe("Event guest edit action", () => {
           MarkAvailabilityDialog: true,
           InvitationDialog: true,
           HelpDialog: true,
-          EventDescription: EventDescriptionStub,
+          EventDescription: eventDescriptionCanEditStub,
           FormerlyKnownAs: true,
           AsyncPubliftAd: true,
           AccessDenied: true,

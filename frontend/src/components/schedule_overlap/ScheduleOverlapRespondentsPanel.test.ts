@@ -1,86 +1,46 @@
 // @vitest-environment happy-dom
 
-import { describe, expect, it, vi } from "vitest"
-import { mount } from "@vue/test-utils"
-import { defineComponent } from "vue"
+import { describe, expect, it } from "vitest"
+import { shallowMount } from "@vue/test-utils"
 import ScheduleOverlapRespondentsPanel from "./ScheduleOverlapRespondentsPanel.vue"
 import { buildRespondentsPanelViewModel } from "./scheduleOverlapTestUtils"
 
 describe("ScheduleOverlapRespondentsPanel", () => {
   it("forwards respondent-list events through the presentational boundary", async () => {
-    const handleMouseOverRespondent = vi.fn()
-    const wrapper = mount(
-      defineComponent({
-        components: {
-          ScheduleOverlapRespondentsPanel,
-        },
-        data: () => ({
-          panel: buildRespondentsPanelViewModel(),
-        }),
-        methods: {
-          handleMouseOverRespondent,
-        },
-        template: `
-          <ScheduleOverlapRespondentsPanel
-            :panel="panel"
-            @mouse-over-respondent="handleMouseOverRespondent"
-          />
-        `,
-      }),
-      {
-        global: {
-          stubs: {
-            RespondentsList: {
-              name: "RespondentsList",
-              emits: ["mouseOverRespondent"],
-              template: "<button @click=\"$emit('mouseOverRespondent', $event, 'user-1')\" />",
-            },
+    const wrapper = shallowMount(ScheduleOverlapRespondentsPanel, {
+      props: {
+        panel: buildRespondentsPanelViewModel(),
+      },
+      global: {
+        stubs: {
+          RespondentsList: {
+            template: "<button id=\"respondent-list\" @click=\"$emit('mouseOverRespondent', 'evt', 'user-1')\" />",
           },
         },
       },
-    )
+    })
 
-    await wrapper.find("button").trigger("click")
+    await wrapper.get("#respondent-list").trigger("click")
 
-    expect(handleMouseOverRespondent).toHaveBeenCalledTimes(1)
-    expect(handleMouseOverRespondent.mock.calls[0]?.[1]).toBe("user-1")
+    expect(wrapper.emitted("mouseOverRespondent")).toEqual([["evt", "user-1"]])
   })
 
   it("forwards Options toggles through the presentational boundary", async () => {
-    const handleToggleShowEventOptions = vi.fn()
-    const wrapper = mount(
-      defineComponent({
-        components: {
-          ScheduleOverlapRespondentsPanel,
-        },
-        data: () => ({
-          panel: buildRespondentsPanelViewModel(),
-        }),
-        methods: {
-          handleToggleShowEventOptions,
-        },
-        template: `
-          <ScheduleOverlapRespondentsPanel
-            :panel="panel"
-            @toggle-show-event-options="handleToggleShowEventOptions"
-          />
-        `,
-      }),
-      {
-        global: {
-          stubs: {
-            RespondentsList: {
-              name: "RespondentsList",
-              emits: ["toggleShowEventOptions"],
-              template: "<button @click=\"$emit('toggleShowEventOptions')\" />",
-            },
+    const wrapper = shallowMount(ScheduleOverlapRespondentsPanel, {
+      props: {
+        panel: buildRespondentsPanelViewModel(),
+      },
+      global: {
+        stubs: {
+          RespondentsList: {
+            template: "<button id=\"event-options-toggle\" @click=\"$emit('toggleShowEventOptions')\" />",
           },
         },
       },
-    )
+    })
 
-    await wrapper.find("button").trigger("click")
+    await wrapper.get("#event-options-toggle").trigger("click")
 
-    expect(handleToggleShowEventOptions).toHaveBeenCalledTimes(1)
+    expect(wrapper.emitted("toggleShowEventOptions")).toEqual([[]])
   })
 })
