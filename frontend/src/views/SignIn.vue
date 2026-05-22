@@ -273,7 +273,7 @@ const mainStore = useMainStore()
 
 defineOptions({ name: 'AppSignIn' })
 
-const isSignUp = ref(props.initialIsSignUp)
+const isSignUp = computed(() => props.initialIsSignUp)
 const step = ref("select")
 const email = ref("")
 const firstName = ref("")

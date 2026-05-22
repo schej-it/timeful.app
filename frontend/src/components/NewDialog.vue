@@ -131,7 +131,12 @@ const mainStore = useMainStore()
 const { groupsEnabled, signUpFormEnabled } = storeToRefs(mainStore)
 const { isPhone } = useDisplayHelpers()
 
-const dialogOpen = ref(props.modelValue)
+const dialogOpen = computed({
+  get: () => props.modelValue,
+  set: (value: boolean) => {
+    emit("update:modelValue", value)
+  },
+})
 const tab = ref<TabType>(props.type)
 const tabs = ref<{ title: string; type: TabType }[]>([
   { title: "Event", type: "event" },
@@ -166,7 +171,6 @@ const handleDialogInput = () => {
 }
 const exitDialog = () => {
   dialogOpen.value = false
-  emit("update:modelValue", false)
   const current = refsByTab.value[tab.value]
   if (props.edit) current?.resetToEventData()
   else current?.reset()
@@ -203,7 +207,6 @@ watch(
 watch(
   () => props.modelValue,
   (val) => {
-    dialogOpen.value = val
     if (val) {
       tab.value = props.type
     }
@@ -211,18 +214,11 @@ watch(
   { immediate: true }
 )
 watch(
-  dialogOpen,
-  (val) => {
-    if (val !== props.modelValue) {
-      emit("update:modelValue", val)
-    }
-  }
-)
-watch(
   () => props.type,
   (t) => {
-    tab.value = t
+    if (props.modelValue) {
+      tab.value = t
+    }
   },
-  { immediate: true }
 )
 </script>

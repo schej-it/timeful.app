@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { shallowMount } from "@vue/test-utils"
+import { mount, shallowMount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
 import { eventTypes } from "@/constants"
 import EventDescription from "./EventDescription.vue"
@@ -103,5 +103,94 @@ describe("EventDescription", () => {
     expect(eventDescriptionSource).toContain(
       'class="event-description-copy event-description-editor-field tw-min-h-6 tw-border-0 tw-border-b tw-border-solid tw-bg-transparent tw-outline-none"'
     )
+  })
+
+  it("seeds the editor from the latest prop description when editing begins", async () => {
+    const wrapper = mount(EventDescription, {
+      props: {
+        event: {
+          ...baseEvent,
+          description: "First description",
+        },
+        canEdit: true,
+      },
+      attachTo: document.body,
+      global: {
+        stubs: {
+          "v-btn": VBtnStub,
+          "v-icon": true,
+        },
+      },
+    })
+
+    await wrapper.setProps({
+      event: {
+        ...baseEvent,
+        description: "Updated description",
+      },
+    })
+    await wrapper.get(".event-description-edit-button").trigger("click")
+
+    expect(wrapper.get('[role="textbox"]').element.textContent).toBe(
+      "Updated description"
+    )
+  })
+
+  it("discards draft edits when editing is canceled", async () => {
+    const wrapper = mount(EventDescription, {
+      props: {
+        event: {
+          ...baseEvent,
+          description: "Original description",
+        },
+        canEdit: true,
+      },
+      attachTo: document.body,
+      global: {
+        stubs: {
+          "v-btn": VBtnStub,
+          "v-icon": true,
+        },
+      },
+    })
+
+    await wrapper.get(".event-description-edit-button").trigger("click")
+
+    const editor = wrapper.get('[role="textbox"]')
+    editor.element.textContent = "Draft description"
+    await editor.trigger("input")
+    await wrapper.get(".event-description-cancel-button").trigger("click")
+    await wrapper.get(".event-description-edit-button").trigger("click")
+
+    expect(wrapper.get('[role="textbox"]').element.textContent).toBe(
+      "Original description"
+    )
+  })
+
+  it("reflects prop description updates while not editing", async () => {
+    const wrapper = shallowMount(EventDescription, {
+      props: {
+        event: {
+          ...baseEvent,
+          description: "Before update",
+        },
+        canEdit: true,
+      },
+      global: {
+        stubs: {
+          "v-btn": VBtnStub,
+          "v-icon": true,
+        },
+      },
+    })
+
+    await wrapper.setProps({
+      event: {
+        ...baseEvent,
+        description: "After update",
+      },
+    })
+
+    expect(wrapper.text()).toContain("After update")
   })
 })

@@ -115,3 +115,60 @@ describe("SignIn auth restore state", () => {
     expect(signInOutlookMock).not.toHaveBeenCalled()
   })
 })
+
+describe("SignIn mode copy", () => {
+  beforeEach(() => {
+    routeState.query = {}
+  })
+
+  it("renders sign-up copy when the route provides initial sign-up mode", () => {
+    const wrapper = shallowMount(SignIn, {
+      props: {
+        initialIsSignUp: true,
+      },
+      global: {
+        stubs: {
+          "router-link": true,
+          "v-card": { template: "<div><slot /></div>" },
+          "v-card-title": { template: "<div><slot /></div>" },
+          "v-card-text": { template: "<div><slot /></div>" },
+          "v-spacer": true,
+          "v-divider": true,
+          "v-img": true,
+          "v-text-field": true,
+          "v-icon": true,
+          "v-btn": {
+            template: "<button><slot /></button>",
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain("Create an account")
+    expect(wrapper.text()).toContain("Sign up to get started")
+  })
+
+  it("renders sign-in copy by default", () => {
+    const wrapper = shallowMount(SignIn, {
+      global: {
+        stubs: {
+          "router-link": true,
+          "v-card": { template: "<div><slot /></div>" },
+          "v-card-title": { template: "<div><slot /></div>" },
+          "v-card-text": { template: "<div><slot /></div>" },
+          "v-spacer": true,
+          "v-divider": true,
+          "v-img": true,
+          "v-text-field": true,
+          "v-icon": true,
+          "v-btn": {
+            template: "<button><slot /></button>",
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain("Welcome back")
+    expect(wrapper.text()).toContain("Sign in to your account")
+  })
+})

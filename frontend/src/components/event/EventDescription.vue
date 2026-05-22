@@ -23,7 +23,7 @@
           icon
           variant="text"
           size="small"
-          @click="isEditing = true"
+          @click="beginEditing"
         >
           <v-icon size="24">mdi-pencil</v-icon>
         </v-btn>
@@ -34,7 +34,7 @@
       v-else-if="canEdit && !isEditing"
       variant="text"
       class="-tw-ml-2 tw-mt-0 tw-w-min tw-px-2 tw-text-dark-gray"
-      @click="isEditing = true"
+      @click="beginEditing"
     >
       + Add description
     </v-btn>
@@ -99,7 +99,7 @@ const emit = defineEmits<{
 const mainStore = useMainStore()
 
 const isEditing = ref(false)
-const newDescription = ref(props.event.description ?? "")
+const draftDescription = ref("")
 const descriptionEditor = ref<HTMLDivElement | null>(null)
 const descriptionPlaceholder = "Enter a description..."
 
@@ -120,7 +120,12 @@ const syncEditorContent = (value: string) => {
 }
 
 const syncDraftDescription = () => {
-  newDescription.value = descriptionEditor.value?.textContent ?? ""
+  draftDescription.value = descriptionEditor.value?.textContent ?? ""
+}
+
+const beginEditing = () => {
+  draftDescription.value = props.event.description ?? ""
+  isEditing.value = true
 }
 
 watch(isEditing, async (editing) => {
@@ -129,23 +134,23 @@ watch(isEditing, async (editing) => {
   }
 
   await nextTick()
-  syncEditorContent(newDescription.value)
+  syncEditorContent(draftDescription.value)
   descriptionEditor.value?.focus()
 })
 
-watch(newDescription, (value) => {
+watch(draftDescription, (value) => {
   syncEditorContent(value)
 })
 
 const saveDescription = () => {
   const oldEvent = { ...props.event }
-  const newEvent = { ...props.event, description: newDescription.value }
+  const newEvent = { ...props.event, description: draftDescription.value }
 
   const eventPayload = toEventPatchPayload({
     name: props.event.name,
     duration: props.event.duration,
     type: props.event.type,
-    description: newDescription.value,
+    description: draftDescription.value,
     dates: props.event.dates,
     timeSeed: props.event.timeSeed,
   })
@@ -162,7 +167,6 @@ const saveDescription = () => {
 }
 
 const cancelEditing = () => {
-  newDescription.value = props.event.description ?? ""
   isEditing.value = false
 }
 </script>
