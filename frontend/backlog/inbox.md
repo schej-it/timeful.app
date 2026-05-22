@@ -15,7 +15,8 @@ Semi-structured TODO list
 - [ ] use clean layout-based fixes
 - [ ] avoid !important
 - [ ] make a design system
-- [ ] use `.env.example` instead of `.env.template`
+- [x] use `.env.example` instead of `.env.template`
+  - We use `.env.development.example` and `.env.production.example`
 - [ ] why is the button not blocked when none of the dates is selected
 - [ ] doesn't show time on hover after clicking and moving the cursor - <http://127.0.0.1:4173/e/dEeaF>
 - [ ] In Firefox, when not editing, after I click inside the grid, then release, then move cursor within the grid, the selection doesn't follow like it does if I don't click first and just move the cursor within the grid. Why so?
@@ -32,3 +33,19 @@ Semi-structured TODO list
 - [ ] replace the Create event button on the main page with the actual form
 - [ ] load all routes lazily
 - [ ] on the event page, near "shown in", the underline colors for the timezone and time should be the same
+- [x] move adr to the repo root
+  - [ ] No, keep adr for frontend inside frontend
+- [ ] adr - add README that explains the ADR format
+  - [ ] Add "Scope" - frontend, backend?
+- [ ] adr - backend handles only particular paths for initial HTML with essential metadata
+  - [ ] Scope: frontend, backend
+- [ ] use the same node for frontend in dockerfile and in dev
+- [ ] move hardcoded values to env vars in compose
+- [ ] rename PR to Modernize the project
+  - [ ] Frontend - migrate
+  - [ ] Backend - reduce the responsibilities w.r.t serving static assets
+  - [ ] Infra - harden dockerfiles, use a single env file for each environment
+- [ ] Check whether NODE_ENV and GIN_MODE are in the example .env files
+- [ ] introduce staging environment
+- [ ] make more functions for business logic pure
+- [ ] use full "development" instead of "dev" and "production" instead of "prod"
