@@ -223,8 +223,7 @@ function handleUpgradeDialogInput(value: boolean) {
   if (!value) mainStore.hideUpgradeDialog()
 }
 
-// created() equivalent
-void (async () => {
+async function bootstrapApp() {
   await fetchAuthUserProfile()
     .then((u) => {
       mainStore.setAuthUser(u)
@@ -243,10 +242,10 @@ void (async () => {
 
   window.addEventListener("scroll", handleScroll)
   void mainStore.getEvents()
-})()
+}
 
 onMounted(() => {
-  // scrollY initialised in handleScroll
+  void bootstrapApp()
 })
 
 onBeforeUnmount(() => {

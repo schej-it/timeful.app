@@ -1180,16 +1180,11 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
   }
 }
 
-// Initialization — equivalent to created()
-void (async () => {
+async function bootstrapEvent() {
   logEventBoot("EventView", "bootstrap:start", {
     eventId: props.eventId,
     routeName: String(route.name ?? ""),
   })
-  window.addEventListener("beforeunload", onBeforeUnload)
-  window.addEventListener("message", handleMessage)
-  // for dev:
-  // window.addEventListener("message", _interceptPluginResponses)
 
   try {
     await loader.refreshEvent()
@@ -1235,7 +1230,7 @@ void (async () => {
   }
 
   logEventBoot("EventView", "bootstrap:done")
-})()
+}
 
 onBeforeUnmount(() => {
   window.removeEventListener("beforeunload", onBeforeUnload)
@@ -1246,10 +1241,15 @@ onBeforeUnmount(() => {
 
 onMounted(() => {
   logEventBoot("EventView", "onMounted")
+  window.addEventListener("beforeunload", onBeforeUnload)
+  window.addEventListener("message", handleMessage)
+  // for dev:
+  // window.addEventListener("message", _interceptPluginResponses)
   editEventDialog.value = hasEventDraftData(props.contactsPayload)
   if (props.linkApple) choiceDialog.value = true
   queueScheduleOverlapMount()
   queueSecondaryBootWork()
+  void bootstrapEvent()
 })
 
 watch(loader.event, (ev) => {

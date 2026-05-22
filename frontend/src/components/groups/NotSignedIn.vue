@@ -47,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue"
+import { onMounted, ref } from "vue"
 import { useRoute } from "vue-router"
 import { signInGoogle } from "@/utils"
 import { authTypes } from "@/constants"
@@ -107,9 +107,13 @@ const signIn = () => {
   })
 }
 
-void (async () => {
+async function loadOwner() {
   const ownerId = getRealOwnerId(props.event)
   if (ownerId) owner.value = await fetchUserById(ownerId)
   loaded.value = true
-})()
+}
+
+onMounted(() => {
+  void loadOwner()
+})
 </script>

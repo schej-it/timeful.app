@@ -1,6 +1,7 @@
 <template><span></span></template>
 
 <script setup lang="ts">
+import { onMounted } from "vue"
 import { useRouter, useRoute } from "vue-router"
 import { storeToRefs } from "pinia"
 import { post, getEventsCreated, deleteEventsCreated } from "@/utils"
@@ -45,7 +46,7 @@ const route = useRoute()
 const mainStore = useMainStore()
 const { authUser } = storeToRefs(mainStore)
 
-void (async () => {
+async function resolveAuthRedirect() {
   let { error, code, scope, state: rawState } = route.query
   if (error) void router.replace({ name: "home" })
 
@@ -216,5 +217,9 @@ void (async () => {
   } catch (err) {
     console.error(err)
   }
-})()
+}
+
+onMounted(() => {
+  void resolveAuthRedirect()
+})
 </script>

@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue"
+import { ref, computed, onMounted } from "vue"
 import { useRouter } from "vue-router"
 import { storeToRefs } from "pinia"
 import Event from "./Event.vue"
@@ -61,7 +61,7 @@ const accessDenied = computed(() => {
   return !found
 })
 
-void (async () => {
+async function loadEvent() {
   try {
     event.value = await fetchEventById(props.groupId)
 
@@ -86,5 +86,9 @@ void (async () => {
         return
     }
   }
-})()
+}
+
+onMounted(() => {
+  void loadEvent()
+})
 </script>

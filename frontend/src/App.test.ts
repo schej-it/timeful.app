@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { shallowMount } from "@vue/test-utils"
+import { flushPromises, shallowMount } from "@vue/test-utils"
 import { ref } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type * as UtilsModule from "@/utils"
@@ -15,6 +15,9 @@ const {
   routeState,
   routerPushMock,
   routerReplaceMock,
+  setAuthUserMock,
+  getEventsMock,
+  setFeatureFlagsLoadedMock,
 } = vi.hoisted(() => ({
   signInGoogleMock: vi.fn(),
   signInOutlookMock: vi.fn(),
@@ -28,6 +31,9 @@ const {
   },
   routerPushMock: vi.fn(),
   routerReplaceMock: vi.fn(),
+  setAuthUserMock: vi.fn(),
+  getEventsMock: vi.fn(),
+  setFeatureFlagsLoadedMock: vi.fn(),
 }))
 
 vi.mock("@/utils", async () => {
@@ -85,11 +91,11 @@ vi.mock("@/stores/main", () => {
         folderId: null,
       }),
       isPremiumUser: ref(false),
-      setAuthUser: vi.fn(),
-      setFeatureFlagsLoaded: vi.fn(),
+      setAuthUser: setAuthUserMock,
+      setFeatureFlagsLoaded: setFeatureFlagsLoadedMock,
       hideUpgradeDialog: vi.fn(),
       createNew: vi.fn(),
-      getEvents: vi.fn(),
+      getEvents: getEventsMock,
     }),
   }
 })
@@ -225,5 +231,46 @@ describe("App auth restore state", () => {
         }),
       },
     })
+  })
+
+  it("bootstraps auth and scroll listeners on mount and cleans them up on unmount", async () => {
+    const addEventListenerSpy = vi.spyOn(window, "addEventListener")
+    const removeEventListenerSpy = vi.spyOn(window, "removeEventListener")
+
+    const wrapper = shallowMount(App, {
+      global: {
+        mocks: {
+          $route: routeState,
+        },
+        stubs: {
+          SignInDialog: true,
+          DiscordBanner: true,
+          AutoSnackbar: true,
+          SignInNotSupportedDialog: true,
+          NewDialog: true,
+          UpgradeDialog: true,
+          UpvoteRedditSnackbar: true,
+          Logo: true,
+          AuthUserMenu: true,
+          "router-link": true,
+          "router-view": true,
+          "v-app": { template: "<div><slot /></div>" },
+          "v-main": { template: "<div><slot /></div>" },
+          "v-btn": { template: "<button><slot /></button>" },
+          "v-expand-x-transition": { template: "<div><slot /></div>" },
+          "v-spacer": true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(getMock).toHaveBeenCalled()
+    expect(getEventsMock).toHaveBeenCalled()
+    expect(addEventListenerSpy).toHaveBeenCalledWith("scroll", expect.any(Function))
+
+    wrapper.unmount()
+
+    expect(removeEventListenerSpy).toHaveBeenCalledWith("scroll", expect.any(Function))
   })
 })

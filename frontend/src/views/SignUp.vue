@@ -11,7 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue"
+import { onMounted, ref } from "vue"
 import { useRouter } from "vue-router"
 import Event from "./Event.vue"
 import { errors, eventTypes } from "@/constants"
@@ -37,7 +37,7 @@ const mainStore = useMainStore()
 
 const event = ref<EventType | null>(null)
 
-void (async () => {
+async function loadEvent() {
   try {
     event.value = await fetchEventById(props.signUpId)
 
@@ -78,5 +78,9 @@ void (async () => {
         return
     }
   }
-})()
+}
+
+onMounted(() => {
+  void loadEvent()
+})
 </script>

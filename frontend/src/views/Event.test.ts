@@ -10,9 +10,17 @@ const {
   editGuestAvailabilityMock,
   authUserState,
   loaderEventState,
+  refreshEventMock,
+  checkOwnerPremiumMock,
+  fetchCalendarAvailabilitiesMock,
+  fetchAuthUserCalendarEventsMock,
 } = vi.hoisted(() => ({
   editGuestAvailabilityMock: vi.fn(),
   authUserState: { value: null as null | { _id: string } },
+  refreshEventMock: vi.fn().mockResolvedValue(undefined),
+  checkOwnerPremiumMock: vi.fn().mockResolvedValue(undefined),
+  fetchCalendarAvailabilitiesMock: vi.fn().mockResolvedValue(undefined),
+  fetchAuthUserCalendarEventsMock: vi.fn().mockResolvedValue(undefined),
   loaderEventState: {
     value: {
       _id: "evt-1",
@@ -78,10 +86,11 @@ vi.mock("@/composables/event/useEventLoader", () => ({
     calendarPermissionGranted: ref(false),
     fromEditEvent: ref(false),
     ownerPremiumChecked: ref(true),
-    refreshEvent: vi.fn().mockResolvedValue(undefined),
+    refreshEvent: refreshEventMock,
     refreshCalendar: vi.fn().mockResolvedValue(undefined),
-    fetchCalendarAvailabilities: vi.fn().mockResolvedValue(undefined),
-    fetchAuthUserCalendarEvents: vi.fn().mockResolvedValue(undefined),
+    fetchCalendarAvailabilities: fetchCalendarAvailabilitiesMock,
+    fetchAuthUserCalendarEvents: fetchAuthUserCalendarEventsMock,
+    checkOwnerPremium: checkOwnerPremiumMock,
   }),
 }))
 
@@ -482,5 +491,56 @@ describe("Event guest edit action", () => {
 
     expect(wrapper.find("#edit-event-btn").exists()).toBe(true)
     expect(wrapper.find('[data-can-edit="true"]').exists()).toBe(true)
+  })
+
+  it("owns global listeners from mount through unmount and runs bootstrap on mount", async () => {
+    const addEventListenerSpy = vi.spyOn(window, "addEventListener")
+    const removeEventListenerSpy = vi.spyOn(window, "removeEventListener")
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": true,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+    await Promise.resolve()
+
+    expect(refreshEventMock).toHaveBeenCalled()
+    expect(checkOwnerPremiumMock).toHaveBeenCalled()
+    expect(addEventListenerSpy).toHaveBeenCalledWith("beforeunload", expect.any(Function))
+    expect(addEventListenerSpy).toHaveBeenCalledWith("message", expect.any(Function))
+
+    wrapper.unmount()
+
+    expect(removeEventListenerSpy).toHaveBeenCalledWith("beforeunload", expect.any(Function))
+    expect(removeEventListenerSpy).toHaveBeenCalledWith("message", expect.any(Function))
   })
 })
