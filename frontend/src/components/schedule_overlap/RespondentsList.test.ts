@@ -276,6 +276,7 @@ describe("RespondentsList", () => {
 
   it("uses explicit Vuetify 3 select and list props for export actions", () => {
     expect(respondentsListSource).toContain('<v-list class="tw-py-1" density="compact">')
+    expect(respondentsListSource).toContain('class="timeful-solo-field"')
     expect(respondentsListSource).toContain('variant="solo"')
     expect(respondentsListSource).toContain('item-title="text"')
     expect(respondentsListSource).toContain('item-value="value"')

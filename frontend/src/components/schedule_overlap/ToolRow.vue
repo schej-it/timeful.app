@@ -155,7 +155,7 @@
             <template #activator="{ props: activatorProps }">
               <v-btn
                 :disabled="!toolRow.allowScheduleEvent"
-                class="tw-bg-blue tw-text-white"
+                class="timeful-elevated-button tw-bg-blue tw-text-white"
                 v-bind="activatorProps"
               >
                 Schedule

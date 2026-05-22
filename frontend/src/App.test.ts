@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import type * as UtilsModule from "@/utils"
 import { authTypes } from "@/constants"
 import App from "./App.vue"
+import appSource from "./App.vue?raw"
 
 const {
   signInGoogleMock,
@@ -272,5 +273,9 @@ describe("App auth restore state", () => {
     wrapper.unmount()
 
     expect(removeEventListenerSpy).toHaveBeenCalledWith("scroll", expect.any(Function))
+  })
+
+  it("does not retain the legacy global selection-control reset", () => {
+    expect(appSource).not.toContain(".v-input--selection-controls")
   })
 })

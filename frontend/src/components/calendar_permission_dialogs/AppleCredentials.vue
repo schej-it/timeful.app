@@ -37,12 +37,14 @@
     <div class="tw-flex tw-flex-col tw-gap-3">
       <v-text-field
         v-model="email"
+        class="timeful-solo-field"
         variant="solo"
         placeholder="Apple ID"
         hide-details
       />
       <v-text-field
         v-model="password"
+        class="timeful-solo-field"
         variant="solo"
         placeholder="App password"
         hide-details
@@ -53,7 +55,7 @@
         <v-btn
           :disabled="!enableSubmit"
           color="primary"
-          class="tw-grow"
+          class="timeful-elevated-button tw-grow"
           :loading="loading"
           @click="submit"
           >Submit</v-btn

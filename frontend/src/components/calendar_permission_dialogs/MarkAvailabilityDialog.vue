@@ -16,7 +16,7 @@
             You can always manually edit after autofilling
           </div>
           <div class="tw-flex tw-flex-col tw-gap-2">
-            <v-btn block class="tw-bg-white" @click="autofillWithGcal">
+            <v-btn block class="timeful-elevated-button tw-bg-white" @click="autofillWithGcal">
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
                   class="tw-flex-initial"
@@ -29,7 +29,7 @@
                 <v-spacer />
               </div>
             </v-btn>
-            <v-btn block class="tw-bg-white" @click="autofillWithApple">
+            <v-btn block class="timeful-elevated-button tw-bg-white" @click="autofillWithApple">
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
                   class="tw-flex-initial"
@@ -42,7 +42,7 @@
                 <v-spacer />
               </div>
             </v-btn>
-            <v-btn block class="tw-bg-white" @click="autofillWithOutlook">
+            <v-btn block class="timeful-elevated-button tw-bg-white" @click="autofillWithOutlook">
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
                   class="tw-flex-initial"
@@ -55,7 +55,7 @@
                 <v-spacer />
               </div>
             </v-btn>
-            <v-btn block class="tw-bg-white" @click="autofillWithICS">
+            <v-btn block class="timeful-elevated-button tw-bg-white" @click="autofillWithICS">
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-icon class="tw-flex-initial" size="20">
                   mdi-calendar-sync
@@ -74,7 +74,7 @@
               </div>
               <v-divider />
             </div>
-            <v-btn block @click="setAvailabilityManually">Manually</v-btn>
+            <v-btn block class="timeful-elevated-button" @click="setAvailabilityManually">Manually</v-btn>
           </div>
         </div>
       </v-expand-transition>

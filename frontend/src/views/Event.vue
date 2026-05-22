@@ -229,7 +229,7 @@
                     <v-btn
                       v-if="!isGroup && !authUser && selectedGuestRespondent"
                       min-width="10.25rem"
-                      class="tw-bg-green tw-text-white tw-transition-opacity"
+                      class="timeful-elevated-button tw-bg-green tw-text-white tw-transition-opacity"
                       :style="{ opacity: availabilityBtnOpacity }"
                       @click="editSelectedGuestAvailability"
                     >
@@ -242,7 +242,7 @@
                     <v-btn
                       v-else
                       width="10.25rem"
-                      class="tw-text-white tw-transition-opacity"
+                      class="timeful-elevated-button tw-text-white tw-transition-opacity"
                       :class="'tw-bg-green'"
                       :disabled="loading && !userHasResponded"
                       :style="{ opacity: availabilityBtnOpacity }"
@@ -260,7 +260,7 @@
                       Cancel
                     </v-btn>
                     <v-btn
-                      class="tw-w-20 tw-text-white"
+                      class="timeful-elevated-button tw-w-20 tw-text-white"
                       :class="'tw-bg-green'"
                       @click="saveChanges"
                     >

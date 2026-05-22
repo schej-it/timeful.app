@@ -34,7 +34,7 @@
             <div class="tw-mb-4 tw-flex tw-w-full tw-flex-col tw-gap-y-2">
               <v-btn
                 block
-                class="tw-bg-white"
+                class="timeful-elevated-button tw-bg-white"
                 @click="signIn(calendarTypes.GOOGLE)"
               >
                 <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
@@ -51,7 +51,7 @@
               </v-btn>
               <v-btn
                 block
-                class="tw-bg-white"
+                class="timeful-elevated-button tw-bg-white"
                 @click="signIn(calendarTypes.OUTLOOK)"
               >
                 <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
@@ -79,7 +79,7 @@
                 </div>
                 <v-text-field
                   v-model="email"
-                  class="tw-mb-2"
+                  class="timeful-solo-field tw-mb-2"
                   placeholder="Enter your email..."
                   type="email"
                   variant="solo"
@@ -90,6 +90,7 @@
                 <v-btn
                   block
                   color="primary"
+                  class="timeful-elevated-button"
                   :loading="sending"
                   :disabled="sending"
                   @click="submitEmail"
@@ -129,7 +130,7 @@
               variant="solo"
               hide-details="auto"
               autofocus
-              class="tw-mb-3"
+              class="timeful-solo-field tw-mb-3"
               @keydown.enter="lastNameField && lastNameField.focus()"
             />
             <div class="tw-mb-1 tw-text-sm tw-font-medium">Last name</div>
@@ -139,7 +140,7 @@
               placeholder="Last name (optional)"
               variant="solo"
               hide-details="auto"
-              class="tw-mb-3"
+              class="timeful-solo-field tw-mb-3"
               @keydown.enter="submitOnboarding"
             />
             <div class="tw-mb-1 tw-text-sm tw-font-medium">Email</div>
@@ -150,11 +151,12 @@
               hide-details="auto"
               disabled
               background-color="#f5f5f5"
-              class="tw-mb-3"
+              class="timeful-solo-field tw-mb-3"
             />
             <v-btn
               block
               color="primary"
+              class="timeful-elevated-button"
               :loading="sending"
               :disabled="!firstName.trim() || sending"
               @click="submitOnboarding"
@@ -193,12 +195,13 @@
               maxlength="6"
               :error-messages="otpError"
               autofocus
-              class="tw-mb-2"
+              class="timeful-solo-field tw-mb-2"
               @keydown.enter="verifyOtp"
             />
             <v-btn
               block
               color="primary"
+              class="timeful-elevated-button"
               :loading="verifying"
               :disabled="otpCode.length !== 6 || verifying"
               @click="verifyOtp"

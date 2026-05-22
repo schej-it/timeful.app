@@ -298,10 +298,6 @@ html {
   font-size: theme("fontSize.xs");
   line-height: 1.25;
 }
-.v-input--selection-controls {
-  margin-top: 0px !important;
-  padding-top: 0px !important;
-}
 
 /** Buttons */
 .v-btn {
@@ -311,54 +307,6 @@ html {
 .v-btn:not(.v-btn--round, .v-btn-toggle > .v-btn).v-size--default {
   height: 38px !important;
   border-radius: theme("borderRadius.md") !important;
-}
-
-.v-btn.v-btn--is-elevated {
-  -webkit-box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.15) !important;
-  -moz-box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.15) !important;
-  box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.15) !important;
-  border: 1px solid theme("colors.light-gray-stroke");
-}
-
-.v-btn.v-btn--is-elevated.tw-bg-white {
-  -webkit-box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.25) !important;
-  -moz-box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.25) !important;
-  box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.25) !important;
-  border: 1px solid theme("colors.off-white");
-}
-
-.v-btn.v-btn--is-elevated.primary,
-.v-btn.v-btn--is-elevated.tw-bg-green,
-.v-btn.v-btn--is-elevated.tw-bg-white.tw-text-green {
-  -webkit-box-shadow: 0px 2px 8px 0px #00994c80 !important;
-  -moz-box-shadow: 0px 2px 8px 0px #00994c80 !important;
-  box-shadow: 0px 2px 8px 0px #00994c80 !important;
-  border: 1px solid theme("colors.light-green") !important;
-}
-
-.v-btn.v-btn--is-elevated.tw-bg-very-dark-gray {
-  -webkit-box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.25) !important;
-  -moz-box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.25) !important;
-  box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.25) !important;
-  border: 1px solid theme("colors.dark-gray") !important;
-}
-
-.v-btn.v-btn--is-elevated.tw-bg-blue,
-.v-btn.v-btn--is-elevated.tw-bg-white.tw-text-blue {
-  -webkit-box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.25) !important;
-  -moz-box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.25) !important;
-  box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.25) !important;
-  border: 1px solid theme("colors.light-blue") !important;
-}
-
-/** Drop shadows */
-.v-text-field.v-text-field--solo:not(.v-text-field--solo-flat)
-  > .v-input__control
-  > .v-input__slot {
-  filter: drop-shadow(0 0.5px 2px rgba(0, 0, 0, 0.1)) !important;
-  box-shadow: inset 0 -1px 0 0 rgba(0, 0, 0, 0.1) !important;
-  border-radius: theme("borderRadius.md") !important;
-  border: 1px solid #4f4f4f1f !important;
 }
 .v-menu__content {
   box-shadow: 0px 5px 5px -1px rgba(0, 0, 0, 0.1),
@@ -371,30 +319,6 @@ html {
   box-shadow: 0px 2px 8px 0px #e5a8004d !important;
 }
 
-/** Switch  */
-.v-input--switch--inset .v-input--selection-controls__input {
-  margin-right: 0 !important;
-  transform: scale(80%) !important;
-}
-.v-input--switch__track.primary--text {
-  border: 2px theme("colors.light-green") solid !important;
-}
-.v-input--switch__track {
-  border: 2px theme("colors.gray") solid !important;
-  background-color: theme("colors.gray") !important;
-  box-shadow: 0px 0.74px 4.46px 0px rgba(0, 0, 0, 0.1) !important;
-}
-.v-input--is-label-active .v-input--switch__track {
-  background-color: currentColor !important;
-  box-shadow: 0px 1.5px 4.5px 0px rgba(0, 0, 0, 0.2) !important;
-}
-.v-input--switch--inset .v-input--switch__track,
-.v-input--switch--inset .v-input--selection-controls__input {
-  opacity: 1 !important;
-}
-.v-input--switch__thumb {
-  background-color: white !important;
-}
 .v-text-field__details {
   padding: 0 !important;
 }
@@ -405,7 +329,6 @@ html {
 }
 
 /** Error color */
-.error--text .v-input__slot,
 .v-input--error .v-field,
 .v-field--error {
   outline: red solid;

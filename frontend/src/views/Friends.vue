@@ -25,7 +25,7 @@
       <v-btn
         icon
         absolute
-        class="tw-left-0 tw-right-0 tw-bottom-4 tw-mx-auto tw-bg-blue tw-text-white"
+        class="timeful-elevated-button tw-left-0 tw-right-0 tw-bottom-4 tw-mx-auto tw-bg-blue tw-text-white"
       >
         <v-icon>mdi-account-plus</v-icon>
       </v-btn>

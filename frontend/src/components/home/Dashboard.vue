@@ -470,9 +470,3 @@ watch(
   { immediate: true }
 )
 </script>
-
-<style>
-.v-expansion-panel-header {
-  padding: 16px 4px !important;
-}
-</style>

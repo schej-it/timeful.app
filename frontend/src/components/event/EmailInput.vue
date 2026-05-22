@@ -8,7 +8,7 @@
       :items="searchedContacts"
       item-title="queryString"
       item-value="queryString"
-      class="tw-mt-2 tw-text-sm"
+      class="timeful-solo-field tw-mt-2 tw-text-sm"
       placeholder="Type an email address and press enter..."
       multiple
       append-icon=""

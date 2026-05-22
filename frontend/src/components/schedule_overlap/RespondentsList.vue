@@ -49,6 +49,7 @@
                     <div class="tw-mb-1">Select CSV format:</div>
                     <v-select
                       v-model="exportCsvDialog.type"
+                      class="timeful-solo-field"
                       variant="solo"
                       hide-details
                       :items="exportCsvDialog.types"
@@ -400,7 +401,8 @@
     <v-switch
       v-if="isGroup && isPhone"
       :class="maxHeight && 'tw-mt-2'"
-      class="tw-mb-4"
+      class="timeful-switch tw-mb-4"
+      color="primary"
       inset
       :model-value="showCalendarEvents"
       hide-details

@@ -13,6 +13,7 @@
     <div class="tw-flex tw-flex-col tw-gap-3">
       <v-text-field
         v-model="feedUrl"
+        class="timeful-solo-field"
         variant="solo"
         placeholder="Feed URL"
         hide-details="auto"
@@ -20,6 +21,7 @@
       />
       <v-text-field
         v-model="label"
+        class="timeful-solo-field"
         variant="solo"
         placeholder="Label"
         hide-details
@@ -29,7 +31,7 @@
         <v-btn
           :disabled="!enableSubmit"
           color="primary"
-          class="tw-grow"
+          class="timeful-elevated-button tw-grow"
           :loading="loading"
           @click="submit"
           >Submit</v-btn

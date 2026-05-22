@@ -40,7 +40,7 @@
           placeholder="Name your event..."
           hide-details="auto"
           variant="solo"
-          class="new-event-name-field"
+          class="new-event-name-field timeful-solo-field"
           :class="{ 'new-event-name-field--invalid': showNameFieldError }"
           :rules="nameRules"
           autofocus
@@ -69,7 +69,7 @@
                     <v-select
                       :model-value="startTimeNum"
                       :items="times"
-                      class="time-range-select"
+                      class="time-range-select timeful-solo-field"
                       item-title="text"
                       item-value="value"
                       return-object
@@ -95,7 +95,7 @@
                     <v-select
                       :model-value="endTimeNum"
                       :items="times"
-                      class="time-range-select"
+                      class="time-range-select timeful-solo-field"
                       item-title="text"
                       item-value="value"
                       return-object
@@ -164,7 +164,7 @@
             :items="Object.values(dateOptions)"
             variant="solo"
             hide-details
-            class="tw-mb-4"
+            class="timeful-solo-field tw-mb-4"
           >
             <template #item="{ item, props: itemProps }">
               <div
@@ -486,6 +486,7 @@
           block
           :loading="loading"
           :style="submitButtonStyle"
+          class="timeful-elevated-button"
           :class="
             submitBlocked
               ? 'new-event-submit-button new-event-submit-button--disabled tw-mt-4 tw-cursor-default tw-pointer-events-none'
@@ -1207,15 +1208,12 @@ watch(
   --v-selection-control-size: 32px;
 }
 
-.gated-feature-checkbox .v-selection-control--disabled {
+.gated-feature-checkbox {
+  --v-disabled-opacity: 1;
   opacity: 1 !important;
 }
 
-.gated-feature-checkbox {
-  --v-disabled-opacity: 1;
-}
-
-.gated-feature-checkbox.v-input--disabled {
+.gated-feature-checkbox .v-selection-control {
   opacity: 1 !important;
 }
 
@@ -1237,14 +1235,6 @@ watch(
 .advanced-options-disabled-message {
   color: var(--timeful-muted-foreground) !important;
   line-height: 16px !important;
-}
-
-.gated-feature-checkbox.v-input--density-default .advanced-options-disabled-message {
-  margin-left: 32px !important;
-}
-
-.gated-feature-checkbox.v-input--density-compact .advanced-options-disabled-message {
-  margin-left: 32px !important;
 }
 
 .advanced-options-disabled-copy {

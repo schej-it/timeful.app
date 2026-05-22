@@ -37,6 +37,7 @@
           placeholder="Name your event..."
           hide-details="auto"
           variant="solo"
+          class="timeful-solo-field"
           :rules="nameRules"
           required
           @keyup.enter="blurNameField"
@@ -52,7 +53,7 @@
                 <v-select
                   :model-value="startTime"
                   :items="times"
-                  class="time-range-select"
+                  class="time-range-select timeful-solo-field"
                   item-color="green"
                   return-object
                   hide-details
@@ -64,7 +65,7 @@
                 <v-select
                   :model-value="endTime"
                   :items="times"
-                  class="time-range-select"
+                  class="time-range-select timeful-solo-field"
                   item-color="green"
                   return-object
                   hide-details
@@ -88,7 +89,7 @@
             item-color="green"
             variant="solo"
             hide-details
-            class="tw-mb-4"
+            class="timeful-solo-field tw-mb-4"
           />
 
           <v-expand-transition>
@@ -224,7 +225,7 @@
           block
           :loading="loading"
           color="primary"
-          class="tw-mt-4 tw-bg-green"
+          class="timeful-elevated-button tw-mt-4 tw-bg-green"
           @click="submit"
         >
           {{ edit ? "Save edits" : "Create event" }}

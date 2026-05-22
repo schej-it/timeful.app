@@ -74,7 +74,7 @@
           <v-btn
             color="primary"
             :disabled="!calendarPermissionGranted"
-            class="tw-px-6"
+            class="timeful-elevated-button tw-px-6"
             @click="acceptInvitation"
             >Share</v-btn
           >
@@ -107,7 +107,7 @@
           </v-dialog>
           <v-spacer />
           <v-btn
-            class="tw-bg-green tw-px-5 tw-text-white tw-transition-opacity"
+            class="timeful-elevated-button tw-bg-green tw-px-5 tw-text-white tw-transition-opacity"
             :disabled="!calendarPermissionGranted"
             @click="acceptInvitation"
             >Accept Invitation</v-btn

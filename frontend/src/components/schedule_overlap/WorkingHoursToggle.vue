@@ -6,6 +6,8 @@
     </div>
     <v-switch
       id="working-hours-toggle"
+      class="timeful-switch"
+      color="primary"
       inset
       :model-value="workingHours.enabled"
       hide-details
@@ -20,7 +22,7 @@
               item-title="title"
               item-value="time"
               return-object
-              class="-tw-mt-0.5 tw-w-20 tw-text-xs"
+              class="timeful-solo-field -tw-mt-0.5 tw-w-20 tw-text-xs"
               :items="times"
               :model-value="workingHours.startTime as unknown as TimeOption"
               @update:model-value="(val: TimeOption) => updateWorkingHours('startTime', val.time)"
@@ -38,7 +40,7 @@
               item-title="title"
               item-value="time"
               return-object
-              class="-tw-mt-0.5 tw-w-20 tw-text-xs"
+              class="timeful-solo-field -tw-mt-0.5 tw-w-20 tw-text-xs"
               :items="times"
               :model-value="workingHours.endTime as unknown as TimeOption"
               @update:model-value="(val: TimeOption) => updateWorkingHours('endTime', val.time)"

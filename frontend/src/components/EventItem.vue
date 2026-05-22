@@ -86,6 +86,7 @@
                 <v-card-text>
                   <v-text-field
                     v-model="duplicateDialogOptions.name"
+                    class="timeful-solo-field"
                     required
                     placeholder="Name your event..."
                     :disabled="duplicateDialogOptions.loading"

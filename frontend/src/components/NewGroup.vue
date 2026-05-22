@@ -35,6 +35,7 @@
           placeholder="Name your group..."
           hide-details="auto"
           variant="solo"
+          class="timeful-solo-field"
           :rules="nameRules"
           required
           @keyup.enter="blurNameField"
@@ -45,6 +46,7 @@
           <div class="tw-flex tw-items-baseline tw-justify-center tw-space-x-2">
             <v-select
               v-model="startTime"
+              class="timeful-solo-field"
               :items="times"
               hide-details
               variant="solo"
@@ -52,6 +54,7 @@
             <div>to</div>
             <v-select
               v-model="endTime"
+              class="timeful-solo-field"
               :items="times"
               hide-details
               variant="solo"
@@ -133,7 +136,7 @@
           block
           :loading="loading"
           color="primary"
-          class="tw-mt-4 tw-bg-green"
+          class="timeful-elevated-button tw-mt-4 tw-bg-green"
           @click="submit"
         >
           {{ edit ? "Save edits" : "Create group" }}

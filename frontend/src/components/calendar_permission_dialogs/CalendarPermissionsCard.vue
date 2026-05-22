@@ -45,7 +45,10 @@
       >
         {{ cancelLabel }}
       </v-btn>
-      <v-btn class="tw-flex-1 tw-bg-green tw-text-white" @click="emit('allow')">
+      <v-btn
+        class="timeful-elevated-button tw-flex-1 tw-bg-green tw-text-white"
+        @click="emit('allow')"
+      >
         {{ allowLabel }}
       </v-btn>
     </div>

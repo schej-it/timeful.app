@@ -32,7 +32,12 @@
     </div>
 
     <div>
-      <v-switch v-model="showEventNames" inset></v-switch>
+      <v-switch
+        v-model="showEventNames"
+        class="timeful-switch"
+        color="primary"
+        inset
+      ></v-switch>
     </div>
   </v-container>
 </template>

@@ -8,7 +8,8 @@
       id="buffer-time-switch"
       :model-value="bufferTime.enabled"
       inset
-      class="tw-flex tw-items-center"
+      class="timeful-switch tw-flex tw-items-center"
+      color="primary"
       hide-details
       @update:model-value="handleBufferTimeToggle"
     >
@@ -22,7 +23,7 @@
             item-title="title"
             item-value="value"
             :items="bufferTimes"
-            class="-tw-mt-0.5 tw-w-20 tw-text-xs"
+            class="timeful-solo-field -tw-mt-0.5 tw-w-20 tw-text-xs"
             :model-value="bufferTime.time"
             @update:model-value="(val: number) => updateBufferTime('time', val)"
             @click="

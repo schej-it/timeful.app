@@ -24,6 +24,7 @@
           <v-text-field
             v-model="name"
             :rules="nameRules"
+            class="timeful-solo-field"
             variant="solo"
             placeholder="Enter your name..."
             autofocus
@@ -35,6 +36,7 @@
             v-if="event.collectEmails"
             v-model="email"
             :rules="emailRules"
+            class="timeful-solo-field"
             variant="solo"
             placeholder="Enter your email..."
             hint="The event creator has requested your email. It will only be visible to them."
@@ -44,7 +46,7 @@
           <div class="tw-flex">
             <v-spacer />
             <v-btn
-              class="tw-bg-green tw-text-white"
+              class="timeful-elevated-button tw-bg-green tw-text-white"
               :disabled="!canSubmit"
               @click="submit"
             >

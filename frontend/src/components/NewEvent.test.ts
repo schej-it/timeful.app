@@ -501,22 +501,16 @@ describe("NewEvent", () => {
       /\.new-event-form \.v-checkbox \.v-selection-control\s*\{\s*--v-selection-control-size:\s*32px;/
     )
     expect(newEventStyleBlock).toMatch(
-      /\.gated-feature-checkbox\s*\{\s*--v-disabled-opacity:\s*1;/
+      /\.gated-feature-checkbox\s*\{\s*--v-disabled-opacity:\s*1;\s*opacity:\s*1 !important;/
     )
     expect(newEventStyleBlock).toMatch(
-      /\.gated-feature-checkbox\.v-input--disabled\s*\{\s*opacity:\s*1 !important;/
-    )
-    expect(newEventStyleBlock).toMatch(
-      /\.gated-feature-checkbox \.v-selection-control--disabled\s*\{\s*opacity:\s*1 !important;/
+      /\.gated-feature-checkbox \.v-selection-control\s*\{\s*opacity:\s*1 !important;/
     )
     expect(newEventStyleBlock).toMatch(
       /\.gated-feature-checkbox \.v-input__details,\s*\.gated-feature-checkbox \.v-messages,\s*\.gated-feature-checkbox \.v-messages__message\s*\{\s*opacity:\s*1 !important;/
     )
-    expect(newEventStyleBlock).toMatch(
-      /\.gated-feature-checkbox\.v-input--density-default \.advanced-options-disabled-message\s*\{\s*margin-left:\s*32px !important;/
-    )
-    expect(newEventStyleBlock).toMatch(
-      /\.gated-feature-checkbox\.v-input--density-compact \.advanced-options-disabled-message\s*\{\s*margin-left:\s*32px !important;/
+    expect(newEventSource).toMatch(
+      /advanced-options-disabled-message[\s\S]*?tw-ml-\[32px\]/
     )
     expect(newEventStyleBlock).toMatch(
       /\.gated-feature-checkbox \.v-selection-control__input > \.v-icon\s*\{\s*color:\s*var\(--timeful-disabled-checkbox-icon\) !important;\s*opacity:\s*1 !important;/
@@ -535,6 +529,20 @@ describe("NewEvent", () => {
     )
     expect(newEventStyleBlock).not.toMatch(/:deep\(/)
     expect(newEventStyleBlock).not.toMatch(/v-selection-control--disabled \.v-label/)
+    expect(newEventStyleBlock).not.toMatch(/v-input--disabled/)
+    expect(newEventStyleBlock).not.toMatch(/v-input--density-default/)
+    expect(newEventStyleBlock).not.toMatch(/v-input--density-compact/)
+  })
+
+  it("uses explicit shared control contracts instead of Vuetify 2 global selectors", () => {
+    expect(newEventSource).toContain("timeful-solo-field")
+    expect(newEventSource).toContain("timeful-elevated-button")
+    expect(appCssSource).toContain(".timeful-solo-field")
+    expect(appCssSource).toContain(".timeful-elevated-button")
+    expect(appCssSource).toContain(".timeful-switch")
+    expect(appCssSource).not.toContain(".v-btn--is-elevated")
+    expect(appCssSource).not.toContain(".v-input--switch__track")
+    expect(appCssSource).not.toContain(".v-input__slot")
   })
 
   it("uses the shared muted-foreground token for the advanced-options panel", () => {
