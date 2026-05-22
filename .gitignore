@@ -7,3 +7,5 @@ deploy_scripts/reboot_log.txt
 *.log
 .eslintcache
 .claude
+.env.dev
+.env.prod

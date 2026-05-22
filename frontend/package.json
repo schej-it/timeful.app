@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc -b && vite build",
-    "preview": "vite preview",
+    "dev": "vite --mode dev",
+    "build": "vue-tsc -b && vite build --mode prod",
+    "preview": "vite preview --mode prod",
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json",
     "gen:api": "swagger2openapi ../server/docs/swagger.yaml -o src/types/.swagger-v3.yaml --yaml && openapi-typescript src/types/.swagger-v3.yaml -o src/types/api.ts && rm src/types/.swagger-v3.yaml",
     "test:unit": "vitest run",

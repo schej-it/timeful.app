@@ -16,9 +16,9 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"github.com/stripe/stripe-go/v82"
 	"schej.it/server/db"
+	"schej.it/server/envfiles"
 	"schej.it/server/logger"
 	"schej.it/server/routes"
 	"schej.it/server/services/gcloud"
@@ -179,10 +179,18 @@ func main() {
 
 // Load .env variables
 func loadDotEnv() {
-	err := godotenv.Load(".env")
+	loadedPath, err := envfiles.Load()
 	if err != nil {
-		// .env file is optional - env vars can be passed directly (e.g., via Docker)
-		logger.StdOut.Println("No .env file found, using environment variables")
+		if os.Getenv("ENV_FILE") != "" {
+			logger.StdErr.Panicln(envfiles.InvalidExplicitPathMessage(err))
+		}
+
+		logger.StdErr.Panicln(err)
+	}
+	if loadedPath == "" {
+		logger.StdOut.Println(envfiles.MissingFileMessage())
+	} else {
+		logger.StdOut.Printf("Loaded environment variables from %s\n", loadedPath)
 	}
 
 	// Load stripe key

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/joho/godotenv"
+	"schej.it/server/envfiles"
 	"schej.it/server/logger"
 )
 
@@ -21,10 +21,10 @@ func TestCreateEmailTask(t *testing.T) {
 	// Init logger
 	logger.Init(logFile)
 
-	// Load .env file
-	err = godotenv.Load("../../.env")
+	// Load root env file
+	_, err = envfiles.Load()
 	if err != nil {
-		logger.StdErr.Panicln("Error loading .env file")
+		logger.StdErr.Panicln("Error loading env file")
 	}
 
 	InitTasks()
@@ -41,10 +41,10 @@ func TestDeleteEmailTask(t *testing.T) {
 	// Init logger
 	logger.Init(logFile)
 
-	// Load .env file
-	err = godotenv.Load("../../.env")
+	// Load root env file
+	_, err = envfiles.Load()
 	if err != nil {
-		logger.StdErr.Panicln("Error loading .env file")
+		logger.StdErr.Panicln("Error loading env file")
 	}
 
 	InitTasks()

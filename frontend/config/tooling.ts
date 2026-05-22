@@ -2,14 +2,21 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { loadEnv } from "vite"
 
-const rootDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
+const frontendRootDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
+const repoRootDir = path.dirname(frontendRootDir)
 
 type ToolingMode = string
+type RootEnvMode = "dev" | "prod"
+
+interface LoadedRootEnv {
+  env: Record<string, string>
+  filePath: string
+}
 
 interface FrontendToolingEnv {
-  devHost: string
-  devPort: number
-  apiProxyTarget: string
+  devHost?: string
+  devPort?: number
+  apiProxyTarget?: string
   previewHost?: string
   previewPort?: number
 }
@@ -86,10 +93,37 @@ function parseOptionalPort(rawValue: string | undefined, envName: string): numbe
   return port
 }
 
+function resolveRootEnvMode(mode: ToolingMode): RootEnvMode {
+  return mode === "prod" || mode === "production" ? "prod" : "dev"
+}
+
+function readProcessEnv(): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
+  )
+}
+
+function loadRootEnv(mode: ToolingMode): LoadedRootEnv {
+  const rootEnvMode = resolveRootEnvMode(mode)
+  const filePath = path.join(repoRootDir, `.env.${rootEnvMode}`)
+  const env = {
+    ...loadEnv(rootEnvMode, repoRootDir, ""),
+    ...readProcessEnv(),
+  }
+
+  return {
+    env,
+    filePath,
+  }
+}
+
+export function getFrontendEnvDir(): string {
+  return repoRootDir
+}
+
 export function loadFrontendToolingEnv(mode: ToolingMode): FrontendToolingEnv {
-  const env = loadEnv(mode, rootDir, "")
-  const devUsage =
-    "Set it in frontend/.env.local or export it before starting the frontend tooling."
+  const { env, filePath } = loadRootEnv(mode)
+  const devUsage = `Set it in ${filePath} or export it before starting the frontend tooling.`
   const previewHost = parseOptionalHost(env.VITE_PREVIEW_HOST)
   const previewPort = parseOptionalPort(env.VITE_PREVIEW_PORT, "VITE_PREVIEW_PORT")
 
@@ -100,17 +134,9 @@ export function loadFrontendToolingEnv(mode: ToolingMode): FrontendToolingEnv {
   }
 
   return {
-    devHost: requireNonEmpty(env.VITE_DEV_HOST, "VITE_DEV_HOST", devUsage),
-    devPort: parsePort(
-      env.VITE_DEV_PORT,
-      "VITE_DEV_PORT",
-      "Set VITE_DEV_PORT in frontend/.env.local or export it before starting the frontend tooling.",
-    ),
-    apiProxyTarget: requireNonEmpty(
-      env.VITE_API_PROXY_TARGET,
-      "VITE_API_PROXY_TARGET",
-      "Set VITE_API_PROXY_TARGET in frontend/.env.local or export it before starting the frontend tooling.",
-    ),
+    devHost: parseOptionalHost(env.VITE_DEV_HOST),
+    devPort: parseOptionalPort(env.VITE_DEV_PORT, "VITE_DEV_PORT"),
+    apiProxyTarget: parseOptionalHost(env.VITE_API_PROXY_TARGET),
     previewHost,
     previewPort,
   }
@@ -118,17 +144,35 @@ export function loadFrontendToolingEnv(mode: ToolingMode): FrontendToolingEnv {
 
 export function createFrontendDevServerConfig(mode: ToolingMode): FrontendDevServerConfig {
   const env = loadFrontendToolingEnv(mode)
+  const rootEnvMode = resolveRootEnvMode(mode)
+  const filePath = path.join(repoRootDir, `.env.${rootEnvMode}`)
 
   return {
-    host: env.devHost,
-    port: env.devPort,
+    host: requireNonEmpty(
+      env.devHost,
+      "VITE_DEV_HOST",
+      `Set VITE_DEV_HOST in ${filePath} or export it before starting the frontend tooling.`,
+    ),
+    port: parsePort(
+      env.devPort === undefined ? undefined : String(env.devPort),
+      "VITE_DEV_PORT",
+      `Set VITE_DEV_PORT in ${filePath} or export it before starting the frontend tooling.`,
+    ),
     proxy: {
       "/api": {
-        target: env.apiProxyTarget,
+        target: requireNonEmpty(
+          env.apiProxyTarget,
+          "VITE_API_PROXY_TARGET",
+          `Set VITE_API_PROXY_TARGET in ${filePath} or export it before starting the frontend tooling.`,
+        ),
         changeOrigin: true,
       },
       "/swagger": {
-        target: env.apiProxyTarget,
+        target: requireNonEmpty(
+          env.apiProxyTarget,
+          "VITE_API_PROXY_TARGET",
+          `Set VITE_API_PROXY_TARGET in ${filePath} or export it before starting the frontend tooling.`,
+        ),
         changeOrigin: true,
       },
     },
@@ -137,13 +181,26 @@ export function createFrontendDevServerConfig(mode: ToolingMode): FrontendDevSer
 
 export function createFrontendPlaywrightConfig(mode: ToolingMode): FrontendPlaywrightConfig {
   const env = loadFrontendToolingEnv(mode)
-  const devPort = String(env.devPort)
-  const baseURL = new URL(`http://${env.devHost}:${devPort}`)
+  const rootEnvMode = resolveRootEnvMode(mode)
+  const filePath = path.join(repoRootDir, `.env.${rootEnvMode}`)
+  const devHost = requireNonEmpty(
+    env.devHost,
+    "VITE_DEV_HOST",
+    `Set VITE_DEV_HOST in ${filePath} or export it before starting the frontend tooling.`,
+  )
+  const devPort = String(
+    parsePort(
+      env.devPort === undefined ? undefined : String(env.devPort),
+      "VITE_DEV_PORT",
+      `Set VITE_DEV_PORT in ${filePath} or export it before starting the frontend tooling.`,
+    ),
+  )
+  const baseURL = new URL(`http://${devHost}:${devPort}`)
 
   return {
     baseURL: baseURL.toString().replace(/\/$/, ""),
-    webServerCommand: `npm run dev -- --host ${env.devHost} --port ${devPort}`,
-    webServerPort: env.devPort,
+    webServerCommand: `npm run dev -- --host ${devHost} --port ${devPort}`,
+    webServerPort: Number(devPort),
   }
 }
 

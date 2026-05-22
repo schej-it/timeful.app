@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url"
 import {
   createFrontendDevServerConfig,
   createFrontendPreviewServerConfig,
+  getFrontendEnvDir,
 } from "./config/tooling"
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
@@ -13,6 +14,7 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url))
 export default defineConfig(({ command, mode, isPreview }) => {
   return {
     plugins: [vue(), vuetify({ autoImport: true })],
+    envDir: process.env.VITEST ? undefined : getFrontendEnvDir(),
     resolve: {
       alias: {
         "@": path.resolve(rootDir, "./src"),

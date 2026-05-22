@@ -41,7 +41,7 @@ Use `profile:route` when you need a migrated-only Firefox navigation summary for
 - override URLs with `OLD_APP_URL` and `NEW_APP_URL` when local ports differ
 - override the shared real-event route with `COMPARATOR_EVENT_PATH=/e/<short-id>` when a scenario supports route-owned event navigation
 - override route-navigation readiness with `COMPARATOR_EVENT_WAIT_UNTIL=commit` or `COMPARATOR_EVENT_WAIT_UNTIL=domcontentloaded` when investigating Firefox event-route failures
-- in this checkout, start the backend first with `docker compose -f compose.yaml -f compose.dev.yaml up --build mongo server`
+- in this checkout, start the backend first with `docker compose --env-file .env.dev -f compose.yaml -f compose.dev.yaml up --build mongo server`
 - in this checkout, start the migrated app from `../frontend` with `npm run dev -- --host 127.0.0.1 --port 4173`
 - start the legacy app from `timeful.app.js/frontend` with `npm run serve -- --host 127.0.0.1 --port 4174`
 - if you launch from a different working directory, adjust those relative paths accordingly
@@ -50,7 +50,7 @@ Use `profile:route` when you need a migrated-only Firefox navigation summary for
 
 - install dependencies before first run in any package that does not already have `node_modules`
 - before launching the frontend dev servers, ensure the backend is up on `127.0.0.1:3002`
-- for the migrated app, keep `../frontend/.env.local` set to `VITE_API_PROXY_TARGET=http://127.0.0.1:3002`, or pass that value inline when starting Vite
+- for the migrated app, keep `../.env.dev` set to `VITE_API_PROXY_TARGET=http://127.0.0.1:3002`
 - for the legacy app, use the repo's Vue dev-server proxy config so requests to `/api` and `/swagger` go to `http://127.0.0.1:3002`
 - from the `migration/` repo root, start the migrated app with `cd ../frontend && npm run dev -- --host 127.0.0.1 --port 4173`
 - from the `migration/` repo root, start the legacy app with `cd timeful.app.js/frontend && npm run serve -- --host 127.0.0.1 --port 4174`

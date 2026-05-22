@@ -49,3 +49,5 @@ Read these docs to design your own browser plugins to get + set availability on 
 ## Self-hosting
 
 See the [Deployment Guide](./DEPLOYMENT.md) for Docker Compose and NixOS setup instructions.
+
+See [docs/environments.md](./docs/environments.md) for the root-only environment-file model used by local dev and Compose.

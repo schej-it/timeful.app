@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test"
 import { createFrontendPlaywrightConfig } from "./config/tooling"
 
 const { baseURL, webServerCommand, webServerPort } =
-  createFrontendPlaywrightConfig("development")
+  createFrontendPlaywrightConfig("dev")
 
 export default defineConfig({
   testDir: "./playwright",

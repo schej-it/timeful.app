@@ -15,12 +15,12 @@ Production deployment using Docker Compose behind a Caddy reverse proxy.
 git clone https://github.com/schej-it/timeful.app
 cd timeful.app
 
-# 2. Create server environment file
-cp server/.env.template server/.env
-# Edit server/.env with your values (see Configuration below)
+# 2. Create the root production environment file
+cp .env.prod.example .env.prod
+# Edit .env.prod with your values (see Configuration below)
 
 # 3. Build and start services
-docker compose up -d --build
+docker compose --env-file .env.prod up -d --build
 
 # 4. Configure Caddy
 sudo cp Caddyfile.example /etc/caddy/Caddyfile
@@ -51,12 +51,12 @@ Edit `/etc/caddy/Caddyfile` with your domain before reloading.
 ## Commands
 
 ```bash
-docker compose up -d              # Start services
-docker compose logs -f            # View logs
-docker compose logs -f server     # View specific service logs
-docker compose up -d --build      # Rebuild after code changes
-docker compose down               # Stop services
-docker compose down -v            # Stop and remove volumes (deletes data!)
+docker compose --env-file .env.prod up -d              # Start services
+docker compose --env-file .env.prod logs -f            # View logs
+docker compose --env-file .env.prod logs -f server     # View specific service logs
+docker compose --env-file .env.prod up -d --build      # Rebuild after code changes
+docker compose --env-file .env.prod down               # Stop services
+docker compose --env-file .env.prod down -v            # Stop and remove volumes (deletes data!)
 ```
 
 ## Data & Backup
@@ -65,28 +65,28 @@ Data is persisted in Docker volumes: `mongo_data`, `frontend_dist`, `server_logs
 
 ```bash
 # Backup MongoDB
-docker compose exec mongo mongodump --db=schej-it --archive=/data/db/backup.archive
-docker compose cp mongo:/data/db/backup.archive ./backup.archive
+docker compose --env-file .env.prod exec mongo mongodump --db=schej-it --archive=/data/db/backup.archive
+docker compose --env-file .env.prod cp mongo:/data/db/backup.archive ./backup.archive
 
 # Restore MongoDB
-docker compose cp ./backup.archive mongo:/data/db/backup.archive
-docker compose exec mongo mongorestore --drop --db=schej-it --archive=/data/db/backup.archive
+docker compose --env-file .env.prod cp ./backup.archive mongo:/data/db/backup.archive
+docker compose --env-file .env.prod exec mongo mongorestore --drop --db=schej-it --archive=/data/db/backup.archive
 ```
 
 ## Troubleshooting
 
 ```bash
 # Container won't start
-docker compose logs server
-ls -la server/.env
+docker compose --env-file .env.prod logs server
+ls -la .env.prod
 
 # MongoDB connection issues
-docker compose ps
-docker compose exec mongo mongosh --eval "db.adminCommand('ping')"
+docker compose --env-file .env.prod ps
+docker compose --env-file .env.prod exec mongo mongosh --eval "db.adminCommand('ping')"
 
 # Frontend not loading
-docker compose logs frontend-artifacts
-docker compose exec server ls -la /app/frontend/dist
+docker compose --env-file .env.prod logs frontend-artifacts
+docker compose --env-file .env.prod exec server ls -la /app/frontend/dist
 ```
 
 ---
@@ -95,7 +95,15 @@ docker compose exec server ls -la /app/frontend/dist
 
 ### Required Environment Variables
 
-Create `server/.env` from the template (`server/.env.template`).
+Create `.env.prod` from `.env.prod.example`.
+
+The root production env file is the single source of truth for:
+
+- Docker Compose interpolation
+- frontend build args
+- backend runtime configuration
+
+See `docs/environments.md` for the full contract and development commands.
 
 #### Required
 
@@ -138,7 +146,7 @@ Create `server/.env` from the template (`server/.env.template`).
 | `LISTMONK_*`                                 | Listmonk email service configuration         |
 | `DISCORD_BOT_TOKEN` / `GUILD_ID`             | Discord bot integration                      |
 
-See `server/.env.template` for the complete list.
+See `.env.prod.example` for the complete list.
 
 ### Google OAuth Setup
 

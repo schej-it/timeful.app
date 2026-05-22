@@ -4,10 +4,10 @@
 
 ```sh
 npm install
-cp .env.template .env.local
+cp ../.env.dev.example ../.env.dev
 ```
 
-Set these required local tooling variables in `.env.local` before starting Vite or Playwright:
+Set these required frontend tooling variables in `../.env.dev` before starting Vite or Playwright:
 
 - `VITE_DEV_HOST`
 - `VITE_DEV_PORT`
@@ -24,7 +24,17 @@ Optional variables for `vite preview`:
 npm run dev
 ```
 
-The dev server proxies `/api` and `/swagger` to `VITE_API_PROXY_TARGET`.
+The dev server proxies `/api` and `/swagger` to `VITE_API_PROXY_TARGET` from the repo-root `.env.dev` file.
+
+For production-style local builds and preview:
+
+```sh
+cp ../.env.prod.example ../.env.prod
+npm run build
+npm run preview
+```
+
+See `../docs/environments.md` for the full root-env contract.
 
 ## Checks
 
