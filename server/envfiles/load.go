@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
+	"schej.it/server/appenv"
 )
 
 // Load reads the first matching repo env file without overriding existing shell variables.
@@ -33,30 +34,25 @@ func Load() (string, error) {
 }
 
 func defaultCandidates() []string {
-	if isProductionLike() {
+	switch appenv.Current() {
+	case appenv.Staging:
+		return []string{".env.staging", "../.env.staging"}
+	case appenv.Production:
 		return []string{".env.prod", "../.env.prod"}
+	default:
+		return []string{".env.dev", "../.env.dev"}
 	}
-
-	return []string{".env.dev", "../.env.dev"}
-}
-
-func isProductionLike() bool {
-	for _, value := range []string{os.Getenv("GIN_MODE"), os.Getenv("NODE_ENV")} {
-		normalized := strings.ToLower(strings.TrimSpace(value))
-		if normalized == "release" || normalized == "prod" || normalized == "production" {
-			return true
-		}
-	}
-
-	return false
 }
 
 func MissingFileMessage() string {
-	if isProductionLike() {
+	switch appenv.Current() {
+	case appenv.Staging:
+		return "No root env file found, continuing with process environment variables only (expected .env.staging)."
+	case appenv.Production:
 		return "No root env file found, continuing with process environment variables only (expected .env.prod)."
+	default:
+		return "No root env file found, continuing with process environment variables only (expected .env.dev)."
 	}
-
-	return "No root env file found, continuing with process environment variables only (expected .env.dev)."
 }
 
 func InvalidExplicitPathMessage(err error) string {

@@ -1,6 +1,6 @@
 # Timeful Deployment Guide
 
-Production deployment using Docker Compose behind a Caddy reverse proxy.
+Production and staging deployment using Docker Compose behind a Caddy reverse proxy.
 
 ## Prerequisites
 
@@ -15,12 +15,17 @@ Production deployment using Docker Compose behind a Caddy reverse proxy.
 git clone https://github.com/schej-it/timeful.app
 cd timeful.app
 
-# 2. Create the root production environment file
+# 2. Create the root deployment environment file
 cp .env.prod.example .env.prod
-# Edit .env.prod with your values (see Configuration below)
+# Or for staging:
+# cp .env.staging.example .env.staging
+
+# Edit the selected env file with your values (see Configuration below)
 
 # 3. Build and start services
 docker compose --env-file .env.prod up -d --build
+# Or for staging:
+# docker compose --env-file .env.staging -f compose.yaml -f compose.staging.yaml up -d --build
 
 # 4. Configure Caddy
 sudo cp Caddyfile.example /etc/caddy/Caddyfile
@@ -35,6 +40,8 @@ sudo systemctl reload caddy
 | `mongo`              | MongoDB 7 database                                            | Internal only  |
 | `frontend-artifacts` | Vue.js artifact export (outputs to shared volume, then exits) | N/A            |
 | `server`             | Go backend                                                    | 127.0.0.1:3002 |
+
+For staging, use `.env.staging` together with `compose.staging.yaml`; the server binds `127.0.0.1:3003`.
 
 ## Caddy
 
@@ -57,6 +64,14 @@ docker compose --env-file .env.prod logs -f server     # View specific service l
 docker compose --env-file .env.prod up -d --build      # Rebuild after code changes
 docker compose --env-file .env.prod down               # Stop services
 docker compose --env-file .env.prod down -v            # Stop and remove volumes (deletes data!)
+```
+
+Staging uses the same base commands with the staging env file and override:
+
+```bash
+docker compose --env-file .env.staging -f compose.yaml -f compose.staging.yaml up -d --build
+docker compose --env-file .env.staging -f compose.yaml -f compose.staging.yaml logs -f
+docker compose --env-file .env.staging -f compose.yaml -f compose.staging.yaml down
 ```
 
 ## Data & Backup
@@ -95,9 +110,9 @@ docker compose --env-file .env.prod exec server ls -la /app/frontend/dist
 
 ### Required Environment Variables
 
-Create `.env.prod` from `.env.prod.example`.
+Create `.env.prod` from `.env.prod.example` for production, or `.env.staging` from `.env.staging.example` for staging.
 
-The root production env file is the single source of truth for:
+The selected root env file is the single source of truth for:
 
 - Docker Compose interpolation
 - frontend build args
@@ -146,7 +161,7 @@ See `docs/environments.md` for the full contract and development commands.
 | `LISTMONK_*`                                 | Listmonk email service configuration         |
 | `DISCORD_BOT_TOKEN` / `GUILD_ID`             | Discord bot integration                      |
 
-See `.env.prod.example` for the complete list.
+See `.env.prod.example` and `.env.staging.example` for the complete lists.
 
 ### Google OAuth Setup
 

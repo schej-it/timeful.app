@@ -17,6 +17,7 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/stripe/stripe-go/v82"
+	"schej.it/server/appenv"
 	"schej.it/server/db"
 	"schej.it/server/envfiles"
 	"schej.it/server/logger"
@@ -54,7 +55,8 @@ func main() {
 	// Set release flag
 	release := flag.Bool("release", false, "Whether this is the release version of the server")
 	flag.Parse()
-	if *release || shouldRunInReleaseMode() {
+	currentAppEnv := appenv.Current()
+	if *release || shouldRunInReleaseMode(currentAppEnv) {
 		os.Setenv("GIN_MODE", "release")
 		gin.SetMode(gin.ReleaseMode)
 	} else {
@@ -172,22 +174,11 @@ func main() {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	// Run server
-	if os.Getenv("NODE_ENV") == "staging" {
-		router.Run(":3003")
-	} else {
-		router.Run(":3002")
-	}
+	router.Run(":" + appenv.Port(currentAppEnv))
 }
 
-func shouldRunInReleaseMode() bool {
-	for _, value := range []string{os.Getenv("GIN_MODE"), os.Getenv("NODE_ENV")} {
-		normalized := strings.ToLower(strings.TrimSpace(value))
-		if normalized == "release" || normalized == "prod" || normalized == "production" {
-			return true
-		}
-	}
-
-	return false
+func shouldRunInReleaseMode(env appenv.Environment) bool {
+	return appenv.ShouldUseReleaseMode(os.Getenv("GIN_MODE"), env)
 }
 
 func openLogFile(path string) (*os.File, error) {

@@ -18,6 +18,7 @@ services:
       context: ./frontend
       target: builder
       args:
+        VITE_APP_ENV: ${VITE_APP_ENV:-}
         VITE_POSTHOG_API_KEY: ${VITE_POSTHOG_API_KEY:-}
         VITE_GOOGLE_CLIENT_ID: ${CLIENT_ID:-}
         VITE_MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
@@ -37,9 +38,11 @@ services:
     build:
       context: ./server
     restart: unless-stopped
+    # Base Compose targets the default non-staging server port.
     ports:
       - "3002:3002"
     environment:
+      APP_ENV: ${APP_ENV:-}
       ANALYTICS_PASSWORD: ${ANALYTICS_PASSWORD:-}
       ANALYTICS_USERNAME: ${ANALYTICS_USERNAME:-}
       ANDROID_CLIENT_ID: ${ANDROID_CLIENT_ID:-}
@@ -69,7 +72,6 @@ services:
       MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
       MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
       MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017}
-      NODE_ENV: ${NODE_ENV:-}
       SCHEJ_EMAIL_ADDRESS: ${SCHEJ_EMAIL_ADDRESS:-}
       SERVICE_ACCOUNT_KEY_PATH: ${SERVICE_ACCOUNT_KEY_PATH:-}
       SESSION_SECRET: ${SESSION_SECRET:-}
@@ -93,9 +95,9 @@ services:
         condition: service_healthy
       frontend-artifacts:
         condition: service_completed_successfully
+    # Staging overrides this to probe the staging-specific port in compose.staging.yaml.
     healthcheck:
-      test:
-        ["CMD", "wget", "-q", "--spider", "http://localhost:3002/api/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3002/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
