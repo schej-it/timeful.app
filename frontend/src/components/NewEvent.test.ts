@@ -458,6 +458,11 @@ describe("NewEvent", () => {
 
   it("renders all signed-out gated helpers with the legacy-emphasis helper markup", () => {
     const wrapper = shallowMount(NewEvent, {
+      props: {
+        event: {
+          ownerId: "user-1",
+        },
+      },
       global: {
         stubs: {
           ...defaultStubs,

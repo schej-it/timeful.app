@@ -66,8 +66,22 @@ describe("CalendarAvailabilityService", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url] = fetchMock.mock.calls[0] as [string]
+    const queryWindow = getCalendarAvailabilityQueryWindow(
+      {
+        type: eventTypes.DOW,
+        dates: [Temporal.PlainDate.from("2018-06-17")],
+        timeSeed: zdt("2018-06-17T09:00:00Z"),
+        startOnMonday: false,
+      },
+      { weekOffset: 0, renderedWeekStart }
+    )
+
+    if (!queryWindow) {
+      throw new Error("Expected a calendar availability query window")
+    }
+
     expect(url).toContain(
-      "/user/calendars?timeMin=2026-04-03T09:00:00+00:00[UTC]&timeMax=2026-04-07T09:00:00+00:00[UTC]"
+      `/api/user/calendars?timeMin=${queryWindow.timeMin.toInstant().toString()}&timeMax=${queryWindow.timeMax.toInstant().toString()}`
     )
   })
 
