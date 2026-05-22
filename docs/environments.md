@@ -33,8 +33,6 @@ Shareable defaults live in:
 - `server` receives backend runtime variables from Compose interpolation based on that same file.
 - When the Go server is run directly, it prefers `.env.development` for `APP_ENV=development`, `.env.staging` for `APP_ENV=staging`, and `.env.production` for `APP_ENV=production`. `GIN_MODE` still controls Gin release/debug behavior, and `ENV_FILE=/path/to/file` overrides the lookup entirely.
 
-`NODE_ENV` and Vite mode are toolchain concerns only. They no longer control application behavior.
-
 ## Variable ownership
 
 Frontend tooling variables:
