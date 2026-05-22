@@ -75,10 +75,9 @@ Example:
 - run comparator scenarios with `npm run compare -- --target <scenario-name>`
 - keep Firefox comparator runs sequential; do not run multiple Firefox Playwright/comparator commands in parallel while the intermittent `NS_ERROR_OUT_OF_MEMORY` issue is still open
 - for `/e/dEeaF` scenarios, prefer the shared comparator scenarios/helpers so the stable locale shim and consent-dismiss logic run before snapshot collection
-- if you need to reproduce the remaining Firefox browser failure directly, use the collector repro in `../../findings/firefox-fail-repro.md` instead of inventing a new one-off browser script
 - run Firefox comparator commands outside the Codex sandbox by default for this repo, including `inspect`, `compare`, `profile:route`, and `collector-bisect`
 - if Firefox `page.goto(...): NS_ERROR_OUT_OF_MEMORY` only appears inside the sandboxed path, do not treat it as an app/frontend bug without reproducing it outside the sandbox
-- use outside-sandbox execution especially for Firefox repro commands from `findings/firefox-fail-repro.md`, including:
+- use outside-sandbox execution especially for direct Firefox repro commands, including:
   - `env NEW_APP_URL=http://127.0.0.1:4173 COMPARATOR_EVENT_PATH=/e/B2a3A node --import tsx ./src/collector-bisect.ts --target event-description-real`
   - `env NEW_APP_URL=http://127.0.0.1:4173 COMPARATOR_EVENT_PATH=/e/B2a3A npm run inspect -- --target event-description-real`
 
@@ -86,6 +85,7 @@ Example:
 
 - add new migration-verification scenarios in `src/compare.ts`
 - keep new scenarios inside the shared typed CLI instead of adding ad hoc scripts
+- for route-owned event scenarios, keep route navigation in `prepare(...)` and avoid synthetic root-first navigation before scenario setup runs
 - keep selector discovery, page preparation, inspection, and diff collection inside the shared comparator flow
 - preserve existing behavior for current scenarios unless the change is intentional and verified
 
