@@ -31,6 +31,8 @@ import (
 	_ "schej.it/server/docs"
 )
 
+const defaultLogPath = "logs/server.log"
+
 // @title Schej.it API
 // @version 1.0
 // @description This is the API for Schej.it!
@@ -52,7 +54,7 @@ func main() {
 	// Set release flag
 	release := flag.Bool("release", false, "Whether this is the release version of the server")
 	flag.Parse()
-	if *release {
+	if *release || shouldRunInReleaseMode() {
 		os.Setenv("GIN_MODE", "release")
 		gin.SetMode(gin.ReleaseMode)
 	} else {
@@ -60,7 +62,7 @@ func main() {
 	}
 
 	// Init logfile
-	logFile, err := os.OpenFile("logs.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logFile, err := openLogFile(defaultLogPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -175,6 +177,28 @@ func main() {
 	} else {
 		router.Run(":3002")
 	}
+}
+
+func shouldRunInReleaseMode() bool {
+	for _, value := range []string{os.Getenv("GIN_MODE"), os.Getenv("NODE_ENV")} {
+		normalized := strings.ToLower(strings.TrimSpace(value))
+		if normalized == "release" || normalized == "prod" || normalized == "production" {
+			return true
+		}
+	}
+
+	return false
+}
+
+func openLogFile(path string) (*os.File, error) {
+	logDir := filepath.Dir(path)
+	if logDir != "." {
+		if err := os.MkdirAll(logDir, 0755); err != nil {
+			return nil, err
+		}
+	}
+
+	return os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 }
 
 // Load .env variables
