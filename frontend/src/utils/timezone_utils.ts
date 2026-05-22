@@ -7,6 +7,8 @@ export interface SavedTimezoneShape {
   offset?: string
 }
 
+type StorageReader = Pick<Storage, "getItem">
+
 export interface TimezoneLike {
   value?: string
   offset?: string | Temporal.Duration
@@ -117,7 +119,7 @@ export const parseSavedTimezone = (
 }
 
 export const readSavedTimezone = (
-  storage: Storage | undefined
+  storage: StorageReader | undefined
 ): SavedTimezoneShape | undefined => {
   if (!storage) {
     return undefined
@@ -134,7 +136,7 @@ export const resolveSavedTimezoneValue = (
 
 export const resolveTimezoneValue = (
   providedTimezone?: string,
-  storage: Storage | undefined =
+  storage: StorageReader | undefined =
     typeof globalThis.localStorage === "undefined" ? undefined : globalThis.localStorage,
   browserTimezone =
     Intl.DateTimeFormat().resolvedOptions().timeZone || Temporal.Now.timeZoneId()
@@ -239,7 +241,7 @@ export const resolveBrowserTimezoneSelection = (
 
 export const resolveSavedTimezoneSelection = (
   timezones: Timezone[],
-  storage: Storage | undefined
+  storage: StorageReader | undefined
 ): Timezone | undefined => {
   const savedTimezone = normalizeOptionalTimezone(readSavedTimezone(storage))
   if (!savedTimezone) {
@@ -272,7 +274,7 @@ export const resolveSavedTimezoneSelection = (
 
 export const resolveInitialTimezoneSelection = (
   referenceDate: Temporal.ZonedDateTime,
-  storage: Storage | undefined =
+  storage: StorageReader | undefined =
     typeof globalThis.localStorage === "undefined" ? undefined : globalThis.localStorage,
   browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 ): Timezone => {
