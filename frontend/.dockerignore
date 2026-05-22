@@ -3,11 +3,29 @@ node_modules/
 
 # Build outputs
 dist/
+coverage/
 
 # Environment files
 .env
 .env.*
 !.env.template
+
+# Local agent / repo metadata
+.agents/
+.claude/
+.codex/
+.git/
+.vscode/
+
+# Docs and local-only workflow files
+AGENTS.md
+README.md
+adr/
+backlog/
+playwright/
+refactorings/
+scripts/
+tmp/
 
 # Logs
 *.log
@@ -15,13 +33,9 @@ npm-debug.log*
 
 # IDE
 .idea/
-.vscode/
 *.swp
 *.swo
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Test coverage
-coverage/
