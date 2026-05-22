@@ -13,7 +13,7 @@ services:
       retries: 5
       start_period: 10s
 
-  frontend:
+  frontend-artifacts:
     build:
       context: ./frontend
       target: builder
@@ -27,14 +27,8 @@ services:
       [
         "sh",
         "-c",
-        "rm -rf /app/dist/* && cp -r /build/* /app/dist/ && echo 'Frontend assets copied' && tail -f /dev/null",
+        "find /app/dist -mindepth 1 -maxdepth 1 -exec rm -rf {} + && cp -a /build/. /app/dist/ && test -f /app/dist/index.html && echo 'Frontend artifacts copied'",
       ]
-    healthcheck:
-      test: ["CMD", "test", "-f", "/app/dist/index.html"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-      start_period: 5s
 
   server:
     build:
@@ -47,14 +41,15 @@ services:
     environment:
       MONGODB_URI: mongodb://mongo:27017
       GIN_MODE: release
+      FRONTEND_DIST: /app/frontend/dist
     volumes:
       - frontend_dist:/app/frontend/dist:ro
       - server_logs:/app/logs
     depends_on:
       mongo:
         condition: service_healthy
-      frontend:
-        condition: service_healthy
+      frontend-artifacts:
+        condition: service_completed_successfully
     healthcheck:
       test:
         ["CMD", "wget", "-q", "--spider", "http://localhost:3002/api/health"]
@@ -76,8 +71,8 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      frontend:
-        condition: service_healthy
+      frontend-artifacts:
+        condition: service_completed_successfully
       server:
         condition: service_healthy
 
