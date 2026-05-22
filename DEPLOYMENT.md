@@ -30,11 +30,11 @@ sudo systemctl reload caddy
 
 ## Services
 
-| Service    | Description                             | Port           |
-| ---------- | --------------------------------------- | -------------- |
-| `mongo`    | MongoDB 7 database                      | Internal only  |
-| `frontend` | Vue.js build (outputs to shared volume) | N/A            |
-| `server`   | Go backend                              | 127.0.0.1:3002 |
+| Service              | Description                                                   | Port           |
+| -------------------- | ------------------------------------------------------------- | -------------- |
+| `mongo`              | MongoDB 7 database                                            | Internal only  |
+| `frontend-artifacts` | Vue.js artifact export (outputs to shared volume, then exits) | N/A            |
+| `server`             | Go backend                                                    | 127.0.0.1:3002 |
 
 ## Caddy
 
@@ -85,7 +85,7 @@ docker compose ps
 docker compose exec mongo mongosh --eval "db.adminCommand('ping')"
 
 # Frontend not loading
-docker compose logs frontend
+docker compose logs frontend-artifacts
 docker compose exec server ls -la /app/frontend/dist
 ```
 
