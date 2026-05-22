@@ -22,8 +22,8 @@
           v-model="url"
           label="Event URL"
           placeholder="https://timeful.app/e/abc123"
-          outlined
-          dense
+          variant="outlined"
+          density="compact"
           :disabled="loading"
           :error-messages="error"
           @keydown.enter="importEvent"

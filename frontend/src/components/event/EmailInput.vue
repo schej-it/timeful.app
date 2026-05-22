@@ -6,13 +6,13 @@
       v-model="remindees"
       v-model:search-input="query"
       :items="searchedContacts"
-      item-text="queryString"
+      item-title="queryString"
       item-value="queryString"
       class="tw-mt-2 tw-text-sm"
       placeholder="Type an email address and press enter..."
       multiple
       append-icon=""
-      solo
+      variant="solo"
       :rules="[validEmails]"
     >
       <template #selection="{ item }">
@@ -24,21 +24,21 @@
           :remove-email="removeEmail"
         ></UserChip>
       </template>
-      <template #item="{ item }">
-        <v-list-item-avatar>
-          <img
-            v-if="item.raw.picture.length > 0"
-            :src="item.raw.picture"
-            referrerpolicy="no-referrer"
-          />
-          <v-icon v-else>mdi-account</v-icon>
-        </v-list-item-avatar>
-        <v-list-item-content>
+      <template #item="{ item, props: itemProps }">
+        <v-list-item v-bind="itemProps">
+          <template #prepend>
+            <img
+              v-if="item.raw.picture.length > 0"
+              :src="item.raw.picture"
+              referrerpolicy="no-referrer"
+            />
+            <v-icon v-else>mdi-account</v-icon>
+          </template>
           <v-list-item-title
             >{{ item.raw.firstName }} {{ item.raw.lastName }}</v-list-item-title
           >
           <v-list-item-subtitle>{{ item.raw.email }}</v-list-item-subtitle>
-        </v-list-item-content>
+        </v-list-item>
       </template>
     </v-combobox>
 

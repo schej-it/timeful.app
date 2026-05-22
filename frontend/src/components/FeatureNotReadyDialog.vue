@@ -21,8 +21,8 @@
           label="What would you like to use folders for?"
           rows="3"
           class="tw-mt-4"
-          outlined
-          dense
+          variant="outlined"
+          density="compact"
         ></v-textarea>
       </v-card-text>
       <v-card-actions>

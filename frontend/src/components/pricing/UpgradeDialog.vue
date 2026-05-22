@@ -233,7 +233,7 @@
         <v-checkbox
           id="student-checkbox"
           v-model="isStudent"
-          dense
+          density="compact"
           hide-details
         >
         </v-checkbox>
@@ -422,7 +422,7 @@
         <v-checkbox
           id="student-checkbox-v2"
           v-model="isStudent"
-          dense
+          density="compact"
           hide-details
         >
         </v-checkbox>

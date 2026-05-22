@@ -21,6 +21,9 @@ const { postMock, putMock } = vi.hoisted(() => ({
   putMock: vi.fn(),
 }))
 
+const mockAuthUser = ref<unknown>(null)
+const mockDaysOnlyEnabled = ref(true)
+
 vi.mock("@/utils", async () => {
   const actual = await vi.importActual<typeof UtilsModule>("@/utils")
 
@@ -47,8 +50,8 @@ vi.mock("pinia", () => ({
 
 vi.mock("@/stores/main", () => ({
   useMainStore: () => ({
-    authUser: ref(null),
-    daysOnlyEnabled: ref(true),
+    authUser: mockAuthUser,
+    daysOnlyEnabled: mockDaysOnlyEnabled,
     showInfo: vi.fn(),
     showError: vi.fn(),
   }),
@@ -137,11 +140,13 @@ const newEventStyleBlock =
   /<style>([\s\S]*)<\/style>/.exec(newEventSource)?.[1] ?? ""
 const appCssSource = readFileSync("src/index.css", "utf8")
 const dayOfWeekButtonSnippet =
-  /<v-btn\s+v-for="dayIndex in dayIndices"[\s\S]*?<\/v-btn>/.exec(newEventSource)?.[0] ?? ""
+  /<v-btn\s+v-for="day in dayOfWeekButtons"[\s\S]*?<\/v-btn>/.exec(newEventSource)?.[0] ?? ""
 
 describe("NewEvent", () => {
   beforeEach(() => {
     vi.stubGlobal("localStorage", createLocalStorageMock())
+    mockAuthUser.value = null
+    mockDaysOnlyEnabled.value = true
     postMock.mockReset()
     putMock.mockReset()
     postMock.mockResolvedValue({ eventId: "evt-created" })
@@ -211,6 +216,17 @@ describe("NewEvent", () => {
     ])
   })
 
+  it("uses a compact numeric reminder threshold field and preserves its enabled gating", () => {
+    expect(newEventSource).toContain('v-model="sendEmailAfterXResponses"')
+    expect(newEventSource).toContain(
+      ':disabled="!sendEmailAfterXResponsesEnabled"'
+    )
+    expect(newEventSource).toContain('density="compact"')
+    expect(newEventSource).not.toContain(
+      ':disabled="!sendEmailAfterXResponsesEnabled"\n                      dense'
+    )
+  })
+
   it("defines shared semantic styling tokens at the app layer", () => {
     expect(appCssSource).toMatch(/:root\s*\{/)
     expect(appCssSource).toMatch(/--timeful-selection-bg:\s*#f2faf6;/)
@@ -249,12 +265,14 @@ describe("NewEvent", () => {
   })
 
   it("uses token-backed selected styling for day-of-week controls instead of Vuetify palette props", () => {
-    expect(newEventSource).toContain('class="new-event-dow-toggle"')
-    expect(newEventSource).toContain('getDayOfWeekButtonClass(0)')
-    expect(newEventSource).toContain('"new-event-dow-button--selected": selectedDaysOfWeek.value.includes(dayIndex)')
+    expect(newEventSource).toContain('class="editor-dow-toggle new-event-dow-toggle"')
+    expect(newEventSource).toContain('v-for="day in dayOfWeekButtons"')
+    expect(newEventSource).toContain('getDayOfWeekButtonClass(day.value)')
+    expect(newEventSource).toContain('"editor-dow-button--selected": selectedDaysOfWeek.value.includes(dayIndex)')
+    expect(newEventSource).not.toContain("<v-btn-toggle\n                  v-model=\"selectedDaysOfWeek\"\n                  multiple\n                  solo")
     expect(dayOfWeekButtonSnippet).not.toContain('color="primary"')
     expect(newEventStyleBlock).toMatch(
-      /\.new-event-dow-button--selected\s*\{\s*background-color:\s*var\(--timeful-selection-bg\);\s*color:\s*var\(--timeful-selection-fg\);/
+      /\.editor-dow-button--selected\s*\{\s*background-color:\s*var\(--timeful-selection-bg\);\s*color:\s*var\(--timeful-selection-fg\);/
     )
   })
 

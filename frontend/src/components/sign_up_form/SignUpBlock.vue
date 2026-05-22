@@ -25,7 +25,7 @@
       >
         <v-text-field
           v-model="newName"
-          dense
+          density="compact"
           hide-details
           autofocus
           @keyup.enter="saveName"
@@ -50,7 +50,7 @@
             class="tw-text-xs"
             :items="capacityOptions"
             hide-details
-            dense
+            density="compact"
             @update:model-value="
               (v: number) => emit('update:signUpBlock', {
                 ...signUpBlock,

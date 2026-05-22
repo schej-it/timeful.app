@@ -1,17 +1,26 @@
 // @vitest-environment happy-dom
 
-import { shallowMount } from "@vue/test-utils"
+import { flushPromises, mount, shallowMount } from "@vue/test-utils"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import type * as UtilsModule from "@/utils"
 import { authTypes } from "@/constants"
+import {
+  buttonStubWithDisabled,
+  mergeComponentStubs,
+  nullStub,
+  passThroughStub,
+  vTextFieldStub,
+} from "@/test/componentStubs"
 import SignIn from "./SignIn.vue"
 
 const {
+  postMock,
   routeState,
   signInGoogleMock,
   signInOutlookMock,
 } = vi.hoisted(() => ({
+  postMock: vi.fn(),
   routeState: {
     query: {},
   },
@@ -24,7 +33,7 @@ vi.mock("@/utils", async () => {
 
   return {
     ...actual,
-    post: vi.fn(),
+    post: postMock,
     signInGoogle: signInGoogleMock,
     signInOutlook: signInOutlookMock,
   }
@@ -53,9 +62,51 @@ vi.mock("@/plugins/posthog", () => ({
   },
 }))
 
+const signInStubs = mergeComponentStubs({
+  "router-link": true,
+  "v-btn": buttonStubWithDisabled,
+  "v-card": passThroughStub,
+  "v-card-text": passThroughStub,
+  "v-card-title": passThroughStub,
+  "v-divider": nullStub,
+  "v-icon": nullStub,
+  "v-img": nullStub,
+  "v-spacer": nullStub,
+  "v-text-field": vTextFieldStub,
+})
+
+const findTextFieldByPlaceholder = (
+  wrapper: ReturnType<typeof mount<typeof SignIn>>,
+  placeholder: string
+) => {
+  const field = wrapper
+    .findAllComponents(vTextFieldStub)
+    .find(component => component.props("placeholder") === placeholder)
+
+  if (field == null) {
+    throw new Error(`Expected text field with placeholder "${placeholder}"`)
+  }
+
+  return field
+}
+
+const findButtonByText = (
+  wrapper: ReturnType<typeof mount<typeof SignIn>>,
+  text: string
+) => {
+  const button = wrapper.findAll("button").find(candidate => candidate.text().includes(text))
+
+  if (button == null) {
+    throw new Error(`Expected button containing "${text}"`)
+  }
+
+  return button
+}
+
 describe("SignIn auth restore state", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    postMock.mockReset()
     routeState.query = {
       signUpId: "signup-1",
       editingMode: "true",
@@ -118,6 +169,7 @@ describe("SignIn auth restore state", () => {
 
 describe("SignIn mode copy", () => {
   beforeEach(() => {
+    postMock.mockReset()
     routeState.query = {}
   })
 
@@ -170,5 +222,59 @@ describe("SignIn mode copy", () => {
 
     expect(wrapper.text()).toContain("Welcome back")
     expect(wrapper.text()).toContain("Sign in to your account")
+  })
+})
+
+describe("SignIn Vuetify field contracts", () => {
+  beforeEach(() => {
+    postMock.mockReset()
+    routeState.query = {}
+  })
+
+  it("uses variant solo for the email and onboarding fields", async () => {
+    postMock.mockResolvedValueOnce({ isNewUser: true })
+
+    const wrapper = mount(SignIn, {
+      global: {
+        stubs: signInStubs,
+      },
+    })
+
+    const emailField = findTextFieldByPlaceholder(wrapper, "Enter your email...")
+    expect(emailField.props("variant")).toBe("solo")
+
+    await wrapper.get('input[placeholder="Enter your email..."]').setValue("new@example.com")
+    await findButtonByText(wrapper, "Continue with Email").trigger("click")
+    await flushPromises()
+
+    const firstNameField = findTextFieldByPlaceholder(wrapper, "First name")
+    const lastNameField = findTextFieldByPlaceholder(wrapper, "Last name (optional)")
+    const disabledEmailField = findTextFieldByPlaceholder(wrapper, "Email...")
+
+    expect(firstNameField.props("variant")).toBe("solo")
+    expect(lastNameField.props("variant")).toBe("solo")
+    expect(disabledEmailField.props("variant")).toBe("solo")
+    expect(disabledEmailField.props("modelValue")).toBe("new@example.com")
+    expect(disabledEmailField.props("disabled")).toBe(true)
+  })
+
+  it("uses variant solo for the OTP field", async () => {
+    postMock.mockResolvedValueOnce({ isNewUser: false })
+    postMock.mockResolvedValueOnce(undefined)
+
+    const wrapper = mount(SignIn, {
+      global: {
+        stubs: signInStubs,
+      },
+    })
+
+    await wrapper.get('input[placeholder="Enter your email..."]').setValue("existing@example.com")
+    await findButtonByText(wrapper, "Continue with Email").trigger("click")
+    await flushPromises()
+
+    const otpField = findTextFieldByPlaceholder(wrapper, "Enter 6-digit code...")
+
+    expect(otpField.props("variant")).toBe("solo")
+    expect(otpField.props("maxlength")).toBe("6")
   })
 })

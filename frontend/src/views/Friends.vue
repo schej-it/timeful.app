@@ -9,7 +9,7 @@
         </div>
       </div>
 
-      <v-text-field label="Search" outlined dense></v-text-field>
+      <v-text-field label="Search" variant="outlined" density="compact"></v-text-field>
 
       <FriendItem
         v-for="(f, i) in exampleFriends"

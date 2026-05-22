@@ -17,8 +17,10 @@
           class="tw-flex tw-items-center tw-justify-center tw-gap-2 tw-text-sm tw-text-black"
         >
           <v-select
-            dense
+            density="compact"
             hide-details
+            item-title="title"
+            item-value="value"
             :items="bufferTimes"
             class="-tw-mt-0.5 tw-w-20 tw-text-xs"
             :model-value="bufferTime.time"

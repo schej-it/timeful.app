@@ -67,7 +67,7 @@
                   <v-icon small>mdi-dots-horizontal</v-icon>
                 </v-btn>
               </template>
-              <v-list dense class="tw-py-1">
+              <v-list density="compact" class="tw-py-1">
                 <v-list-item @click.stop.prevent="openEditFolderDialog(folder)">
                   <v-list-item-title>Edit</v-list-item-title>
                 </v-list-item>

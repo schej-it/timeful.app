@@ -32,7 +32,7 @@
                 ><v-icon>mdi-dots-vertical</v-icon></v-btn
               >
             </template>
-            <v-list class="tw-py-1" dense>
+            <v-list class="tw-py-1" density="compact">
               <v-dialog v-model="exportCsvDialog.visible" width="400">
                 <template #activator="{ props: activatorProps }">
                   <v-list-item
@@ -49,10 +49,10 @@
                     <div class="tw-mb-1">Select CSV format:</div>
                     <v-select
                       v-model="exportCsvDialog.type"
-                      solo
+                      variant="solo"
                       hide-details
                       :items="exportCsvDialog.types"
-                      item-text="text"
+                      item-title="text"
                       item-value="value"
                     />
                   </v-card-text>
@@ -215,7 +215,7 @@
                           <v-icon small color="#4F4F4F">mdi-dots-vertical</v-icon>
                         </v-btn>
                       </template>
-                      <v-list class="tw-py-1" dense>
+                      <v-list class="tw-py-1" density="compact">
                         <v-list-item
                           v-if="isGuest(user)"
                           @click="$emit('editGuestAvailability', user._id ?? '')"

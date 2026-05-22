@@ -161,7 +161,7 @@
                 Schedule
               </v-btn>
             </template>
-            <v-list dense>
+            <v-list density="compact">
               <v-list-item @click="toolRow.actions.confirmScheduleEvent(true)">
                 <v-img
                   src="@/assets/gcal_logo.png"

@@ -10,9 +10,11 @@ import {
   buildEventEditorStubs,
   type ComponentStubMap,
   vSelectStub as VSelectStub,
+  vTextFieldStub as VTextFieldStub,
 } from "@/test/componentStubs"
 import type * as UtilsModule from "@/utils"
 import NewSignUp from "./NewSignUp.vue"
+import newSignUpSource from "./NewSignUp.vue?raw"
 
 const { postMock, putMock } = vi.hoisted(() => ({
   postMock: vi.fn(),
@@ -127,18 +129,21 @@ describe("NewSignUp", () => {
     expect(selectedDays.every((day) => day instanceof Temporal.PlainDate)).toBe(true)
   })
 
-  it("uses explicit solo variants for the top-level time and date selects", () => {
+  it("uses explicit solo variants for the name, time, and date fields", () => {
     const wrapper = shallowMount(NewSignUp, {
       global: {
         stubs: {
           ...defaultStubs,
           "v-select": VSelectStub,
+          "v-text-field": VTextFieldStub,
         },
       },
     })
 
+    const textField = wrapper.getComponent(VTextFieldStub)
     const selects = wrapper.findAllComponents(VSelectStub)
 
+    expect(textField.props("variant")).toBe("solo")
     expect(selects).toHaveLength(3)
     expect(selects[0]?.props("itemColor")).toBe("green")
     expect(selects[0]?.props("menuProps")).toEqual({ minWidth: 176, maxWidth: 176 })
@@ -148,6 +153,14 @@ describe("NewSignUp", () => {
     expect(selects[1]?.props("variant")).toBe("solo")
     expect(selects[2]?.props("itemColor")).toBe("green")
     expect(selects[2]?.props("variant")).toBe("solo")
+  })
+
+  it("uses the shared weekday-toggle class contract instead of boolean solo props", () => {
+    expect(newSignUpSource).toContain('class="editor-dow-toggle"')
+    expect(newSignUpSource).toContain('v-for="day in dayOfWeekButtons"')
+    expect(newSignUpSource).toContain('getDayOfWeekButtonClass(day.value)')
+    expect(newSignUpSource).toContain('"editor-dow-button--selected": selectedDaysOfWeek.value.includes(dayIndex)')
+    expect(newSignUpSource).not.toContain("<v-btn-toggle\n                  v-model=\"selectedDaysOfWeek\"\n                  multiple\n                  solo")
   })
 
   it("commits ISO dates emitted by DatePicker into Temporal selected days", async () => {

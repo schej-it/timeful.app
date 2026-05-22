@@ -11,6 +11,7 @@ import {
 } from "@/test/componentStubs"
 import { ZdtMap, ZdtSet } from "@/utils"
 import RespondentsList from "./RespondentsList.vue"
+import respondentsListSource from "./RespondentsList.vue?raw"
 
 vi.mock("pinia", () => ({
   storeToRefs: (store: { authUser: unknown }) => ({
@@ -271,5 +272,15 @@ describe("RespondentsList", () => {
 
     expect(wrapper.emitted("update:showBestTimes")).toEqual([[false]])
     isPhoneValue.value = true
+  })
+
+  it("uses explicit Vuetify 3 select and list props for export actions", () => {
+    expect(respondentsListSource).toContain('<v-list class="tw-py-1" density="compact">')
+    expect(respondentsListSource).toContain('variant="solo"')
+    expect(respondentsListSource).toContain('item-title="text"')
+    expect(respondentsListSource).toContain('item-value="value"')
+    expect(respondentsListSource).not.toContain("<v-list class=\"tw-py-1\" dense>")
+    expect(respondentsListSource).not.toContain("\n                      solo\n")
+    expect(respondentsListSource).not.toContain('item-text="text"')
   })
 })

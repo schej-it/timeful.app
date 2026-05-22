@@ -15,10 +15,10 @@
       <v-card-text class="tw-px-0">
         <v-expansion-panels accordion mandatory flat>
           <v-expansion-panel>
-            <v-expansion-panel-header class="tw-font-medium">
+            <v-expansion-panel-title class="tw-font-medium">
               Attendees
-            </v-expansion-panel-header>
-            <v-expansion-panel-content>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
               <div class="tw-mb-4 tw-text-dark-gray">
                 Google Calendar invites will be sent to people at the following
                 email addresses.
@@ -70,34 +70,34 @@
                           v-model:search-input="emails[r]"
                           :items="formattedEmailSuggestions[r]"
                           no-filter
-                          item-text="email"
+                          item-title="email"
                           item-value="email"
                           hide-no-data
                           return-object
                           append-icon=""
                           class="tw-pt-2"
                           placeholder="Email (optional)"
-                          outlined
-                          dense
+                          variant="outlined"
+                          density="compact"
                           :rules="[rules.validEmail]"
                         >
-                          <template #item="{ item }">
-                            <v-list-item-avatar>
+                          <template #item="{ item, props: itemProps }">
+                            <v-list-item v-bind="itemProps">
+                              <template #prepend>
                               <img
                                 v-if="item.raw.picture && item.raw.picture.length > 0"
                                 :src="item.raw.picture"
                                 referrerpolicy="no-referrer"
                               />
                               <v-icon v-else>mdi-account</v-icon>
-                            </v-list-item-avatar>
-                            <v-list-item-content>
+                              </template>
                               <v-list-item-title
                                 >{{ item.raw.firstName ?? "" }} {{ item.raw.lastName ?? "" }}</v-list-item-title
                               >
                               <v-list-item-subtitle
                                 >{{ item.raw.email }}</v-list-item-subtitle
                               >
-                            </v-list-item-content>
+                            </v-list-item>
                           </template>
                         </v-combobox>
                       </td>
@@ -105,29 +105,29 @@
                   </tbody>
                 </table>
               </div>
-            </v-expansion-panel-content>
+            </v-expansion-panel-text>
           </v-expansion-panel>
           <v-expansion-panel>
-            <v-expansion-panel-header class="tw-font-medium">
+            <v-expansion-panel-title class="tw-font-medium">
               Location & description (optional)
-            </v-expansion-panel-header>
-            <v-expansion-panel-content>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
               <v-text-field
                 v-model="location"
                 prepend-icon="mdi-map-marker"
                 placeholder="Location"
-                outlined
-                dense
+                variant="outlined"
+                density="compact"
               />
               <v-textarea
                 v-model="description"
                 prepend-icon="mdi-text"
                 placeholder="Description"
-                outlined
-                dense
+                variant="outlined"
+                density="compact"
                 hide-details
               />
-            </v-expansion-panel-content>
+            </v-expansion-panel-text>
           </v-expansion-panel>
         </v-expansion-panels>
       </v-card-text>

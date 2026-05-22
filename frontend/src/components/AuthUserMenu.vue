@@ -15,7 +15,7 @@
           </v-avatar>
         </v-btn>
       </template>
-      <v-list class="py-0" :dense="isPhone">
+      <v-list class="py-0" :density="isPhone ? 'compact' : 'default'">
         <v-list-item>
           <v-list-item-title>
             <strong>{{ `${authUser.firstName} ${authUser.lastName}` }}</strong>

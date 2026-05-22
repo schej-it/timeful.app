@@ -66,7 +66,7 @@ describe("timezone_utils normalization", () => {
         key === "timezone"
           ? JSON.stringify({ value: "America/New_York" })
           : null,
-    } as Storage
+    } satisfies Pick<Storage, "getItem">
 
     const timezone = resolveInitialTimezoneSelection(
       Temporal.ZonedDateTime.from("2026-01-15T12:00:00Z[UTC]"),
@@ -83,7 +83,7 @@ describe("timezone_utils normalization", () => {
   it("falls back to the browser timezone selection when no saved timezone exists", () => {
     const storage = {
       getItem: () => null,
-    } as Storage
+    } satisfies Pick<Storage, "getItem">
 
     const timezone = resolveInitialTimezoneSelection(
       Temporal.ZonedDateTime.from("2026-01-15T12:00:00Z[UTC]"),

@@ -14,16 +14,16 @@
             <v-text-field
               v-model="firstName"
               hide-details
-              outlined
+              variant="outlined"
               placeholder="First name"
-              :dense="isPhone"
+              :density="isPhone ? 'compact' : 'default'"
             />
             <v-text-field
               v-model="lastName"
               hide-details
-              outlined
+              variant="outlined"
               placeholder="Last name"
-              :dense="isPhone"
+              :density="isPhone ? 'compact' : 'default'"
             />
           </div>
           <v-expand-transition>

@@ -8,9 +8,12 @@ import { createLocalStorageMock } from "@/test/localStorage"
 import {
   buildEventEditorStubs,
   type ComponentStubMap,
+  vSelectStub as VSelectStub,
+  vTextFieldStub as VTextFieldStub,
 } from "@/test/componentStubs"
 import type * as UtilsModule from "@/utils"
 import NewGroup from "./NewGroup.vue"
+import newGroupSource from "./NewGroup.vue?raw"
 
 const { postMock, putMock } = vi.hoisted(() => ({
   postMock: vi.fn(),
@@ -113,6 +116,34 @@ describe("NewGroup", () => {
 
     expect(vm.startTime.toString()).toBe("09:30:00")
     expect(vm.endTime.toString()).toBe("10:45:00")
+  })
+
+  it("uses explicit solo variants for the editor text and time fields", () => {
+    const wrapper = shallowMount(NewGroup, {
+      global: {
+        stubs: {
+          ...globalStubs,
+          "v-select": VSelectStub,
+          "v-text-field": VTextFieldStub,
+        },
+      },
+    })
+
+    const textField = wrapper.getComponent(VTextFieldStub)
+    const selects = wrapper.findAllComponents(VSelectStub)
+
+    expect(textField.props("variant")).toBe("solo")
+    expect(selects).toHaveLength(2)
+    expect(selects[0]?.props("variant")).toBe("solo")
+    expect(selects[1]?.props("variant")).toBe("solo")
+  })
+
+  it("uses the shared weekday-toggle class contract instead of boolean solo props", () => {
+    expect(newGroupSource).toContain('class="editor-dow-toggle"')
+    expect(newGroupSource).toContain('v-for="day in dayOfWeekButtons"')
+    expect(newGroupSource).toContain('getDayOfWeekButtonClass(day.value)')
+    expect(newGroupSource).toContain('"editor-dow-button--selected": selectedDaysOfWeek.value.includes(dayIndex)')
+    expect(newGroupSource).not.toContain("<v-btn-toggle\n              v-model=\"selectedDaysOfWeek\"\n              multiple\n              solo")
   })
 
   it("prefers the explicit event time seed over membership dates when editing a group", () => {

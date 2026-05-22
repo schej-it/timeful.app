@@ -36,7 +36,7 @@
           v-model="name"
           placeholder="Name your event..."
           hide-details="auto"
-          solo
+          variant="solo"
           :rules="nameRules"
           required
           @keyup.enter="blurNameField"
@@ -119,17 +119,17 @@
                 <v-btn-toggle
                   v-model="selectedDaysOfWeek"
                   multiple
-                  solo
-                  color="primary"
+                  class="editor-dow-toggle"
                 >
-                  <v-btn v-show="!startOnMonday" variant="flat"> Sun </v-btn>
-                  <v-btn variant="flat"> Mon </v-btn>
-                  <v-btn variant="flat"> Tue </v-btn>
-                  <v-btn variant="flat"> Wed </v-btn>
-                  <v-btn variant="flat"> Thu </v-btn>
-                  <v-btn variant="flat"> Fri </v-btn>
-                  <v-btn variant="flat"> Sat </v-btn>
-                  <v-btn v-show="startOnMonday" variant="flat"> Sun </v-btn>
+                  <v-btn
+                    v-for="day in dayOfWeekButtons"
+                    :key="day.key"
+                    :class="getDayOfWeekButtonClass(day.value)"
+                    :value="day.value"
+                    variant="flat"
+                  >
+                    {{ day.label }}
+                  </v-btn>
                 </v-btn-toggle>
               </v-input>
               <v-checkbox v-model="startOnMonday" class="tw-mt-2" hide-details>
@@ -369,7 +369,21 @@ const nameRules = computed(() => [
 const selectedDaysRules = computed(() => [
   (s: unknown[]) => s.length > 0 || "Please select at least one day",
 ])
+const dayOfWeekButtons = computed(() => [
+  ...(!startOnMonday.value ? [{ key: "sun-start", label: "Sun", value: 0 }] : []),
+  { key: "mon", label: "Mon", value: 1 },
+  { key: "tue", label: "Tue", value: 2 },
+  { key: "wed", label: "Wed", value: 3 },
+  { key: "thu", label: "Thu", value: 4 },
+  { key: "fri", label: "Fri", value: 5 },
+  { key: "sat", label: "Sat", value: 6 },
+  ...(startOnMonday.value ? [{ key: "sun-end", label: "Sun", value: 7 }] : []),
+])
 const times = computed(() => getTimeOptions())
+const getDayOfWeekButtonClass = (dayIndex: number) => ({
+  "editor-dow-button": true,
+  "editor-dow-button--selected": selectedDaysOfWeek.value.includes(dayIndex),
+})
 const minCalendarDate = computed(() => {
   if (props.edit) return ""
   const today = Temporal.Now.plainDateISO()
@@ -675,6 +689,21 @@ watch(selectedDateOption, () => {
   }
 })
 </script>
+
+<style>
+.editor-dow-toggle {
+  gap: 4px;
+}
+
+.editor-dow-button {
+  color: rgba(0, 0, 0, 0.87);
+}
+
+.editor-dow-button--selected {
+  background-color: var(--timeful-selection-bg);
+  color: var(--timeful-selection-fg);
+}
+</style>
 
 <style>
 .email-me-after-text-field input {

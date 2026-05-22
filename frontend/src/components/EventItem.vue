@@ -65,11 +65,9 @@
             </v-btn>
           </template>
 
-          <v-list class="tw-py-1" dense>
+          <v-list class="tw-py-1" density="compact">
             <v-list-item @click="copyLink">
-              <v-list-item-content>
-                <v-list-item-title>Copy link</v-list-item-title>
-              </v-list-item-content>
+              <v-list-item-title>Copy link</v-list-item-title>
             </v-list-item>
             <v-divider />
             <v-dialog
@@ -80,9 +78,7 @@
             >
               <template #activator="{ props: duplicateProps }">
                 <v-list-item id="duplicate-event-btn" v-bind="duplicateProps">
-                  <v-list-item-content>
-                    <v-list-item-title>Duplicate</v-list-item-title>
-                  </v-list-item-content>
+                  <v-list-item-title>Duplicate</v-list-item-title>
                 </v-list-item>
               </template>
               <v-card>
@@ -94,7 +90,7 @@
                     placeholder="Name your event..."
                     :disabled="duplicateDialogOptions.loading"
                     hide-details
-                    solo
+                    variant="solo"
                   />
                   <v-checkbox
                     v-model="duplicateDialogOptions.copyAvailability"
@@ -135,17 +131,17 @@
                   class="tw-cursor-pointer tw-pr-1 hover:tw-bg-light-gray"
                 >
                   <v-list-item-title>Move to</v-list-item-title>
-                  <v-list-item-icon>
+                  <template #append>
                     <v-icon small>mdi-chevron-right</v-icon>
-                  </v-list-item-icon>
+                  </template>
                 </v-list-item>
               </template>
-              <v-list dense class="tw-py-1">
+              <v-list density="compact" class="tw-py-1">
                 <v-list-item class="tw-pr-1" @click="moveEventToFolder(null)">
                   <v-list-item-title>No folder</v-list-item-title>
-                  <v-list-item-action v-if="folderId === null">
+                  <template v-if="folderId === null" #append>
                     <v-icon small>mdi-check</v-icon>
-                  </v-list-item-action>
+                  </template>
                 </v-list-item>
                 <v-list-item
                   v-for="folder in folders"
@@ -154,9 +150,9 @@
                   @click="moveEventToFolder(folder._id ?? null)"
                 >
                   <v-list-item-title>{{ folder.name }}</v-list-item-title>
-                  <v-list-item-action v-if="folder._id === folderId">
+                  <template v-if="folder._id === folderId" #append>
                     <v-icon small>mdi-check</v-icon>
-                  </v-list-item-action>
+                  </template>
                 </v-list-item>
               </v-list>
             </v-menu>
@@ -173,9 +169,7 @@
                   class="red--text"
                   v-bind="removeDialogProps"
                 >
-                  <v-list-item-content>
-                    <v-list-item-title>Delete {{ typeText }}</v-list-item-title>
-                  </v-list-item-content>
+                  <v-list-item-title>Delete {{ typeText }}</v-list-item-title>
                 </v-list-item>
               </template>
               <v-card>

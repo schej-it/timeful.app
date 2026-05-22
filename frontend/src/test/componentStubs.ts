@@ -1,3 +1,5 @@
+/* eslint-disable vue/one-component-per-file */
+
 import { defineComponent, type Component, type Directive } from "vue"
 
 interface FormValidationResult {
@@ -18,6 +20,30 @@ export const clickButtonStub = {
   template: '<button @click="$emit(\'click\')"><slot /></button>',
 }
 
+export const buttonStubWithDisabled = defineComponent({
+  name: "VBtn",
+  props: {
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
+    loading: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  emits: ["click"],
+  template: `
+    <button
+      :disabled="disabled"
+      :data-loading="loading"
+      @click="!disabled && $emit('click')"
+    >
+      <slot />
+    </button>
+  `,
+})
+
 export const passThroughStub = {
   inheritAttrs: false,
   template: "<div><slot /></div>",
@@ -27,6 +53,65 @@ export const nullStub = {
   inheritAttrs: false,
   template: "<div />",
 }
+
+export const vTextFieldStub = defineComponent({
+  name: "VTextField",
+  props: {
+    modelValue: {
+      type: null,
+      required: false,
+      default: undefined,
+    },
+    density: {
+      type: String,
+      default: undefined,
+    },
+    variant: {
+      type: String,
+      default: undefined,
+    },
+    placeholder: {
+      type: String,
+      default: "",
+    },
+    type: {
+      type: String,
+      default: "text",
+    },
+    maxlength: {
+      type: [Number, String],
+      default: undefined,
+    },
+    errorMessages: {
+      type: [String, Array],
+      default: undefined,
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
+    hideDetails: {
+      type: [Boolean, String],
+      default: undefined,
+    },
+    autofocus: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  emits: ["update:modelValue", "keydown.enter"],
+  template: `
+    <input
+      :value="modelValue"
+      :placeholder="placeholder"
+      :type="type"
+      :maxlength="maxlength"
+      :disabled="disabled"
+      @input="$emit('update:modelValue', $event.target.value)"
+      @keydown.enter="$emit('keydown.enter')"
+    />
+  `,
+})
 
 export const vSelectStub = defineComponent({
   name: "VSelect",

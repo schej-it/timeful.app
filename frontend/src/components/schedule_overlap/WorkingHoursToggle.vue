@@ -15,8 +15,10 @@
         <div class="tw-text-sm tw-text-black">
           <div class="tw-flex tw-items-center tw-gap-2">
             <v-select
-              dense
+              density="compact"
               hide-details
+              item-title="title"
+              item-value="time"
               return-object
               class="-tw-mt-0.5 tw-w-20 tw-text-xs"
               :items="times"
@@ -31,8 +33,10 @@
             />
             <div>to</div>
             <v-select
-              dense
+              density="compact"
               hide-details
+              item-title="title"
+              item-value="time"
               return-object
               class="-tw-mt-0.5 tw-w-20 tw-text-xs"
               :items="times"

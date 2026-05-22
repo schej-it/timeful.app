@@ -149,6 +149,8 @@ describe("ToolRow", () => {
     expect(toolRowSource).toContain("@update:model-value=\"(value) => value && toolRow.actions.updateTimeType(value)\"")
     expect(toolRowSource).toContain('class="tool-row-inline-select__selection-text"')
     expect(toolRowSource).toContain("'tool-row-inline-select__item--active': item.raw.value === toolRow.timeType")
+    expect(toolRowSource).toContain('<v-list density="compact">')
+    expect(toolRowSource).not.toContain("<v-list dense>")
     expect(toolRowSource).toContain(".tool-row-inline-select__item--active {\n  background-color: var(--timeful-selection-bg);\n  color: var(--timeful-selection-fg);\n}")
   })
 })

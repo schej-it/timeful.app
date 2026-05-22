@@ -208,42 +208,16 @@
                 <v-btn-toggle
                   v-model="selectedDaysOfWeek"
                   multiple
-                  solo
-                  class="new-event-dow-toggle"
+                  class="editor-dow-toggle new-event-dow-toggle"
                 >
                   <v-btn
-                    v-show="!startOnMonday"
-                    :class="getDayOfWeekButtonClass(0)"
-                    :value="0"
+                    v-for="day in dayOfWeekButtons"
+                    :key="day.key"
+                    :class="getDayOfWeekButtonClass(day.value)"
+                    :value="day.value"
                     variant="flat"
                   >
-                    Sun
-                  </v-btn>
-                  <v-btn :class="getDayOfWeekButtonClass(1)" :value="1" variant="flat">
-                    Mon
-                  </v-btn>
-                  <v-btn :class="getDayOfWeekButtonClass(2)" :value="2" variant="flat">
-                    Tue
-                  </v-btn>
-                  <v-btn :class="getDayOfWeekButtonClass(3)" :value="3" variant="flat">
-                    Wed
-                  </v-btn>
-                  <v-btn :class="getDayOfWeekButtonClass(4)" :value="4" variant="flat">
-                    Thu
-                  </v-btn>
-                  <v-btn :class="getDayOfWeekButtonClass(5)" :value="5" variant="flat">
-                    Fri
-                  </v-btn>
-                  <v-btn :class="getDayOfWeekButtonClass(6)" :value="6" variant="flat">
-                    Sat
-                  </v-btn>
-                  <v-btn
-                    v-show="startOnMonday"
-                    :class="getDayOfWeekButtonClass(7)"
-                    :value="7"
-                    variant="flat"
-                  >
-                    Sun
+                    {{ day.label }}
                   </v-btn>
                 </v-btn-toggle>
               </v-input>
@@ -484,7 +458,7 @@
                     <v-text-field
                       v-model="sendEmailAfterXResponses"
                       :disabled="!sendEmailAfterXResponsesEnabled"
-                      dense
+                      density="compact"
                       class="email-me-after-text-field -tw-mt-[2px] tw-w-10"
                       hide-details
                       type="number"
@@ -704,6 +678,16 @@ const hasSelectedDayCriteria = computed(() => {
 
   return selectedDaysOfWeek.value.length > 0
 })
+const dayOfWeekButtons = computed(() => [
+  ...(!startOnMonday.value ? [{ key: "sun-start", label: "Sun", value: 0 }] : []),
+  { key: "mon", label: "Mon", value: 1 },
+  { key: "tue", label: "Tue", value: 2 },
+  { key: "wed", label: "Wed", value: 3 },
+  { key: "thu", label: "Thu", value: 4 },
+  { key: "fri", label: "Fri", value: 5 },
+  { key: "sat", label: "Sat", value: 6 },
+  ...(startOnMonday.value ? [{ key: "sun-end", label: "Sun", value: 7 }] : []),
+])
 const submitBlocked = computed(
   () => !hasName.value || !hasSelectedDayCriteria.value
 )
@@ -757,8 +741,8 @@ const minCalendarDate = computed(() => {
 })
 const guestEvent = computed(() => isAnonymousOwnerEvent(props.event))
 const getDayOfWeekButtonClass = (dayIndex: number) => ({
-  "new-event-dow-button": true,
-  "new-event-dow-button--selected": selectedDaysOfWeek.value.includes(dayIndex),
+  "editor-dow-button": true,
+  "editor-dow-button--selected": selectedDaysOfWeek.value.includes(dayIndex),
 })
 function normalizeTimeIncrement(value: unknown): number {
   const candidate =
@@ -1182,15 +1166,15 @@ watch(
   border-radius: 3px;
 }
 
-.new-event-dow-toggle {
+.editor-dow-toggle {
   gap: 4px;
 }
 
-.new-event-dow-button {
+.editor-dow-button {
   color: rgba(0, 0, 0, 0.87);
 }
 
-.new-event-dow-button--selected {
+.editor-dow-button--selected {
   background-color: var(--timeful-selection-bg);
   color: var(--timeful-selection-fg);
 }

@@ -35,10 +35,15 @@
       </div>
     </div>
     <div class="tw-flex tw-flex-col tw-gap-3">
-      <v-text-field v-model="email" solo placeholder="Apple ID" hide-details />
+      <v-text-field
+        v-model="email"
+        variant="solo"
+        placeholder="Apple ID"
+        hide-details
+      />
       <v-text-field
         v-model="password"
-        solo
+        variant="solo"
         placeholder="App password"
         hide-details
         type="password"

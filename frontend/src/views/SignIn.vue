@@ -82,7 +82,7 @@
                   class="tw-mb-2"
                   placeholder="Enter your email..."
                   type="email"
-                  solo
+                  variant="solo"
                   hide-details="auto"
                   :error-messages="emailError"
                   @keydown.enter="submitEmail"
@@ -126,7 +126,7 @@
             <v-text-field
               v-model="firstName"
               placeholder="First name"
-              solo
+              variant="solo"
               hide-details="auto"
               autofocus
               class="tw-mb-3"
@@ -137,16 +137,16 @@
               ref="lastNameField"
               v-model="lastName"
               placeholder="Last name (optional)"
-              solo
+              variant="solo"
               hide-details="auto"
               class="tw-mb-3"
               @keydown.enter="submitOnboarding"
             />
             <div class="tw-mb-1 tw-text-sm tw-font-medium">Email</div>
             <v-text-field
-              :value="email"
+              :model-value="email"
               placeholder="Email..."
-              solo
+              variant="solo"
               hide-details="auto"
               disabled
               background-color="#f5f5f5"
@@ -188,7 +188,7 @@
             <v-text-field
               v-model="otpCode"
               placeholder="Enter 6-digit code..."
-              solo
+              variant="solo"
               hide-details="auto"
               maxlength="6"
               :error-messages="otpError"
