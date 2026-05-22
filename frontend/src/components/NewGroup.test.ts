@@ -258,7 +258,7 @@ describe("NewGroup", () => {
     ).toBe("PT1H30M")
   })
 
-  it("falls back to the saved timezone when submit runs before timezone state is hydrated", async () => {
+  it("initializes parent-owned timezone state from the saved selection", async () => {
     vi.stubGlobal(
       "localStorage",
       createLocalStorageMock({
@@ -294,7 +294,7 @@ describe("NewGroup", () => {
       $: { setupState?: { submit?: () => Promise<void> } }
     }
 
-    expect(vm.timezone.value).toBe("")
+    expect(vm.timezone.value).toBe("America/Los_Angeles")
 
     await (vm.submit ?? vm.$.setupState?.submit)?.()
     await Promise.resolve()

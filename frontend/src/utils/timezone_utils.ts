@@ -1,4 +1,5 @@
 import type { Timezone } from "@/composables/schedule_overlap/types"
+import { allTimezones } from "@/constants"
 import { Temporal } from "temporal-polyfill"
 
 export interface SavedTimezoneShape {
@@ -152,4 +153,134 @@ export const resolveTimezoneValue = (
   }
 
   return browserTimezone
+}
+
+export const buildTimezonesForReferenceDate = (
+  referenceDate: Temporal.ZonedDateTime
+): Timezone[] => {
+  return Object.entries(allTimezones)
+    .map((zone): Timezone | null => {
+      try {
+        const zdt = referenceDate.withTimeZone(zone[0])
+        const offsetMinutes = Math.round(
+          zdt.offsetNanoseconds / (1000 * 1000 * 1000 * 60)
+        )
+
+        return {
+          value: zone[0],
+          label: zone[1],
+          gmtString: formatTimezoneGmtString(offsetMinutes),
+          offset: Temporal.Duration.from({ minutes: offsetMinutes }),
+        }
+      } catch (error: unknown) {
+        console.error(error)
+        return null
+      }
+    })
+    .filter((timezone): timezone is Timezone => timezone !== null)
+    .sort((a, b) => a.offset.total("minutes") - b.offset.total("minutes"))
+}
+
+export const resolveBrowserTimezoneSelection = (
+  timezones: Timezone[],
+  referenceDate: Temporal.ZonedDateTime,
+  browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+): Timezone | undefined => {
+  if (!browserTimezone) {
+    return undefined
+  }
+
+  let match = timezones.find((timezone) => timezone.value === browserTimezone)
+  if (match) {
+    return match
+  }
+
+  const janDate = Temporal.ZonedDateTime.from("2024-01-15T12:00:00[America/New_York]")
+    .withTimeZone(browserTimezone)
+  const julDate = Temporal.ZonedDateTime.from("2024-07-15T12:00:00[America/New_York]")
+    .withTimeZone(browserTimezone)
+  const janOffset = Math.round(
+    janDate.offsetNanoseconds / (1000 * 1000 * 1000 * 60)
+  )
+  const julOffset = Math.round(
+    julDate.offsetNanoseconds / (1000 * 1000 * 1000 * 60)
+  )
+
+  match = timezones.find((timezone) => {
+    const januaryTimezoneDate = Temporal.ZonedDateTime.from(
+      "2024-01-15T12:00:00[America/New_York]"
+    ).withTimeZone(timezone.value)
+    const julyTimezoneDate = Temporal.ZonedDateTime.from(
+      "2024-07-15T12:00:00[America/New_York]"
+    ).withTimeZone(timezone.value)
+    const januaryOffset = Math.round(
+      januaryTimezoneDate.offsetNanoseconds / (1000 * 1000 * 1000 * 60)
+    )
+    const julyOffset = Math.round(
+      julyTimezoneDate.offsetNanoseconds / (1000 * 1000 * 1000 * 60)
+    )
+
+    return januaryOffset === janOffset && julyOffset === julOffset
+  })
+
+  if (match) {
+    return match
+  }
+
+  const browserReferenceDate = referenceDate.withTimeZone(browserTimezone)
+  const offsetMinutes = Math.round(
+    browserReferenceDate.offsetNanoseconds / (1000 * 1000 * 1000 * 60)
+  )
+
+  return timezones.find(
+    (timezone) => timezone.offset.total("minutes") === offsetMinutes
+  )
+}
+
+export const resolveSavedTimezoneSelection = (
+  timezones: Timezone[],
+  storage: Storage | undefined
+): Timezone | undefined => {
+  const savedTimezone = normalizeOptionalTimezone(readSavedTimezone(storage))
+  if (!savedTimezone) {
+    return undefined
+  }
+
+  const matchedTimezone = timezones.find(
+    (timezone) => timezone.value === savedTimezone.value
+  )
+  if (matchedTimezone) {
+    return matchedTimezone
+  }
+
+  if (
+    !savedTimezone.value.startsWith("+") &&
+    !savedTimezone.value.startsWith("-")
+  ) {
+    return undefined
+  }
+
+  return normalizeTimezone({
+    value: savedTimezone.value,
+    offset: savedTimezone.offset,
+    label: savedTimezone.label,
+    gmtString:
+      savedTimezone.gmtString ||
+      formatTimezoneGmtString(savedTimezone.offset.total("minutes")),
+  })
+}
+
+export const resolveInitialTimezoneSelection = (
+  referenceDate: Temporal.ZonedDateTime,
+  storage: Storage | undefined =
+    typeof globalThis.localStorage === "undefined" ? undefined : globalThis.localStorage,
+  browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+): Timezone => {
+  const timezones = buildTimezonesForReferenceDate(referenceDate)
+
+  return (
+    resolveSavedTimezoneSelection(timezones, storage) ??
+    resolveBrowserTimezoneSelection(timezones, referenceDate, browserTimezone) ??
+    normalizeTimezone(undefined)
+  )
 }

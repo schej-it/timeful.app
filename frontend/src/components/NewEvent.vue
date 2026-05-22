@@ -569,6 +569,7 @@ import {
   prefersStartOnMonday,
   getWrappedTimeRangeDuration,
   plainTimeToTimeNum,
+  resolveInitialTimezoneSelection,
   resolveTimezoneValue,
   timeNumToPlainTime,
 } from "@/utils"
@@ -682,7 +683,9 @@ const SUPPORTED_TIME_INCREMENTS = new Set([15, 30, 60])
 const timeIncrement = ref(DEFAULT_TIME_INCREMENT)
 const collectEmails = ref(false)
 const blindAvailabilityEnabled = ref(false)
-const timezone = ref<Timezone>({ value: "", label: "", gmtString: "", offset: durations.ZERO })
+const timezone = ref<Timezone>(
+  resolveInitialTimezoneSelection(Temporal.Now.zonedDateTimeISO())
+)
 const sendEmailAfterXResponsesEnabled = ref(false)
 const sendEmailAfterXResponses = ref(3)
 
@@ -795,7 +798,8 @@ onMounted(() => {
     selectedDaysOfWeek.value = props.contactsPayload.selectedDaysOfWeek ?? []
     selectedDays.value = getDraftSelectedDays(props.contactsPayload)
     notificationsEnabled.value = props.contactsPayload.notificationsEnabled ?? true
-    timezone.value = getDraftTimezone(props.contactsPayload) ?? { value: "", label: "", gmtString: "", offset: durations.ZERO }
+    timezone.value = getDraftTimezone(props.contactsPayload) ??
+      resolveInitialTimezoneSelection(Temporal.Now.zonedDateTimeISO())
     specificTimesEnabled.value = props.contactsPayload.specificTimesEnabled ?? false
 
     formRef.value?.resetValidation()

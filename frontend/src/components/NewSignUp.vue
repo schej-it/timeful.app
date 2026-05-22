@@ -261,6 +261,7 @@ import {
   getEventMembershipPlainDates,
   getEventTimeSeed,
   getTimeOptions,
+  resolveInitialTimezoneSelection,
   resolveTimezoneValue,
 } from "@/utils"
 import { useMainStore } from "@/stores/main"
@@ -352,7 +353,9 @@ const emails = ref<string[]>([])
 const showAdvancedOptions = ref(false)
 const collectEmails = ref(false)
 const blindAvailabilityEnabled = ref(false)
-const timezone = ref<Timezone>({ value: "", label: "", gmtString: "", offset: durations.ZERO })
+const timezone = ref<Timezone>(
+  resolveInitialTimezoneSelection(Temporal.Now.zonedDateTimeISO())
+)
 const sendEmailAfterXResponsesEnabled = ref(false)
 const sendEmailAfterXResponses = ref(3)
 
@@ -384,7 +387,8 @@ onMounted(() => {
     selectedDaysOfWeek.value = props.contactsPayload.selectedDaysOfWeek ?? []
     selectedDays.value = getDraftSelectedDays(props.contactsPayload)
     notificationsEnabled.value = props.contactsPayload.notificationsEnabled ?? false
-    timezone.value = getDraftTimezone(props.contactsPayload) ?? { value: "", label: "", gmtString: "", offset: durations.ZERO }
+    timezone.value = getDraftTimezone(props.contactsPayload) ??
+      resolveInitialTimezoneSelection(Temporal.Now.zonedDateTimeISO())
 
     formRef.value?.resetValidation()
   }

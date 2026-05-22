@@ -159,6 +159,7 @@ import {
   getWrappedTimeRangeDuration,
   getEventMembershipDayOfWeekValues,
   getEventTimeSeed,
+  resolveInitialTimezoneSelection,
   resolveTimezoneValue,
   signInGoogle,
   getDateWithTimezone,
@@ -231,7 +232,9 @@ const startOnMonday = ref(false)
 const emails = ref<string[]>([])
 
 const showAdvancedOptions = ref(false)
-const timezone = ref<Timezone>({ value: "", label: "", gmtString: "", offset: durations.ZERO })
+const timezone = ref<Timezone>(
+  resolveInitialTimezoneSelection(Temporal.Now.zonedDateTimeISO())
+)
 
 const initialEventData = ref<{
   name: string

@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import type { Timezone } from "@/composables/schedule_overlap/types"
 import {
+  buildTimezonesForReferenceDate,
   normalizeOptionalTimezone,
   normalizeTimezone,
+  resolveInitialTimezoneSelection,
 } from "./timezone_utils"
 
 describe("timezone_utils normalization", () => {
@@ -56,5 +58,50 @@ describe("timezone_utils normalization", () => {
 
   it("keeps route and draft boundaries optional when no timezone was provided", () => {
     expect(normalizeOptionalTimezone(undefined)).toBeUndefined()
+  })
+
+  it("resolves the saved timezone selection against the canonical timezone list", () => {
+    const storage = {
+      getItem: (key: string) =>
+        key === "timezone"
+          ? JSON.stringify({ value: "America/New_York" })
+          : null,
+    } as Storage
+
+    const timezone = resolveInitialTimezoneSelection(
+      Temporal.ZonedDateTime.from("2026-01-15T12:00:00Z[UTC]"),
+      storage,
+      "Europe/Moscow"
+    )
+
+    expect(timezone).toMatchObject({
+      value: "America/New_York",
+      label: "Eastern Time",
+    })
+  })
+
+  it("falls back to the browser timezone selection when no saved timezone exists", () => {
+    const storage = {
+      getItem: () => null,
+    } as Storage
+
+    const timezone = resolveInitialTimezoneSelection(
+      Temporal.ZonedDateTime.from("2026-01-15T12:00:00Z[UTC]"),
+      storage,
+      "America/New_York"
+    )
+
+    expect(timezone).toMatchObject({
+      value: "America/New_York",
+      label: "Eastern Time",
+    })
+  })
+
+  it("can build canonical timezone choices for a reference date", () => {
+    const timezones = buildTimezonesForReferenceDate(
+      Temporal.ZonedDateTime.from("2026-01-15T12:00:00Z[UTC]")
+    )
+
+    expect(timezones.some((timezone) => timezone.value === "America/New_York")).toBe(true)
   })
 })
