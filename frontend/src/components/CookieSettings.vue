@@ -98,31 +98,18 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue"
-import { getCookieConsent, setCookieConsent } from "@/utils/cookie_utils"
+import { ref, watch } from "vue"
+import type { CookieConsentPreferences } from "@/utils/cookie_utils"
+import {
+  cookieConsentVersion,
+  getCookieConsentPreferences,
+  setCookieConsent,
+} from "@/utils/cookie_utils"
 
-interface Preferences {
-  necessary: boolean
-  analytics: boolean
-  advertising: boolean
-}
-
-const preferences = ref<Preferences>({
-  necessary: true,
-  analytics: true,
-  advertising: true,
-})
-
-const loadCurrentSettings = () => {
-  const consent = getCookieConsent()
-  if (consent) {
-    preferences.value = { ...consent.preferences }
-  }
-}
+const preferences = ref<CookieConsentPreferences>(getCookieConsentPreferences())
 
 const saveConsent = () => {
   setCookieConsent(preferences.value)
-  window.location.reload()
 }
 
 const savePreferences = () => {
@@ -147,5 +134,7 @@ const rejectAll = () => {
   saveConsent()
 }
 
-onMounted(loadCurrentSettings)
+watch(cookieConsentVersion, () => {
+  preferences.value = getCookieConsentPreferences()
+})
 </script>

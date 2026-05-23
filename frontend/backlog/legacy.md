@@ -40,9 +40,9 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
   Contact input still mixes transport shaping, mount-time permission probing, and an imperative reset API.
 - [ ] `F-NEW-SIGN-UP-001` ([finding](../findings/F-NEW-SIGN-UP-001.md)) - `planned`, `src/components/NewSignUp.vue`
   Sign-up creation still couples validation, reload behavior, and expose-based parent orchestration in one flow.
-- [ ] `F-COOKIE-CONSENT-001` ([finding](../findings/F-COOKIE-CONSENT-001.md)) - `planned`, `src/components/CookieConsent.vue`
+- [x] `F-COOKIE-CONSENT-001` ([finding](../findings/F-COOKIE-CONSENT-001.md)) - `fixed`, `src/components/CookieConsent.vue`
   Consent state bootstrapping and accept-flow reload behavior still depend on direct browser storage and `window.location.reload()`.
-- [ ] `F-COOKIE-SETTINGS-001` ([finding](../findings/F-COOKIE-SETTINGS-001.md)) - `planned`, `src/components/CookieSettings.vue`
+- [x] `F-COOKIE-SETTINGS-001` ([finding](../findings/F-COOKIE-SETTINGS-001.md)) - `fixed`, `src/components/CookieSettings.vue`
   Settings initialization and apply flow still depend on mount-time browser reads and reloads.
 - [ ] `F-UPGRADE-DIALOG-001` ([finding](../findings/F-UPGRADE-DIALOG-001.md)) - `planned`, `src/components/pricing/UpgradeDialog.vue`
   Upgrade flow still triggers analytics and redirects from watcher-driven dialog state.
@@ -74,7 +74,7 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
 
 - [ ] `F-PRONUNCIATION-MENU-001` ([finding](../findings/F-PRONUNCIATION-MENU-001.md)) - `planned`, `src/components/PronunciationMenu.vue`
   Audio preview behavior still relies on timers and imperative media-element control.
-- [ ] `F-INVITATION-DIALOG-001` ([finding](../findings/F-INVITATION-DIALOG-001.md)) - `planned`, `src/components/groups/InvitationDialog.vue`
+- [x] `F-INVITATION-DIALOG-001` ([finding](../findings/F-INVITATION-DIALOG-001.md)) - `fixed`, `src/components/groups/InvitationDialog.vue`
   Calendar account cloning still uses `JSON.parse(JSON.stringify(...))` instead of explicit typed shaping.
 - [x] `F-NOT-SIGNED-IN-001` ([finding](../findings/F-NOT-SIGNED-IN-001.md)) - `fixed`, `src/components/groups/NotSignedIn.vue`
   Owner loading still happens as a mount-coupled fetch inside the view component.

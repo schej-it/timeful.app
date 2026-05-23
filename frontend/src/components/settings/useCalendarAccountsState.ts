@@ -2,12 +2,17 @@ import { computed, ref, watch, type ComputedRef, type Ref } from "vue"
 import { Temporal } from "temporal-polyfill"
 import { fetchUserCalendarEventsMap } from "@/composables/event/calendarEventsBoundary"
 import type { CalendarEventsMap } from "@/composables/schedule_overlap/types"
-import type { User } from "@/types"
+import type { CalendarAccount, SubCalendar, User } from "@/types"
 import type { CalendarAccountEntry } from "./CalendarAccounts.vue"
 
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">
 
 export const SHOW_CALENDARS_STORAGE_KEY = "showCalendars"
+
+export type EditableCalendarAccount = CalendarAccount & {
+  enabled: boolean
+  subCalendars: Record<string, SubCalendar & { enabled: boolean }>
+}
 
 const getStorage = (): StorageLike | undefined => {
   if (typeof window === "undefined") {
@@ -26,6 +31,28 @@ const readShowCalendars = (storage: StorageLike | undefined): boolean => {
 
   return storedValue === "true"
 }
+
+export const cloneCalendarAccounts = (
+  calendarAccounts: Record<string, CalendarAccount>
+): Record<string, EditableCalendarAccount> =>
+  Object.fromEntries(
+    Object.entries(calendarAccounts).map(([accountId, account]) => [
+      accountId,
+      {
+        ...account,
+        enabled: account.enabled ?? false,
+        subCalendars: Object.fromEntries(
+          Object.entries(account.subCalendars ?? {}).map(([subCalendarId, subCalendar]) => [
+            subCalendarId,
+            {
+              ...subCalendar,
+              enabled: subCalendar.enabled ?? false,
+            },
+          ])
+        ),
+      },
+    ])
+  )
 
 export const useCalendarAccountsState = ({
   authUser,

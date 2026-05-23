@@ -75,45 +75,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue"
-import { Temporal } from "temporal-polyfill"
-
-interface Preferences {
-  necessary: boolean
-  analytics: boolean
-  advertising: boolean
-}
+import { ref, watch } from "vue"
+import type { CookieConsentPreferences } from "@/utils/cookie_utils"
+import {
+  cookieConsentVersion,
+  getCookieConsent,
+  getCookieConsentPreferences,
+  setCookieConsent,
+} from "@/utils/cookie_utils"
 
 const showCustomizeSection = ref(false)
 const showBanner = ref(false)
-const preferences = ref<Preferences>({
-  necessary: true,
-  analytics: true,
-  advertising: true,
-})
+const preferences = ref<CookieConsentPreferences>(getCookieConsentPreferences())
 
-const checkConsentStatus = () => {
-  const consent = localStorage.getItem("cookieConsent")
-  if (!consent) {
-    showBanner.value = true
-  } else {
-    try {
-      const consentData = JSON.parse(consent) as { preferences: Preferences }
-      preferences.value = { ...consentData.preferences }
-    } catch (_e) {
-      showBanner.value = true
-    }
-  }
+const syncConsentState = () => {
+  preferences.value = getCookieConsentPreferences()
+  showBanner.value = getCookieConsent() === null
 }
 
 const saveConsent = () => {
-  const consentData = {
-    timestamp: Temporal.Now.instant().toString(),
-    preferences: preferences.value,
-  }
-  localStorage.setItem("cookieConsent", JSON.stringify(consentData))
+  setCookieConsent(preferences.value)
   showBanner.value = false
-  window.location.reload()
 }
 
 const acceptAll = () => {
@@ -129,5 +111,6 @@ const acceptSelected = () => {
   saveConsent()
 }
 
-checkConsentStatus()
+watch(cookieConsentVersion, syncConsentState)
+syncConsentState()
 </script>

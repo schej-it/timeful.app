@@ -130,11 +130,10 @@ import CalendarPermissionsCard from "@/components/calendar_permission_dialogs/Ca
 import UserChip from "@/components/general/UserChip.vue"
 import { isSignedInOwner } from "@/composables/event/eventOwnership"
 import type { Event } from "@/types"
-
-interface CalendarAccount {
-  enabled: boolean
-  subCalendars: Record<string, { enabled: boolean }>
-}
+import {
+  cloneCalendarAccounts,
+  type EditableCalendarAccount,
+} from "@/components/settings/useCalendarAccountsState"
 
 const props = defineProps<{
   modelValue: boolean
@@ -153,13 +152,11 @@ const mainStore = useMainStore()
 const { authUser } = storeToRefs(mainStore)
 const { isPhone } = useDisplayHelpers()
 
-const calendarAccounts = ref<Record<string, CalendarAccount>>({})
+const calendarAccounts = ref<Record<string, EditableCalendarAccount>>({})
 const rejectDialog = ref(false)
 
 onMounted(() => {
-  calendarAccounts.value = JSON.parse(
-    JSON.stringify(authUser.value?.calendarAccounts ?? {})
-  ) as typeof calendarAccounts.value
+  calendarAccounts.value = cloneCalendarAccounts(authUser.value?.calendarAccounts ?? {})
 })
 
 const isOwner = computed(() => isSignedInOwner(props.group, authUser.value))
