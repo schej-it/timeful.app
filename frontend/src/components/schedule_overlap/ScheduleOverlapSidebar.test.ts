@@ -1,25 +1,34 @@
 // @vitest-environment happy-dom
 
 import { mount, shallowMount } from "@vue/test-utils"
-import { defineComponent, type ComponentPublicInstance } from "vue"
+import { h, nextTick, ref, type ComponentPublicInstance } from "vue"
 import { describe, expect, it, vi } from "vitest"
 import { states } from "@/composables/schedule_overlap/types"
 import ScheduleOverlapSidebar from "./ScheduleOverlapSidebar.vue"
+import type {
+  ScheduleOverlapRespondentsPanelExposed,
+  ScheduleOverlapSidebarExposed,
+} from "./scheduleOverlapContracts"
 import {
   buildScheduleOverlapSidebarViewModel,
   scheduleOverlapGlobalStubs,
 } from "./scheduleOverlapTestUtils"
 
+type ExposeFn<T> = (exposed?: T) => void
+
 describe("ScheduleOverlapSidebar", () => {
   it("exposes the sign-up block scroll bridge through the child ref boundary", () => {
     const scrollToSignUpBlock = vi.fn()
-    const SignUpBlocksListStub = defineComponent({
+    const SignUpBlocksListStub = {
       name: "SignUpBlocksList",
-      setup(_, { expose }) {
+      setup(
+        _: unknown,
+        { expose }: { expose: ExposeFn<{ scrollToSignUpBlock: typeof scrollToSignUpBlock }> }
+      ) {
         expose({ scrollToSignUpBlock })
         return () => null
       },
-    })
+    }
 
     const wrapper = shallowMount(ScheduleOverlapSidebar, {
       props: {
@@ -37,10 +46,8 @@ describe("ScheduleOverlapSidebar", () => {
     })
 
     ;(
-      wrapper.vm as ComponentPublicInstance & {
-        scrollToSignUpBlock: (id: string) => void
-      }
-    ).scrollToSignUpBlock("block-42")
+      wrapper.vm as ComponentPublicInstance & ScheduleOverlapSidebarExposed
+    ).scrollToSignUpBlock?.("block-42")
 
     expect(scrollToSignUpBlock).toHaveBeenCalledWith("block-42")
   })
@@ -57,14 +64,12 @@ describe("ScheduleOverlapSidebar", () => {
       },
     })
 
-    const vm = wrapper.vm as ComponentPublicInstance & {
-      optionsSectionEl: HTMLElement | null
-    }
+    const vm = wrapper.vm as ComponentPublicInstance & ScheduleOverlapSidebarExposed
 
     expect(vm.optionsSectionEl).toBeInstanceOf(HTMLElement)
   })
 
-  it("exposes the respondents panel element while the panel branch is rendered", () => {
+  it("exposes the respondents panel element while the panel branch is rendered", async () => {
     const wrapper = mount(ScheduleOverlapSidebar, {
       props: {
         sidebar: {
@@ -77,15 +82,26 @@ describe("ScheduleOverlapSidebar", () => {
           ...scheduleOverlapGlobalStubs,
           ScheduleOverlapRespondentsPanel: {
             name: "ScheduleOverlapRespondentsPanel",
-            template: "<div class='respondents-panel-stub' />",
+            setup(
+              _: unknown,
+              { expose }: { expose: ExposeFn<ScheduleOverlapRespondentsPanelExposed> }
+            ) {
+              const panelEl = ref<HTMLElement | null>(null)
+              expose({
+                get panelEl() {
+                  return panelEl.value
+                },
+              })
+              return () => h("div", { ref: panelEl, class: "respondents-panel-stub" })
+            },
           },
         },
       },
     })
 
-    const vm = wrapper.vm as ComponentPublicInstance & {
-      respondentsPanelEl: HTMLElement | null
-    }
+    await nextTick()
+
+    const vm = wrapper.vm as ComponentPublicInstance & ScheduleOverlapSidebarExposed
 
     expect(vm.respondentsPanelEl).toBeInstanceOf(HTMLElement)
     expect(vm.respondentsPanelEl?.className).toContain("respondents-panel-stub")

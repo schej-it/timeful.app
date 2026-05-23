@@ -100,6 +100,7 @@ import type {
   ScheduleOverlapToolRowActions,
   ScheduleOverlapToolRowViewModel,
 } from "./scheduleOverlapViewModels"
+import type { ScheduleOverlapSidebarExposed as ScheduleOverlapSidebarContract } from "./scheduleOverlapContracts"
 
 // ── Props / Emits ──────────────────────────────────────────────────────
 const props = withDefaults(
@@ -203,11 +204,7 @@ const loadingResponses = ref({
 })
 
 // Template refs
-const sidebarRef = ref<{
-  scrollToSignUpBlock?: (id: string) => void
-  optionsSectionEl?: HTMLElement | null
-  respondentsPanelEl?: HTMLElement | null
-} | null>(null)
+const sidebarRef = ref<ScheduleOverlapSidebarContract | null>(null)
 const optionsSectionRef = ref<HTMLElement | null>(null)
 const respondentsListRef = ref<HTMLElement | null>(null)
 

@@ -283,7 +283,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, type ComponentPublicInstance } from "vue"
+import { computed, watchEffect, ref } from "vue"
 import type { AvailabilityType } from "@/constants"
 import type {
   SignUpBlockLite,
@@ -300,6 +300,9 @@ import BufferTimeSwitch from "./BufferTimeSwitch.vue"
 import SpecificTimesInstructions from "./SpecificTimesInstructions.vue"
 import WorkingHoursToggle from "./WorkingHoursToggle.vue"
 import ScheduleOverlapRespondentsPanel from "./ScheduleOverlapRespondentsPanel.vue"
+import type {
+  ScheduleOverlapRespondentsPanelExposed,
+} from "./scheduleOverlapContracts"
 import type { ScheduleOverlapSidebarViewModel } from "./scheduleOverlapViewModels"
 const props = defineProps<{
   sidebar: ScheduleOverlapSidebarViewModel
@@ -339,7 +342,12 @@ const emit = defineEmits<{
 
 const signUpBlocksListRef = ref<{ scrollToSignUpBlock?: (id: string) => void } | null>(null)
 const optionsSectionRef = ref<HTMLElement | null>(null)
-const respondentsPanelRef = ref<ComponentPublicInstance | null>(null)
+const respondentsPanelRef = ref<ScheduleOverlapRespondentsPanelExposed | null>(null)
+const respondentsPanelEl = ref<HTMLElement | null>(null)
+
+watchEffect(() => {
+  respondentsPanelEl.value = respondentsPanelRef.value?.panelEl ?? null
+})
 
 const showEditingAsText = computed(
   () =>
@@ -413,9 +421,7 @@ defineExpose({
   scrollToSignUpBlock: (id: string) =>
     signUpBlocksListRef.value?.scrollToSignUpBlock?.(id),
   optionsSectionEl: optionsSectionRef,
-  respondentsPanelEl: computed(
-    () => (respondentsPanelRef.value?.$el as HTMLElement | undefined) ?? null
-  ),
+  respondentsPanelEl,
 })
 </script>
 

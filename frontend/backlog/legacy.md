@@ -28,7 +28,7 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
   Data source selection, event fetching, and collapse persistence still span mount logic, watchers, and `localStorage`.
 - [ ] `F-SCHEDULE-OVERLAP-001` ([finding](../findings/F-SCHEDULE-OVERLAP-001.md)) - `planned`, `src/components/schedule_overlap/ScheduleOverlap.vue`
   Core scheduling state still depends on ambient browser storage and a wide exposed instance-style API.
-- [ ] `F-SCHEDULE-OVERLAP-SIDEBAR-001` ([finding](../findings/F-SCHEDULE-OVERLAP-SIDEBAR-001.md)) - `planned`, `src/components/schedule_overlap/ScheduleOverlapSidebar.vue`
+- [x] `F-SCHEDULE-OVERLAP-SIDEBAR-001` ([finding](../findings/F-SCHEDULE-OVERLAP-SIDEBAR-001.md)) - `fixed`, `src/components/schedule_overlap/ScheduleOverlapSidebar.vue`
   Sidebar coordination still reaches into child DOM through `$el` and exposes scroll helpers imperatively.
 - [x] `F-CONFIRM-DETAILS-001` ([finding](../findings/F-CONFIRM-DETAILS-001.md)) - `fixed`, `src/components/schedule_overlap/ConfirmDetailsDialog.vue`
   Confirmation dialog still exposes `setData()` and owns debounced contact search inside the view.
