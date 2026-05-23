@@ -95,7 +95,7 @@
         </div>
 
         <EmailInput
-          ref="emailInput"
+          :key="emailInputKey"
           :added-emails="addedEmails"
           @update:emails="(newEmails) => { emails = newEmails }"
           @request-contacts-access="requestContactsAccess"
@@ -188,7 +188,6 @@ interface FormRef {
   resetValidation: () => void
 }
 
-interface EmailInputRef { reset: () => void }
 interface NameFieldRef { blur: () => void }
 
 const props = withDefaults(
@@ -223,7 +222,7 @@ const { authUser } = storeToRefs(mainStore)
 
 const formRef = ref<FormRef | null>(null)
 const nameField = ref<NameFieldRef | null>(null)
-const emailInput = ref<EmailInputRef | null>(null)
+const emailInputKey = ref(0)
 
 const formValid = ref(true)
 const name = ref("")
@@ -321,6 +320,7 @@ const reset = () => {
   startTime.value = hoursPlainTime.NINE
   endTime.value = hoursPlainTime.SEVENTEEN
   selectedDaysOfWeek.value = []
+  emailInputKey.value += 1
 
   formRef.value?.resetValidation()
 }
@@ -439,11 +439,9 @@ const submit = async () => {
   }
 }
 
-const requestContactsAccess = ({ emails: requestEmails }: { emails: (string | { email: string })[] }) => {
-  // Convert Remindee[] (which can be strings or Contact objects) to string[]
-  const emailStrings = requestEmails.map(e => typeof e === 'string' ? e : e.email)
+const requestContactsAccess = ({ emails: requestEmails }: { emails: string[] }) => {
   const payload = {
-    emails: emailStrings,
+    emails: requestEmails,
     name: name.value,
     startTime: startTime.value,
     endTime: endTime.value,
@@ -484,7 +482,7 @@ const updateFieldsFromEvent = () => {
 }
 const resetToEventData = () => {
   updateFieldsFromEvent()
-  emailInput.value?.reset()
+  emailInputKey.value += 1
 }
 const setInitialEventData = () => {
   initialEventData.value = {

@@ -78,4 +78,29 @@ describe("EmailInput", () => {
 
     expect(wrapper.emitted("update:emails")?.at(-1)).toEqual([["guest@example.com"]])
   })
+
+  it("resyncs its internal entries when the parent changes addedEmails", async () => {
+    const wrapper = mount(EmailInput, {
+      props: {
+        addedEmails: ["first@example.com"],
+      },
+      global: {
+        stubs: {
+          "v-combobox": VComboboxStub,
+          "v-expand-transition": true,
+          "v-icon": true,
+          "v-list-item": true,
+          "v-list-item-subtitle": true,
+          "v-list-item-title": true,
+          UserChip: true,
+        },
+      },
+    })
+
+    await wrapper.setProps({ addedEmails: ["second@example.com"] })
+
+    expect(wrapper.emitted("update:emails")?.at(-1)).toEqual([
+      ["second@example.com"],
+    ])
+  })
 })

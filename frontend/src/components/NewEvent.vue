@@ -281,7 +281,7 @@
             <div class="tw-flex tw-flex-col tw-gap-5 tw-pt-2">
               <EmailInput
                 v-show="authUser"
-                ref="emailInput"
+                :key="emailInputKey"
                 label-color="tw-text-very-dark-gray"
                 :added-emails="addedEmails"
                 @request-contacts-access="requestContactsAccess"
@@ -576,7 +576,6 @@ interface FormRef {
   resetValidation: () => void
 }
 interface NameFieldRef { blur: () => void }
-interface EmailInputRef { reset: () => void }
 interface ElementWithRoot { $el?: HTMLElement }
 
 const props = withDefaults(
@@ -618,7 +617,7 @@ const daysOnlyOptions = [
 
 const formRef = ref<FormRef | null>(null)
 const nameField = ref<NameFieldRef | null>(null)
-const emailInput = ref<EmailInputRef | null>(null)
+const emailInputKey = ref(0)
 const cardText = ref<HTMLElement | ElementWithRoot | null>(null)
 const cardTextElement = computed(() => {
   if (!cardText.value) return null
@@ -828,6 +827,7 @@ const reset = () => {
   sendEmailAfterXResponses.value = 3
   collectEmails.value = false
   startOnMonday.value = prefersStartOnMonday()
+  emailInputKey.value += 1
 
   formRef.value?.resetValidation()
 }
@@ -1003,11 +1003,9 @@ const toggleEmailReminders = (delayed = false) => {
   }
 }
 
-const requestContactsAccess = ({ emails: requestEmails }: { emails: (string | { email: string })[] }) => {
-  // Convert Remindee[] (which can be strings or Contact objects) to string[]
-  const emailStrings = requestEmails.map(e => typeof e === 'string' ? e : e.email)
+const requestContactsAccess = ({ emails: requestEmails }: { emails: string[] }) => {
   const payload = {
-    emails: emailStrings,
+    emails: requestEmails,
     name: name.value,
     startTime: startTime.value,
     endTime: endTime.value,
@@ -1079,7 +1077,7 @@ const updateFieldsFromEvent = () => {
 }
 const resetToEventData = () => {
   updateFieldsFromEvent()
-  emailInput.value?.reset()
+  emailInputKey.value += 1
 }
 const setInitialEventData = () => {
   initialEventData.value = {

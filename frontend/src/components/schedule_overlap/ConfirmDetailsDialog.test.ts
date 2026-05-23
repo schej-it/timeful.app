@@ -135,4 +135,56 @@ describe("ConfirmDetailsDialog", () => {
       [{ emails: ["ada@example.com"], location: "Room 12", description: "Discuss roadmap" }],
     ])
   })
+
+  it("applies parent-owned draft updates without an exposed setter API", async () => {
+    const wrapper = mount(ConfirmDetailsDialog, {
+      props: {
+        modelValue: true,
+        respondents: [{ email: "", firstName: "Ada", lastName: "Lovelace" }],
+        draft: {
+          emails: [""],
+          location: "Room 1",
+          description: "Original",
+        },
+      },
+      global: {
+        stubs: {
+          "v-btn": VBtnStub,
+          "v-card": passThroughStub,
+          "v-card-actions": passThroughStub,
+          "v-card-text": passThroughStub,
+          "v-card-title": passThroughStub,
+          "v-combobox": true,
+          "v-dialog": passThroughStub,
+          "v-expansion-panel": passThroughStub,
+          "v-expansion-panel-text": passThroughStub,
+          "v-expansion-panel-title": passThroughStub,
+          "v-expansion-panels": passThroughStub,
+          "v-icon": true,
+          "v-list-item": passThroughStub,
+          "v-list-item-subtitle": passThroughStub,
+          "v-list-item-title": passThroughStub,
+          "v-spacer": passThroughStub,
+          "v-text-field": VTextFieldStub,
+          "v-textarea": VTextareaStub,
+          UserAvatarContent: true,
+        },
+      },
+    })
+
+    await wrapper.setProps({
+      draft: {
+        emails: [""],
+        location: "Room 2",
+        description: "Updated",
+      },
+    })
+
+    expect(
+      (wrapper.get(".location-input").element as HTMLInputElement).value
+    ).toBe("Room 2")
+    expect(
+      (wrapper.get(".description-input").element as HTMLTextAreaElement).value
+    ).toBe("Updated")
+  })
 })

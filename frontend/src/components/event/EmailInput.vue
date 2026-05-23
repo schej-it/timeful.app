@@ -3,7 +3,7 @@
     <slot name="header"></slot>
 
     <v-combobox
-      v-model="remindees"
+      v-model="selectionModel"
       v-model:search-input="query"
       :items="searchedContacts"
       item-title="queryString"
@@ -17,9 +17,7 @@
     >
       <template #selection="{ item }">
         <UserChip
-          :user="
-            isContact(item.raw) ? item.raw : { email: item.raw, picture: '' }
-          "
+          :user="item.raw"
           :removable="true"
           :remove-email="removeEmail"
         ></UserChip>
@@ -60,19 +58,63 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue"
+import { computed, onMounted, ref, watch } from "vue"
 import UserChip from "@/components/general/UserChip.vue"
-import { validateEmail, get } from "@/utils"
+import { validateEmail } from "@/utils"
+import { useContactsAccess } from "@/composables/useContactsAccess"
+import { useDebouncedContactLookup } from "@/composables/useDebouncedContactLookup"
+import { type ContactSearchSuggestion } from "./contactSuggestions"
 
-interface Contact {
+interface EmailEntry {
+  email: string
   firstName: string
   lastName: string
-  email: string
   picture: string
-  queryString?: string
+  queryString: string
 }
 
-type Remindee = Contact | string
+function createManualEmailEntry(email: string): EmailEntry {
+  return {
+    email,
+    firstName: "",
+    lastName: "",
+    picture: "",
+    queryString: email,
+  }
+}
+
+function createContactEmailEntry(contact: ContactSearchSuggestion): EmailEntry {
+  return {
+    email: contact.email,
+    firstName: contact.firstName,
+    lastName: contact.lastName,
+    picture: contact.picture,
+    queryString: contact.queryString,
+  }
+}
+
+function isContactSearchSuggestion(value: unknown): value is ContactSearchSuggestion {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "email" in value &&
+    typeof value.email === "string" &&
+    "queryString" in value &&
+    typeof value.queryString === "string"
+  )
+}
+
+function normalizeEmailEntry(value: unknown): EmailEntry | null {
+  if (typeof value === "string") {
+    return createManualEmailEntry(value)
+  }
+
+  if (isContactSearchSuggestion(value)) {
+    return createContactEmailEntry(value)
+  }
+
+  return null
+}
 
 const props = withDefaults(
   defineProps<{
@@ -84,121 +126,108 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  requestContactsAccess: [payload: { emails: Remindee[] }]
+  requestContactsAccess: [payload: { emails: string[] }]
   "update:emails": [emails: string[]]
 }>()
 
-const remindees = ref<Remindee[]>([])
-const searchedContacts = ref<Contact[]>([])
-let timeout: ReturnType<typeof setTimeout> | null = null
-const searchDebounceTime = 250
-
-const hasContactsAccess = ref(true)
+const emailEntries = ref<EmailEntry[]>([])
 const query = ref("")
+const { hasContactsAccess, probeContactsAccess } = useContactsAccess()
+const { suggestionsByKey, scheduleLookup, clearSuggestions } =
+  useDebouncedContactLookup()
+const searchedContacts = computed(() => {
+  if (Object.hasOwn(suggestionsByKey.value, "default")) {
+    return suggestionsByKey.value.default ?? []
+  }
+
+  return []
+})
+const selectionModel = computed({
+  get: () => emailEntries.value,
+  set: (values: unknown[]) => {
+    emailEntries.value = values
+      .map(normalizeEmailEntry)
+      .filter((entry): entry is EmailEntry => entry != null)
+  },
+})
 
 const emailsAreValid = ref(true)
 
 onMounted(() => {
-  get(`/user/searchContacts?query=`).catch((err: unknown) => {
-    const errCode = (err as { error?: { code?: number } }).error?.code
-    if (errCode === 403 || errCode === 401) {
-      hasContactsAccess.value = false
-    }
-  })
-
-  remindees.value = [...props.addedEmails]
+  void probeContactsAccess()
 })
 
 function requestContactsAccess() {
-  emit("requestContactsAccess", { emails: remindees.value })
-}
-
-function searchContacts() {
-  if (!hasContactsAccess.value) return
-  if (timeout) clearTimeout(timeout)
-  timeout = setTimeout(() => {
-    void get(`/user/searchContacts?query=${query.value}`).then((results) => {
-      searchedContacts.value = results as Contact[]
-      searchedContacts.value.forEach((contact) => {
-        contact.queryString = contactToQueryString(contact)
-      })
-    })
-  }, searchDebounceTime)
+  emit("requestContactsAccess", {
+    emails: emailEntries.value.map((entry) => entry.email),
+  })
 }
 
 function removeEmail(email: string) {
-  for (let i = 0; i < remindees.value.length; i++) {
-    const r = remindees.value[i]
-    if (isContact(r)) {
-      if (r.email == email) {
-        remindees.value.splice(i, 1)
-      }
-    } else {
-      if (r == email) {
-        remindees.value.splice(i, 1)
-      }
-    }
+  emailEntries.value = emailEntries.value.filter((entry) => entry.email !== email)
+}
+
+function validEmails(entries: EmailEntry[]): true | string {
+  const invalidEntry = entries.find(
+    (entry) => entry.email.length > 0 && !validateEmail(entry.email)
+  )
+  if (invalidEntry != null) {
+    emailsAreValid.value = false
+    return "Please enter a valid email."
   }
-}
 
-function isContact(contact: Remindee): contact is Contact {
-  return typeof contact === "object"
-}
-
-function contactToQueryString(contact: Contact): string {
-  return `${contact.firstName.split(" ")[0]} ${contact.lastName} ${contact.email}`
-}
-
-function validEmails(emails: Remindee[]): true | string {
-  for (const email of emails) {
-    if (typeof email === "string" && email.length > 0 && !validateEmail(email)) {
-      emailsAreValid.value = false
-      return "Please enter a valid email."
-    }
-  }
   emailsAreValid.value = true
   return true
 }
 
-function reset() {
-  remindees.value = [...props.addedEmails]
+function appendParsedEmails(rawQuery: string): boolean {
+  let successfullyAdded = false
+  const parsedEmails = rawQuery
+    .split(/[,\s]+/)
+    .filter((email) => email.trim() !== "")
+
+  for (const email of parsedEmails) {
+    if (
+      validateEmail(email) &&
+      !emailEntries.value.some((entry) => entry.email === email)
+    ) {
+      successfullyAdded = true
+      emailEntries.value = [...emailEntries.value, createManualEmailEntry(email)]
+    }
+  }
+
+  return successfullyAdded
 }
 
-watch(remindees, () => {
+watch(
+  () => props.addedEmails,
+  (emails) => {
+    emailEntries.value = emails.map(createManualEmailEntry)
+  },
+  { immediate: true }
+)
+
+watch(emailEntries, () => {
   emit(
     "update:emails",
-    remindees.value.map((r) => (isContact(r) ? r.email : r))
+    emailEntries.value.map((entry) => entry.email)
   )
 })
 
 watch(query, () => {
   if (query.value && query.value.length > 0) {
     if (/[,\s]/.test(query.value)) {
-      let successfullyAdded = false
-      const emailsArray = query.value
-        .split(/[,\s]+/)
-        .filter((email) => email.trim() !== "")
-
-      emailsArray.forEach((email) => {
-        if (validateEmail(email) && !remindees.value.includes(email)) {
-          successfullyAdded = true
-          remindees.value.push(email)
-        }
-      })
-
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (successfullyAdded) {
+      if (appendParsedEmails(query.value)) {
         query.value = ""
         return
       }
     }
 
-    searchContacts()
+    if (hasContactsAccess.value) {
+      scheduleLookup("default", query.value)
+    }
   } else {
-    if (timeout) clearTimeout(timeout)
-    searchedContacts.value = []
+    clearSuggestions("default")
   }
 })
-
-defineExpose({ reset })
 </script>

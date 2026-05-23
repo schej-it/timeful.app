@@ -60,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue"
+import { computed, ref, watch } from "vue"
 import { validateEmail } from "@/utils"
 import type { Event } from "@/types"
 
@@ -85,29 +85,46 @@ const emit = defineEmits<{
 const formValid = ref(false)
 const name = ref("")
 const email = ref("")
-const nameRules = ref<Rule[]>([])
-const emailRules = ref<Rule[]>([])
+const validationRequested = ref(false)
 const formRef = ref<FormRef | null>(null)
 const trimmedName = computed(() => name.value.trim())
 const trimmedEmail = computed(() => email.value.trim())
 const isNameAvailable = (candidate: string) =>
   !props.respondents.includes(candidate.trim())
+const nameRules = computed<Rule[]>(() => [
+  (candidate) =>
+    !validationRequested.value ||
+    candidate.trim().length > 0 ||
+    "Name is required",
+  (candidate) =>
+    !validationRequested.value ||
+    isNameAvailable(candidate) ||
+    "Name already taken",
+])
+const emailRules = computed<Rule[]>(() => [
+  (candidate) =>
+    !validationRequested.value ||
+    candidate.trim().length > 0 ||
+    "Email is required",
+  (candidate) =>
+    !validationRequested.value ||
+    !!validateEmail(candidate) ||
+    "Invalid email",
+])
 const canSubmit = computed(() =>
   trimmedName.value.length > 0 &&
   (!props.event.collectEmails || trimmedEmail.value.length > 0)
 )
 
-const submit = async () => {
-  nameRules.value = [
-    (n) => !!n || "Name is required",
-    (n) => isNameAvailable(n) || "Name already taken",
-  ]
-  emailRules.value = [
-    (e) => !!e || "Email is required",
-    (e) => !!validateEmail(e) || "Invalid email",
-  ]
+const initializeForm = () => {
+  name.value = ""
+  email.value = ""
+  validationRequested.value = false
+  formRef.value?.resetValidation()
+}
 
-  await nextTick()
+const submit = async () => {
+  validationRequested.value = true
   const result = await formRef.value?.validate()
   const valid = typeof result === "boolean" ? result : result?.valid
   if (!valid) return
@@ -118,20 +135,8 @@ watch(
   () => props.modelValue,
   (val) => {
     if (val) {
-      name.value = ""
-      email.value = ""
-      nameRules.value = []
-      emailRules.value = []
-      formRef.value?.resetValidation()
+      initializeForm()
     }
   }
 )
-watch(name, () => {
-  nameRules.value = [
-    (n) => isNameAvailable(n) || "Name already taken",
-  ]
-})
-watch(email, () => {
-  emailRules.value = []
-})
 </script>

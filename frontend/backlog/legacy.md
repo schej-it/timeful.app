@@ -30,13 +30,13 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
   Core scheduling state still depends on ambient browser storage and a wide exposed instance-style API.
 - [ ] `F-SCHEDULE-OVERLAP-SIDEBAR-001` ([finding](../findings/F-SCHEDULE-OVERLAP-SIDEBAR-001.md)) - `planned`, `src/components/schedule_overlap/ScheduleOverlapSidebar.vue`
   Sidebar coordination still reaches into child DOM through `$el` and exposes scroll helpers imperatively.
-- [ ] `F-CONFIRM-DETAILS-001` ([finding](../findings/F-CONFIRM-DETAILS-001.md)) - `planned`, `src/components/schedule_overlap/ConfirmDetailsDialog.vue`
+- [x] `F-CONFIRM-DETAILS-001` ([finding](../findings/F-CONFIRM-DETAILS-001.md)) - `fixed`, `src/components/schedule_overlap/ConfirmDetailsDialog.vue`
   Confirmation dialog still exposes `setData()` and owns debounced contact search inside the view.
 - [ ] `F-TIMEZONE-SELECTOR-001` ([finding](../findings/F-TIMEZONE-SELECTOR-001.md)) - `planned`, `src/components/schedule_overlap/TimezoneSelector.vue`
   Timezone selection still mirrors props locally and persists through `localStorage` from inside the control.
 - [ ] `F-NEW-EVENT-001` ([finding](../findings/F-NEW-EVENT-001.md)) - `planned`, `src/components/NewEvent.vue`
   Event editing still uses `window.location.reload()` and storage-backed reload flags in core flow.
-- [ ] `F-EMAIL-INPUT-001` ([finding](../findings/F-EMAIL-INPUT-001.md)) - `planned`, `src/components/event/EmailInput.vue`
+- [x] `F-EMAIL-INPUT-001` ([finding](../findings/F-EMAIL-INPUT-001.md)) - `fixed`, `src/components/event/EmailInput.vue`
   Contact input still mixes transport shaping, mount-time permission probing, and an imperative reset API.
 - [ ] `F-NEW-SIGN-UP-001` ([finding](../findings/F-NEW-SIGN-UP-001.md)) - `planned`, `src/components/NewSignUp.vue`
   Sign-up creation still couples validation, reload behavior, and expose-based parent orchestration in one flow.
@@ -65,9 +65,9 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
   Pricing and checkout dialog still mixes presentation, gating logic, analytics, and provider-flow state in one component.
 - [ ] `F-SIGN-IN-DIALOG-001` ([finding](../findings/F-SIGN-IN-DIALOG-001.md)) - `planned`, `src/components/SignInDialog.vue`
   Sign-in dialog still concentrates provider selection, onboarding, OTP flow, and cooldown timer orchestration.
-- [ ] `F-GUEST-DIALOG-001` ([finding](../findings/F-GUEST-DIALOG-001.md)) - `planned`, `src/components/GuestDialog.vue`
+- [x] `F-GUEST-DIALOG-001` ([finding](../findings/F-GUEST-DIALOG-001.md)) - `fixed`, `src/components/GuestDialog.vue`
   Guest dialog still rebuilds validation and reset logic through open-state watchers and `nextTick` coordination.
-- [ ] `F-SIGN-UP-FOR-SLOT-DIALOG-001` ([finding](../findings/F-SIGN-UP-FOR-SLOT-DIALOG-001.md)) - `planned`, `src/components/sign_up_form/SignUpForSlotDialog.vue`
+- [x] `F-SIGN-UP-FOR-SLOT-DIALOG-001` ([finding](../findings/F-SIGN-UP-FOR-SLOT-DIALOG-001.md)) - `fixed`, `src/components/sign_up_form/SignUpForSlotDialog.vue`
   Sign-up dialog repeats the same watcher-driven reset and validation orchestration pattern as the guest flow.
 
 ## P2
@@ -76,7 +76,7 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
   Audio preview behavior still relies on timers and imperative media-element control.
 - [ ] `F-INVITATION-DIALOG-001` ([finding](../findings/F-INVITATION-DIALOG-001.md)) - `planned`, `src/components/groups/InvitationDialog.vue`
   Calendar account cloning still uses `JSON.parse(JSON.stringify(...))` instead of explicit typed shaping.
-- [ ] `F-NOT-SIGNED-IN-001` ([finding](../findings/F-NOT-SIGNED-IN-001.md)) - `planned`, `src/components/groups/NotSignedIn.vue`
+- [x] `F-NOT-SIGNED-IN-001` ([finding](../findings/F-NOT-SIGNED-IN-001.md)) - `fixed`, `src/components/groups/NotSignedIn.vue`
   Owner loading still happens as a mount-coupled fetch inside the view component.
 - [x] `F-CALENDAR-TYPE-SELECTOR-001` ([finding](../findings/F-CALENDAR-TYPE-SELECTOR-001.md)) - `fixed`, `src/components/settings/CalendarTypeSelector.vue`
   Dialog state still mirrors `props.visible` through a reset watcher instead of a clearer ownership boundary.

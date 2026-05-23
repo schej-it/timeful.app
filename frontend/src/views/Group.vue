@@ -1,7 +1,7 @@
 <template>
   <div v-if="event" class="tw-h-full">
-    <NotSignedIn v-if="!authUser" :event="event" />
-    <AccessDenied v-else-if="accessDenied" />
+    <NotSignedIn v-if="!authUser && ownerLoaded" :event="event" :owner="owner" />
+    <AccessDenied v-else-if="authUser && accessDenied" />
     <Event
       v-else
       :event-id="groupId"
@@ -22,11 +22,12 @@ import { useMainStore } from "@/stores/main"
 import AccessDenied from "@/components/groups/AccessDenied.vue"
 import NotSignedIn from "@/components/groups/NotSignedIn.vue"
 import type { EventDraft } from "@/composables/event/types"
-import { isSignedInOwner } from "@/composables/event/eventOwnership"
+import { getRealOwnerId, isSignedInOwner } from "@/composables/event/eventOwnership"
 import { fetchEventById } from "@/composables/event/eventTransportBoundary"
 import { serializeRouteContactsPayload, serializeRouteTimezone } from "@/router/routeProps"
-import type { Event as EventType } from "@/types"
+import type { Event as EventType, User } from "@/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
+import { fetchUserById } from "@/utils/services/UserService"
 
 const props = defineProps<{
   groupId: string
@@ -42,6 +43,8 @@ const mainStore = useMainStore()
 const { authUser } = storeToRefs(mainStore)
 
 const event = ref<EventType | null>(null)
+const owner = ref<User | null>(null)
+const ownerLoaded = ref(false)
 
 const accessDenied = computed(() => {
   if (!event.value) return false
@@ -61,6 +64,20 @@ const accessDenied = computed(() => {
   return !found
 })
 
+async function loadOwner(groupEvent: EventType) {
+  ownerLoaded.value = false
+  owner.value = null
+
+  try {
+    const ownerId = getRealOwnerId(groupEvent)
+    if (ownerId) {
+      owner.value = await fetchUserById(ownerId)
+    }
+  } finally {
+    ownerLoaded.value = true
+  }
+}
+
 async function loadEvent() {
   try {
     event.value = await fetchEventById(props.groupId)
@@ -77,6 +94,11 @@ async function loadEvent() {
           contactsPayload: serializeRouteContactsPayload(props.contactsPayload),
         },
       })
+      return
+    }
+
+    if (!authUser.value) {
+      await loadOwner(event.value)
     }
   } catch (err: unknown) {
     switch ((err as { error?: string }).error) {

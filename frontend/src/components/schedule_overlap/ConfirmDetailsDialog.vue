@@ -149,7 +149,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
-import { validateEmail, get } from "@/utils"
+import { validateEmail } from "@/utils"
+import { useContactsAccess } from "@/composables/useContactsAccess"
+import { useDebouncedContactLookup } from "@/composables/useDebouncedContactLookup"
 
 export interface Respondent {
   email: string
@@ -158,13 +160,24 @@ export interface Respondent {
   picture?: string
 }
 
+export interface ConfirmDetailsDraft {
+  emails: string[]
+  location: string
+  description: string
+}
+
 const props = withDefaults(
   defineProps<{
     modelValue: boolean
     respondents?: Respondent[]
     loading?: boolean
+    draft?: ConfirmDetailsDraft
   }>(),
-  { respondents: () => [], loading: false }
+  {
+    respondents: () => [],
+    loading: false,
+    draft: () => ({ emails: [], location: "", description: "" }),
+  }
 )
 
 const emit = defineEmits<{
@@ -178,13 +191,11 @@ const emit = defineEmits<{
 }>()
 
 const emails = ref<string[]>([])
-let prevEmails = new Set<string>()
-const timeouts = ref<(ReturnType<typeof setTimeout> | null)[]>([])
-const emailSuggestions = ref<Respondent[][]>([])
-
 const location = ref("")
 const description = ref("")
-const hasContactsAccess = ref(true)
+const { hasContactsAccess, probeContactsAccess } = useContactsAccess()
+const { suggestionsByKey, scheduleLookup, clearSuggestions } =
+  useDebouncedContactLookup()
 
 const rules = {
   validEmail: (email: string) => {
@@ -196,15 +207,7 @@ const rules = {
 }
 
 onMounted(() => {
-  emails.value = props.respondents.map((r) => r.email)
-  timeouts.value = props.respondents.map(() => null)
-  emailSuggestions.value = props.respondents.map(() => [])
-
-  get(`/user/searchContacts?query=`).catch((err: unknown) => {
-    if ((err as { error?: { code?: number } }).error?.code === 403) {
-      hasContactsAccess.value = false
-    }
-  })
+  void probeContactsAccess()
 })
 
 const confirmEnabled = computed(() => {
@@ -214,8 +217,8 @@ const confirmEnabled = computed(() => {
   return true
 })
 const formattedEmailSuggestions = computed(() =>
-  emailSuggestions.value.map((suggestion, i) =>
-    emails.value[i]?.length > 0 ? suggestion : []
+  emails.value.map((email, i) =>
+    email.length > 0 ? suggestionsByKey.value[String(i)] ?? [] : []
   )
 )
 
@@ -233,51 +236,44 @@ const requestContactsAccess = () => {
     description: description.value,
   })
 }
-const setData = ({
-  emails: newEmails,
-  location: newLocation,
-  description: newDescription,
-}: {
-  emails: string[]
-  location: string
-  description: string
-}) => {
-  emails.value = newEmails
-  location.value = newLocation
-  description.value = newDescription
+const applyDraft = (draft: ConfirmDetailsDraft) => {
+  emails.value =
+    draft.emails.length > 0
+      ? [...draft.emails]
+      : props.respondents.map((respondent) => respondent.email)
+  location.value = draft.location
+  description.value = draft.description
 }
 
 const searchContacts = (emailsIndex: number, query: string) => {
-  if (hasContactsAccess.value) {
-    const t = timeouts.value[emailsIndex]
-    if (t) clearTimeout(t)
-    timeouts.value[emailsIndex] = setTimeout(() => {
-      void get<Respondent[]>(`/user/searchContacts?query=${query}`).then(
-        (results) => {
-          emailSuggestions.value[emailsIndex] = results
-        }
-      )
-    }, 300)
-  }
+  if (!hasContactsAccess.value) return
+  scheduleLookup(String(emailsIndex), query, 300)
 }
 
-defineExpose({ setData })
+watch(
+  () => props.draft,
+  (draft) => {
+    applyDraft(draft)
+  },
+  { deep: true, immediate: true }
+)
 
 watch(
   emails,
-  () => {
-    if (props.modelValue && hasContactsAccess.value) {
-      const difference = emails.value.filter((x) => x && !prevEmails.has(x))
-      if (difference.length === 0) return
+  (nextEmails, previousEmails) => {
+    if (!props.modelValue || !hasContactsAccess.value) return
 
-      const changedEmail = difference[0]
-      const changedEmailIndex = emails.value.indexOf(changedEmail)
+    for (let index = 0; index < nextEmails.length; index += 1) {
+      const email = nextEmails[index] ?? ""
 
-      if (changedEmail.length > 0) {
-        searchContacts(changedEmailIndex, changedEmail)
+      if (email.length === 0) {
+        clearSuggestions(String(index))
+        continue
       }
 
-      prevEmails = new Set(emails.value)
+      if (email !== (previousEmails[index] || "")) {
+        searchContacts(index, email)
+      }
     }
   },
   { deep: true }

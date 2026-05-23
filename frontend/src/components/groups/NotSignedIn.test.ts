@@ -1,12 +1,11 @@
 // @vitest-environment happy-dom
 
-import { flushPromises, shallowMount } from "@vue/test-utils"
+import { shallowMount } from "@vue/test-utils"
 import { ref } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import NotSignedIn from "./NotSignedIn.vue"
 
-const { fetchUserByIdMock, routeState } = vi.hoisted(() => ({
-  fetchUserByIdMock: vi.fn(),
+const { routeState } = vi.hoisted(() => ({
   routeState: {
     params: {
       groupId: "group-1",
@@ -24,10 +23,6 @@ vi.mock("@/utils/useDisplayHelpers", () => ({
   }),
 }))
 
-vi.mock("@/utils/services/UserService", () => ({
-  fetchUserById: fetchUserByIdMock,
-}))
-
 vi.mock("is-ua-webview", () => ({
   default: vi.fn(() => false),
 }))
@@ -35,21 +30,21 @@ vi.mock("is-ua-webview", () => ({
 describe("NotSignedIn", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchUserByIdMock.mockResolvedValue({
-      _id: "owner-1",
-      firstName: "Ada",
-      lastName: "Lovelace",
-      email: "ada@example.com",
-    })
   })
 
-  it("loads the owner after mount before rendering the invite state", async () => {
+  it("renders the parent-provided owner invite state", () => {
     const wrapper = shallowMount(NotSignedIn, {
       props: {
         event: {
           _id: "group-1",
           ownerId: "owner-1",
           name: "Weekly sync",
+        },
+        owner: {
+          _id: "owner-1",
+          firstName: "Ada",
+          lastName: "Lovelace",
+          email: "ada@example.com",
         },
       },
       global: {
@@ -65,11 +60,6 @@ describe("NotSignedIn", () => {
       },
     })
 
-    expect(wrapper.text()).not.toContain("Ada invited you to join")
-
-    await flushPromises()
-
-    expect(fetchUserByIdMock).toHaveBeenCalledWith("owner-1")
     expect(wrapper.text()).toContain("Ada invited you to join")
   })
 })

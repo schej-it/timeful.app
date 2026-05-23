@@ -1,17 +1,14 @@
 <template>
   <v-fade-transition>
-    <div
-      v-if="loaded"
-      class="tw-flex tw-h-full tw-flex-col tw-items-center tw-justify-center tw-p-2"
-    >
+    <div class="tw-flex tw-h-full tw-flex-col tw-items-center tw-justify-center tw-p-2">
       <div class="tw-mb-8 tw-flex tw-max-w-[26rem] tw-flex-col tw-items-center">
         <UserAvatarContent
-          :user="owner"
+          :user="props.owner"
           :size="90"
           class="tw-mb-4 tw-text-center"
         />
         <h1 class="tw-mb-2 tw-text-center tw-text-xl tw-font-medium">
-          {{ owner?.firstName ?? "" }} invited you to join <br />"{{
+          {{ props.owner?.firstName ?? "" }} invited you to join <br />"{{
             event.name
           }}"
         </h1>
@@ -47,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue"
+import { ref } from "vue"
 import { useRoute } from "vue-router"
 import { signInGoogle } from "@/utils"
 import { authTypes } from "@/constants"
@@ -57,18 +54,15 @@ import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
 import isWebview from "is-ua-webview"
 import type { Event, User } from "@/types"
-import { getRealOwnerId } from "@/composables/event/eventOwnership"
-import { fetchUserById } from "@/utils/services/UserService"
 
 const props = defineProps<{
   event: Event
+  owner: User | null
 }>()
 
 const route = useRoute()
 const { isPhone } = useDisplayHelpers()
 
-const owner = ref<User | null>(null)
-const loaded = ref(false)
 const calendarPermissionsDialog = ref(false)
 const webviewDialog = ref(false)
 
@@ -106,14 +100,4 @@ const signIn = () => {
     selectAccount: true,
   })
 }
-
-async function loadOwner() {
-  const ownerId = getRealOwnerId(props.event)
-  if (ownerId) owner.value = await fetchUserById(ownerId)
-  loaded.value = true
-}
-
-onMounted(() => {
-  void loadOwner()
-})
 </script>
