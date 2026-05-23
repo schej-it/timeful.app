@@ -1,5 +1,10 @@
 <template>
-  <v-dialog v-model="dialog" max-width="500px" content-class="tw-m-0">
+  <v-dialog
+    :model-value="props.modelValue"
+    max-width="500px"
+    content-class="tw-m-0"
+    @update:model-value="handleDialogVisibilityChange"
+  >
     <v-card>
       <v-card-title>
         <span class="tw-text-xl tw-font-medium">Import Timeful Event</span>
@@ -8,7 +13,7 @@
           absolute
           icon
           class="tw-right-0 tw-mr-2 tw-self-center"
-          @click="dialog = false"
+          @click="closeDialog"
         >
           <v-icon>mdi-close</v-icon>
         </v-btn>
@@ -31,7 +36,7 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" :disabled="loading" @click="dialog = false">Cancel</v-btn>
+        <v-btn variant="text" :disabled="loading" @click="closeDialog">Cancel</v-btn>
         <v-btn
           color="primary"
           :loading="loading"
@@ -46,10 +51,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue"
+import { ref, watch } from "vue"
 import { useRouter } from "vue-router"
 import { post } from "@/utils"
 import { useMainStore } from "@/stores/main"
+import { isBlockedTimefulImportUrl } from "@/utils/timefulImport"
 
 const props = defineProps<{ modelValue: boolean }>()
 
@@ -64,38 +70,38 @@ const url = ref("")
 const loading = ref(false)
 const error = ref("")
 
-const dialog = computed({
-  get: () => props.modelValue,
-  set: (val: boolean) => {
-    emit("update:modelValue", val)
-    if (!val) {
-      url.value = ""
-      error.value = ""
-    }
-  },
-})
-
-const isBlockedUrl = (urlStr: string): boolean => {
-  try {
-    const parsed = new URL(urlStr)
-    const hostname = parsed.hostname
-    if (hostname === window.location.hostname) return true
-    if (
-      /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.|169\.254\.|0\.0\.0\.0|localhost$|\[?::1\]?)/.test(
-        hostname
-      )
-    )
-      return true
-    return false
-  } catch {
-    return false
-  }
+const resetForm = () => {
+  url.value = ""
+  error.value = ""
 }
+
+const closeDialog = () => {
+  resetForm()
+  emit("update:modelValue", false)
+}
+
+const handleDialogVisibilityChange = (isVisible: boolean) => {
+  if (isVisible) {
+    emit("update:modelValue", true)
+    return
+  }
+
+  closeDialog()
+}
+
+watch(
+  () => props.modelValue,
+  (isVisible, wasVisible) => {
+    if (wasVisible && !isVisible) {
+      resetForm()
+    }
+  }
+)
 
 const importEvent = async () => {
   if (!url.value.trim() || loading.value) return
 
-  if (isBlockedUrl(url.value.trim())) {
+  if (isBlockedTimefulImportUrl(url.value.trim(), window.location.hostname)) {
     error.value = "Not allowed to import from this URL."
     return
   }
@@ -107,7 +113,7 @@ const importEvent = async () => {
     const result = await post<{ shortId: string }>("/events/import", {
       url: url.value.trim(),
     })
-    dialog.value = false
+    closeDialog()
     mainStore.showInfo("Event imported successfully!")
     void router.push(`/e/${result.shortId}`)
   } catch (e: unknown) {

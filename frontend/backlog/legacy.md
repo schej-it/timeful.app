@@ -18,11 +18,11 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
 
 ## P0
 
-- [ ] `F-USER-ITEM-001` ([finding](../findings/F-USER-ITEM-001.md)) - `planned`, `src/components/UserItem.vue`
+- [x] `F-USER-ITEM-001` ([finding](../findings/F-USER-ITEM-001.md)) - `verified`, `src/components/UserItem.vue`
   Local storage seeding and watcher-driven persistence still own `showEventNames` state.
-- [ ] `F-LANDING-CALENDAR-001` ([finding](../findings/F-LANDING-CALENDAR-001.md)) - `planned`, `src/components/landing/LandingPageCalendar.vue`
+- [x] `F-LANDING-CALENDAR-001` ([finding](../findings/F-LANDING-CALENDAR-001.md)) - `verified`, `src/components/landing/LandingPageCalendar.vue`
   Animation startup still depends on mount-coupled timers and an exposed child API.
-- [ ] `F-TOOLTIP-001` ([finding](../findings/F-TOOLTIP-001.md)) - `planned`, `src/components/Tooltip.vue`
+- [x] `F-TOOLTIP-001` ([finding](../findings/F-TOOLTIP-001.md)) - `verified`, `src/components/Tooltip.vue`
   Tooltip behavior still relies on manual DOM listeners, timers, and inline placement state.
 - [ ] `F-CALENDAR-ACCOUNTS-001` ([finding](../findings/F-CALENDAR-ACCOUNTS-001.md)) - `planned`, `src/components/settings/CalendarAccounts.vue`
   Data source selection, event fetching, and collapse persistence still span mount logic, watchers, and `localStorage`.
@@ -46,7 +46,7 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
   Settings initialization and apply flow still depend on mount-time browser reads and reloads.
 - [ ] `F-UPGRADE-DIALOG-001` ([finding](../findings/F-UPGRADE-DIALOG-001.md)) - `planned`, `src/components/pricing/UpgradeDialog.vue`
   Upgrade flow still triggers analytics and redirects from watcher-driven dialog state.
-- [ ] `F-TIMEFUL-IMPORT-001` ([finding](../findings/F-TIMEFUL-IMPORT-001.md)) - `planned`, `src/components/TimefulImportDialog.vue`
+- [x] `F-TIMEFUL-IMPORT-001` ([finding](../findings/F-TIMEFUL-IMPORT-001.md)) - `fixed`, `src/components/TimefulImportDialog.vue`
   Import validation still depends directly on `window.location.hostname`, and dialog close resets form state through a writable computed shim.
 - [ ] `F-SIGN-UP-BLOCKS-LIST-001` ([finding](../findings/F-SIGN-UP-BLOCKS-LIST-001.md)) - `planned`, `src/components/sign_up_form/SignUpBlocksList.vue`
   Scroll behavior and max-height sizing still rely on imperative DOM queries, resize handling, and an exposed scroll API.
@@ -78,11 +78,11 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
   Calendar account cloning still uses `JSON.parse(JSON.stringify(...))` instead of explicit typed shaping.
 - [ ] `F-NOT-SIGNED-IN-001` ([finding](../findings/F-NOT-SIGNED-IN-001.md)) - `planned`, `src/components/groups/NotSignedIn.vue`
   Owner loading still happens as a mount-coupled fetch inside the view component.
-- [ ] `F-CALENDAR-TYPE-SELECTOR-001` ([finding](../findings/F-CALENDAR-TYPE-SELECTOR-001.md)) - `planned`, `src/components/settings/CalendarTypeSelector.vue`
+- [x] `F-CALENDAR-TYPE-SELECTOR-001` ([finding](../findings/F-CALENDAR-TYPE-SELECTOR-001.md)) - `fixed`, `src/components/settings/CalendarTypeSelector.vue`
   Dialog state still mirrors `props.visible` through a reset watcher instead of a clearer ownership boundary.
-- [ ] `F-DASHBOARD-001` ([finding](../findings/F-DASHBOARD-001.md)) - `planned`, `src/components/home/Dashboard.vue`
+- [x] `F-DASHBOARD-001` ([finding](../findings/F-DASHBOARD-001.md)) - `fixed`, `src/components/home/Dashboard.vue`
   Folder open state still bootstraps from and persists back to `localStorage` inside the component.
-- [ ] `F-SLIDE-TOGGLE-001` ([finding](../findings/F-SLIDE-TOGGLE-001.md)) - `planned`, `src/components/SlideToggle.vue`
+- [x] `F-SLIDE-TOGGLE-001` ([finding](../findings/F-SLIDE-TOGGLE-001.md)) - `fixed`, `src/components/SlideToggle.vue`
   Local selection still mirrors `modelValue` through a watcher, and visual state is carried by inline style objects.
 
 ## P3 Summary Notes

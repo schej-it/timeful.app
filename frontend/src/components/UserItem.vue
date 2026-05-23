@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue"
+import { useShowEventNamesPreference } from "@/composables/useShowEventNamesPreference"
 
 interface UserShape {
   name: string
@@ -58,16 +58,7 @@ const emit = defineEmits<{
   showEventNames: [value: boolean]
 }>()
 
-const showEventNames = ref(true)
-
-onMounted(() => {
-  if (localStorage.showEventNames) {
-    showEventNames.value = localStorage.showEventNames === "true"
-  }
-})
-
-watch(showEventNames, (val) => {
-  localStorage.showEventNames = String(val)
-  emit("showEventNames", val)
+const { showEventNames } = useShowEventNamesPreference(value => {
+  emit("showEventNames", value)
 })
 </script>

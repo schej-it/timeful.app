@@ -192,7 +192,7 @@
 
 <script setup lang="ts">
 defineOptions({ name: "AppDashboard" })
-import { computed, ref, watch } from "vue"
+import { computed, ref } from "vue"
 import { storeToRefs } from "pinia"
 import draggable from "vuedraggable"
 import {
@@ -206,6 +206,7 @@ import ObjectID from "bson-objectid"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import type { Event, Folder } from "@/types"
+import { useDashboardFolderOpenState } from "./useDashboardFolderOpenState"
 
 interface DragEvent {
   item: { id: string }
@@ -227,17 +228,7 @@ const newFolderName = ref("")
 const newFolderColor = ref<string>(folderColors[3])
 const isEditingFolder = ref(false)
 const folderToEdit = ref<Folder | null>(null)
-const folderOpenState = ref<Record<string, boolean>>({ "no-folder": true })
-
-try {
-  const storedState = localStorage.getItem("folderOpenState")
-  if (storedState) {
-    folderOpenState.value = JSON.parse(storedState) as Record<string, boolean>
-  }
-} catch (e) {
-  console.error("Error reading folderOpenState from localStorage", e)
-  localStorage.removeItem("folderOpenState")
-}
+const { folderOpenState, toggleFolder } = useDashboardFolderOpenState(folders)
 
 const allEvents = computed(() => events.value)
 
@@ -423,12 +414,6 @@ const openEditFolderDialog = (folder: FolderRow) => {
   newFolderColor.value = folder.color ?? folderColors[3]
   createFolderDialog.value = true
 }
-const toggleFolder = (folderId: string) => {
-  folderOpenState.value = {
-    ...folderOpenState.value,
-    [folderId]: !folderOpenState.value[folderId],
-  }
-}
 const createEventInFolder = (folderId: string) => {
   const actualFolderId = folderId === "no-folder" ? null : folderId
   mainStore.createNew({ eventOnly: false, folderId: actualFolderId })
@@ -443,30 +428,4 @@ const confirmDelete = () => {
   }
   deleteDialog.value = false
 }
-
-watch(
-  folderOpenState,
-  (newState) => {
-    try {
-      localStorage.setItem("folderOpenState", JSON.stringify(newState))
-    } catch (e) {
-      console.error("Error saving folderOpenState to localStorage", e)
-    }
-  },
-  { deep: true }
-)
-watch(
-  folders,
-  (newFolders) => {
-    newFolders.forEach((folder) => {
-      if (folder._id && !(folder._id in folderOpenState.value)) {
-        folderOpenState.value = {
-          ...folderOpenState.value,
-          [folder._id]: true,
-        }
-      }
-    })
-  },
-  { immediate: true }
-)
 </script>

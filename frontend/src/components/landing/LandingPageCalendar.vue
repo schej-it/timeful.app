@@ -18,9 +18,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue"
+import { computed, ref, toRef } from "vue"
 import { Temporal } from "temporal-polyfill"
 import ScheduleOverlap from "@/components/schedule_overlap/ScheduleOverlap.vue"
+import { useLandingPageCalendarAnimation } from "@/composables/useLandingPageCalendarAnimation"
 import {
   processTimeBlocks,
 } from "@/utils"
@@ -33,6 +34,15 @@ interface ScheduleOverlapRef {
   stopEditing: () => void
   setAvailabilityAutomatically: () => void
 }
+
+const props = withDefaults(
+  defineProps<{
+    replayToken?: number
+  }>(),
+  {
+    replayToken: 0,
+  }
+)
 
 const { isPhone } = useDisplayHelpers()
 
@@ -183,24 +193,23 @@ const reset = () => {
   calendarEventsByDay.value = []
 }
 
-const playAnimation = () => {
-  reset()
-  scheduleOverlap.value?.startEditing()
-  setTimeout(() => {
-    getCalendarEventsByDay()
-    getResponses()
-    setTimeout(() => {
+useLandingPageCalendarAnimation({
+  replayToken: toRef(props, "replayToken"),
+  actions: {
+    reset,
+    startEditing: () => {
+      scheduleOverlap.value?.startEditing()
+    },
+    populateCalendar: () => {
+      getCalendarEventsByDay()
+      getResponses()
+    },
+    setAvailabilityAutomatically: () => {
       scheduleOverlap.value?.setAvailabilityAutomatically()
-      setTimeout(() => {
-        scheduleOverlap.value?.stopEditing()
-      }, 2000)
-    }, 500)
-  }, 200)
-}
-
-defineExpose({ playAnimation })
-
-onMounted(() => {
-  playAnimation()
+    },
+    stopEditing: () => {
+      scheduleOverlap.value?.stopEditing()
+    },
+  },
 })
 </script>
