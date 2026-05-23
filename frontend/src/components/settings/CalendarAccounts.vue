@@ -96,10 +96,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue"
+import { ref, toRef } from "vue"
 import { storeToRefs } from "pinia"
 import { authTypes, calendarTypes } from "@/constants"
-import { Temporal } from "temporal-polyfill"
 import {
   _delete,
   signInGoogle,
@@ -109,9 +108,9 @@ import {
 import { useMainStore } from "@/stores/main"
 import CalendarAccount from "@/components/settings/CalendarAccount.vue"
 import CalendarTypeSelector from "@/components/settings/CalendarTypeSelector.vue"
-import { fetchUserCalendarEventsMap } from "@/composables/event/calendarEventsBoundary"
 import type { CalendarAccount as CalendarAccountModel } from "@/types"
 import type { CalendarEventsMap } from "@/composables/schedule_overlap/types"
+import { useCalendarAccountsState } from "./useCalendarAccountsState"
 export type CalendarAccountEntry = CalendarAccountModel
 
 export interface ToggleCalendarPayload {
@@ -161,20 +160,12 @@ const removePayload = ref<{ email?: string; calendarType?: string }>({})
 
 const addCalendarAccountDialog = ref(false)
 
-const calendarAccounts = ref<Record<string, CalendarAccountEntry>>({})
-const showCalendars = ref(
-  localStorage.showCalendars == undefined
-    ? true
-    : localStorage.showCalendars == "true"
-)
-
-const calendarEventsMapCopy = ref<CalendarEventsMap>({})
-
-onMounted(() => {
-  calendarAccounts.value = Object.keys(props.initialCalendarAccountsData).length === 0
-    ? authUser.value?.calendarAccounts ?? {}
-    : props.initialCalendarAccountsData
-})
+const { calendarAccounts, showCalendars, calendarEventsMapCopy, toggleShowCalendars } =
+  useCalendarAccountsState({
+    authUser,
+    initialCalendarAccountsData: toRef(props, "initialCalendarAccountsData"),
+    calendarEventsMap: toRef(props, "calendarEventsMap"),
+  })
 
 const addGoogleCalendar = () => {
   signInGoogle({
@@ -203,7 +194,6 @@ const addOutlookCalendar = () => {
 }
 const addedCalendar = () => {
   addCalendarAccountDialog.value = false
-  calendarAccounts.value = authUser.value?.calendarAccounts ?? {}
 }
 const openRemoveDialog = (payload: { email: string; calendarType: string }) => {
   removeDialog.value = true
@@ -230,29 +220,4 @@ const removeAccount = () => {
       )
     })
 }
-const toggleShowCalendars = () => {
-  showCalendars.value = !showCalendars.value
-  localStorage.showCalendars = String(showCalendars.value)
-}
-
-watch(
-  () => props.calendarEventsMap,
-  async () => {
-    if (Object.keys(props.calendarEventsMap).length === 0) {
-      const timeMin = Temporal.Now.instant()
-      const timeMax = Temporal.Now.instant()
-      try {
-        calendarEventsMapCopy.value = await fetchUserCalendarEventsMap({
-          timeMin,
-          timeMax,
-        })
-      } catch (err) {
-        console.error(err)
-      }
-    } else {
-      calendarEventsMapCopy.value = props.calendarEventsMap
-    }
-  },
-  { immediate: true }
-)
 </script>

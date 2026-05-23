@@ -24,7 +24,7 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
   Animation startup still depends on mount-coupled timers and an exposed child API.
 - [x] `F-TOOLTIP-001` ([finding](../findings/F-TOOLTIP-001.md)) - `verified`, `src/components/Tooltip.vue`
   Tooltip behavior still relies on manual DOM listeners, timers, and inline placement state.
-- [ ] `F-CALENDAR-ACCOUNTS-001` ([finding](../findings/F-CALENDAR-ACCOUNTS-001.md)) - `planned`, `src/components/settings/CalendarAccounts.vue`
+- [x] `F-CALENDAR-ACCOUNTS-001` ([finding](../findings/F-CALENDAR-ACCOUNTS-001.md)) - `verified`, `src/components/settings/CalendarAccounts.vue`
   Data source selection, event fetching, and collapse persistence still span mount logic, watchers, and `localStorage`.
 - [ ] `F-SCHEDULE-OVERLAP-001` ([finding](../findings/F-SCHEDULE-OVERLAP-001.md)) - `planned`, `src/components/schedule_overlap/ScheduleOverlap.vue`
   Core scheduling state still depends on ambient browser storage and a wide exposed instance-style API.
