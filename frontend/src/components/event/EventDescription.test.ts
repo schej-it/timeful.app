@@ -1,18 +1,24 @@
 // @vitest-environment happy-dom
 
 import { mount, shallowMount } from "@vue/test-utils"
-import { describe, expect, it, vi } from "vitest"
+import { Temporal } from "temporal-polyfill"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { eventTypes } from "@/constants"
 import EventDescription from "./EventDescription.vue"
 import eventDescriptionSource from "./EventDescription.vue?raw"
 
+const { putMock, showErrorMock } = vi.hoisted(() => ({
+  putMock: vi.fn(),
+  showErrorMock: vi.fn(),
+}))
+
 vi.mock("@/utils", () => ({
-  put: vi.fn(),
+  put: putMock,
 }))
 
 vi.mock("@/stores/main", () => ({
   useMainStore: () => ({
-    showError: vi.fn(),
+    showError: showErrorMock,
   }),
 }))
 
@@ -31,6 +37,56 @@ const baseEvent = {
 }
 
 describe("EventDescription", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.spyOn(console, "error").mockImplementation(() => undefined)
+  })
+
+  it("saves the edited description and emits the updated event", async () => {
+    putMock.mockResolvedValue({})
+
+    const wrapper = mount(EventDescription, {
+      props: {
+        event: {
+          ...baseEvent,
+          description: "Original description",
+          duration: Temporal.Duration.from({ minutes: 30 }),
+          dates: [],
+          timeSeed: undefined,
+        },
+        canEdit: true,
+      },
+      attachTo: document.body,
+      global: {
+        stubs: {
+          "v-btn": VBtnStub,
+          "v-icon": true,
+        },
+      },
+    })
+
+    await wrapper.get(".event-description-edit-button").trigger("click")
+
+    const editor = wrapper.get('[role="textbox"]')
+    editor.element.textContent = "Updated description"
+    await editor.trigger("input")
+    await wrapper.get(".event-description-save-button").trigger("click")
+
+    expect(putMock).toHaveBeenCalledTimes(1)
+    expect(wrapper.emitted("update:event")).toEqual([
+      [
+        {
+          ...baseEvent,
+          description: "Updated description",
+          duration: Temporal.Duration.from({ minutes: 30 }),
+          dates: [],
+          timeSeed: undefined,
+        },
+      ],
+    ])
+    expect(showErrorMock).not.toHaveBeenCalled()
+  })
+
   it("renders the description pencil as a circular text icon button", () => {
     const wrapper = shallowMount(EventDescription, {
       props: {
@@ -192,5 +248,61 @@ describe("EventDescription", () => {
     })
 
     expect(wrapper.text()).toContain("After update")
+  })
+
+  it("restores the previous event and reports an error when save fails", async () => {
+    putMock.mockRejectedValueOnce(new Error("save failed"))
+
+    const wrapper = mount(EventDescription, {
+      props: {
+        event: {
+          ...baseEvent,
+          description: "Original description",
+          duration: Temporal.Duration.from({ minutes: 30 }),
+          dates: [],
+          timeSeed: undefined,
+        },
+        canEdit: true,
+      },
+      attachTo: document.body,
+      global: {
+        stubs: {
+          "v-btn": VBtnStub,
+          "v-icon": true,
+        },
+      },
+    })
+
+    await wrapper.get(".event-description-edit-button").trigger("click")
+
+    const editor = wrapper.get('[role="textbox"]')
+    editor.element.textContent = "Broken update"
+    await editor.trigger("input")
+    await wrapper.get(".event-description-save-button").trigger("click")
+    await Promise.resolve()
+
+    expect(wrapper.emitted("update:event")).toEqual([
+      [
+        {
+          ...baseEvent,
+          description: "Broken update",
+          duration: Temporal.Duration.from({ minutes: 30 }),
+          dates: [],
+          timeSeed: undefined,
+        },
+      ],
+      [
+        {
+          ...baseEvent,
+          description: "Original description",
+          duration: Temporal.Duration.from({ minutes: 30 }),
+          dates: [],
+          timeSeed: undefined,
+        },
+      ],
+    ])
+    expect(showErrorMock).toHaveBeenCalledWith(
+      "Failed to save description! Please try again later."
+    )
   })
 })

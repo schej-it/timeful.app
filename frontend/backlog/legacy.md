@@ -91,4 +91,4 @@ These are inventory notes rather than independent findings until they justify re
 
 - Framework-first template cleanup remains common across small wrappers such as `AccessDenied.vue`, `BottomFab.vue`, `EventType.vue`, `HowItWorksDialog.vue`, `SignInGoogleBtn.vue`, `FeatureNotReadyDialog.vue`, and similar Vuetify-first components.
 - View-local geometry and inline-style cleanup still appear in components such as `CalendarEventBlock.vue`, `ScheduleOverlapMobileOverlay.vue`, `ScheduleOverlapDaysOnlyGrid.vue`, `ScheduleOverlapTimeGrid.vue`, `Logo.vue`, and `sign_up_form/SignUpCalendarBlock.vue`.
-- Small watcher-mirroring or route-storage glue remains in components such as `AutoSnackbar.vue`, `UpvoteRedditSnackbar.vue`, `DiscordBanner.vue`, `EventDescription.vue`, and related snackbars or banners.
+- Small watcher-mirroring or route-storage glue still appears in related snackbars or banners beyond the cleaned-up `AutoSnackbar.vue`, `UpvoteRedditSnackbar.vue`, `DiscordBanner.vue`, and `EventDescription.vue`.

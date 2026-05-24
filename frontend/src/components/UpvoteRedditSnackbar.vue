@@ -31,40 +31,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue"
-import { useRoute } from "vue-router"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { posthog } from "@/plugins/posthog"
+import { useRouteDismissibleVisibility } from "@/composables/useRouteDismissibleVisibility"
 
 const { isPhone } = useDisplayHelpers()
-const route = useRoute()
 
 const redditUrl =
   "https://www.reddit.com/r/opensource/comments/1klu471/i_made_a_doodle_alternative/"
-const show = ref(false)
-
-const localStorageKey = computed(
-  () => `upvoteRedditSnackbarDismissed_${redditUrl}`
+const localStorageKey = `upvoteRedditSnackbarDismissed_${redditUrl}`
+const { show, dismiss } = useRouteDismissibleVisibility(
+  "home",
+  localStorageKey,
+  {
+    onDismiss: () => {
+      posthog.capture("reddit_upvote_snackbar_dismissed")
+    },
+  }
 )
-
-const dismiss = () => {
-  show.value = false
-  localStorage.setItem(localStorageKey.value, "true")
-  posthog.capture("reddit_upvote_snackbar_dismissed")
-}
 
 const trackRedditClick = () => {
   posthog.capture("reddit_upvote_snackbar_clicked", { redditUrl })
 }
-
-watch(
-  () => route.name,
-  () => {
-    const showOnRoute = route.name === "home"
-    const userHasDismissed =
-      localStorage.getItem(localStorageKey.value) === "true"
-    show.value = !userHasDismissed && showOnRoute
-  },
-  { immediate: true }
-)
 </script>

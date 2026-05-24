@@ -33,37 +33,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue"
-import { useRoute } from "vue-router"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { posthog } from "@/plugins/posthog"
+import { useRouteDismissibleVisibility } from "@/composables/useRouteDismissibleVisibility"
 
 const { isPhone } = useDisplayHelpers()
-const route = useRoute()
 
 const discordUrl = "https://discord.gg/v6raNqYxx3"
-const show = ref(false)
-
-const localStorageKey = computed(() => `discordBannerDismissed_v1`)
-
-const dismiss = () => {
-  show.value = false
-  localStorage.setItem(localStorageKey.value, "true")
-  posthog.capture("discord_banner_dismissed")
-}
+const { show, dismiss } = useRouteDismissibleVisibility(
+  "landing",
+  "discordBannerDismissed_v1",
+  {
+    onDismiss: () => {
+      posthog.capture("discord_banner_dismissed")
+    },
+  }
+)
 
 const trackDiscordClick = () => {
   posthog.capture("discord_banner_clicked", { discordUrl })
 }
-
-watch(
-  () => route.name,
-  () => {
-    const showOnRoute = route.name === "landing"
-    const userHasDismissed =
-      localStorage.getItem(localStorageKey.value) === "true"
-    show.value = !userHasDismissed && showOnRoute
-  },
-  { immediate: true }
-)
 </script>

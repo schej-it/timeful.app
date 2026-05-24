@@ -81,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue"
+import { computed, nextTick, ref } from "vue"
 import { put } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import type { Event } from "@/types"
@@ -123,24 +123,14 @@ const syncDraftDescription = () => {
   draftDescription.value = descriptionEditor.value?.textContent ?? ""
 }
 
-const beginEditing = () => {
+const beginEditing = async () => {
   draftDescription.value = props.event.description ?? ""
   isEditing.value = true
-}
-
-watch(isEditing, async (editing) => {
-  if (!editing) {
-    return
-  }
 
   await nextTick()
   syncEditorContent(draftDescription.value)
   descriptionEditor.value?.focus()
-})
-
-watch(draftDescription, (value) => {
-  syncEditorContent(value)
-})
+}
 
 const saveDescription = () => {
   const oldEvent = { ...props.event }

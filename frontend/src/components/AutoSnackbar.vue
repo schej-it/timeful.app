@@ -11,7 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue"
+import { computed, ref } from "vue"
 
 const props = withDefaults(
   defineProps<{
@@ -21,13 +21,14 @@ const props = withDefaults(
   { text: "", color: "" }
 )
 
-const show = ref(false)
+const dismissedText = ref("")
 
-watch(
-  () => props.text,
-  (text) => {
-    show.value = !!text
+const show = computed({
+  get: () => Boolean(props.text) && dismissedText.value !== props.text,
+  set: (value: boolean) => {
+    if (!value) {
+      dismissedText.value = props.text
+    }
   },
-  { immediate: true }
-)
+})
 </script>
