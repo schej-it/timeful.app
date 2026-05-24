@@ -42,80 +42,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from "vue"
+import { ref } from "vue"
+import { usePronunciationMenuPlayback } from "@/composables/usePronunciationMenuPlayback"
 import img0 from "@/assets/doodles/pronunciation/0.jpg"
 import img1 from "@/assets/doodles/pronunciation/1.jpg"
 import img2 from "@/assets/doodles/pronunciation/2.jpg"
 import img3 from "@/assets/doodles/pronunciation/3.jpg"
 import img4 from "@/assets/doodles/pronunciation/4.jpg"
 
-const isMenuOpen = ref(false)
-const currentImageIndex = ref(0)
 const images = [img0, img1, img2, img3, img4]
-const animationInterval = ref<ReturnType<typeof setInterval> | null>(null)
-const animationSpeedMs = 200
 const pronunciationAudio = ref<HTMLAudioElement | null>(null)
 
-const currentImageSrc = computed(() => images[currentImageIndex.value])
-
-const startAnimationAndAudio = () => {
-  currentImageIndex.value = 1
-
-  if (animationInterval.value) {
-    clearInterval(animationInterval.value)
-  }
-
-  animationInterval.value = setInterval(() => {
-    if (currentImageIndex.value < images.length - 1) {
-      currentImageIndex.value++
-    } else {
-      if (animationInterval.value) clearInterval(animationInterval.value)
-      animationInterval.value = null
-      setTimeout(() => {
-        currentImageIndex.value = 0
-      }, animationSpeedMs)
-    }
-  }, animationSpeedMs)
-
-  if (pronunciationAudio.value) {
-    pronunciationAudio.value.currentTime = 0
-    pronunciationAudio.value.play().catch((error: unknown) => {
+const { isMenuOpen, currentImageSrc, handleMenuStateChange } =
+  usePronunciationMenuPlayback({
+    audio: pronunciationAudio,
+    images,
+    onAudioPlayError: (error: unknown) => {
       console.warn("Audio play prevented: ", error)
-    })
-  }
-}
-
-const stopAnimationAndAudio = () => {
-  if (animationInterval.value) {
-    clearInterval(animationInterval.value)
-    animationInterval.value = null
-  }
-  currentImageIndex.value = 0
-
-  if (pronunciationAudio.value) {
-    pronunciationAudio.value.pause()
-    pronunciationAudio.value.currentTime = 0
-  }
-}
-
-const handleMenuStateChange = (isOpen: boolean) => {
-  isMenuOpen.value = isOpen
-  if (isOpen) {
-    startAnimationAndAudio()
-  } else {
-    stopAnimationAndAudio()
-  }
-}
-
-onBeforeUnmount(() => {
-  if (animationInterval.value) {
-    clearInterval(animationInterval.value)
-  }
-  if (pronunciationAudio.value) {
-    pronunciationAudio.value.pause()
-    pronunciationAudio.value.currentTime = 0
-  }
-})
+    },
+  })
 </script>
 
 <style scoped>

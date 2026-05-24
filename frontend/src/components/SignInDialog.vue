@@ -88,7 +88,12 @@
       <!-- Onboarding: name entry for new users -->
       <template v-else-if="step === 'onboarding'">
         <v-card-title class="tw-flex tw-items-center">
-          <v-btn icon size="small" class="tw-mr-1" @click="step = 'select'">
+          <v-btn
+            icon
+            size="small"
+            class="tw-mr-1"
+            @click="returnToProviderSelection"
+          >
             <v-icon>mdi-arrow-left</v-icon>
           </v-btn>
           What's your name?
@@ -132,7 +137,7 @@
             color="primary"
             class="timeful-elevated-button"
             :loading="sending"
-            :disabled="!firstName.trim() || sending"
+            :disabled="!canSubmitOnboarding"
             @click="submitOnboarding"
           >
             Continue
@@ -147,7 +152,7 @@
             icon
             size="small"
             class="tw-mr-1"
-            @click="step = isNewUser ? 'onboarding' : 'select'"
+            @click="returnFromOtp"
           >
             <v-icon>mdi-arrow-left</v-icon>
           </v-btn>
@@ -175,7 +180,7 @@
             color="primary"
             class="timeful-elevated-button"
             :loading="verifying"
-            :disabled="otpCode.length !== 6 || verifying"
+            :disabled="!canVerifyOtp"
             @click="verifyOtp"
           >
             Verify
@@ -201,12 +206,10 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from "vue"
+import { ref } from "vue"
 import { calendarTypes, type CalendarType } from "@/constants"
-import { post } from "@/utils"
-import { Temporal } from "temporal-polyfill"
 import type { User } from "@/types"
-import { verifyOtpSignIn } from "@/utils/services/UserService"
+import { useSignInDialogState } from "@/composables/useSignInDialogState"
 
 defineProps<{ modelValue: boolean }>()
 
@@ -216,167 +219,38 @@ const emit = defineEmits<{
   emailSignIn: [user: User]
 }>()
 
-type Step = "select" | "onboarding" | "otp"
-
-const step = ref<Step>("select")
-const email = ref("")
-const firstName = ref("")
-const lastName = ref("")
-const otpCode = ref("")
-const emailError = ref("")
-const otpError = ref("")
-const sending = ref(false)
-const verifying = ref(false)
-const isNewUser = ref(false)
-const resendCooldown = ref(0)
-let resendTimer: ReturnType<typeof setInterval> | null = null
 const lastNameField = ref<{ focus: () => void } | null>(null)
 
 const signIn = (provider: CalendarType) => {
   emit("signIn", provider)
 }
 
-const validateEmail = () => {
-  const e = email.value.trim()
-  if (!e) {
-    emailError.value = "Please enter an email address."
-    return false
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
-    emailError.value = "Please enter a valid email address."
-    return false
-  }
-  if (e.includes("+")) {
-    emailError.value = "Email aliases with '+' are not allowed."
-    return false
-  }
-  return true
-}
-
-const sendOtpEmail = async () => {
-  await post("/auth/otp/send", { email: email.value })
-  startResendCooldown()
-}
-
-const submitEmail = async () => {
-  if (sending.value) return
-  emailError.value = ""
-  if (!validateEmail()) return
-  sending.value = true
-  try {
-    const res = await post<{ isNewUser: boolean }>("/auth/otp/check-email", {
-      email: email.value,
-    })
-    isNewUser.value = res.isNewUser
-    if (isNewUser.value) {
-      step.value = "onboarding"
-    } else {
-      await sendOtpEmail()
-      step.value = "otp"
-      otpCode.value = ""
-      otpError.value = ""
-    }
-  } catch {
-    emailError.value = "Something went wrong. Please try again."
-  } finally {
-    sending.value = false
-  }
-}
-
-const submitOnboarding = async () => {
-  if (!firstName.value.trim() || sending.value) return
-  sending.value = true
-  try {
-    await sendOtpEmail()
-    step.value = "otp"
-    otpCode.value = ""
-    otpError.value = ""
-  } catch {
-    otpError.value = "Failed to send code. Please try again."
-  } finally {
-    sending.value = false
-  }
-}
-
-const resendOtp = async () => {
-  if (sending.value || resendCooldown.value > 0) return
-  sending.value = true
-  try {
-    await sendOtpEmail()
-    otpCode.value = ""
-    otpError.value = ""
-  } catch {
-    otpError.value = "Failed to resend code. Please try again."
-  } finally {
-    sending.value = false
-  }
-}
-
-const verifyOtp = async () => {
-  if (otpCode.value.length !== 6 || verifying.value) return
-  otpError.value = ""
-  verifying.value = true
-  try {
-    const body: Record<string, unknown> = {
-      email: email.value,
-      code: otpCode.value,
-      timezoneOffset: Temporal.Now.zonedDateTimeISO().offsetNanoseconds / (1000 * 1000 * 1000) / 60 * -1,
-    }
-    if (isNewUser.value) {
-      body.firstName = firstName.value.trim()
-      body.lastName = lastName.value.trim()
-    }
-    const user = await verifyOtpSignIn(body)
+const {
+  step,
+  email,
+  firstName,
+  lastName,
+  otpCode,
+  emailError,
+  otpError,
+  sending,
+  verifying,
+  resendCooldown,
+  canSubmitOnboarding,
+  canVerifyOtp,
+  submitEmail,
+  submitOnboarding,
+  resendOtp,
+  verifyOtp,
+  handleDialogModelChange: onDialogInput,
+  returnToProviderSelection,
+  returnFromOtp,
+} = useSignInDialogState({
+  onEmailSignIn: (user: User) => {
     emit("emailSignIn", user)
-    reset()
-    emit("update:modelValue", false)
-  } catch (err: unknown) {
-    const errorCode = (err as { parsed?: { error?: string } }).parsed?.error
-    if (errorCode === "otp-expired") {
-      otpError.value = "Code has expired. Please request a new one."
-    } else if (errorCode === "otp-too-many-attempts") {
-      otpError.value = "Too many attempts. Please request a new code."
-    } else {
-      otpError.value = "Invalid code. Please try again."
-    }
-  } finally {
-    verifying.value = false
-  }
-}
-
-const startResendCooldown = () => {
-  resendCooldown.value = 30
-  if (resendTimer) clearInterval(resendTimer)
-  resendTimer = setInterval(() => {
-    resendCooldown.value--
-    if (resendCooldown.value <= 0) {
-      if (resendTimer) clearInterval(resendTimer)
-      resendTimer = null
-    }
-  }, 1000)
-}
-
-const reset = () => {
-  step.value = "select"
-  email.value = ""
-  firstName.value = ""
-  lastName.value = ""
-  otpCode.value = ""
-  emailError.value = ""
-  otpError.value = ""
-  sending.value = false
-  verifying.value = false
-  isNewUser.value = false
-  resendCooldown.value = 0
-  if (resendTimer) clearInterval(resendTimer)
-}
-
-const onDialogInput = (e: boolean) => {
-  emit("update:modelValue", e)
-  if (!e) reset()
-}
-
-onBeforeUnmount(() => {
-  if (resendTimer) clearInterval(resendTimer)
+  },
+  onDialogVisibilityChange: (value: boolean) => {
+    emit("update:modelValue", value)
+  },
 })
 </script>

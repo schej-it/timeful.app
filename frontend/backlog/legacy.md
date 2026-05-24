@@ -63,7 +63,7 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
   New-sign-up flow remains a large watcher-driven component with reset and validation logic tightly coupled to the view.
 - [ ] `F-UPGRADE-DIALOG-002` ([finding](../findings/F-UPGRADE-DIALOG-002.md)) - `planned`, `src/components/pricing/UpgradeDialog.vue`
   Pricing and checkout dialog still mixes presentation, gating logic, analytics, and provider-flow state in one component.
-- [ ] `F-SIGN-IN-DIALOG-001` ([finding](../findings/F-SIGN-IN-DIALOG-001.md)) - `planned`, `src/components/SignInDialog.vue`
+- [x] `F-SIGN-IN-DIALOG-001` ([finding](../findings/F-SIGN-IN-DIALOG-001.md)) - `fixed`, `src/components/SignInDialog.vue`
   Sign-in dialog still concentrates provider selection, onboarding, OTP flow, and cooldown timer orchestration.
 - [x] `F-GUEST-DIALOG-001` ([finding](../findings/F-GUEST-DIALOG-001.md)) - `fixed`, `src/components/GuestDialog.vue`
   Guest dialog still rebuilds validation and reset logic through open-state watchers and `nextTick` coordination.
@@ -72,7 +72,7 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
 
 ## P2
 
-- [ ] `F-PRONUNCIATION-MENU-001` ([finding](../findings/F-PRONUNCIATION-MENU-001.md)) - `planned`, `src/components/PronunciationMenu.vue`
+- [x] `F-PRONUNCIATION-MENU-001` ([finding](../findings/F-PRONUNCIATION-MENU-001.md)) - `fixed`, `src/components/PronunciationMenu.vue`
   Audio preview behavior still relies on timers and imperative media-element control.
 - [x] `F-INVITATION-DIALOG-001` ([finding](../findings/F-INVITATION-DIALOG-001.md)) - `fixed`, `src/components/groups/InvitationDialog.vue`
   Calendar account cloning still uses `JSON.parse(JSON.stringify(...))` instead of explicit typed shaping.

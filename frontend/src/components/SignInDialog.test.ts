@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { flushPromises, mount } from "@vue/test-utils"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type * as UtilsModule from "@/utils"
 import {
   buttonStubWithDisabled,
@@ -83,6 +83,10 @@ const findButtonByText = (
 }
 
 describe("SignInDialog", () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   beforeEach(() => {
     postMock.mockReset()
     verifyOtpSignInMock.mockReset()
@@ -134,6 +138,18 @@ describe("SignInDialog", () => {
     )
   })
 
+  it("keeps plus-alias email validation gating OTP send", async () => {
+    const wrapper = mountDialog()
+
+    await wrapper.get('input[placeholder="Enter your email..."]').setValue("name+alias@example.com")
+    await findButtonByText(wrapper, "Continue with Email").trigger("click")
+
+    expect(postMock).not.toHaveBeenCalled()
+    expect(findTextFieldByPlaceholder(wrapper, "Enter your email...").props("errorMessages")).toBe(
+      "Email aliases with '+' are not allowed."
+    )
+  })
+
   it("keeps onboarding continue disabled until first name is present", async () => {
     postMock.mockResolvedValueOnce({ isNewUser: true })
 
@@ -179,5 +195,33 @@ describe("SignInDialog", () => {
     await flushPromises()
 
     expect(verifyOtpSignInMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("emits the existing success contract after OTP verification", async () => {
+    postMock.mockResolvedValueOnce({ isNewUser: false })
+    postMock.mockResolvedValueOnce(undefined)
+    verifyOtpSignInMock.mockResolvedValue({
+      _id: "user-1",
+      email: "existing@example.com",
+    })
+
+    const wrapper = mountDialog()
+
+    await wrapper.get('input[placeholder="Enter your email..."]').setValue("existing@example.com")
+    await findButtonByText(wrapper, "Continue with Email").trigger("click")
+    await flushPromises()
+    await wrapper.get('input[placeholder="Enter 6-digit code..."]').setValue("123456")
+    await findButtonByText(wrapper, "Verify").trigger("click")
+    await flushPromises()
+
+    expect(wrapper.emitted("emailSignIn")).toEqual([
+      [
+        {
+          _id: "user-1",
+          email: "existing@example.com",
+        },
+      ],
+    ])
+    expect(wrapper.emitted("update:modelValue")).toContainEqual([false])
   })
 })
