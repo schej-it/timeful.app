@@ -41,7 +41,9 @@ describe("ScheduleOverlap", () => {
     expect(() => mountScheduleOverlap()).not.toThrow()
   })
 
-  it("normalizes a missing initialTimezone before building sidebar view models", () => {
+  it("uses the saved timezone when initialTimezone is missing", () => {
+    localStorage.setItem("timezone", JSON.stringify({ value: "America/Los_Angeles" }))
+
     const wrapper = mountScheduleOverlap({
       global: {
         stubs: {
@@ -69,10 +71,10 @@ describe("ScheduleOverlap", () => {
       }
     }
 
-    expect(sidebarViewModel.curTimezone.value).toBe("+00:00")
-    expect(sidebarViewModel.curTimezone.label).toBe("+00:00")
-    expect(sidebarViewModel.curTimezone.gmtString).toBe("(GMT+0:00)")
-    expect(sidebarViewModel.curTimezone.offset.total("minutes")).toBe(0)
+    expect(sidebarViewModel.curTimezone.value).toBe("America/Los_Angeles")
+    expect(sidebarViewModel.curTimezone.label).toBe("Pacific Time")
+    expect(sidebarViewModel.curTimezone.gmtString).toBe("(GMT-8:00)")
+    expect(sidebarViewModel.curTimezone.offset.total("minutes")).toBe(-480)
   })
 
   it("renders the extracted timed grid child for timed events", () => {

@@ -50,7 +50,7 @@ import {
   post,
   ZdtSet,
   getTimezoneReferenceDateForEvent,
-  normalizeTimezone,
+  normalizeOptionalTimezone,
 } from "@/utils"
 import {
   availabilityTypes, eventTypes, UTC, type AvailabilityType
@@ -188,7 +188,7 @@ const {
   setTimezone: setCurTimezone,
   resetTimezone: resetCurTimezone,
 } = useOwnedTimezone({
-  initialTimezone: computed(() => normalizeTimezone(props.initialTimezone)),
+  initialTimezone: computed(() => normalizeOptionalTimezone(props.initialTimezone)),
   referenceDate: scheduleTimezoneReferenceDate,
 })
 const state = ref<ScheduleOverlapState>(states.BEST_TIMES)
