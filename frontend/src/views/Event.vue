@@ -50,6 +50,7 @@
         :contacts-payload="contactsPayload"
         edit
         no-tabs
+        @refresh-event="handleEditDialogRefresh"
       />
 
       <!-- Group invitation dialog -->
@@ -282,6 +283,7 @@
 
           <ScheduleOverlap
             v-if="scheduleOverlapReady"
+            :key="scheduleOverlapRenderKey"
             ref="scheduleOverlap"
             v-model:week-offset="weekOffset"
             :event="scheduleOverlapEvent"
@@ -590,6 +592,7 @@ const { authUser, viewerHasPremiumAccess } = storeToRefs(mainStore)
 const { isPhone } = useDisplayHelpers()
 
 const scheduleOverlap = ref<ScheduleOverlapInstance | null>(null)
+const scheduleOverlapRenderKey = ref(0)
 const videoAdContainer = ref<HTMLElement | null>(null)
 const weekOffset = ref(0)
 
@@ -723,6 +726,14 @@ function editSelectedGuestAvailability() {
 
 function resetWeekOffset() {
   weekOffset.value = 0
+}
+
+async function handleEditDialogRefresh(payload?: { fromEditEvent?: boolean }) {
+  loader.fromEditEvent.value = payload?.fromEditEvent === true
+  await loader.refreshEvent()
+  scheduleOverlapRenderKey.value += 1
+  await nextTick()
+  loader.fromEditEvent.value = false
 }
 
 function loadVideoAd() {
@@ -1208,13 +1219,6 @@ async function bootstrapEvent() {
           void router.replace({ name: "event", params: { eventId: props.eventId } })
           return
         }
-      }
-
-      const storedFlag = localStorage.getItem(`from-edit-event-${ev._id ?? ""}`)
-      if (storedFlag) {
-        localStorage.removeItem(`from-edit-event-${ev._id ?? ""}`)
-        loader.fromEditEvent.value = true
-        logEventBoot("EventView", "bootstrap:from-edit-event")
       }
     }
   } catch (err: unknown) {

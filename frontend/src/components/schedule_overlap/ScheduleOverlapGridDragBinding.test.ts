@@ -98,6 +98,7 @@ function createTimeGridViewModel() {
       states,
       actions: {
         updateCurTimezone: vi.fn(),
+        resetCurTimezone: vi.fn(),
         updateTimeType: vi.fn(),
         updateMobileNumDays: vi.fn(),
         updateShowBestTimes: vi.fn(),
@@ -115,6 +116,7 @@ function createTimeGridViewModel() {
         label: "UTC",
         gmtString: "GMT+0",
       },
+      timezoneModified: false,
       startCalendarOnMonday: false,
       showBestTimes: false,
       hideIfNeeded: false,
@@ -207,6 +209,7 @@ function createDaysOnlyGridViewModel() {
       states,
       actions: {
         updateCurTimezone: vi.fn(),
+        resetCurTimezone: vi.fn(),
         updateTimeType: vi.fn(),
         updateMobileNumDays: vi.fn(),
         updateShowBestTimes: vi.fn(),
@@ -224,6 +227,7 @@ function createDaysOnlyGridViewModel() {
         label: "UTC",
         gmtString: "GMT+0",
       },
+      timezoneModified: false,
       startCalendarOnMonday: false,
       showBestTimes: false,
       hideIfNeeded: false,

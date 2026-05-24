@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { shallowMount } from "@vue/test-utils"
+import { flushPromises, shallowMount } from "@vue/test-utils"
 import { defineComponent, nextTick } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
@@ -127,6 +127,30 @@ describe("NewSignUp", () => {
       "2026-01-03",
     ])
     expect(selectedDays.every((day) => day instanceof Temporal.PlainDate)).toBe(true)
+  })
+
+  it("emits an explicit refresh event after editing instead of reloading the page", async () => {
+    const wrapper = shallowMount(NewSignUp, {
+      props: {
+        edit: true,
+        event: {
+          _id: "evt-1",
+          name: "Edited sign up",
+          type: "specific_dates",
+          dates: [Temporal.PlainDate.from("2026-01-02")],
+          duration: durations.ONE_HOUR,
+        },
+      },
+      global: {
+        stubs: defaultStubs,
+      },
+    })
+
+    await wrapper.findAll("button").find((button) => button.text().includes("Save edits"))?.trigger("click")
+    await flushPromises()
+
+    expect(putMock).toHaveBeenCalledTimes(1)
+    expect(wrapper.emitted("refresh-event")).toEqual([[{ fromEditEvent: false }]])
   })
 
   it("uses explicit solo variants for the name, time, and date fields", () => {

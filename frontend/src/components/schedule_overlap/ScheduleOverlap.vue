@@ -49,6 +49,7 @@ import { Temporal } from "temporal-polyfill"
 import {
   post,
   ZdtSet,
+  getTimezoneReferenceDateForEvent,
   normalizeTimezone,
 } from "@/utils"
 import {
@@ -81,6 +82,7 @@ import { useDragPaint } from "@/composables/schedule_overlap/useDragPaint"
 import { useEventScheduling } from "@/composables/schedule_overlap/useEventScheduling"
 import { useSignUpForm } from "@/composables/schedule_overlap/useSignUpForm"
 import { useScheduleOverlapUI } from "@/composables/schedule_overlap/useScheduleOverlapUI"
+import { useOwnedTimezone } from "@/composables/timezone/useOwnedTimezone"
 import { useScheduleOverlapController } from "./useScheduleOverlapController"
 import {
   states,
@@ -175,8 +177,19 @@ const weekOffsetRef = computed(() => props.weekOffset)
 
 const guestNameKey = computed(() => `${String(props.event._id)}.guestName`)
 const guestName = computed<string | undefined>(() => (localStorage[guestNameKey.value] as string | undefined) ?? undefined)
+const scheduleTimezoneReferenceDate = computed(() =>
+  getTimezoneReferenceDateForEvent(props.event, props.weekOffset)
+)
 
-const curTimezone = ref<Timezone>(normalizeTimezone(props.initialTimezone))
+const {
+  timezone: curTimezone,
+  modified: timezoneModified,
+  setTimezone: setCurTimezone,
+  resetTimezone: resetCurTimezone,
+} = useOwnedTimezone({
+  initialTimezone: computed(() => normalizeTimezone(props.initialTimezone)),
+  referenceDate: scheduleTimezoneReferenceDate,
+})
 const state = ref<ScheduleOverlapState>(states.BEST_TIMES)
 const showBestTimes = ref<boolean>(
   localStorage.showBestTimes === undefined
@@ -625,6 +638,7 @@ const toolRowViewModel = computed<ScheduleOverlapToolRowViewModel>(() => ({
   states,
   actions: toolRowActions.value,
   curTimezone: curTimezone.value,
+  timezoneModified: timezoneModified.value,
   startCalendarOnMonday: startCalendarOnMonday.value,
   showBestTimes: showBestTimes.value,
   hideIfNeeded: hideIfNeeded.value,
@@ -860,8 +874,9 @@ function emitAddAvailabilityAsGuest() {
 
 const toolRowActions = computed<ScheduleOverlapToolRowActions>(() => ({
   updateCurTimezone: (value) => {
-    curTimezone.value = value
+    setCurTimezone(value)
   },
+  resetCurTimezone,
   updateTimeType,
   updateMobileNumDays: (value) => {
     mobileNumDays.value = value

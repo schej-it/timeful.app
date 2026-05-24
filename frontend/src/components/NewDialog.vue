@@ -52,6 +52,7 @@
         :folder-id="folderId"
         :hide-dialog-actions="!_noTabs"
         @update:model-value="handleDialogInput"
+        @refresh-event="handleRefreshEvent"
         @sign-in="emit('signIn')"
       />
       <NewGroup
@@ -65,6 +66,7 @@
         :hide-dialog-actions="!_noTabs"
         :contacts-payload="type == 'group' ? contactsPayload : {}"
         @update:model-value="handleDialogInput"
+        @refresh-event="handleRefreshEvent"
       />
       <NewSignUp
         v-if="tab === 'signup'"
@@ -77,6 +79,7 @@
         :hide-dialog-actions="!_noTabs"
         :contacts-payload="type == 'signup' ? contactsPayload : {}"
         @update:model-value="handleDialogInput"
+        @refresh-event="handleRefreshEvent"
       />
     </v-card>
   </v-dialog>
@@ -102,6 +105,10 @@ interface EditableForm {
   reset: () => void
 }
 
+interface RefreshEventPayload {
+  fromEditEvent?: boolean
+}
+
 const props = withDefaults(
   defineProps<{
     modelValue: boolean
@@ -124,6 +131,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   "update:modelValue": [value: boolean]
+  "refresh-event": [payload?: RefreshEventPayload]
   signIn: []
 }>()
 
@@ -174,6 +182,12 @@ const exitDialog = () => {
   const current = refsByTab.value[tab.value]
   if (props.edit) current?.resetToEventData()
   else current?.reset()
+}
+
+const handleRefreshEvent = (payload?: RefreshEventPayload) => {
+  unsavedChangesDialog.value = false
+  dialogOpen.value = false
+  emit("refresh-event", payload)
 }
 
 watch(

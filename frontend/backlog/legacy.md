@@ -26,25 +26,25 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
   Tooltip behavior still relies on manual DOM listeners, timers, and inline placement state.
 - [x] `F-CALENDAR-ACCOUNTS-001` ([finding](../findings/F-CALENDAR-ACCOUNTS-001.md)) - `verified`, `src/components/settings/CalendarAccounts.vue`
   Data source selection, event fetching, and collapse persistence still span mount logic, watchers, and `localStorage`.
-- [ ] `F-SCHEDULE-OVERLAP-001` ([finding](../findings/F-SCHEDULE-OVERLAP-001.md)) - `planned`, `src/components/schedule_overlap/ScheduleOverlap.vue`
+- [ ] `F-SCHEDULE-OVERLAP-001` ([finding](../findings/F-SCHEDULE-OVERLAP-001.md)) - `in_progress`, `src/components/schedule_overlap/ScheduleOverlap.vue`
   Core scheduling state still depends on ambient browser storage and a wide exposed instance-style API.
 - [x] `F-SCHEDULE-OVERLAP-SIDEBAR-001` ([finding](../findings/F-SCHEDULE-OVERLAP-SIDEBAR-001.md)) - `fixed`, `src/components/schedule_overlap/ScheduleOverlapSidebar.vue`
   Sidebar coordination still reaches into child DOM through `$el` and exposes scroll helpers imperatively.
 - [x] `F-CONFIRM-DETAILS-001` ([finding](../findings/F-CONFIRM-DETAILS-001.md)) - `fixed`, `src/components/schedule_overlap/ConfirmDetailsDialog.vue`
   Confirmation dialog still exposes `setData()` and owns debounced contact search inside the view.
-- [ ] `F-TIMEZONE-SELECTOR-001` ([finding](../findings/F-TIMEZONE-SELECTOR-001.md)) - `planned`, `src/components/schedule_overlap/TimezoneSelector.vue`
+- [x] `F-TIMEZONE-SELECTOR-001` ([finding](../findings/F-TIMEZONE-SELECTOR-001.md)) - `fixed`, `src/components/schedule_overlap/TimezoneSelector.vue`
   Timezone selection still mirrors props locally and persists through `localStorage` from inside the control.
-- [ ] `F-NEW-EVENT-001` ([finding](../findings/F-NEW-EVENT-001.md)) - `planned`, `src/components/NewEvent.vue`
+- [x] `F-NEW-EVENT-001` ([finding](../findings/F-NEW-EVENT-001.md)) - `fixed`, `src/components/NewEvent.vue`
   Event editing still uses `window.location.reload()` and storage-backed reload flags in core flow.
 - [x] `F-EMAIL-INPUT-001` ([finding](../findings/F-EMAIL-INPUT-001.md)) - `fixed`, `src/components/event/EmailInput.vue`
   Contact input still mixes transport shaping, mount-time permission probing, and an imperative reset API.
-- [ ] `F-NEW-SIGN-UP-001` ([finding](../findings/F-NEW-SIGN-UP-001.md)) - `planned`, `src/components/NewSignUp.vue`
+- [x] `F-NEW-SIGN-UP-001` ([finding](../findings/F-NEW-SIGN-UP-001.md)) - `fixed`, `src/components/NewSignUp.vue`
   Sign-up creation still couples validation, reload behavior, and expose-based parent orchestration in one flow.
 - [x] `F-COOKIE-CONSENT-001` ([finding](../findings/F-COOKIE-CONSENT-001.md)) - `fixed`, `src/components/CookieConsent.vue`
   Consent state bootstrapping and accept-flow reload behavior still depend on direct browser storage and `window.location.reload()`.
 - [x] `F-COOKIE-SETTINGS-001` ([finding](../findings/F-COOKIE-SETTINGS-001.md)) - `fixed`, `src/components/CookieSettings.vue`
   Settings initialization and apply flow still depend on mount-time browser reads and reloads.
-- [ ] `F-UPGRADE-DIALOG-001` ([finding](../findings/F-UPGRADE-DIALOG-001.md)) - `planned`, `src/components/pricing/UpgradeDialog.vue`
+- [x] `F-UPGRADE-DIALOG-001` ([finding](../findings/F-UPGRADE-DIALOG-001.md)) - `fixed`, `src/components/pricing/UpgradeDialog.vue`
   Upgrade flow still triggers analytics and redirects from watcher-driven dialog state.
 - [x] `F-TIMEFUL-IMPORT-001` ([finding](../findings/F-TIMEFUL-IMPORT-001.md)) - `fixed`, `src/components/TimefulImportDialog.vue`
   Import validation still depends directly on `window.location.hostname`, and dialog close resets form state through a writable computed shim.

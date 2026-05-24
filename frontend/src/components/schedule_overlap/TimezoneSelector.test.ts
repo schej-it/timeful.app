@@ -256,10 +256,42 @@ describe("TimezoneSelector", () => {
   it("renders the reset action as a sibling next to the underlined select", () => {
     expect(timezoneSelectorSource).toContain('class="timezone-select__field-row tw-flex tw-min-w-0 tw-items-center"')
     expect(timezoneSelectorSource).toContain('class="timezone-select__reset-button"')
-    expect(timezoneSelectorSource).toContain('v-if="timezoneModified"')
+    expect(timezoneSelectorSource).toContain('v-if="modified"')
     expect(timezoneSelectorSource).toContain("@mousedown.stop.prevent")
     expect(timezoneSelectorSource).toContain("@pointerdown.stop.prevent")
     expect(timezoneSelectorSource).not.toContain('size="x-small"')
+  })
+
+  it("keeps persistence out of the selector and delegates reset through emits", async () => {
+    const wrapper = shallowMount(TimezoneSelector, {
+      props: {
+        modified: true,
+        modelValue: {
+          value: "America/New_York",
+          label: "Eastern Time",
+          gmtString: "(GMT-5:00)",
+          offset: Temporal.Duration.from({ hours: -5 }),
+        },
+      },
+      global: {
+        stubs: {
+          "v-btn": {
+            template: '<button class="reset-button" @click="(event) => $emit(\'click\', event)" />',
+          },
+          "v-icon": true,
+          "v-list-item": true,
+          "v-list-item-title": true,
+          "v-select": VSelectStub,
+        },
+      },
+    })
+
+    await wrapper.get(".reset-button").trigger("click")
+
+    expect(timezoneSelectorSource).not.toContain("localStorage")
+    expect(timezoneSelectorSource).not.toContain('storage?.setItem("timezone"')
+    expect(timezoneSelectorSource).not.toContain('storage?.removeItem("timezone")')
+    expect(wrapper.emitted("reset")).toBeTruthy()
   })
 
   it("allows the timezone select and its selection text to shrink for ellipsis", () => {

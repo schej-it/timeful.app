@@ -26,6 +26,7 @@ import type {
 
 export interface ScheduleOverlapToolRowActions {
   updateCurTimezone: (value: Timezone) => void
+  resetCurTimezone: () => void
   updateTimeType: (value: string) => void
   updateMobileNumDays: (value: number) => void
   updateShowBestTimes: (value: boolean) => void
@@ -149,6 +150,7 @@ export interface ScheduleOverlapToolRowViewModel {
   states: Record<string, ScheduleOverlapState>
   actions: ScheduleOverlapToolRowActions
   curTimezone: Timezone
+  timezoneModified: boolean
   startCalendarOnMonday: boolean
   showBestTimes: boolean
   hideIfNeeded: boolean

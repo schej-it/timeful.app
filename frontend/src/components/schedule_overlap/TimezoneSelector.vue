@@ -42,14 +42,14 @@
         </template>
       </v-select>
       <v-btn
-        v-if="timezoneModified"
+        v-if="modified"
         icon
         color="primary"
         variant="text"
         class="timezone-select__reset-button"
         @mousedown.stop.prevent
         @pointerdown.stop.prevent
-        @click.stop="resetTimezone"
+        @click.stop="emit('reset')"
       >
         <v-icon>mdi-refresh</v-icon>
       </v-btn>
@@ -58,14 +58,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue"
+import { computed } from "vue"
 import { Temporal } from "temporal-polyfill"
 import type { Timezone } from "@/composables/schedule_overlap/types"
 import {
   normalizeTimezone,
   buildTimezonesForReferenceDate,
-  resolveBrowserTimezoneSelection,
-  resolveSavedTimezoneSelection,
 } from "@/utils/timezone_utils"
 
 interface TimezoneSelectItem {
@@ -77,11 +75,13 @@ interface TimezoneSelectItem {
 const props = withDefaults(
   defineProps<{
     modelValue: Timezone
+    modified?: boolean
     label?: string
     labelColor?: string
     referenceDate?: Temporal.ZonedDateTime | null
   }>(),
   {
+    modified: false,
     label: "Shown in",
     labelColor: "",
     referenceDate: null,
@@ -90,11 +90,8 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   "update:modelValue": [value: Timezone]
+  reset: []
 }>()
-
-const timezoneModified = ref(false)
-const storage =
-  typeof globalThis.localStorage === "undefined" ? undefined : globalThis.localStorage
 
 const effectiveReferenceDate = computed(() => {
   const refDate = props.referenceDate ?? Temporal.Now.zonedDateTimeISO()
@@ -165,10 +162,7 @@ const visibleTimezoneItems = computed<TimezoneSelectItem[]>(() => {
 
 function onChange(val: Timezone) {
   const normalizedTimezone = normalizeTimezone(val)
-
-  storage?.setItem("timezone", JSON.stringify(normalizedTimezone))
   emit("update:modelValue", normalizedTimezone)
-  timezoneModified.value = true
 }
 
 function onChangeValue(val: string | null) {
@@ -185,38 +179,6 @@ function onChangeValue(val: string | null) {
 
   onChange(matchedTimezone)
 }
-
-function resetTimezone() {
-  const local = resolveBrowserTimezoneSelection(
-    timezones.value,
-    effectiveReferenceDate.value
-  )
-  if (local) emit("update:modelValue", local)
-  storage?.removeItem("timezone")
-  timezoneModified.value = false
-}
-
-const savedTimezone = resolveSavedTimezoneSelection(timezones.value, storage)
-timezoneModified.value = savedTimezone !== undefined
-
-watch(
-  () => props.referenceDate,
-  () => {
-    if (!props.modelValue.value) return
-
-    const refreshed = timezones.value.find(
-      (tz) => tz.value === props.modelValue.value
-    )
-
-    if (!refreshed || refreshed.offset === props.modelValue.offset) return
-
-    if (storage?.getItem("timezone")) {
-      storage.setItem("timezone", JSON.stringify(refreshed))
-    }
-
-    emit("update:modelValue", refreshed)
-  }
-)
 </script>
 
 <style scoped>

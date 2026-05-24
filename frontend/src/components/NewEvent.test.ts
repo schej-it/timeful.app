@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { readFileSync } from "node:fs"
-import { shallowMount } from "@vue/test-utils"
+import { flushPromises, shallowMount } from "@vue/test-utils"
 import { defineComponent, nextTick, ref } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { durations } from "@/constants"
@@ -172,6 +172,30 @@ describe("NewEvent", () => {
         },
       })
     ).not.toThrow()
+  })
+
+  it("emits an explicit refresh event after editing instead of reloading the page", async () => {
+    const wrapper = shallowMount(NewEvent, {
+      props: {
+        edit: true,
+        event: {
+          _id: "evt-1",
+          name: "Edited event",
+          type: "specific_dates",
+          dates: [Temporal.PlainDate.from("2026-01-02")],
+          duration: durations.ONE_HOUR,
+        },
+      },
+      global: {
+        stubs: defaultStubs,
+      },
+    })
+
+    await wrapper.findAll("button").find((button) => button.text().includes("Save edits"))?.trigger("click")
+    await flushPromises()
+
+    expect(putMock).toHaveBeenCalledTimes(1)
+    expect(wrapper.emitted("refresh-event")).toEqual([[{ fromEditEvent: false }]])
   })
 
   it("passes explicit Vuetify 3 item mappings to event time and increment selects", () => {

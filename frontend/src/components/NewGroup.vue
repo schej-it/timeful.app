@@ -120,8 +120,11 @@
             <div v-show="showAdvancedOptions">
               <div class="tw-my-2">
                 <TimezoneSelector
-                  v-model="timezone"
+                  :model-value="timezone"
+                  :modified="timezoneModified"
                   label="Timezone"
+                  @update:model-value="(value) => { setTimezone(value) }"
+                  @reset="resetTimezone"
                 />
               </div>
             </div>
@@ -162,7 +165,6 @@ import {
   getWrappedTimeRangeDuration,
   getEventMembershipDayOfWeekValues,
   getEventTimeSeed,
-  resolveInitialTimezoneSelection,
   resolveTimezoneValue,
   signInGoogle,
   getDateWithTimezone,
@@ -174,7 +176,6 @@ import EditorDialogHeader from "./EditorDialogHeader.vue"
 import TimezoneSelector from "./schedule_overlap/TimezoneSelector.vue"
 import EmailInput from "./event/EmailInput.vue"
 import type { Event } from "@/types"
-import type { Timezone } from "@/composables/schedule_overlap/types"
 import { Temporal } from "temporal-polyfill"
 import type { EventDraft } from "@/composables/event/types"
 import {
@@ -182,6 +183,7 @@ import {
   getDraftStartTime,
   hasEventDraftData,
 } from "@/composables/event/draftBoundary"
+import { useOwnedTimezone } from "@/composables/timezone/useOwnedTimezone"
 
 interface FormRef {
   validate: () => Promise<{ valid: boolean }> | boolean
@@ -214,6 +216,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   "update:modelValue": [value: boolean]
   "update:formEmpty": [empty: boolean]
+  "refresh-event": [payload?: { fromEditEvent?: boolean }]
 }>()
 
 const router = useRouter()
@@ -234,9 +237,12 @@ const startOnMonday = ref(false)
 const emails = ref<string[]>([])
 
 const showAdvancedOptions = ref(false)
-const timezone = ref<Timezone>(
-  resolveInitialTimezoneSelection(Temporal.Now.zonedDateTimeISO())
-)
+const {
+  timezone,
+  modified: timezoneModified,
+  setTimezone,
+  resetTimezone,
+} = useOwnedTimezone()
 
 const initialEventData = ref<{
   name: string
@@ -424,9 +430,9 @@ const submit = async () => {
           eventStartOnMonday: startMon,
         })
 
-        emit("update:modelValue", false)
-        reset()
-        window.location.reload()
+        emit("refresh-event", {
+          fromEditEvent: false,
+        })
       })
       .catch(() => {
         mainStore.showError(

@@ -51,6 +51,7 @@ const baseToolRow = {
   states,
   actions: {
     updateCurTimezone: vi.fn(),
+    resetCurTimezone: vi.fn(),
     updateTimeType: vi.fn(),
     updateMobileNumDays: vi.fn(),
     scheduleEvent: vi.fn(),
@@ -68,6 +69,7 @@ const baseToolRow = {
     label: "UTC",
     gmtString: "GMT+0",
   },
+  timezoneModified: false,
   startCalendarOnMonday: false,
   showBestTimes: false,
   hideIfNeeded: false,

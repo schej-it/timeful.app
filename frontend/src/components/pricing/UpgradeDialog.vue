@@ -232,9 +232,10 @@
       >
         <v-checkbox
           id="student-checkbox"
-          v-model="isStudent"
+          :model-value="isStudent"
           density="compact"
           hide-details
+          @update:model-value="handleStudentToggle"
         >
         </v-checkbox>
         <label
@@ -421,9 +422,10 @@
       <div class="tw-flex tw-h-8 tw-w-full tw-items-center tw-justify-start">
         <v-checkbox
           id="student-checkbox-v2"
-          v-model="isStudent"
+          :model-value="isStudent"
           density="compact"
           hide-details
+          @update:model-value="handleStudentToggle"
         >
         </v-checkbox>
         <label
@@ -498,6 +500,7 @@ const loadingCheckoutUrl = ref<Record<string, boolean>>({})
 const showDonatedDialog = ref(false)
 const isStudent = ref(false)
 const showStudentProofDialog = ref(false)
+const trackedCurrentOpen = ref(false)
 
 const showMonthly = ref(true)
 const showYearly = ref(true)
@@ -637,6 +640,81 @@ async function init() {
   }
 }
 
+function trackDialogViewed() {
+  if (!props.modelValue || trackedCurrentOpen.value) {
+    return
+  }
+
+  trackedCurrentOpen.value = true
+  void post("/analytics/upgrade-dialog-viewed", {
+    userId: authUser.value?._id ?? posthog.get_distinct_id(),
+    price: pricesShown.value,
+    type: upgradeDialogType.value,
+  })
+  posthog.capture("upgrade_dialog_viewed", {
+    price: pricesShown.value,
+    type: upgradeDialogType.value,
+  })
+}
+
+function handleStudentToggle(value: boolean | null) {
+  isStudent.value = value === true
+
+  if (isStudent.value) {
+    posthog.capture("student_pricing_viewed", {
+      prices: pricesShown.value,
+    })
+  }
+}
+
+function buildUpgradeOriginUrl() {
+  let originUrl = window.location.href
+
+  if (
+    upgradeDialogData.value &&
+    upgradeDialogType.value === upgradeDialogTypes.SCHEDULE_EVENT
+  ) {
+    originUrl = `${originUrl}?scheduled_event=${encodeURIComponent(
+      JSON.stringify(
+        (upgradeDialogData.value as { scheduledEvent?: unknown }).scheduledEvent
+      )
+    )}`
+  }
+
+  return originUrl
+}
+
+function redirectToSignUpForUpgrade(price: StripePrice) {
+  const upgradeParams = {
+    priceId: price.id,
+    isSubscription: price.recurring !== null,
+    originUrl: window.location.href,
+  }
+
+  emit("update:modelValue", false)
+  void router.push({
+    name: "sign-up",
+    query: {
+      redirect: "upgrade",
+      upgradeParams: JSON.stringify(upgradeParams),
+    },
+  })
+}
+
+function redirectToCheckout(url: string) {
+  window.location.href = url
+}
+
+function handleDialogVisibilityChange(isOpen: boolean) {
+  if (!isOpen) {
+    trackedCurrentOpen.value = false
+    return
+  }
+
+  void init()
+  trackDialogViewed()
+}
+
 async function fetchPrice() {
   interface PriceResponse {
     lifetime: StripePrice | null
@@ -688,39 +766,19 @@ async function handleUpgrade(price: StripePrice) {
   })
 
   if (!authUser.value) {
-    const upgradeParams = {
-      priceId: price.id,
-      isSubscription: price.recurring !== null,
-      originUrl: window.location.href,
-    }
-    emit("update:modelValue", false)
-    void router.push({
-      name: "sign-up",
-      query: {
-        redirect: "upgrade",
-        upgradeParams: JSON.stringify(upgradeParams),
-      },
-    })
+    redirectToSignUpForUpgrade(price)
     return
   }
 
   loadingCheckoutUrl.value[price.id] = true
   try {
-    let originUrl = window.location.href
-    if (upgradeDialogData.value) {
-      if (upgradeDialogType.value === upgradeDialogTypes.SCHEDULE_EVENT) {
-        originUrl = `${originUrl}?scheduled_event=${encodeURIComponent(
-          JSON.stringify((upgradeDialogData.value as { scheduledEvent?: unknown }).scheduledEvent)
-        )}`
-      }
-    }
     const res = await post<{ url: string }>("/stripe/create-checkout-session", {
       priceId: price.id,
       userId: authUser.value._id,
       isSubscription: price.recurring !== null,
-      originUrl,
+      originUrl: buildUpgradeOriginUrl(),
     })
-    window.location.href = res.url
+    redirectToCheckout(res.url)
   } catch (e) {
     console.error(e)
     mainStore.showError(
@@ -731,17 +789,13 @@ async function handleUpgrade(price: StripePrice) {
   }
 }
 
-watch(isStudent, (val) => {
-  if (val) {
-    posthog.capture("student_pricing_viewed", {
-      prices: pricesShown.value,
-    })
-  }
-})
-
 watch(
   featureFlagsLoaded,
-  () => {
+  (loaded) => {
+    if (!loaded) {
+      return
+    }
+
     void init()
   },
   { immediate: true }
@@ -749,18 +803,7 @@ watch(
 
 watch(
   () => props.modelValue,
-  () => {
-    if (props.modelValue) {
-      void post("/analytics/upgrade-dialog-viewed", {
-        userId: authUser.value?._id ?? posthog.get_distinct_id(),
-        price: pricesShown.value,
-        type: upgradeDialogType.value,
-      })
-      posthog.capture("upgrade_dialog_viewed", {
-        price: pricesShown.value,
-        type: upgradeDialogType.value,
-      })
-    }
-  }
+  handleDialogVisibilityChange,
+  { immediate: true }
 )
 </script>

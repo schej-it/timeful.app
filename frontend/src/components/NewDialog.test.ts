@@ -42,7 +42,7 @@ const editableFormState = {
 const createEditableStub = (name: string) =>
   defineComponent({
     name,
-    emits: ["update:modelValue", "signIn"],
+    emits: ["update:modelValue", "refresh-event", "signIn"],
     setup(_, { emit, expose }) {
       expose({
         hasEventBeenEdited: () => editableFormState.hasEventBeenEdited,
@@ -61,6 +61,16 @@ const createEditableStub = (name: string) =>
               },
             },
             "close"
+          ),
+          h(
+            "button",
+            {
+              class: `${name}-refresh`,
+              onClick: () => {
+                emit("refresh-event", { fromEditEvent: true })
+              },
+            },
+            "refresh"
           ),
         ])
     },
@@ -191,6 +201,22 @@ describe("NewDialog", () => {
     expect(wrapper.emitted("update:modelValue")).toBeUndefined()
     expect(wrapper.get('[data-testid="unsaved-dialog"]').attributes("data-open")).toBe(
       "true"
+    )
+    expect(editableFormState.reset).not.toHaveBeenCalled()
+    expect(editableFormState.resetToEventData).not.toHaveBeenCalled()
+  })
+
+  it("closes immediately and forwards refresh events from edit forms", async () => {
+    editableFormState.hasEventBeenEdited = true
+
+    const wrapper = mountDialog({ edit: true })
+
+    await wrapper.get(".NewEvent-refresh").trigger("click")
+
+    expect(wrapper.emitted("refresh-event")).toEqual([[{ fromEditEvent: true }]])
+    expect(wrapper.emitted("update:modelValue")).toEqual([[false]])
+    expect(wrapper.get('[data-testid="unsaved-dialog"]').attributes("data-open")).toBe(
+      "false"
     )
     expect(editableFormState.reset).not.toHaveBeenCalled()
     expect(editableFormState.resetToEventData).not.toHaveBeenCalled()

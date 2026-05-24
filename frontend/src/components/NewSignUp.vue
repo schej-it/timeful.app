@@ -209,9 +209,11 @@
                 </template>
               </v-checkbox>
               <TimezoneSelector
-                v-model="timezone"
+                :model-value="timezone"
+                :modified="timezoneModified"
                 label="Timezone"
-                @update:model-value="(val) => { timezone = val }"
+                @update:model-value="(val) => { setTimezone(val) }"
+                @reset="resetTimezone"
               />
             </div>
           </ExpandableSection>
@@ -273,7 +275,6 @@ import DatePicker from "@/components/DatePicker.vue"
 import OverflowGradient from "@/components/OverflowGradient.vue"
 import ExpandableSection from "./ExpandableSection.vue"
 import type { Event } from "@/types"
-import type { Timezone } from "@/composables/schedule_overlap/types"
 import type { EventDraft } from "@/composables/event/types"
 import {
   getDraftEndTime,
@@ -282,6 +283,7 @@ import {
   getDraftTimezone,
   hasEventDraftData,
 } from "@/composables/event/draftBoundary"
+import { useOwnedTimezone } from "@/composables/timezone/useOwnedTimezone"
 
 interface FormRef {
   validate: () => Promise<{ valid: boolean }> | boolean
@@ -312,6 +314,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   "update:modelValue": [value: boolean]
+  "refresh-event": [payload?: { fromEditEvent?: boolean }]
   signIn: []
 }>()
 
@@ -354,9 +357,12 @@ const emails = ref<string[]>([])
 const showAdvancedOptions = ref(false)
 const collectEmails = ref(false)
 const blindAvailabilityEnabled = ref(false)
-const timezone = ref<Timezone>(
-  resolveInitialTimezoneSelection(Temporal.Now.zonedDateTimeISO())
-)
+const {
+  timezone,
+  modified: timezoneModified,
+  setTimezone,
+  resetTimezone,
+} = useOwnedTimezone()
 const sendEmailAfterXResponsesEnabled = ref(false)
 const sendEmailAfterXResponses = ref(3)
 
@@ -565,9 +571,9 @@ const submit = async () => {
         posthogPayload.eventId = props.event?._id
         posthog.capture("Sign up form edited", posthogPayload)
 
-        emit("update:modelValue", false)
-        reset()
-        window.location.reload()
+        emit("refresh-event", {
+          fromEditEvent: false,
+        })
       })
       .catch(() => {
         mainStore.showError(

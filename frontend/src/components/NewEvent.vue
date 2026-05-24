@@ -469,9 +469,16 @@
                 </template>
               </v-checkbox>
               <TimezoneSelector
-                v-model="timezone"
+                :model-value="timezone"
+                :modified="timezoneModified"
                 label="Timezone"
-                @update:model-value="(val) => { timezone = val; trackTimezoneChange(val) }"
+                @update:model-value="
+                  (val) => {
+                    setTimezone(val)
+                    trackTimezoneChange(val)
+                  }
+                "
+                @reset="resetTimezone"
               />
             </div>
           </ExpandableSection>
@@ -570,6 +577,7 @@ import {
   getDraftTimezone,
   hasEventDraftData,
 } from "@/composables/event/draftBoundary"
+import { useOwnedTimezone } from "@/composables/timezone/useOwnedTimezone"
 
 interface FormRef {
   validate: () => Promise<{ valid: boolean }> | boolean
@@ -603,6 +611,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   "update:modelValue": [value: boolean]
+  "refresh-event": [payload?: { fromEditEvent?: boolean }]
   signIn: []
 }>()
 
@@ -657,9 +666,12 @@ const SUPPORTED_TIME_INCREMENTS = new Set([15, 30, 60])
 const timeIncrement = ref(DEFAULT_TIME_INCREMENT)
 const collectEmails = ref(false)
 const blindAvailabilityEnabled = ref(false)
-const timezone = ref<Timezone>(
-  resolveInitialTimezoneSelection(Temporal.Now.zonedDateTimeISO())
-)
+const {
+  timezone,
+  modified: timezoneModified,
+  setTimezone,
+  resetTimezone,
+} = useOwnedTimezone()
 const sendEmailAfterXResponsesEnabled = ref(false)
 const sendEmailAfterXResponses = ref(3)
 
@@ -971,8 +983,9 @@ const submit = async () => {
         posthogPayload.eventId = props.event?._id
         posthog.capture("Event edited", posthogPayload)
 
-        localStorage.setItem(`from-edit-event-${props.event?._id ?? ""}`, "true")
-        window.location.reload()
+        emit("refresh-event", {
+          fromEditEvent: specificTimesEnabled.value,
+        })
       })
       .catch((err: unknown) => {
         mainStore.showError(

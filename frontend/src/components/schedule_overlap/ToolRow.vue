@@ -16,8 +16,10 @@
           <TimezoneSelector
             class="tw-w-full sm:tw-w-[unset]"
             :model-value="toolRow.curTimezone"
+            :modified="toolRow.timezoneModified"
             :reference-date="toolRow.timezoneReferenceDate"
             @update:model-value="(val) => toolRow.actions.updateCurTimezone(val)"
+            @reset="toolRow.actions.resetCurTimezone()"
           />
           <v-select
             :model-value="toolRow.timeType"
