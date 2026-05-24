@@ -13,7 +13,7 @@ vi.mock("@/utils/useDisplayHelpers", () => ({
 }))
 
 describe("Logo", () => {
-  it("renders a fixed-width image for the timeful logo", () => {
+  it("renders a fixed-width class for the timeful logo", () => {
     const wrapper = mount(Logo, {
       props: { type: "timeful" },
     })
@@ -21,6 +21,6 @@ describe("Logo", () => {
     const image = wrapper.get("img")
 
     expect(image.attributes("alt")).toBe("Timeful Logo")
-    expect(image.attributes("style")).toContain("width: 110px")
+    expect(image.classes()).toContain("tw-w-[110px]")
   })
 })

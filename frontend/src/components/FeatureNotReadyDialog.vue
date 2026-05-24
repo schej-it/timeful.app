@@ -1,5 +1,10 @@
 <template>
-  <v-dialog v-model="dialog" max-width="400px" content-class="tw-m-0">
+  <v-dialog
+    :model-value="modelValue"
+    max-width="400px"
+    content-class="tw-m-0"
+    @update:model-value="(value: boolean) => emit('update:modelValue', value)"
+  >
     <v-card>
       <v-card-title>
         <span class="tw-text-xl tw-font-medium">Oops! Feature Not Ready</span>
@@ -8,7 +13,7 @@
           absolute
           icon
           class="tw-right-0 tw-mr-2 tw-self-center"
-          @click="dialog = false"
+          @click="emit('update:modelValue', false)"
         >
           <v-icon>mdi-close</v-icon>
         </v-btn>
@@ -27,7 +32,7 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn variant="text" @click="dialog = false">Close</v-btn>
+        <v-btn variant="text" @click="emit('update:modelValue', false)">Close</v-btn>
         <v-btn color="primary" @click="submitFeedback">Submit</v-btn>
       </v-card-actions>
     </v-card>
@@ -35,11 +40,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue"
+import { ref } from "vue"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 
-const props = defineProps<{
+defineProps<{
   modelValue: boolean
 }>()
 
@@ -50,22 +55,17 @@ const emit = defineEmits<{
 const mainStore = useMainStore()
 const folderUsageFeedback = ref("")
 
-const dialog = computed({
-  get: () => props.modelValue,
-  set: (val: boolean) => { emit("update:modelValue", val); },
-})
-
 const submitFeedback = () => {
-  if (folderUsageFeedback.value.trim() !== "") {
-    posthog.capture("folder_usage_feedback_submitted", {
-      feedback: folderUsageFeedback.value,
-    })
-    folderUsageFeedback.value = ""
-    dialog.value = false
-    mainStore.showInfo("Thanks for your input!")
-  } else {
-    console.log("Feedback is empty")
+  if (folderUsageFeedback.value.trim() === "") {
+    return
   }
+
+  posthog.capture("folder_usage_feedback_submitted", {
+    feedback: folderUsageFeedback.value,
+  })
+  folderUsageFeedback.value = ""
+  emit("update:modelValue", false)
+  mainStore.showInfo("Thanks for your input!")
 }
 </script>
 

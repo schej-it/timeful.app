@@ -1,9 +1,9 @@
 <template>
   <img
     :alt="alt"
+    :class="widthClass"
     class="tw-flex tw-max-w-full tw-shrink-0 tw-cursor-pointer"
     :src="src"
-    :style="{ width: `${width}px` }"
   />
 </template>
 
@@ -35,8 +35,11 @@ const src = computed(() => {
   return aprilFoolsLogo
 })
 
-const width = computed(() => {
-  if (props.type === "timeful") return isPhone.value ? 90 : 110
-  return isPhone.value ? 200 : 300
+const widthClass = computed(() => {
+  if (props.type === "timeful") {
+    return isPhone.value ? "tw-w-[90px]" : "tw-w-[110px]"
+  }
+
+  return isPhone.value ? "tw-w-[200px]" : "tw-w-[300px]"
 })
 </script>

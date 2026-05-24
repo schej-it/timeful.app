@@ -5,7 +5,7 @@
       fixed
       class="timeful-elevated-button tw-bottom-4 tw-left-0 tw-right-0 tw-mx-auto tw-bg-green tw-text-white sm:tw-bottom-8"
       v-bind="$attrs"
-      @click="(e: MouseEvent) => emit('click', e)"
+      @click="emit('click', $event)"
     >
       <slot />
     </v-btn>

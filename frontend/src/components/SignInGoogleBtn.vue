@@ -4,11 +4,11 @@
     <div class="gsi-material-button-content-wrapper">
       <div class="gsi-material-button-icon">
         <svg
+          class="tw-block"
           version="1.1"
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 48 48"
           xmlns:xlink="http://www.w3.org/1999/xlink"
-          style="display: block"
         >
           <path
             fill="#EA4335"
@@ -30,7 +30,7 @@
         </svg>
       </div>
       <span class="gsi-material-button-contents">{{ text }}</span>
-      <span style="display: none">{{ text }}</span>
+      <span class="tw-hidden">{{ text }}</span>
     </div>
   </v-btn>
 </template>

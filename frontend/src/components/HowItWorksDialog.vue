@@ -1,5 +1,10 @@
 <template>
-  <v-dialog v-model="dialog" max-width="800px" content-class="tw-m-0 pa-0">
+  <v-dialog
+    :model-value="modelValue"
+    max-width="800px"
+    content-class="tw-m-0 pa-0"
+    @update:model-value="(value: boolean) => emit('update:modelValue', value)"
+  >
     <div class="video-container">
       <iframe
         width="100%"
@@ -17,20 +22,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue"
-
-const props = defineProps<{
+defineProps<{
   modelValue: boolean
 }>()
 
 const emit = defineEmits<{
   "update:modelValue": [value: boolean]
 }>()
-
-const dialog = computed({
-  get: () => props.modelValue,
-  set: (val: boolean) => { emit("update:modelValue", val); },
-})
 </script>
 
 <style scoped>

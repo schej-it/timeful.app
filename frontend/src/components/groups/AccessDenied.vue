@@ -18,7 +18,7 @@
         <span class="tw-font-medium tw-text-green">{{ authUser?.email }}</span>
       </div>
     </div>
-    <v-btn href="/home" color="primary">Back to home</v-btn>
+    <v-btn :to="{ name: 'home' }" color="primary">Back to home</v-btn>
   </div>
 </template>
 

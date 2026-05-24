@@ -7,11 +7,7 @@
       <div class="tw-flex tw-flex-col">
         {{ eventType.header }}
         <div
-          v-if="
-            eventType.header === 'Events I created' &&
-            enablePaywall &&
-            !viewerHasPremiumAccess
-          "
+          v-if="showCreatedEventsUsage"
           class="tw-flex tw-items-baseline tw-gap-2 tw-text-sm tw-font-normal tw-text-very-dark-gray"
         >
           <div>
@@ -27,21 +23,20 @@
         </div>
       </div>
       <v-btn
-        v-if="eventType.header === 'Events I created'"
+        v-if="isCreatedEventsSection"
         variant="text"
         class="tw-hidden tw-text-very-dark-gray sm:tw-block"
-        @click="createFolder"
+        @click="openFolderFeedbackDialog"
       >
         <v-icon class="tw-mr-2 tw-text-lg">mdi-folder-plus</v-icon>
         New folder
       </v-btn>
       <div
-        v-if="eventType.events.length > defaultNumEventsToShow"
+        v-if="hasOverflowEvents"
         class="tw-mt-2 tw-cursor-pointer tw-text-sm tw-font-normal tw-text-very-dark-gray sm:tw-hidden"
         @click="toggleShowAll"
       >
-        Show {{ showAll ? "less" : "more"
-        }}<v-icon :class="showAll && 'tw-rotate-180'">mdi-chevron-down</v-icon>
+        Show {{ showAllLabel }}<v-icon :class="showAll && 'tw-rotate-180'">mdi-chevron-down</v-icon>
       </div>
     </div>
 
@@ -53,28 +48,24 @@
     </div>
     <div
       v-else
-      class="tw-gr id-cols-1 tw-my-3 tw-grid tw-gap-3 sm:tw-grid-cols-2 lg:tw-grid-cols-3"
+      class="tw-grid tw-grid-cols-1 tw-my-3 tw-gap-3 sm:tw-grid-cols-2 lg:tw-grid-cols-3"
     >
       <EventItem
-        v-for="(event, i) in sortedEvents.slice(0, defaultNumEventsToShow)"
+        v-for="(event, i) in visibleEvents"
         :key="i"
         class="tw-cursor-pointer"
         :event="event"
       />
     </div>
     <!-- Show more events sections -->
-    <!-- TODO: might want to change for less code repeat -->
-    <div v-if="eventType.events.length > defaultNumEventsToShow">
+    <div v-if="hasOverflowEvents">
       <v-expand-transition>
         <div
           v-if="showAll"
-          class="tw-gr id-cols-1 tw-my-3 tw-grid tw-gap-3 sm:tw-grid-cols-2 lg:tw-grid-cols-3"
+          class="tw-grid tw-grid-cols-1 tw-my-3 tw-gap-3 sm:tw-grid-cols-2 lg:tw-grid-cols-3"
         >
           <EventItem
-            v-for="(event, i) in sortedEvents.slice(
-              defaultNumEventsToShow,
-              eventType.events.length
-            )"
+            v-for="(event, i) in overflowEvents"
             :key="i"
             class="tw-cursor-pointer"
             :event="event"
@@ -85,8 +76,7 @@
         class="tw-mt-4 tw-hidden tw-cursor-pointer tw-text-sm tw-text-very-dark-gray sm:tw-block"
         @click="toggleShowAll"
       >
-        Show {{ showAll ? "less" : "more"
-        }}<v-icon :class="showAll && 'tw-rotate-180'">mdi-chevron-down</v-icon>
+        Show {{ showAllLabel }}<v-icon :class="showAll && 'tw-rotate-180'">mdi-chevron-down</v-icon>
       </div>
     </div>
     <FeatureNotReadyDialog v-model="showFeatureNotReadyDialog" />
@@ -118,6 +108,25 @@ const showAll = ref(false)
 
 const defaultNumEventsToShow = computed(() => (display.lgAndUp.value ? 6 : 4))
 const sortedEvents = computed(() => props.eventType.events)
+const isCreatedEventsSection = computed(
+  () => props.eventType.header === "Events I created"
+)
+const showCreatedEventsUsage = computed(
+  () =>
+    isCreatedEventsSection.value &&
+    enablePaywall.value &&
+    !viewerHasPremiumAccess.value
+)
+const hasOverflowEvents = computed(
+  () => props.eventType.events.length > defaultNumEventsToShow.value
+)
+const visibleEvents = computed(() =>
+  sortedEvents.value.slice(0, defaultNumEventsToShow.value)
+)
+const overflowEvents = computed(() =>
+  sortedEvents.value.slice(defaultNumEventsToShow.value)
+)
+const showAllLabel = computed(() => (showAll.value ? "less" : "more"))
 
 const mainStore = useMainStore()
 const { authUser, enablePaywall, viewerHasPremiumAccess } = storeToRefs(mainStore)
@@ -128,7 +137,7 @@ const toggleShowAll = () => {
 const openUpgradeDialog = () => {
   mainStore.showUpgradeDialog({ type: upgradeDialogTypes.UPGRADE_MANUALLY })
 }
-const createFolder = () => {
+const openFolderFeedbackDialog = () => {
   showFeatureNotReadyDialog.value = true
   posthog.capture("create_folder_clicked")
 }
