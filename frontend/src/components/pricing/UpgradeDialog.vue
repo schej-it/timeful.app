@@ -446,34 +446,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue"
-import { storeToRefs } from "pinia"
-import { useRouter } from "vue-router"
-import { get, post } from "@/utils"
-import { useMainStore } from "@/stores/main"
-import { posthog } from "@/plugins/posthog"
+import { toRef } from "vue"
 import { upgradeDialogTypes } from "@/constants"
+import {
+  formatStripePrice,
+  type StripePrice,
+} from "@/composables/pricing/upgradeDialogModels"
+import { useUpgradeDialogState } from "@/composables/pricing/useUpgradeDialogState"
 import AlreadyDonatedDialog from "./AlreadyDonatedDialog.vue"
 import StudentProofDialog from "./StudentProofDialog.vue"
 import SlideToggle from "@/components/SlideToggle.vue"
-
-interface StripePrice {
-  id: string
-  unit_amount: number
-  recurring?: {
-    interval: string
-  } | null
-}
-
-interface HighlightedTextPart {
-  text: string
-  highlight?: boolean
-}
-
-interface PremiumFeature {
-  text: string
-  parts: HighlightedTextPart[]
-}
 
 const props = defineProps<{
   modelValue: boolean
@@ -484,326 +466,36 @@ const emit = defineEmits<{
   "update:modelValue": [value: boolean]
 }>()
 
-const router = useRouter()
-const mainStore = useMainStore()
-const { featureFlagsLoaded, pricingPageConversion, authUser, upgradeDialogType, upgradeDialogData } =
-  storeToRefs(mainStore)
+const formattedPrice = (price: StripePrice | null) => formatStripePrice(price)
 
-const lifetimePrice = ref<StripePrice | null>(null)
-const monthlyPrice = ref<StripePrice | null>(null)
-const yearlyPrice = ref<StripePrice | null>(null)
-const lifetimeStudentPrice = ref<StripePrice | null>(null)
-const monthlyStudentPrice = ref<StripePrice | null>(null)
-const yearlyStudentPrice = ref<StripePrice | null>(null)
-
-const loadingCheckoutUrl = ref<Record<string, boolean>>({})
-const showDonatedDialog = ref(false)
-const isStudent = ref(false)
-const showStudentProofDialog = ref(false)
-const trackedCurrentOpen = ref(false)
-
-const showMonthly = ref(true)
-const showYearly = ref(true)
-const showLifetime = ref(false)
-
-const v2BillingCycle = ref("yearly")
-
-const yearlyDiscount = computed(() => {
-  if (isStudent.value) {
-    if (!yearlyStudentPrice.value || !monthlyStudentPrice.value) return 0
-    return (
-      100 -
-      Math.round(
-        (yearlyStudentPrice.value.unit_amount /
-          12 /
-          monthlyStudentPrice.value.unit_amount) *
-          100
-      )
-    )
-  }
-
-  if (!yearlyPrice.value || !monthlyPrice.value) return 0
-  return (
-    100 -
-    Math.round(
-      (yearlyPrice.value.unit_amount / 12 / monthlyPrice.value.unit_amount) *
-        100
-    )
-  )
-})
-
-const isRemoveAdsMode = computed(
-  () => upgradeDialogType.value === upgradeDialogTypes.REMOVE_ADS
-)
-
-const freeFeatures = computed(() => {
-  const events = "Create 3 events per month"
-  const ads = "Ads displayed on all your events"
-  return isRemoveAdsMode.value ? [ads, events] : [events, ads]
-})
-
-const premiumFeatures = computed(() => {
-  const events: PremiumFeature = {
-    text: "events",
-    parts: [
-      { text: "Create " },
-      { text: "unlimited events", highlight: true },
-      { text: " per month" },
-    ],
-  }
-  const noAdsOwn: PremiumFeature = {
-    text: "no-ads-own",
-    parts: [
-      { text: "No ads", highlight: true },
-      { text: " displayed on your events" },
-    ],
-  }
-  const noAdsOthers: PremiumFeature = {
-    text: "no-ads-others",
-    parts: [
-      { text: "Don't see ads", highlight: true },
-      { text: " on other people's events" },
-    ],
-  }
-  return isRemoveAdsMode.value
-    ? [noAdsOwn, noAdsOthers, events]
-    : [events, noAdsOwn, noAdsOthers]
-})
-
-const v2BillingOptions = computed(() => [
-  { text: "Monthly", value: "monthly", style: { minWidth: "150px" } },
-  { text: "Yearly", value: "yearly", style: { minWidth: "150px" } },
-])
-
-const v2ActivePrice = computed(() => {
-  if (v2BillingCycle.value === "yearly") {
-    return isStudent.value ? yearlyStudentPrice.value : yearlyPrice.value
-  }
-  return isStudent.value ? monthlyStudentPrice.value : monthlyPrice.value
-})
-
-const v2MonthlyPrice = computed(() =>
-  isStudent.value ? monthlyStudentPrice.value : monthlyPrice.value
-)
-
-const pricesShown = computed(() => {
-  const parts: string[] = []
-  if (showMonthly.value) {
-    if (isStudent.value && monthlyStudentPrice.value) {
-      parts.push(
-        `MONTHLY (Student): ${formattedPrice(monthlyStudentPrice.value)}/mo`
-      )
-    } else {
-      parts.push(`MONTHLY: ${formattedPrice(monthlyPrice.value)}/mo`)
-    }
-  }
-  if (showYearly.value) {
-    if (isStudent.value && yearlyStudentPrice.value) {
-      console.log(
-        "yearlyStudentPrice",
-        formattedPrice(yearlyStudentPrice.value)
-      )
-      parts.push(
-        `YEARLY (Student): ${formattedPrice(yearlyStudentPrice.value)}/mo`
-      )
-    } else {
-      parts.push(`YEARLY: ${formattedPrice(yearlyPrice.value)}/mo`)
-    }
-  }
-  if (showLifetime.value) {
-    if (isStudent.value && lifetimeStudentPrice.value) {
-      parts.push(
-        `LIFETIME (Student): ${formattedPrice(lifetimeStudentPrice.value)}`
-      )
-    } else {
-      parts.push(`LIFETIME: ${formattedPrice(lifetimePrice.value)}`)
-    }
-  }
-  return parts.join(", ")
-})
-
-function formattedPrice(price: StripePrice | null) {
-  if (!price) return ""
-  let unitAmount = price.unit_amount / 100
-  if (price.recurring?.interval === "year") {
-    unitAmount = Math.floor((price.unit_amount / 100 / 12) * 100) / 100
-  }
-  return (
-    "$" +
-    (unitAmount % 1 === 0 ? unitAmount.toFixed(0) : unitAmount.toFixed(2))
-  )
-}
-
-async function init() {
-  if (!lifetimePrice.value || !monthlyPrice.value) {
-    await fetchPrice()
-  }
-}
-
-function trackDialogViewed() {
-  if (!props.modelValue || trackedCurrentOpen.value) {
-    return
-  }
-
-  trackedCurrentOpen.value = true
-  void post("/analytics/upgrade-dialog-viewed", {
-    userId: authUser.value?._id ?? posthog.get_distinct_id(),
-    price: pricesShown.value,
-    type: upgradeDialogType.value,
-  })
-  posthog.capture("upgrade_dialog_viewed", {
-    price: pricesShown.value,
-    type: upgradeDialogType.value,
-  })
-}
-
-function handleStudentToggle(value: boolean | null) {
-  isStudent.value = value === true
-
-  if (isStudent.value) {
-    posthog.capture("student_pricing_viewed", {
-      prices: pricesShown.value,
-    })
-  }
-}
-
-function buildUpgradeOriginUrl() {
-  let originUrl = window.location.href
-
-  if (
-    upgradeDialogData.value &&
-    upgradeDialogType.value === upgradeDialogTypes.SCHEDULE_EVENT
-  ) {
-    originUrl = `${originUrl}?scheduled_event=${encodeURIComponent(
-      JSON.stringify(
-        (upgradeDialogData.value as { scheduledEvent?: unknown }).scheduledEvent
-      )
-    )}`
-  }
-
-  return originUrl
-}
-
-function redirectToSignUpForUpgrade(price: StripePrice) {
-  const upgradeParams = {
-    priceId: price.id,
-    isSubscription: price.recurring !== null,
-    originUrl: window.location.href,
-  }
-
-  emit("update:modelValue", false)
-  void router.push({
-    name: "sign-up",
-    query: {
-      redirect: "upgrade",
-      upgradeParams: JSON.stringify(upgradeParams),
-    },
-  })
-}
-
-function redirectToCheckout(url: string) {
-  window.location.href = url
-}
-
-function handleDialogVisibilityChange(isOpen: boolean) {
-  if (!isOpen) {
-    trackedCurrentOpen.value = false
-    return
-  }
-
-  void init()
-  trackDialogViewed()
-}
-
-async function fetchPrice() {
-  interface PriceResponse {
-    lifetime: StripePrice | null
-    monthly: StripePrice | null
-    yearly: StripePrice | null
-    lifetimeStudent: StripePrice | null
-    monthlyStudent: StripePrice | null
-    yearlyStudent: StripePrice | null
-  }
-
-  let res: PriceResponse
-  if (import.meta.env.DEV) {
-    res = {
-      lifetime: { id: "price_dev_lifetime", unit_amount: 9999, recurring: null },
-      monthly: { id: "price_dev_monthly", unit_amount: 999, recurring: { interval: "month" } },
-      yearly: { id: "price_dev_yearly", unit_amount: 7999, recurring: { interval: "year" } },
-      lifetimeStudent: { id: "price_dev_lifetime_student", unit_amount: 4999, recurring: null },
-      monthlyStudent: { id: "price_dev_monthly_student", unit_amount: 499, recurring: { interval: "month" } },
-      yearlyStudent: { id: "price_dev_yearly_student", unit_amount: 3999, recurring: { interval: "year" } },
-    }
-  } else {
-    res = await get<PriceResponse>(`/stripe/price?exp=${pricingPageConversion.value}`)
-  }
-
-  const {
-    lifetime,
-    monthly,
-    yearly,
-    lifetimeStudent,
-    monthlyStudent,
-    yearlyStudent,
-  } = res
-  lifetimePrice.value = lifetime
-  monthlyPrice.value = monthly
-  yearlyPrice.value = yearly
-  lifetimeStudentPrice.value = lifetimeStudent
-  monthlyStudentPrice.value = monthlyStudent
-  yearlyStudentPrice.value = yearlyStudent
-}
-
-async function handleUpgrade(price: StripePrice) {
-  // if (isStudent.value) {
-  //   showStudentProofDialog.value = true
-  //   posthog?.capture("student_upgrade_attempt", { price })
-  //   return
-  // }
-  posthog.capture("upgrade_clicked", {
-    price: formattedPrice(price),
-  })
-
-  if (!authUser.value) {
-    redirectToSignUpForUpgrade(price)
-    return
-  }
-
-  loadingCheckoutUrl.value[price.id] = true
-  try {
-    const res = await post<{ url: string }>("/stripe/create-checkout-session", {
-      priceId: price.id,
-      userId: authUser.value._id,
-      isSubscription: price.recurring !== null,
-      originUrl: buildUpgradeOriginUrl(),
-    })
-    redirectToCheckout(res.url)
-  } catch (e) {
-    console.error(e)
-    mainStore.showError(
-      "There was an error generating a checkout url. Please try again later."
-    )
-  } finally {
-    loadingCheckoutUrl.value[price.id] = false
-  }
-}
-
-watch(
-  featureFlagsLoaded,
-  (loaded) => {
-    if (!loaded) {
-      return
-    }
-
-    void init()
+const {
+  freeFeatures,
+  handleStudentToggle,
+  handleUpgrade,
+  isStudent,
+  lifetimePrice,
+  lifetimeStudentPrice,
+  loadingCheckoutUrl,
+  monthlyPrice,
+  monthlyStudentPrice,
+  premiumFeatures,
+  showDonatedDialog,
+  showLifetime,
+  showMonthly,
+  showStudentProofDialog,
+  showYearly,
+  upgradeDialogType,
+  v2ActivePrice,
+  v2BillingCycle,
+  v2BillingOptions,
+  v2MonthlyPrice,
+  yearlyDiscount,
+  yearlyPrice,
+  yearlyStudentPrice,
+} = useUpgradeDialogState({
+  modelValue: toRef(props, "modelValue"),
+  closeDialog: () => {
+    emit("update:modelValue", false)
   },
-  { immediate: true }
-)
-
-watch(
-  () => props.modelValue,
-  handleDialogVisibilityChange,
-  { immediate: true }
-)
+})
 </script>

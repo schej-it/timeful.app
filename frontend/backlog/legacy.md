@@ -61,7 +61,7 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
   New-event editor remains watcher-heavy and too broad for maintainable ownership boundaries.
 - [x] `F-NEW-SIGN-UP-002` ([finding](../findings/F-NEW-SIGN-UP-002.md)) - `fixed`, `src/components/NewSignUp.vue`
   New-sign-up flow remains a large watcher-driven component with reset and validation logic tightly coupled to the view.
-- [ ] `F-UPGRADE-DIALOG-002` ([finding](../findings/F-UPGRADE-DIALOG-002.md)) - `planned`, `src/components/pricing/UpgradeDialog.vue`
+- [x] `F-UPGRADE-DIALOG-002` ([finding](../findings/F-UPGRADE-DIALOG-002.md)) - `fixed`, `src/components/pricing/UpgradeDialog.vue`
   Pricing and checkout dialog still mixes presentation, gating logic, analytics, and provider-flow state in one component.
 - [x] `F-SIGN-IN-DIALOG-001` ([finding](../findings/F-SIGN-IN-DIALOG-001.md)) - `fixed`, `src/components/SignInDialog.vue`
   Sign-in dialog still concentrates provider selection, onboarding, OTP flow, and cooldown timer orchestration.

@@ -131,6 +131,14 @@ const findUpgradeButton = (wrapper: ReturnType<typeof mountUpgradeDialog>) => {
   return button
 }
 
+const getPostCalls = (path: string) =>
+  postMock.mock.calls.filter(([requestPath]) => requestPath === path)
+
+const devPrices = {
+  monthly: "$9.99",
+  yearly: "$6.66",
+}
+
 describe("UpgradeDialog", () => {
   beforeEach(() => {
     featureFlagsLoaded.value = false
@@ -144,7 +152,13 @@ describe("UpgradeDialog", () => {
     captureMock.mockReset()
     getDistinctIdMock.mockClear()
     getMock.mockResolvedValue(priceResponse)
-    postMock.mockResolvedValue({ ok: true })
+    postMock.mockImplementation((path: string) => {
+      if (path === "/stripe/create-checkout-session") {
+        return { url: "https://checkout.example/session" }
+      }
+
+      return { ok: true }
+    })
   })
 
   it("uses compact student checkboxes in both paywall variants", async () => {
@@ -176,10 +190,23 @@ describe("UpgradeDialog", () => {
     expect(v2Wrapper.text()).toContain("Pinky promise that you're actually a student?")
   })
 
+  it("loads and renders fetched pricing state for both paywall variants", async () => {
+    const v1Wrapper = mountUpgradeDialog("v1")
+    const v2Wrapper = mountUpgradeDialog("v2")
+    await flushPromises()
+
+    expect(getMock).not.toHaveBeenCalled()
+    expect(v1Wrapper.text()).toContain(devPrices.monthly)
+    expect(v1Wrapper.text()).toContain(devPrices.yearly)
+    expect(v2Wrapper.text()).toContain(devPrices.yearly)
+    expect(v2Wrapper.text()).toContain("Billed annually")
+  })
+
   it("keeps unauthenticated upgrade routing wired through the existing handler", async () => {
     const v1Wrapper = mountUpgradeDialog("v1")
     const v2Wrapper = mountUpgradeDialog("v2")
     await flushPromises()
+    postMock.mockClear()
 
     await findUpgradeButton(v1Wrapper).trigger("click")
     await findUpgradeButton(v2Wrapper).trigger("click")
@@ -204,5 +231,49 @@ describe("UpgradeDialog", () => {
     }
     expect(v1Wrapper.emitted("update:modelValue")).toContainEqual([false])
     expect(v2Wrapper.emitted("update:modelValue")).toContainEqual([false])
+  })
+
+  it("creates a checkout session for authenticated upgrades and redirects to the returned url", async () => {
+    authUser.value = { _id: "user-123" }
+    const assignSpy = vi.spyOn(window.location, "assign").mockImplementation(() => undefined)
+    const wrapper = mountUpgradeDialog("v2")
+    await flushPromises()
+    postMock.mockClear()
+
+    await findUpgradeButton(wrapper).trigger("click")
+    await flushPromises()
+
+    expect(getPostCalls("/stripe/create-checkout-session")).toHaveLength(1)
+    expect(getPostCalls("/stripe/create-checkout-session")[0]?.[1]).toMatchObject({
+      priceId: "price_dev_yearly",
+      userId: "user-123",
+      isSubscription: true,
+      originUrl: "http://localhost:3000/",
+    })
+    expect(assignSpy).toHaveBeenCalledWith("https://checkout.example/session")
+    expect(captureMock).toHaveBeenCalledWith("upgrade_clicked", { price: devPrices.yearly })
+
+    assignSpy.mockRestore()
+  })
+
+  it("tracks a single dialog view per open cycle and resets after closing", async () => {
+    const wrapper = mountUpgradeDialog("v2")
+    await flushPromises()
+
+    expect(getPostCalls("/analytics/upgrade-dialog-viewed")).toHaveLength(1)
+    expect(captureMock).toHaveBeenCalledWith("upgrade_dialog_viewed", {
+      price: "MONTHLY: /mo, YEARLY: /mo",
+      type: upgradeDialogTypes.CREATE_EVENT,
+    })
+
+    await wrapper.setProps({ modelValue: false })
+    await wrapper.setProps({ modelValue: true })
+    await flushPromises()
+
+    expect(getPostCalls("/analytics/upgrade-dialog-viewed")).toHaveLength(2)
+    expect(captureMock).toHaveBeenCalledWith("upgrade_dialog_viewed", {
+      price: `MONTHLY: ${devPrices.monthly}/mo, YEARLY: ${devPrices.yearly}/mo`,
+      type: upgradeDialogTypes.CREATE_EVENT,
+    })
   })
 })
