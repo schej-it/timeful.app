@@ -250,23 +250,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue"
+import { computed, ref } from "vue"
 import { useRouter } from "vue-router"
 import { storeToRefs } from "pinia"
-import { eventTypes, durations, UTC, hoursPlainTime, dateOptions, type DateOptionType } from "@/constants"
-import { Temporal } from "temporal-polyfill"
-import {
-  post,
-  put,
-  getWrappedTimeRangeDuration,
-  getDateWithTimezone,
-  getEventMembershipDayOfWeekValues,
-  getEventMembershipPlainDates,
-  getEventTimeSeed,
-  getTimeOptions,
-  resolveInitialTimezoneSelection,
-  resolveTimezoneValue,
-} from "@/utils"
+import { dateOptions, eventTypes } from "@/constants"
+import { post, put, resolveTimezoneValue } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import TimezoneSelector from "./schedule_overlap/TimezoneSelector.vue"
@@ -277,21 +265,24 @@ import ExpandableSection from "./ExpandableSection.vue"
 import type { Event } from "@/types"
 import type { EventDraft } from "@/composables/event/types"
 import {
-  getDraftEndTime,
-  getDraftSelectedDays,
-  getDraftStartTime,
-  getDraftTimezone,
-  hasEventDraftData,
-} from "@/composables/event/draftBoundary"
-import { useOwnedTimezone } from "@/composables/timezone/useOwnedTimezone"
+  buildEventEditorSchedule,
+} from "@/composables/event/eventEditorSchedule"
+import {
+  useEventEditorState,
+  type EventEditorFormRef,
+} from "@/composables/event/useEventEditorState"
 
-interface FormRef {
+interface FormRef extends EventEditorFormRef {
   validate: () => Promise<{ valid: boolean }> | boolean
-  resetValidation: () => void
 }
 
-interface NameFieldRef { blur: () => void }
-interface ElementWithRoot { $el?: HTMLElement }
+interface NameFieldRef {
+  blur: () => void
+}
+
+interface ElementWithRoot {
+  $el?: HTMLElement
+}
 
 const props = withDefaults(
   defineProps<{
@@ -331,190 +322,87 @@ const cardTextElement = computed(() => {
   return cardText.value.$el ?? null
 })
 
-const formValid = ref(true)
-const name = ref("")
-const startTime = ref(hoursPlainTime.NINE)
-const endTime = ref(hoursPlainTime.SEVENTEEN)
-const loading = ref(false)
-const selectedDays = ref<Temporal.PlainDate[]>([])
-const selectedDaysStr = computed<string[]>({
-  get: () => selectedDays.value.map(x => x.toString()),
-  set: value => {
-    selectedDays.value = value.map(date => Temporal.PlainDate.from(date))
+const editorState = useEventEditorState({
+  event: computed(() => props.event),
+  edit: computed(() => props.edit),
+  contactsPayload: computed(() => props.contactsPayload),
+  formRef,
+  onEventHydrate: ({ startOnMonday }, event) => {
+    if (event.startOnMonday) {
+      startOnMonday.value = true
+    }
   },
 })
-const selectedDaysOfWeek = ref<number[]>([])
-const startOnMonday = ref(false)
-const notificationsEnabled = ref(false)
 
-const daysOnly = ref(false)
-
-const selectedDateOption = ref<DateOptionType>(dateOptions.SPECIFIC)
-
-const showEmailReminders = ref(false)
-const emails = ref<string[]>([])
-
-const showAdvancedOptions = ref(false)
-const collectEmails = ref(false)
-const blindAvailabilityEnabled = ref(false)
 const {
+  formValid,
+  name,
+  startTime,
+  endTime,
+  loading,
+  selectedDays,
+  selectedDaysStr,
+  selectedDaysOfWeek,
+  startOnMonday,
+  notificationsEnabled,
+  daysOnly,
+  selectedDateOption,
+  emails,
+  showAdvancedOptions,
+  collectEmails,
+  blindAvailabilityEnabled,
+  sendEmailAfterXResponsesEnabled,
+  sendEmailAfterXResponses,
   timezone,
-  modified: timezoneModified,
+  timezoneModified,
+  hasMounted,
+  nameRules,
+  selectedDaysRules,
+  dayOfWeekButtons,
+  times,
+  minCalendarDate,
   setTimezone,
   resetTimezone,
-} = useOwnedTimezone()
-const sendEmailAfterXResponsesEnabled = ref(false)
-const sendEmailAfterXResponses = ref(3)
-
-const initialEventData = ref<Record<string, unknown>>({})
-
-const hasMounted = ref(false)
-
-const nameRules = computed(() => [
-  (v: string) => !!v || "Event name is required",
-])
-const selectedDaysRules = computed(() => [
-  (s: unknown[]) => s.length > 0 || "Please select at least one day",
-])
-const dayOfWeekButtons = computed(() => [
-  ...(!startOnMonday.value ? [{ key: "sun-start", label: "Sun", value: 0 }] : []),
-  { key: "mon", label: "Mon", value: 1 },
-  { key: "tue", label: "Tue", value: 2 },
-  { key: "wed", label: "Wed", value: 3 },
-  { key: "thu", label: "Thu", value: 4 },
-  { key: "fri", label: "Fri", value: 5 },
-  { key: "sat", label: "Sat", value: 6 },
-  ...(startOnMonday.value ? [{ key: "sun-end", label: "Sun", value: 7 }] : []),
-])
-const times = computed(() => getTimeOptions())
-const getDayOfWeekButtonClass = (dayIndex: number) => ({
-  "editor-dow-button": true,
-  "editor-dow-button--selected": selectedDaysOfWeek.value.includes(dayIndex),
-})
-const minCalendarDate = computed(() => {
-  if (props.edit) return ""
-  const today = Temporal.Now.plainDateISO()
-  return `${String(today.year)}-${String(today.month).padStart(2, "0")}-${String(today.day).padStart(2, "0")}`
-})
-
-onMounted(() => {
-  if (hasEventDraftData(props.contactsPayload)) {
-    toggleEmailReminders(true)
-    name.value = props.contactsPayload.name ?? ""
-    startTime.value = getDraftStartTime(props.contactsPayload)
-    endTime.value = getDraftEndTime(props.contactsPayload)
-    daysOnly.value = props.contactsPayload.daysOnly ?? false
-    selectedDateOption.value = (props.contactsPayload.selectedDateOption ?? dateOptions.SPECIFIC) as DateOptionType
-    selectedDaysOfWeek.value = props.contactsPayload.selectedDaysOfWeek ?? []
-    selectedDays.value = getDraftSelectedDays(props.contactsPayload)
-    notificationsEnabled.value = props.contactsPayload.notificationsEnabled ?? false
-    timezone.value = getDraftTimezone(props.contactsPayload) ??
-      resolveInitialTimezoneSelection(Temporal.Now.zonedDateTimeISO())
-
-    formRef.value?.resetValidation()
-  }
-
-  void nextTick(() => {
-    hasMounted.value = true
-  })
-})
+  getDayOfWeekButtonClass,
+  reset,
+  resetToEventData,
+  hasEventBeenEdited,
+} = editorState
 
 const blurNameField = () => {
   nameField.value?.blur()
-}
-
-const reset = () => {
-  name.value = ""
-  startTime.value = hoursPlainTime.NINE
-  endTime.value = hoursPlainTime.SEVENTEEN
-  selectedDays.value = []
-  selectedDaysOfWeek.value = []
-  notificationsEnabled.value = false
-  daysOnly.value = false
-  selectedDateOption.value = dateOptions.SPECIFIC
-  emails.value = []
-  showAdvancedOptions.value = false
-  blindAvailabilityEnabled.value = false
-  sendEmailAfterXResponsesEnabled.value = false
-  sendEmailAfterXResponses.value = 3
-  collectEmails.value = false
-
-  formRef.value?.resetValidation()
 }
 
 const submit = async () => {
   const result = await formRef.value?.validate()
   const valid = typeof result === "boolean" ? result : result?.valid
   if (!valid) return
-  const timezoneValue = resolveTimezoneValue(timezone.value.value)
+  const schedule = buildEventEditorSchedule({
+    daysOnly: daysOnly.value,
+    daysOnlyType: (eventTypes as Record<string, string>).SIGNUP,
+    selectedDateOption: selectedDateOption.value,
+    selectedDays: selectedDays.value,
+    selectedDaysOfWeek: selectedDaysOfWeek.value,
+    startOnMonday: startOnMonday.value,
+    startTime: startTime.value,
+    endTime: endTime.value,
+    timezoneValue: resolveTimezoneValue(timezone.value.value),
+  })
 
-  selectedDays.value.sort((a, b) => Temporal.PlainDate.compare(a, b))
-
-  let duration = getWrappedTimeRangeDuration(startTime.value, endTime.value)
-
-  const dates: Temporal.ZonedDateTime[] = []
-  let type: string
-  if (daysOnly.value) {
-    duration = durations.ZERO
-    type = (eventTypes as Record<string, string>).SIGNUP 
-
-    for (const day of selectedDays.value) {
-      const date = Temporal.PlainDate.from(day)
-      const zdt = date.toZonedDateTime({ timeZone: UTC, plainTime: "00:00" })
-      dates.push(zdt)
-    }
-  } else {
-    if (selectedDateOption.value === dateOptions.SPECIFIC) {
-      type = eventTypes.SPECIFIC_DATES
-      for (const day of selectedDays.value) {
-        // Parse the date string and create a ZonedDateTime in the specified timezone
-        const plainDate = Temporal.PlainDate.from(day)
-        const plainTime = Temporal.PlainTime.from(startTime.value)
-        const zdt = plainDate.toZonedDateTime({ 
-          timeZone: timezoneValue,
-          plainTime
-        })
-        dates.push(zdt)
-      }
-    } else {
-      type = eventTypes.DOW
-
-      selectedDaysOfWeek.value.sort((a, b) => a - b)
-      selectedDaysOfWeek.value = selectedDaysOfWeek.value.filter((dayIndex) =>
-        startOnMonday.value ? dayIndex !== 0 : dayIndex !== 7
-      )
-      for (const dayIndex of selectedDaysOfWeek.value) {
-        
-        // Get current date in the specified timezone
-        const now = Temporal.Now.zonedDateTimeISO(timezoneValue)
-        const currentDayOfWeek = now.dayOfWeek // 1-7 (Mon-Sun)
-        const targetDayOfWeek = dayIndex === 7 ? 7 : dayIndex // Convert from Sunday-based to Monday-based
-        
-        // Calculate days until next occurrence
-        let daysUntil = targetDayOfWeek - currentDayOfWeek
-        if (daysUntil < 0) daysUntil += 7
-        
-        const targetDate = 
-          now.add({ days: daysUntil })
-          .withTimeZone(timezoneValue)
-          .withPlainTime(startTime.value)
-
-        dates.push(targetDate)
-      }
-    }
-  }
+  selectedDays.value = schedule.normalizedSelectedDays
+  selectedDaysOfWeek.value = schedule.normalizedSelectedDaysOfWeek
 
   loading.value = true
 
   const payload = {
     name: name.value,
-    duration,
-    dates,
+    duration: schedule.duration,
+    dates: schedule.dates,
     notificationsEnabled: notificationsEnabled.value,
     blindAvailabilityEnabled: blindAvailabilityEnabled.value,
     daysOnly: daysOnly.value,
     remindees: emails.value,
-    type,
+    type: schedule.type,
     isSignUpForm: true,
     sendEmailAfterXResponses: sendEmailAfterXResponsesEnabled.value
       ? sendEmailAfterXResponses.value
@@ -526,13 +414,13 @@ const submit = async () => {
 
   const posthogPayload: Record<string, unknown> = {
     eventName: name.value,
-    eventDuration: duration,
-    eventDates: JSON.stringify(dates),
+    eventDuration: schedule.duration,
+    eventDates: JSON.stringify(schedule.dates),
     eventNotificationsEnabled: notificationsEnabled.value,
     eventBlindAvailabilityEnabled: blindAvailabilityEnabled.value,
     eventDaysOnly: daysOnly.value,
     eventRemindees: emails.value,
-    eventType: type,
+    eventType: schedule.type,
     eventIsSignUpForm: true,
     eventSendEmailAfterXResponses: sendEmailAfterXResponsesEnabled.value
       ? sendEmailAfterXResponses.value
@@ -586,115 +474,7 @@ const submit = async () => {
   }
 }
 
-const toggleEmailReminders = (delayed = false) => {
-  if (delayed) {
-    setTimeout(
-      () => (showEmailReminders.value = !showEmailReminders.value),
-      300
-    )
-  } else {
-    showEmailReminders.value = !showEmailReminders.value
-  }
-}
-
-const updateFieldsFromEvent = () => {
-  if (props.event) {
-    name.value = props.event.name ?? ""
-
-    const eventDate = getEventTimeSeed(props.event)
-    if (eventDate != null) {
-      const zdt = getDateWithTimezone(eventDate)
-      startTime.value = zdt.toPlainTime()
-
-      const duration = props.event.duration ?? durations.ZERO
-      endTime.value = startTime.value.add(duration)
-    }
-
-    notificationsEnabled.value = props.event.notificationsEnabled ?? false
-    blindAvailabilityEnabled.value =
-      props.event.blindAvailabilityEnabled ?? false
-    daysOnly.value = props.event.daysOnly ?? false
-
-    if (
-      props.event.sendEmailAfterXResponses != null &&
-      props.event.sendEmailAfterXResponses > 0
-    ) {
-      sendEmailAfterXResponsesEnabled.value = true
-      sendEmailAfterXResponses.value = props.event.sendEmailAfterXResponses
-    }
-
-    if (props.event.daysOnly) {
-      selectedDateOption.value = dateOptions.SPECIFIC
-      selectedDays.value = getEventMembershipPlainDates(props.event.dates)
-    } else {
-      if (props.event.type === eventTypes.SPECIFIC_DATES) {
-        selectedDateOption.value = dateOptions.SPECIFIC
-        selectedDays.value = getEventMembershipPlainDates(props.event.dates)
-      } else if (props.event.type === eventTypes.DOW) {
-        selectedDateOption.value = dateOptions.DOW
-        selectedDaysOfWeek.value = getEventMembershipDayOfWeekValues(
-          props.event.dates
-        )
-        if (props.event.startOnMonday) startOnMonday.value = true
-      }
-    }
-  }
-}
-const resetToEventData = () => {
-  updateFieldsFromEvent()
-}
-const setInitialEventData = () => {
-  initialEventData.value = {
-    name: name.value,
-    startTime: startTime.value,
-    endTime: endTime.value,
-    daysOnly: daysOnly.value,
-    selectedDays: [...selectedDays.value],
-    selectedDaysOfWeek: [...selectedDaysOfWeek.value],
-    selectedDateOption: selectedDateOption.value,
-    notificationsEnabled: notificationsEnabled.value,
-    emails: [...emails.value],
-    blindAvailabilityEnabled: blindAvailabilityEnabled.value,
-    sendEmailAfterXResponsesEnabled: sendEmailAfterXResponsesEnabled.value,
-    sendEmailAfterXResponses: sendEmailAfterXResponses.value,
-  }
-}
-const hasEventBeenEdited = () => {
-  const i = initialEventData.value
-  return (
-    name.value !== i.name ||
-    startTime.value !== i.startTime ||
-    endTime.value !== i.endTime ||
-    selectedDateOption.value !== i.selectedDateOption ||
-    JSON.stringify(selectedDays.value) !== JSON.stringify(i.selectedDays) ||
-    JSON.stringify(selectedDaysOfWeek.value) !==
-      JSON.stringify(i.selectedDaysOfWeek) ||
-    daysOnly.value !== i.daysOnly ||
-    notificationsEnabled.value !== i.notificationsEnabled ||
-    JSON.stringify(emails.value) !== JSON.stringify(i.emails) ||
-    blindAvailabilityEnabled.value !== i.blindAvailabilityEnabled ||
-    sendEmailAfterXResponsesEnabled.value !== i.sendEmailAfterXResponsesEnabled ||
-    sendEmailAfterXResponses.value !== i.sendEmailAfterXResponses
-  )
-}
-
 defineExpose({ reset, resetToEventData, hasEventBeenEdited })
-
-watch(
-  () => props.event,
-  () => {
-    updateFieldsFromEvent()
-    setInitialEventData()
-  },
-  { immediate: true }
-)
-watch(selectedDateOption, () => {
-  if (selectedDateOption.value === dateOptions.SPECIFIC) {
-    selectedDaysOfWeek.value = []
-  } else {
-    selectedDays.value = []
-  }
-})
 </script>
 
 <style>

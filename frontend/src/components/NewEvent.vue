@@ -525,34 +525,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue"
+import { computed, ref, watch } from "vue"
 import { useRouter } from "vue-router"
 import { storeToRefs } from "pinia"
 import {
-  eventTypes,
   authTypes,
-  durations,
-  hoursPlainTime,
-  UTC,
   dateOptions,
-  type DateOptionType
+  eventTypes,
 } from "@/constants"
 import { isAnonymousOwnerEvent } from "@/composables/event/eventOwnership"
 import {
+  addEventToCreatedList,
+  plainTimeToTimeNum,
+  prefersStartOnMonday,
   post,
   put,
-  signInGoogle,
-  getDateWithTimezone,
-  getEventMembershipDayOfWeekValues,
-  getEventMembershipPlainDates,
-  getEventTimeSeed,
-  getTimeOptions,
-  addEventToCreatedList,
-  prefersStartOnMonday,
-  getWrappedTimeRangeDuration,
-  plainTimeToTimeNum,
-  resolveInitialTimezoneSelection,
   resolveTimezoneValue,
+  signInGoogle,
   timeNumToPlainTime,
 } from "@/utils"
 import { useMainStore } from "@/stores/main"
@@ -570,21 +559,23 @@ import type { Event as EventModel } from "@/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
 import type { EventDraft } from "@/composables/event/types"
 import { toTransportDateTimeStrings } from "@/types/transport"
+import { buildEventEditorSchedule } from "@/composables/event/eventEditorSchedule"
 import {
-  getDraftEndTime,
-  getDraftSelectedDays,
-  getDraftStartTime,
-  getDraftTimezone,
-  hasEventDraftData,
-} from "@/composables/event/draftBoundary"
-import { useOwnedTimezone } from "@/composables/timezone/useOwnedTimezone"
+  useEventEditorState,
+  type EventEditorFormRef,
+} from "@/composables/event/useEventEditorState"
 
-interface FormRef {
+interface FormRef extends EventEditorFormRef {
   validate: () => Promise<{ valid: boolean }> | boolean
-  resetValidation: () => void
 }
-interface NameFieldRef { blur: () => void }
-interface ElementWithRoot { $el?: HTMLElement }
+
+interface NameFieldRef {
+  blur: () => void
+}
+
+interface ElementWithRoot {
+  $el?: HTMLElement
+}
 
 const props = withDefaults(
   defineProps<{
@@ -634,128 +625,12 @@ const cardTextElement = computed(() => {
   return cardText.value.$el ?? null
 })
 
-const formValid = ref(true)
-const name = ref("")
-const hasBlurredNameField = ref(false)
-const isNameFieldFocused = ref(true)
-const startTime = ref<Temporal.PlainTime>(hoursPlainTime.NINE)
-const endTime = ref<Temporal.PlainTime>(hoursPlainTime.SEVENTEEN)
-const specificTimesEnabled = ref(false)
-const loading = ref(false)
-const selectedDays = ref<Temporal.PlainDate[]>([])
-const selectedDaysStr = computed<string[]>({
-  get: () => selectedDays.value.map(x => x.toString()),
-  set: value => {
-    selectedDays.value = value.map(date => Temporal.PlainDate.from(date))
-  },
-})
-const selectedDaysOfWeek = ref<number[]>([])
-const startOnMonday = ref(prefersStartOnMonday())
-const notificationsEnabled = ref(true)
-
-const daysOnly = ref(false)
-const selectedDateOption = ref<DateOptionType>(dateOptions.SPECIFIC)
-
-const showEmailReminders = ref(false)
-const emails = ref<string[]>([])
-
-const showAdvancedOptions = ref(false)
 const DEFAULT_TIME_INCREMENT = 15
 const SUPPORTED_TIME_INCREMENTS = new Set([15, 30, 60])
-
-const timeIncrement = ref(DEFAULT_TIME_INCREMENT)
-const collectEmails = ref(false)
-const blindAvailabilityEnabled = ref(false)
-const {
-  timezone,
-  modified: timezoneModified,
-  setTimezone,
-  resetTimezone,
-} = useOwnedTimezone()
-const sendEmailAfterXResponsesEnabled = ref(false)
-const sendEmailAfterXResponses = ref(3)
-
-const initialEventData = ref<Record<string, unknown>>({})
-const hasMounted = ref(false)
+const hasBlurredNameField = ref(false)
+const isNameFieldFocused = ref(true)
 const submitAttempted = ref(false)
 
-const nameRules = computed(() => [
-  (v: string) => !!v || "Event name is required",
-])
-const hasName = computed(() => !!name.value.trim())
-const hasSelectedDayCriteria = computed(() => {
-  if (daysOnly.value || selectedDateOption.value === dateOptions.SPECIFIC) {
-    return selectedDays.value.length > 0
-  }
-
-  return selectedDaysOfWeek.value.length > 0
-})
-const dayOfWeekButtons = computed(() => [
-  ...(!startOnMonday.value ? [{ key: "sun-start", label: "Sun", value: 0 }] : []),
-  { key: "mon", label: "Mon", value: 1 },
-  { key: "tue", label: "Tue", value: 2 },
-  { key: "wed", label: "Wed", value: 3 },
-  { key: "thu", label: "Thu", value: 4 },
-  { key: "fri", label: "Fri", value: 5 },
-  { key: "sat", label: "Sat", value: 6 },
-  ...(startOnMonday.value ? [{ key: "sun-end", label: "Sun", value: 7 }] : []),
-])
-const submitBlocked = computed(
-  () => !hasName.value || !hasSelectedDayCriteria.value
-)
-const showSubmitError = computed(
-  () => submitAttempted.value && !loading.value && !formValid.value
-)
-const showNameFieldError = computed(
-  () => !name.value.trim() && hasBlurredNameField.value && !isNameFieldFocused.value
-)
-const submitButtonStyle = computed<Record<string, string>>(() => ({
-  backgroundColor: submitBlocked.value
-    ? "var(--timeful-primary-action-disabled-bg)"
-    : "var(--timeful-primary-action-bg)",
-  color: submitBlocked.value
-    ? "var(--timeful-primary-action-disabled-fg)"
-    : "var(--timeful-primary-action-fg)",
-  border: "none",
-  borderRadius: "6px",
-  paddingRight: "16px",
-  paddingLeft: "16px",
-  whiteSpace: "nowrap",
-  lineHeight: submitBlocked.value ? "21px" : "normal",
-}))
-const selectedDaysRules = computed(() => [
-  (s: unknown[]) => s.length > 0 || "Please select at least one day",
-])
-const addedEmails = computed(() => {
-  if (hasEventDraftData(props.contactsPayload))
-    return props.contactsPayload.emails ?? []
-  return props.event?.remindees
-    ? props.event.remindees
-        .map((r) => r.email)
-        .filter((e): e is string => !!e)
-    : []
-})
-const times = computed(() => getTimeOptions())
-// Computed properties to convert Temporal.PlainTime to/from number for UI compatibility
-const startTimeNum = computed({
-  get: () => plainTimeToTimeNum(startTime.value),
-  set: (num: number) => { startTime.value = timeNumToPlainTime(num) }
-})
-const endTimeNum = computed({
-  get: () => plainTimeToTimeNum(endTime.value),
-  set: (num: number) => { endTime.value = timeNumToPlainTime(num) }
-})
-const minCalendarDate = computed(() => {
-  if (props.edit) return ""
-  // Use Temporal to get today's date in ISO format
-  const today = Temporal.Now.plainDateISO()
-  return today.toString()
-})
-const guestEvent = computed(() => isAnonymousOwnerEvent(props.event))
-const getDayOfWeekButtonClass = (dayIndex: number) => ({
-  "editor-dow-button": true,
-  "editor-dow-button--selected": selectedDaysOfWeek.value.includes(dayIndex),
-})
 function normalizeTimeIncrement(value: unknown): number {
   const candidate =
     typeof value === "number"
@@ -776,35 +651,157 @@ function normalizeTimeIncrement(value: unknown): number {
     : DEFAULT_TIME_INCREMENT
 }
 
+const editorState = useEventEditorState({
+  event: computed(() => props.event),
+  edit: computed(() => props.edit),
+  contactsPayload: computed(() => props.contactsPayload),
+  formRef,
+  initialNotificationsEnabled: true,
+  initialStartOnMonday: prefersStartOnMonday(),
+  onDraftHydrate: ({ specificTimesEnabled, startOnMonday }) => {
+    specificTimesEnabled.value = props.contactsPayload.specificTimesEnabled ?? false
+    startOnMonday.value =
+      props.contactsPayload.startOnMonday ?? prefersStartOnMonday()
+  },
+  onEventHydrate: (
+    {
+      specificTimesEnabled,
+      startOnMonday,
+      collectEmails,
+      timeIncrement,
+    },
+    event
+  ) => {
+    specificTimesEnabled.value = event.hasSpecificTimes ?? false
+    startOnMonday.value = event.startOnMonday ?? startOnMonday.value
+    collectEmails.value = event.collectEmails ?? false
+    timeIncrement.value = normalizeTimeIncrement(event.timeIncrement)
+  },
+  onReset: ({ specificTimesEnabled, startOnMonday, timeIncrement }) => {
+    specificTimesEnabled.value = false
+    startOnMonday.value = prefersStartOnMonday()
+    timeIncrement.value = DEFAULT_TIME_INCREMENT
+  },
+  captureExtraInitialState: ({
+    specificTimesEnabled,
+    collectEmails,
+    timeIncrement,
+    startOnMonday,
+  }) => ({
+    specificTimesEnabled: specificTimesEnabled.value,
+    collectEmails: collectEmails.value,
+    timeIncrement: timeIncrement.value,
+    startOnMonday: startOnMonday.value,
+  }),
+  isExtraEdited: (
+    { specificTimesEnabled, collectEmails, timeIncrement, startOnMonday },
+    initial
+  ) =>
+    specificTimesEnabled.value !== initial.specificTimesEnabled ||
+    collectEmails.value !== initial.collectEmails ||
+    timeIncrement.value !== initial.timeIncrement ||
+    startOnMonday.value !== initial.startOnMonday,
+})
+
+const {
+  formValid,
+  name,
+  startTime,
+  endTime,
+  loading,
+  selectedDays,
+  selectedDaysStr,
+  selectedDaysOfWeek,
+  startOnMonday,
+  notificationsEnabled,
+  daysOnly,
+  selectedDateOption,
+  showEmailReminders,
+  emails,
+  showAdvancedOptions,
+  collectEmails,
+  blindAvailabilityEnabled,
+  sendEmailAfterXResponsesEnabled,
+  sendEmailAfterXResponses,
+  specificTimesEnabled,
+  timeIncrement,
+  timezone,
+  timezoneModified,
+  hasMounted,
+  nameRules,
+  selectedDaysRules,
+  dayOfWeekButtons,
+  times,
+  minCalendarDate,
+  setTimezone,
+  resetTimezone,
+  getDayOfWeekButtonClass,
+  reset: resetEditorState,
+  resetToEventData: resetEditorStateToEventData,
+  hasEventBeenEdited,
+} = editorState
+
+const hasName = computed(() => !!name.value.trim())
+const hasSelectedDayCriteria = computed(() =>
+  daysOnly.value || selectedDateOption.value === dateOptions.SPECIFIC
+    ? selectedDays.value.length > 0
+    : selectedDaysOfWeek.value.length > 0
+)
+const submitBlocked = computed(
+  () => !hasName.value || !hasSelectedDayCriteria.value
+)
+const showSubmitError = computed(
+  () => submitAttempted.value && !loading.value && !formValid.value
+)
+const showNameFieldError = computed(
+  () =>
+    !name.value.trim() &&
+    hasBlurredNameField.value &&
+    !isNameFieldFocused.value
+)
+const submitButtonStyle = computed<Record<string, string>>(() => ({
+  backgroundColor: submitBlocked.value
+    ? "var(--timeful-primary-action-disabled-bg)"
+    : "var(--timeful-primary-action-bg)",
+  color: submitBlocked.value
+    ? "var(--timeful-primary-action-disabled-fg)"
+    : "var(--timeful-primary-action-fg)",
+  border: "none",
+  borderRadius: "6px",
+  paddingRight: "16px",
+  paddingLeft: "16px",
+  whiteSpace: "nowrap",
+  lineHeight: submitBlocked.value ? "21px" : "normal",
+}))
+const addedEmails = computed(() => {
+  if (Object.keys(props.contactsPayload).length > 0) {
+    return props.contactsPayload.emails ?? []
+  }
+
+  return props.event?.remindees
+    ? props.event.remindees
+        .map(remindee => remindee.email)
+        .filter((email): email is string => !!email)
+    : []
+})
+const startTimeNum = computed({
+  get: () => plainTimeToTimeNum(startTime.value),
+  set: (num: number) => {
+    startTime.value = timeNumToPlainTime(num)
+  },
+})
+const endTimeNum = computed({
+  get: () => plainTimeToTimeNum(endTime.value),
+  set: (num: number) => {
+    endTime.value = timeNumToPlainTime(num)
+  },
+})
+const guestEvent = computed(() => isAnonymousOwnerEvent(props.event))
 const timeIncrementItems = computed(() => [
   { title: "15 min", value: 15 },
   { title: "30 min", value: 30 },
   { title: "60 min", value: 60 },
 ])
-
-onMounted(() => {
-  if (hasEventDraftData(props.contactsPayload)) {
-    toggleEmailReminders(true)
-
-    name.value = props.contactsPayload.name ?? ""
-    startTime.value = getDraftStartTime(props.contactsPayload)
-    endTime.value = getDraftEndTime(props.contactsPayload)
-    daysOnly.value = props.contactsPayload.daysOnly ?? false
-    selectedDateOption.value = (props.contactsPayload.selectedDateOption ?? dateOptions.SPECIFIC) as DateOptionType
-    selectedDaysOfWeek.value = props.contactsPayload.selectedDaysOfWeek ?? []
-    selectedDays.value = getDraftSelectedDays(props.contactsPayload)
-    notificationsEnabled.value = props.contactsPayload.notificationsEnabled ?? true
-    timezone.value = getDraftTimezone(props.contactsPayload) ??
-      resolveInitialTimezoneSelection(Temporal.Now.zonedDateTimeISO())
-    specificTimesEnabled.value = props.contactsPayload.specificTimesEnabled ?? false
-
-    formRef.value?.resetValidation()
-  }
-
-  void nextTick(() => {
-    hasMounted.value = true
-  })
-})
 
 const blurNameField = () => {
   nameField.value?.blur()
@@ -820,104 +817,48 @@ const handleNameFieldBlur = () => {
 }
 
 const reset = () => {
-  submitAttempted.value = false
-  name.value = ""
   hasBlurredNameField.value = false
   isNameFieldFocused.value = true
-  startTime.value = hoursPlainTime.NINE
-  endTime.value = hoursPlainTime.SEVENTEEN
-  specificTimesEnabled.value = false
-  selectedDays.value = []
-  selectedDaysOfWeek.value = []
-  notificationsEnabled.value = true
-  daysOnly.value = false
-  selectedDateOption.value = dateOptions.SPECIFIC
-  emails.value = []
-  showAdvancedOptions.value = false
-  blindAvailabilityEnabled.value = false
-  sendEmailAfterXResponsesEnabled.value = false
-  sendEmailAfterXResponses.value = 3
-  collectEmails.value = false
-  startOnMonday.value = prefersStartOnMonday()
+  submitAttempted.value = false
+  resetEditorState()
   emailInputKey.value += 1
-
-  formRef.value?.resetValidation()
 }
 
 const submit = async () => {
   const result = await formRef.value?.validate()
   const valid = typeof result === "boolean" ? result : result?.valid
   if (!valid) return
-  const timezoneValue = resolveTimezoneValue(timezone.value.value)
 
-  selectedDays.value.sort((a, b) => Temporal.PlainDate.compare(a, b))
+  const schedule = buildEventEditorSchedule({
+    daysOnly: daysOnly.value,
+    daysOnlyType: eventTypes.SPECIFIC_DATES,
+    selectedDateOption: selectedDateOption.value,
+    selectedDays: selectedDays.value,
+    selectedDaysOfWeek: selectedDaysOfWeek.value,
+    startOnMonday: startOnMonday.value,
+    startTime: startTime.value,
+    endTime: endTime.value,
+    timezoneValue: resolveTimezoneValue(timezone.value.value),
+  })
 
-  let duration = getWrappedTimeRangeDuration(startTime.value, endTime.value)
-
-  const dates: Temporal.ZonedDateTime[] = []
-  let type: string
+  selectedDays.value = schedule.normalizedSelectedDays
+  selectedDaysOfWeek.value = schedule.normalizedSelectedDaysOfWeek
   if (daysOnly.value) {
-    duration = durations.ZERO
-    type = eventTypes.SPECIFIC_DATES
-
-    for (const day of selectedDays.value) {
-      const zdt = day.toZonedDateTime({ timeZone: UTC, plainTime: "00:00" })
-      dates.push(zdt)
-    }
     specificTimesEnabled.value = false
-  } else {
-    if (selectedDateOption.value === dateOptions.SPECIFIC) {
-      type = eventTypes.SPECIFIC_DATES
-      for (const plainDate of selectedDays.value) {
-        const plainTime = startTime.value
-        const zdt = plainDate.toZonedDateTime({ 
-          timeZone: timezoneValue,
-          plainTime
-        })
-        dates.push(zdt)
-      }
-    } else {
-      type = eventTypes.DOW
-
-      selectedDaysOfWeek.value.sort((a, b) => a - b)
-      selectedDaysOfWeek.value = selectedDaysOfWeek.value.filter((dayIndex) =>
-        startOnMonday.value ? dayIndex !== 0 : dayIndex !== 7
-      )
-      for (const dayIndex of selectedDaysOfWeek.value) {
-        // For DOW events, we need to find the next occurrence of this day
-        const plainTime = startTime.value
-        
-        // Get current date in the specified timezone
-        const now = Temporal.Now.zonedDateTimeISO(timezoneValue)
-        const currentDayOfWeek = now.dayOfWeek // 1-7 (Mon-Sun)
-        const targetDayOfWeek = dayIndex === 7 ? 7 : dayIndex // Convert from Sunday-based to Monday-based
-        
-        // Calculate days until next occurrence
-        let daysUntil = targetDayOfWeek - currentDayOfWeek
-        if (daysUntil < 0) daysUntil += 7
-        
-        const targetDate = now.add({ days: daysUntil }).toPlainDate()
-        const zdt = targetDate.toZonedDateTime({ 
-          timeZone: timezoneValue,
-          plainTime
-        })
-        dates.push(zdt)
-      }
-    }
   }
 
   loading.value = true
 
   const payload = {
     name: name.value,
-    duration: duration.total("hours"),
-    dates: toTransportDateTimeStrings(dates),
+    duration: schedule.duration.total("hours"),
+    dates: toTransportDateTimeStrings(schedule.dates),
     hasSpecificTimes: specificTimesEnabled.value,
     notificationsEnabled: !authUser.value ? false : notificationsEnabled.value,
     blindAvailabilityEnabled: blindAvailabilityEnabled.value,
     daysOnly: daysOnly.value,
     remindees: emails.value,
-    type,
+    type: schedule.type,
     sendEmailAfterXResponses: sendEmailAfterXResponsesEnabled.value
       ? sendEmailAfterXResponses.value
       : -1,
@@ -929,8 +870,8 @@ const submit = async () => {
 
   const posthogPayload: Record<string, unknown> = {
     eventName: name.value,
-    eventDuration: duration,
-    eventDates: JSON.stringify(dates),
+    eventDuration: schedule.duration,
+    eventDates: JSON.stringify(schedule.dates),
     eventHasSpecificTimes: specificTimesEnabled.value,
     eventNotificationsEnabled: !authUser.value
       ? false
@@ -938,7 +879,7 @@ const submit = async () => {
     eventBlindAvailabilityEnabled: blindAvailabilityEnabled.value,
     eventDaysOnly: daysOnly.value,
     eventRemindees: emails.value,
-    eventType: type,
+    eventType: schedule.type,
     eventSendEmailAfterXResponses: sendEmailAfterXResponsesEnabled.value
       ? sendEmailAfterXResponses.value
       : -1,
@@ -1005,18 +946,11 @@ function submitIfAllowed() {
   void submit()
 }
 
-const toggleEmailReminders = (delayed = false) => {
-  if (delayed) {
-    setTimeout(
-      () => (showEmailReminders.value = !showEmailReminders.value),
-      300
-    )
-  } else {
-    showEmailReminders.value = !showEmailReminders.value
-  }
-}
-
-const requestContactsAccess = ({ emails: requestEmails }: { emails: string[] }) => {
+const requestContactsAccess = ({
+  emails: requestEmails,
+}: {
+  emails: string[]
+}) => {
   const payload = {
     emails: requestEmails,
     name: name.value,
@@ -1031,6 +965,7 @@ const requestContactsAccess = ({ emails: requestEmails }: { emails: string[] }) 
     specificTimesEnabled: specificTimesEnabled.value,
     startOnMonday: startOnMonday.value,
   }
+
   signInGoogle({
     state: {
       type: authTypes.EVENT_CONTACTS,
@@ -1042,94 +977,11 @@ const requestContactsAccess = ({ emails: requestEmails }: { emails: string[] }) 
   })
 }
 
-const updateFieldsFromEvent = () => {
-  if (props.event) {
-    name.value = props.event.name ?? ""
-    const eventDate = getEventTimeSeed(props.event)
-    if (eventDate != null) {
-      const zdt = getDateWithTimezone(eventDate)
-      startTime.value = zdt.toPlainTime()
-
-      const duration = props.event.duration ?? durations.ZERO
-      endTime.value = startTime.value.add(duration)
-    }
-
-    notificationsEnabled.value = props.event.notificationsEnabled ?? false
-    blindAvailabilityEnabled.value =
-      props.event.blindAvailabilityEnabled ?? false
-    daysOnly.value = props.event.daysOnly ?? false
-    specificTimesEnabled.value = props.event.hasSpecificTimes ?? false
-    startOnMonday.value = props.event.startOnMonday ?? startOnMonday.value
-    collectEmails.value = props.event.collectEmails ?? false
-    timeIncrement.value = normalizeTimeIncrement(props.event.timeIncrement)
-
-    if (
-      props.event.sendEmailAfterXResponses != null &&
-      props.event.sendEmailAfterXResponses > 0
-    ) {
-      sendEmailAfterXResponsesEnabled.value = true
-      sendEmailAfterXResponses.value = props.event.sendEmailAfterXResponses
-    }
-
-    if (props.event.daysOnly) {
-      selectedDateOption.value = dateOptions.SPECIFIC
-      selectedDays.value = getEventMembershipPlainDates(props.event.dates)
-    } else {
-      if (props.event.type === eventTypes.SPECIFIC_DATES) {
-        selectedDateOption.value = dateOptions.SPECIFIC
-        selectedDays.value = getEventMembershipPlainDates(props.event.dates)
-      } else if (props.event.type === eventTypes.DOW) {
-        selectedDateOption.value = dateOptions.DOW
-        selectedDaysOfWeek.value = getEventMembershipDayOfWeekValues(
-          props.event.dates
-        )
-        if (props.event.startOnMonday) startOnMonday.value = true
-      }
-    }
-  }
-}
 const resetToEventData = () => {
-  updateFieldsFromEvent()
+  resetEditorStateToEventData()
   emailInputKey.value += 1
 }
-const setInitialEventData = () => {
-  initialEventData.value = {
-    name: name.value,
-    startTime: startTime.value,
-    endTime: endTime.value,
-    specificTimesEnabled: specificTimesEnabled.value,
-    daysOnly: daysOnly.value,
-    selectedDays: [...selectedDays.value],
-    selectedDaysOfWeek: [...selectedDaysOfWeek.value],
-    selectedDateOption: selectedDateOption.value,
-    notificationsEnabled: notificationsEnabled.value,
-    emails: [...emails.value],
-    blindAvailabilityEnabled: blindAvailabilityEnabled.value,
-    sendEmailAfterXResponsesEnabled: sendEmailAfterXResponsesEnabled.value,
-    sendEmailAfterXResponses: sendEmailAfterXResponses.value,
-    timeIncrement: timeIncrement.value,
-  }
-}
-const hasEventBeenEdited = () => {
-  const i = initialEventData.value
-  return (
-    name.value !== i.name ||
-    startTime.value !== i.startTime ||
-    endTime.value !== i.endTime ||
-    specificTimesEnabled.value !== i.specificTimesEnabled ||
-    selectedDateOption.value !== i.selectedDateOption ||
-    JSON.stringify(selectedDays.value) !== JSON.stringify(i.selectedDays) ||
-    JSON.stringify(selectedDaysOfWeek.value) !==
-      JSON.stringify(i.selectedDaysOfWeek) ||
-    daysOnly.value !== i.daysOnly ||
-    notificationsEnabled.value !== i.notificationsEnabled ||
-    JSON.stringify(emails.value) !== JSON.stringify(i.emails) ||
-    blindAvailabilityEnabled.value !== i.blindAvailabilityEnabled ||
-    sendEmailAfterXResponsesEnabled.value !==
-      i.sendEmailAfterXResponsesEnabled ||
-    sendEmailAfterXResponses.value !== i.sendEmailAfterXResponses
-  )
-}
+
 const trackTimezoneChange = (newTimezone: Timezone) => {
   posthog.capture("timezone_selected_in_new_event_dialog", {
     timezone: newTimezone.value,
@@ -1138,24 +990,10 @@ const trackTimezoneChange = (newTimezone: Timezone) => {
 
 defineExpose({ reset, resetToEventData, hasEventBeenEdited })
 
-watch(
-  () => props.event,
-  () => {
-    updateFieldsFromEvent()
-    setInitialEventData()
-  },
-  { immediate: true }
-)
-watch(selectedDateOption, () => {
-  if (selectedDateOption.value === dateOptions.SPECIFIC) {
-    selectedDaysOfWeek.value = []
-  } else {
-    selectedDays.value = []
-  }
-})
 watch(startOnMonday, () => {
   localStorage.setItem("startCalendarOnMonday", String(startOnMonday.value))
 })
+
 watch(
   () => props.isDialogOpen,
   (newVal) => {

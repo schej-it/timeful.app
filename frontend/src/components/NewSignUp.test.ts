@@ -183,7 +183,6 @@ describe("NewSignUp", () => {
     expect(newSignUpSource).toContain('class="editor-dow-toggle"')
     expect(newSignUpSource).toContain('v-for="day in dayOfWeekButtons"')
     expect(newSignUpSource).toContain('getDayOfWeekButtonClass(day.value)')
-    expect(newSignUpSource).toContain('"editor-dow-button--selected": selectedDaysOfWeek.value.includes(dayIndex)')
     expect(newSignUpSource).not.toContain("<v-btn-toggle\n                  v-model=\"selectedDaysOfWeek\"\n                  multiple\n                  solo")
   })
 

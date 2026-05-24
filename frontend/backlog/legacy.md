@@ -57,9 +57,9 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
   Core schedule view remains a monolith with high computed-state and coordination surface area.
 - [x] `F-RESPONDENTS-LIST-001` ([finding](../findings/F-RESPONDENTS-LIST-001.md)) - `fixed`, `src/components/schedule_overlap/RespondentsList.vue`
   Respondents panel still concentrates export behavior, resize handling, DOM measurement, and view state coordination.
-- [ ] `F-NEW-EVENT-002` ([finding](../findings/F-NEW-EVENT-002.md)) - `planned`, `src/components/NewEvent.vue`
+- [x] `F-NEW-EVENT-002` ([finding](../findings/F-NEW-EVENT-002.md)) - `fixed`, `src/components/NewEvent.vue`
   New-event editor remains watcher-heavy and too broad for maintainable ownership boundaries.
-- [ ] `F-NEW-SIGN-UP-002` ([finding](../findings/F-NEW-SIGN-UP-002.md)) - `planned`, `src/components/NewSignUp.vue`
+- [x] `F-NEW-SIGN-UP-002` ([finding](../findings/F-NEW-SIGN-UP-002.md)) - `fixed`, `src/components/NewSignUp.vue`
   New-sign-up flow remains a large watcher-driven component with reset and validation logic tightly coupled to the view.
 - [ ] `F-UPGRADE-DIALOG-002` ([finding](../findings/F-UPGRADE-DIALOG-002.md)) - `planned`, `src/components/pricing/UpgradeDialog.vue`
   Pricing and checkout dialog still mixes presentation, gating logic, analytics, and provider-flow state in one component.

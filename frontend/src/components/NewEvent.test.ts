@@ -292,7 +292,6 @@ describe("NewEvent", () => {
     expect(newEventSource).toContain('class="editor-dow-toggle new-event-dow-toggle"')
     expect(newEventSource).toContain('v-for="day in dayOfWeekButtons"')
     expect(newEventSource).toContain('getDayOfWeekButtonClass(day.value)')
-    expect(newEventSource).toContain('"editor-dow-button--selected": selectedDaysOfWeek.value.includes(dayIndex)')
     expect(newEventSource).not.toContain("<v-btn-toggle\n                  v-model=\"selectedDaysOfWeek\"\n                  multiple\n                  solo")
     expect(dayOfWeekButtonSnippet).not.toContain('color="primary"')
     expect(newEventStyleBlock).toMatch(
