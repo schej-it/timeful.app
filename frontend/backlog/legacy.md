@@ -48,7 +48,7 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
   Upgrade flow still triggers analytics and redirects from watcher-driven dialog state.
 - [x] `F-TIMEFUL-IMPORT-001` ([finding](../findings/F-TIMEFUL-IMPORT-001.md)) - `fixed`, `src/components/TimefulImportDialog.vue`
   Import validation still depends directly on `window.location.hostname`, and dialog close resets form state through a writable computed shim.
-- [ ] `F-SIGN-UP-BLOCKS-LIST-001` ([finding](../findings/F-SIGN-UP-BLOCKS-LIST-001.md)) - `planned`, `src/components/sign_up_form/SignUpBlocksList.vue`
+- [x] `F-SIGN-UP-BLOCKS-LIST-001` ([finding](../findings/F-SIGN-UP-BLOCKS-LIST-001.md)) - `fixed`, `src/components/sign_up_form/SignUpBlocksList.vue`
   Scroll behavior and max-height sizing still rely on imperative DOM queries, resize handling, and an exposed scroll API.
 
 ## P1

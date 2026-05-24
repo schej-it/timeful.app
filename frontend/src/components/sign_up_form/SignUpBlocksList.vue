@@ -2,9 +2,7 @@
   <div
     ref="scrollableSection"
     class="tw-flex tw-flex-col"
-    :style="
-      !isPhone ? `max-height: ${signUpBlocksListMaxHeight}px !important;` : ''
-    "
+    :style="containerStyle"
   >
     <div
       ref="signUpBlocksScrollView"
@@ -51,9 +49,9 @@
 
     <div class="tw-relative">
       <OverflowGradient
-        v-if="hasMounted && !isPhone && signUpBlocksScrollView"
+        v-if="hasMounted && desktopScrollContainer"
         class="tw-h-16"
-        :scroll-container="signUpBlocksScrollView"
+        :scroll-container="desktopScrollContainer"
         :show-arrow="false"
       />
     </div>
@@ -61,11 +59,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from "vue"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import type { ScheduleOverlapSignUpBlock } from "@/composables/schedule_overlap/types"
 import SignUpBlock from "./SignUpBlock.vue"
 import OverflowGradient from "@/components/OverflowGradient.vue"
+import { useSignUpBlocksListViewport } from "./useSignUpBlocksListViewport"
 
 withDefaults(
   defineProps<{
@@ -86,51 +84,14 @@ const emit = defineEmits<{
 }>()
 
 const { isPhone } = useDisplayHelpers()
-
-const scrollableSection = ref<HTMLElement | null>(null)
-const signUpBlocksScrollView = ref<HTMLElement | null>(null)
-const desktopMaxHeight = ref(0)
-const signUpBlocksListMinHeight = 400
-const hasMounted = ref(false)
-
-const signUpBlocksListMaxHeight = computed(() =>
-  Math.max(desktopMaxHeight.value, signUpBlocksListMinHeight)
-)
-
-const setDesktopMaxHeight = () => {
-  const el = scrollableSection.value
-  if (el) {
-    const { top } = el.getBoundingClientRect()
-    desktopMaxHeight.value = window.innerHeight - top - 32
-  } else {
-    desktopMaxHeight.value = 0
-  }
-}
-
-const scrollToSignUpBlock = (id: string) => {
-  const scrollView = signUpBlocksScrollView.value
-  if (scrollView) {
-    const targetBlock = scrollView.querySelector<HTMLElement>(
-      `[data-id='${id}']`
-    )
-    if (targetBlock) {
-      const scrollTop = targetBlock.offsetTop - scrollView.offsetTop
-      scrollView.scrollTo({ top: scrollTop, behavior: "smooth" })
-    }
-  }
-}
+const {
+  containerStyle,
+  desktopScrollContainer,
+  hasMounted,
+  scrollableSection,
+  signUpBlocksScrollView,
+  scrollToSignUpBlock,
+} = useSignUpBlocksListViewport(isPhone)
 
 defineExpose({ scrollToSignUpBlock })
-
-onMounted(() => {
-  setDesktopMaxHeight()
-  addEventListener("resize", setDesktopMaxHeight)
-  void nextTick(() => {
-    hasMounted.value = true
-  })
-})
-
-onUnmounted(() => {
-  removeEventListener("resize", setDesktopMaxHeight)
-})
 </script>
