@@ -8,6 +8,10 @@ import type {
   CalendarEventsMap,
 } from "@/composables/schedule_overlap/types"
 import { getRealOwnerId } from "@/composables/event/eventOwnership"
+import {
+  getGuestNameStorageKey,
+  readGuestName,
+} from "@/composables/schedule_overlap/scheduleOverlapStorage"
 import type { ScheduleOverlapInstance } from "./types"
 import { fetchEventFromPath } from "./eventTransportBoundary"
 import {
@@ -64,10 +68,9 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     } catch {
       // continue with fallback
     }
-    let guestName: string | null = null
-    if (typeof localStorage !== "undefined" && resolvedLongId) {
-      guestName = (localStorage[`${resolvedLongId}.guestName`] as string | undefined) ?? null
-    }
+    const guestName = resolvedLongId
+      ? readGuestName(getGuestNameStorageKey(resolvedLongId)) ?? null
+      : null
     let url = `/events/${sanitizedId}`
     if (guestName && guestName.length > 0) url += `?guestName=${encodeURIComponent(guestName)}`
     const fetchedEvent = await fetchEventFromPath(url)

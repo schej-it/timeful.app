@@ -84,6 +84,8 @@ import { useSignUpForm } from "@/composables/schedule_overlap/useSignUpForm"
 import { useScheduleOverlapUI } from "@/composables/schedule_overlap/useScheduleOverlapUI"
 import { useOwnedTimezone } from "@/composables/timezone/useOwnedTimezone"
 import { useScheduleOverlapController } from "./useScheduleOverlapController"
+import { useScheduleOverlapPreferences } from "./useScheduleOverlapPreferences"
+import { useScheduleOverlapViewModels } from "./useScheduleOverlapViewModels"
 import {
   states,
 } from "@/composables/schedule_overlap/types"
@@ -93,14 +95,8 @@ import type {
 } from "@/composables/schedule_overlap/types"
 import type {
   ScheduleOverlapDaysOnlyGridActions,
-  ScheduleOverlapDaysOnlyGridViewModel,
-  ScheduleOverlapMobileOverlayViewModel,
-  ScheduleOverlapRespondentsPanelViewModel,
-  ScheduleOverlapSidebarViewModel,
   ScheduleOverlapTimeGridActions,
-  ScheduleOverlapTimeGridViewModel,
   ScheduleOverlapToolRowActions,
-  ScheduleOverlapToolRowViewModel,
 } from "./scheduleOverlapViewModels"
 import type { ScheduleOverlapSidebarExposed as ScheduleOverlapSidebarContract } from "./scheduleOverlapContracts"
 
@@ -174,12 +170,17 @@ const authUser = computed(() => mainStore.authUser)
 
 const eventRef = computed(() => props.event)
 const weekOffsetRef = computed(() => props.weekOffset)
-
-const guestNameKey = computed(() => `${String(props.event._id)}.guestName`)
-const guestName = computed<string | undefined>(() => (localStorage[guestNameKey.value] as string | undefined) ?? undefined)
 const scheduleTimezoneReferenceDate = computed(() =>
   getTimezoneReferenceDateForEvent(props.event, props.weekOffset)
 )
+const {
+  guestNameKey,
+  guestName,
+  showBestTimes,
+  setGuestName,
+} = useScheduleOverlapPreferences({
+  eventId: computed(() => props.event._id ?? ""),
+})
 
 const {
   timezone: curTimezone,
@@ -191,11 +192,6 @@ const {
   referenceDate: scheduleTimezoneReferenceDate,
 })
 const state = ref<ScheduleOverlapState>(states.BEST_TIMES)
-const showBestTimes = ref<boolean>(
-  localStorage.showBestTimes === undefined
-    ? false
-    : localStorage.showBestTimes === "true"
-)
 const defaultState = computed<ScheduleOverlapState>(() =>
   showBestTimes.value ? states.BEST_TIMES : states.HEATMAP
 )
@@ -548,176 +544,6 @@ const formattedAttendees = computed(() =>
   props.event.attendees as { email: string; declined?: boolean }[] | undefined
 )
 
-const respondentsPanel = computed<ScheduleOverlapRespondentsPanelViewModel>(() => ({
-  event: props.event,
-  eventId: props.event._id ?? "",
-  days: allDays.value,
-  times: times.value,
-  curDate: getDateFromRowCol(curTimeslot.value.row, curTimeslot.value.col) ?? undefined,
-  curRespondent: curRespondent.value,
-  curRespondents: curRespondents.value,
-  curTimeslot: {
-    dayIndex: curTimeslot.value.col,
-    timeIndex: curTimeslot.value.row,
-  },
-  curTimeslotAvailability: curTimeslotAvailability.value,
-  respondents: respondents.value,
-  parsedResponses: parsedResponses.value,
-  isOwner: isOwner.value,
-  isGroup: isGroup.value,
-  attendees: formattedAttendees.value,
-  responsesFormatted: responsesFormatted.value,
-  timezone: curTimezone.value,
-  showCalendarEvents: showCalendarEvents.value,
-  showBestTimes: showBestTimes.value,
-  hideIfNeeded: hideIfNeeded.value,
-  showEventOptions: showEventOptions.value,
-  guestAddedAvailability: guestAddedAvailability.value,
-  addingAvailabilityAsGuest: props.addingAvailabilityAsGuest,
-}))
-
-const sidebarViewModel = computed<ScheduleOverlapSidebarViewModel>(() => ({
-  event: props.event,
-  state: state.value,
-  isSignUp: isSignUp.value,
-  isOwner: isOwner.value,
-  isGroup: isGroup.value,
-  isPhone: isPhone.value,
-  authUser: authUser.value,
-  alreadyRespondedToSignUpForm: alreadyRespondedToSignUpForm.value,
-  signUpBlocks: signUpBlocksByDay.value.flat(),
-  signUpBlocksToAdd: signUpBlocksToAddByDay.value.flat(),
-  numTempTimes: tempTimes.value.size,
-  curGuestId: props.curGuestId,
-  userHasResponded: userHasResponded.value,
-  addingAvailabilityAsGuest: props.addingAvailabilityAsGuest,
-  canEditGuestName: canEditGuestName.value,
-  newGuestName: newGuestName.value,
-  editGuestNameDialog: editGuestNameDialog.value,
-  availabilityType: availabilityType.value,
-  showOverlayAvailabilityToggle: showOverlayAvailabilityToggle.value,
-  overlayAvailability: overlayAvailability.value,
-  calendarPermissionGranted: props.calendarPermissionGranted,
-  calendarEventsMap: props.calendarEventsMap,
-  sharedCalendarAccounts: sharedCalendarAccounts.value,
-  showCalendarOptions: showCalendarOptions.value,
-  showEditOptions: showEditOptions.value,
-  calendarOptionsDialog: calendarOptionsDialog.value,
-  bufferTime: bufferTime.value,
-  workingHours: workingHours.value,
-  curTimezone: curTimezone.value,
-  deleteAvailabilityDialog: deleteAvailabilityDialog.value,
-  showAds: showAds.value,
-  rightSideWidth: rightSideWidth.value,
-  respondentsPanel: respondentsPanel.value,
-}))
-
-const mobileOverlayViewModel = computed<ScheduleOverlapMobileOverlayViewModel>(
-  () => ({
-    bottomOffset: showAds.value ? "calc(4rem + 115px)" : "4rem",
-    hintTextShown: hintTextShown.value,
-    hintText: hintText.value,
-    isGroup: isGroup.value,
-    editing: editing.value,
-    isSignUp: isSignUp.value,
-    availabilityType: availabilityType.value,
-    isWeekly: isWeekly.value,
-    calendarPermissionGranted: props.calendarPermissionGranted,
-    weekOffset: props.weekOffset,
-    event: props.event,
-    showStickyRespondents: delayedShowStickyRespondents.value,
-    respondentsPanel: respondentsPanel.value,
-    state: state.value,
-    numTempTimes: tempTimes.value.size,
-  })
-)
-
-const toolRowViewModel = computed<ScheduleOverlapToolRowViewModel>(() => ({
-  event: props.event,
-  state: state.value,
-  states,
-  actions: toolRowActions.value,
-  curTimezone: curTimezone.value,
-  timezoneModified: timezoneModified.value,
-  startCalendarOnMonday: startCalendarOnMonday.value,
-  showBestTimes: showBestTimes.value,
-  hideIfNeeded: hideIfNeeded.value,
-  isWeekly: isWeekly.value,
-  calendarPermissionGranted: props.calendarPermissionGranted,
-  weekOffset: props.weekOffset,
-  timezoneReferenceDate: timezoneReferenceDate.value,
-  numResponses: respondents.value.length,
-  mobileNumDays: mobileNumDays.value,
-  allowScheduleEvent: allowScheduleEvent.value,
-  showEventOptions: showEventOptions.value,
-  timeType: timeType.value,
-}))
-
-const daysOnlyGridViewModel = computed<ScheduleOverlapDaysOnlyGridViewModel>(() => ({
-  event: props.event,
-  actions: daysOnlyGridActions.value,
-  curMonthText: curMonthText.value,
-  hasPrevPage: hasPrevPage.value,
-  hasNextPage: hasNextPage.value,
-  daysOfWeek: daysOfWeek.value,
-  monthDays: monthDays.value,
-  dayTimeslotClassStyle: dayTimeslotClassStyle.value,
-  dayTimeslotVon: dayTimeslotVon.value,
-  isPhone: isPhone.value,
-  hintTextShown: hintTextShown.value,
-  hintText: hintText.value,
-  calendarOnly: props.calendarOnly,
-  toolRow: toolRowViewModel.value,
-}))
-
-const timedGridViewModel = computed<ScheduleOverlapTimeGridViewModel>(() => ({
-  event: props.event,
-  actions: timedGridActions.value,
-  calendarOnly: props.calendarOnly,
-  hasPrevPage: hasPrevPage.value,
-  hasNextPage: hasNextPage.value,
-  splitTimes: splitTimes.value,
-  times: times.value,
-  timeslotHeight: timeslotHeight.value,
-  days: days.value,
-  isSpecificDates: isSpecificDates.value,
-  isGroup: isGroup.value,
-  sampleCalendarEventsByDay: props.sampleCalendarEventsByDay,
-  showLoader: showLoader.value,
-  loadingCalendarEvents: props.loadingCalendarEvents,
-  editing: editing.value,
-  alwaysShowCalendarEvents: props.alwaysShowCalendarEvents,
-  showCalendarEvents: showCalendarEvents.value,
-  calendarEventsByDay: calendarEventsByDay.value,
-  state: state.value,
-  states,
-  page: page.value,
-  maxDaysPerPage: maxDaysPerPage.value,
-  dragStart: dragStart.value,
-  curScheduledEvent: curScheduledEvent.value,
-  scheduledEventStyle: scheduledEventStyle.value,
-  signUpBlockBeingDraggedStyle: signUpBlockBeingDraggedStyle.value,
-  newSignUpBlockName: newSignUpBlockName.value,
-  isSignUp: isSignUp.value,
-  signUpBlocksByDay: signUpBlocksByDay.value,
-  signUpBlocksToAddByDay: signUpBlocksToAddByDay.value,
-  overlayAvailability: overlayAvailability.value,
-  overlaidAvailability: overlaidAvailability.value,
-  timeslotClassStyle: timeslotClassStyle.value,
-  timeslotVon: timeslotVon.value,
-  noEventNames: props.noEventNames,
-  hintTextShown: hintTextShown.value,
-  hintText: hintText.value,
-  isPhone: isPhone.value,
-  max: max.value,
-  respondentsLength: respondents.value.length,
-  fetchedResponses: fetchedResponses.value,
-  loadingResponsesLoading: loadingResponses.value.loading,
-  toolRow: toolRowViewModel.value,
-  getRenderedTimeBlockStyle: getRenderedTimeBlockStyleForTemplate,
-  getSignUpBlockStyle,
-}))
-
 const overlaidAvailability = computed(() => {
   return buildOverlaidAvailability({
     daysLength: days.value.length,
@@ -975,6 +801,112 @@ const timedGridActions = computed<ScheduleOverlapTimeGridActions>(() => ({
   },
 }))
 
+const {
+  sidebarViewModel,
+  mobileOverlayViewModel,
+  toolRowViewModel,
+  daysOnlyGridViewModel,
+  timedGridViewModel,
+} = useScheduleOverlapViewModels({
+  event: eventRef,
+  state,
+  states,
+  isSignUp,
+  isOwner,
+  isGroup,
+  isPhone,
+  authUser,
+  alreadyRespondedToSignUpForm,
+  signUpBlocksByDay,
+  signUpBlocksToAddByDay,
+  tempTimes,
+  curGuestId: computed(() => props.curGuestId),
+  userHasResponded,
+  addingAvailabilityAsGuest: computed(() => props.addingAvailabilityAsGuest),
+  canEditGuestName,
+  newGuestName,
+  editGuestNameDialog,
+  availabilityType,
+  showOverlayAvailabilityToggle,
+  overlayAvailability,
+  calendarPermissionGranted: computed(() => props.calendarPermissionGranted),
+  calendarEventsMap: computed(() => props.calendarEventsMap),
+  sharedCalendarAccounts,
+  showCalendarOptions,
+  showEditOptions,
+  calendarOptionsDialog,
+  bufferTime,
+  workingHours,
+  curTimezone,
+  deleteAvailabilityDialog,
+  showAds,
+  rightSideWidth,
+  allDays,
+  times,
+  getDateFromRowCol,
+  curTimeslot,
+  curRespondent,
+  curRespondents,
+  curTimeslotAvailability,
+  respondents,
+  parsedResponses,
+  attendees: formattedAttendees,
+  responsesFormatted,
+  showCalendarEvents,
+  showBestTimes,
+  hideIfNeeded,
+  showEventOptions,
+  guestAddedAvailability,
+  editing,
+  isWeekly,
+  weekOffset: computed(() => props.weekOffset),
+  delayedShowStickyRespondents,
+  toolRowActions,
+  timezoneModified,
+  startCalendarOnMonday,
+  timezoneReferenceDate,
+  mobileNumDays,
+  allowScheduleEvent,
+  timeType,
+  daysOnlyGridActions,
+  curMonthText,
+  hasPrevPage,
+  hasNextPage,
+  daysOfWeek,
+  monthDays,
+  dayTimeslotClassStyle,
+  dayTimeslotVon,
+  calendarOnly: computed(() => props.calendarOnly),
+  timedGridActions,
+  splitTimes,
+  timeslotHeight,
+  days,
+  isSpecificDates,
+  sampleCalendarEventsByDay: computed(() => props.sampleCalendarEventsByDay),
+  showLoader,
+  loadingCalendarEvents: computed(() => props.loadingCalendarEvents),
+  alwaysShowCalendarEvents: computed(() => props.alwaysShowCalendarEvents),
+  calendarEventsByDay,
+  page,
+  maxDaysPerPage,
+  dragStart,
+  curScheduledEvent,
+  scheduledEventStyle,
+  signUpBlockBeingDraggedStyle,
+  newSignUpBlockName,
+  overlaidAvailability,
+  timeslotClassStyle,
+  timeslotVon,
+  noEventNames: computed(() => props.noEventNames),
+  hintTextShown,
+  hintText,
+  max,
+  fetchedResponses,
+  loadingResponsesLoading: computed(() => loadingResponses.value.loading),
+  getRenderedTimeBlockStyle: getRenderedTimeBlockStyleForTemplate,
+  getSignUpBlockStyle,
+})
+
 function getTimeslotVon(row: number, col: number): Record<string, () => void> {
   if (!props.interactable) return {}
   return {
@@ -1085,7 +1017,7 @@ async function saveGuestName() {
       oldName: props.curGuestId,
       newName: name,
     })
-    localStorage[guestNameKey.value] = name
+    setGuestName(name)
     mainStore.showInfo("Guest name updated successfully")
     editGuestNameDialog.value = false
     emit("setCurGuestId", name)
@@ -1106,7 +1038,6 @@ defineExpose({
   hasPages: _hasPages,
   respondents,
   state,
-  states,
   startEditing,
   stopEditing: _stopEditing,
   setAvailabilityAutomatically: _setAvailabilityAutomatically,

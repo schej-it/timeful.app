@@ -1,4 +1,3 @@
-import type { states } from "@/composables/schedule_overlap/types"
 import type {
   SharedCalendarAccounts,
   Timezone,
@@ -15,7 +14,6 @@ export interface ScheduleOverlapInstance {
   hasPages: boolean
   respondents: { _id?: string; name?: string }[]
   state: string
-  states: typeof states
   startEditing(): void
   stopEditing(): void
   setAvailabilityAutomatically(): void

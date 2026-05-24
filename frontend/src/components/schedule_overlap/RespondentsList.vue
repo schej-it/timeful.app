@@ -442,24 +442,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue"
+import { computed } from "vue"
 import { storeToRefs } from "pinia"
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
-import { calendarTypes } from "@/constants"
-import { _delete, getEventDateSeeds, getLocale, zdtSetHas } from "@/utils"
+import { _delete } from "@/utils"
 import { posthog } from "@/plugins/posthog"
 import UserAvatarContent from "../UserAvatarContent.vue"
 import EventOptions from "./EventOptions.vue"
 import OverflowGradient from "@/components/OverflowGradient.vue"
-import { Temporal } from "temporal-polyfill"
 import type { ZdtMap } from "@/utils"
+import type { Temporal } from "temporal-polyfill"
 import type {
   ParsedResponses,
   ScheduleOverlapEvent,
   Timezone,
 } from "@/composables/schedule_overlap/types"
 import type { User } from "@/types"
+import { useRespondentsCsvExport } from "./useRespondentsCsvExport"
+import { useRespondentsListSizing } from "./useRespondentsListSizing"
+import { useRespondentsListState } from "./useRespondentsListState"
 
 const props = defineProps<{
   eventId: string
@@ -508,161 +510,49 @@ const { authUser } = storeToRefs(mainStore)
 const { showError, showInfo } = mainStore
 
 const { isPhone } = useDisplayHelpers()
+const { scrollableSection, respondentsScrollView, respondentsListMaxHeight, hasMounted } =
+  useRespondentsListSizing()
 
-const scrollableSection = ref<HTMLElement | null>(null)
-const respondentsScrollView = ref<HTMLElement | null>(null)
-
-const deleteAvailabilityDialog = ref(false)
-const exportCsvDialog = reactive({
-  visible: false,
-  loading: false,
-  type: "datesToAvailable",
-  types: [
-    { text: "Dates <> people available", value: "datesToAvailable" },
-    { text: "Name <> dates available", value: "nameToDates" },
-  ],
-})
-const userToDelete = ref<User | null>(null)
-const desktopMaxHeight = ref(0)
-const respondentsListMinHeight = 400
-let oldCurRespondents: string[] = []
-const curRespondentsAddedTime = reactive<Record<string, Temporal.ZonedDateTime>>({})
-const hasMounted = ref(false)
-
-const allowExportCsv = computed(() => {
-  if (props.isGroup || isPhone.value) return false
-  return props.event.blindAvailabilityEnabled
-    ? props.isOwner && props.respondents.length > 0
-    : props.respondents.length > 0
-})
-
-const curRespondentsSet = computed(() => new Set(props.curRespondents))
-
-const isCurTimeslotSelected = computed(
-  () =>
-    props.curTimeslot.dayIndex !== -1 && props.curTimeslot.timeIndex !== -1
-)
-
-const numUsersAvailable = computed(() => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  props.curTimeslot
-  let numUsers = 0
-  for (const key in props.curTimeslotAvailability) {
-    if (props.curTimeslotAvailability[key]) numUsers++
-  }
-  return numUsers
+const {
+  allowExportCsv,
+  isCurTimeslotSelected,
+  numUsersAvailable,
+  numCurRespondentsAvailable,
+  pendingUsers,
+  showIfNeededStar,
+  orderedRespondents,
+  deleteAvailabilityDialog,
+  userToDelete,
+  respondentClass,
+  respondentIfNeeded,
+  respondentSelected,
+  shouldUseRichAvatar,
+  isGuest,
+  showDeleteAvailabilityDialog,
+} = useRespondentsListState({
+  event: props.event,
+  respondents: computed(() => props.respondents),
+  curRespondents: computed(() => props.curRespondents),
+  curTimeslotAvailability: computed(() => props.curTimeslotAvailability),
+  parsedResponses: computed(() => props.parsedResponses),
+  curDate: computed(() => props.curDate),
+  hideIfNeeded: computed(() => props.hideIfNeeded),
+  isGroup: computed(() => props.isGroup),
+  attendees: computed(() => props.attendees),
+  isOwner: computed(() => props.isOwner),
+  isPhone,
 })
 
-const numCurRespondentsAvailable = computed(() => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  props.curTimeslot
-  let numUsers = 0
-  for (const key in props.curTimeslotAvailability) {
-    if (props.curTimeslotAvailability[key] && curRespondentsSet.value.has(key))
-      numUsers++
-  }
-  return numUsers
+const { exportCsvDialog, exportCsv, trackExportCsvClick } = useRespondentsCsvExport({
+  eventId: props.eventId,
+  event: props.event,
+  parsedResponses: props.parsedResponses,
+  respondentCount: props.respondents.length,
 })
-
-const pendingUsers = computed(() => {
-  if (!props.isGroup) return []
-  const respondentEmailsSet = new Set(
-    props.respondents.map((r) => r.email?.toLowerCase() ?? "")
-  )
-  return (props.attendees ?? []).filter((a) => {
-    if (!a.declined && !respondentEmailsSet.has(a.email.toLowerCase())) {
-      return true
-    }
-    return false
-  })
-})
-
-const showIfNeededStar = computed(() => {
-  if (props.hideIfNeeded) return false
-  for (const user of props.respondents) {
-    if (respondentIfNeeded(user._id ?? "")) return true
-  }
-  return false
-})
-
-const orderedRespondents = computed(() => {
-  const ordered = [...props.respondents]
-  ordered.sort((a, b) => {
-    const aId = a._id ?? ""
-    const bId = b._id ?? ""
-    if (curRespondentsSet.value.has(aId) && curRespondentsSet.value.has(bId)) {
-      return Temporal.ZonedDateTime.compare(curRespondentsAddedTime[aId], curRespondentsAddedTime[bId])
-    } else if (curRespondentsSet.value.has(aId) && !curRespondentsSet.value.has(bId)) {
-      return -1
-    } else if (!curRespondentsSet.value.has(aId) && curRespondentsSet.value.has(bId)) {
-      return 1
-    }
-    return (a.firstName ?? "").localeCompare(b.firstName ?? "")
-  })
-  return ordered
-})
-
-const respondentsListMaxHeight = computed(() =>
-  Math.max(desktopMaxHeight.value, respondentsListMinHeight)
-)
 
 function clickRespondent(e: MouseEvent, userId: string) {
   e.stopImmediatePropagation()
   emit("clickRespondent", e, userId)
-}
-
-function respondentClass(id: string) {
-  const c: string[] = []
-  if (curRespondentsSet.value.has(id)) {
-    // intentionally empty
-  } else if (props.curRespondents.length > 0) {
-    c.push("tw-text-gray")
-  }
-
-  if (
-    (curRespondentsSet.value.has(id) || props.curRespondents.length === 0) &&
-    respondentIfNeeded(id)
-  ) {
-    c.push("tw-bg-yellow")
-  }
-
-  if (!props.curTimeslotAvailability[id]) {
-    c.push("tw-line-through")
-    c.push("tw-text-gray")
-  }
-  return c
-}
-
-function respondentIfNeeded(id: string) {
-  if (!props.curDate || props.hideIfNeeded) return false
-  return Boolean(
-    props.parsedResponses[id].ifNeeded &&
-      zdtSetHas(props.parsedResponses[id].ifNeeded, props.curDate)
-  )
-}
-
-function respondentSelected(id: string) {
-  return curRespondentsSet.value.has(id)
-}
-
-function shouldUseRichAvatar(user: User) {
-  const calendarType =
-    "calendarType" in user ? user.calendarType : undefined
-  return (
-    !isGuest(user) &&
-    ((user.picture?.length ?? 0) > 0 ||
-      calendarType === calendarTypes.APPLE ||
-      calendarType === calendarTypes.OUTLOOK)
-  )
-}
-
-function isGuest(user: User) {
-  return user._id === user.firstName
-}
-
-function showDeleteAvailabilityDialog(user: User) {
-  deleteAvailabilityDialog.value = true
-  userToDelete.value = user
 }
 
 async function deleteAvailability(user: User | null) {
@@ -686,119 +576,6 @@ async function deleteAvailability(user: User | null) {
   }
 }
 
-function getDateString(date: Temporal.ZonedDateTime | Temporal.PlainDate) {
-  const locale = getLocale()
-  if (props.event.daysOnly) {
-    // For days-only events, return the plain date string
-    if (date instanceof Temporal.PlainDate) {
-      return date.toString()
-    }
-    return date.toPlainDate().toString()
-  }
-  // For time-specific events, return localized datetime string
-  return (
-    '"' + date.toLocaleString(locale) + '"'
-  )
-}
-
-function exportCsv() {
-  const csv: string[][] = []
-  const increment = 15
-  const durationHours = props.event.duration?.total("hours") ?? 0
-  const numIterations = props.event.daysOnly
-    ? 1
-    : (durationHours * 60) / increment
-
-  const responses = Object.values(props.parsedResponses).sort((a, b) =>
-    (a.user.firstName ?? "").localeCompare(
-      b.user.firstName ?? ""
-    )
-  )
-  const eventDates = getEventDateSeeds(props.event)
-
-  if (exportCsvDialog.type === "datesToAvailable") {
-    const header = ["Date / Time"]
-    header.push(
-      ...responses.map((r) => {
-        const u = r.user
-        return `${u.firstName ?? ""} ${u.lastName ?? ""}`
-      })
-    )
-    csv.push(header)
-
-    for (const date of eventDates) {
-      let curDate = date
-      for (let i = 0; i < numIterations; ++i) {
-        const row = [getDateString(curDate)]
-        for (const response of responses) {
-          if (zdtSetHas(response.availability, curDate)) {
-            row.push("Available")
-          } else if (response.ifNeeded && zdtSetHas(response.ifNeeded, curDate)) {
-            row.push("If needed")
-          } else {
-            row.push("")
-          }
-        }
-        csv.push(row)
-        curDate = curDate.add({ minutes: increment })
-      }
-    }
-  } else if (exportCsvDialog.type === "nameToDates") {
-    csv.push(["Name", "Date / Times available"])
-
-    for (const response of responses) {
-      const u = response.user
-      const row = [`${u.firstName ?? ""} ${u.lastName ?? ""}`]
-
-      for (const date of eventDates) {
-        let curDate = date
-        for (let i = 0; i < numIterations; ++i) {
-          if (
-            zdtSetHas(response.availability, curDate) ||
-            (response.ifNeeded && zdtSetHas(response.ifNeeded, curDate))
-          ) {
-            row.push(getDateString(curDate))
-          } else {
-            row.push("")
-          }
-          curDate = curDate.add({ minutes: increment })
-        }
-      }
-      csv.push(row)
-    }
-  }
-
-  // Source: https://stackoverflow.com/questions/14964035/how-to-export-javascript-array-info-to-csv-on-client-side
-  const csvString =
-    "data:text/csv;charset=utf-8," + csv.map((e) => e.join(",")).join("\n")
-  const encodedUri = encodeURI(csvString)
-
-  // Source: https://stackoverflow.com/questions/7034754/how-to-set-a-file-name-using-window-open
-  const downloadLink = document.createElement("a")
-  downloadLink.href = encodedUri
-  downloadLink.download = `${props.event.name ?? "export"}.csv`
-  document.body.appendChild(downloadLink)
-  downloadLink.click()
-  document.body.removeChild(downloadLink)
-}
-
-function trackExportCsvClick() {
-  posthog.capture("export_csv_clicked", {
-    eventId: props.eventId,
-    numRespondents: props.respondents.length,
-  })
-}
-
-function setDesktopMaxHeight() {
-  const el = scrollableSection.value
-  if (el) {
-    const { top } = el.getBoundingClientRect()
-    desktopMaxHeight.value = window.innerHeight - top - 32
-  } else {
-    desktopMaxHeight.value = 0
-  }
-}
-
 async function copyEmailToClipboard(email: string | undefined) {
   if (!email) return
   try {
@@ -809,39 +586,6 @@ async function copyEmailToClipboard(email: string | undefined) {
     showError("Failed to copy email.")
   }
 }
-
-onMounted(() => {
-  setDesktopMaxHeight()
-  addEventListener("resize", setDesktopMaxHeight)
-  void nextTick(() => {
-    hasMounted.value = true
-  })
-})
-
-onBeforeUnmount(() => {
-  removeEventListener("resize", setDesktopMaxHeight)
-})
-
-watch(
-  () => props.curRespondents,
-  () => {
-    const oldSet = new Set(oldCurRespondents)
-    const newSet = new Set(props.curRespondents)
-
-    const addedRespondents = props.curRespondents.filter((id) => !oldSet.has(id))
-    const removedRespondents = oldCurRespondents.filter((id) => !newSet.has(id))
-
-    for (const id of addedRespondents) {
-      curRespondentsAddedTime[id] = Temporal.Now.zonedDateTimeISO()
-    }
-    for (const id of removedRespondents) {
-      Reflect.deleteProperty(curRespondentsAddedTime, id)
-    }
-
-    oldCurRespondents = [...props.curRespondents]
-  },
-  { deep: true }
-)
 </script>
 
 <style scoped src="./ScheduleOverlapCompactSwitch.css"></style>

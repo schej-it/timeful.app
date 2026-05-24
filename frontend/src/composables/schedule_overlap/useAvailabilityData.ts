@@ -25,6 +25,7 @@ import {
 import { eventTypes, durations, UTC } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
+import { readGuestName, writeGuestName } from "./scheduleOverlapStorage"
 import { Temporal } from "temporal-polyfill"
 import {
   normalizeCalendarOptions,
@@ -213,7 +214,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
         .blindAvailabilityEnabled &&
       !opts.isOwner.value
     ) {
-      const guestName = localStorage.getItem(opts.guestNameKey.value) ?? ""
+      const guestName = readGuestName(opts.guestNameKey.value) ?? ""
       const userId = authUser?._id ?? guestName
       if (userId in responses) {
         const user = {
@@ -641,7 +642,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
         guestPayload,
       }))
       if (payload.guest) {
-        localStorage[opts.guestNameKey.value] = guestPayload.name
+        writeGuestName(opts.guestNameKey.value, guestPayload.name)
       }
     }
 

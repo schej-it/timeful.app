@@ -26,7 +26,7 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
   Tooltip behavior still relies on manual DOM listeners, timers, and inline placement state.
 - [x] `F-CALENDAR-ACCOUNTS-001` ([finding](../findings/F-CALENDAR-ACCOUNTS-001.md)) - `verified`, `src/components/settings/CalendarAccounts.vue`
   Data source selection, event fetching, and collapse persistence still span mount logic, watchers, and `localStorage`.
-- [ ] `F-SCHEDULE-OVERLAP-001` ([finding](../findings/F-SCHEDULE-OVERLAP-001.md)) - `in_progress`, `src/components/schedule_overlap/ScheduleOverlap.vue`
+- [x] `F-SCHEDULE-OVERLAP-001` ([finding](../findings/F-SCHEDULE-OVERLAP-001.md)) - `fixed`, `src/components/schedule_overlap/ScheduleOverlap.vue`
   Core scheduling state still depends on ambient browser storage and a wide exposed instance-style API.
 - [x] `F-SCHEDULE-OVERLAP-SIDEBAR-001` ([finding](../findings/F-SCHEDULE-OVERLAP-SIDEBAR-001.md)) - `fixed`, `src/components/schedule_overlap/ScheduleOverlapSidebar.vue`
   Sidebar coordination still reaches into child DOM through `$el` and exposes scroll helpers imperatively.
@@ -53,9 +53,9 @@ Stable inventory for migration refactor debt. Use this file as the top-level ind
 
 ## P1
 
-- [ ] `F-SCHEDULE-OVERLAP-002` ([finding](../findings/F-SCHEDULE-OVERLAP-002.md)) - `planned`, `src/components/schedule_overlap/ScheduleOverlap.vue`
+- [x] `F-SCHEDULE-OVERLAP-002` ([finding](../findings/F-SCHEDULE-OVERLAP-002.md)) - `fixed`, `src/components/schedule_overlap/ScheduleOverlap.vue`
   Core schedule view remains a monolith with high computed-state and coordination surface area.
-- [ ] `F-RESPONDENTS-LIST-001` ([finding](../findings/F-RESPONDENTS-LIST-001.md)) - `planned`, `src/components/schedule_overlap/RespondentsList.vue`
+- [x] `F-RESPONDENTS-LIST-001` ([finding](../findings/F-RESPONDENTS-LIST-001.md)) - `fixed`, `src/components/schedule_overlap/RespondentsList.vue`
   Respondents panel still concentrates export behavior, resize handling, DOM measurement, and view state coordination.
 - [ ] `F-NEW-EVENT-002` ([finding](../findings/F-NEW-EVENT-002.md)) - `planned`, `src/components/NewEvent.vue`
   New-event editor remains watcher-heavy and too broad for maintainable ownership boundaries.

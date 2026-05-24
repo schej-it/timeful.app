@@ -4,6 +4,10 @@ import { posthog } from "@/plugins/posthog"
 import { availabilityTypes, type AvailabilityType } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import {
+  readShowBestTimesPreference,
+  writeShowBestTimesPreference,
+} from "./scheduleOverlapStorage"
+import {
   states,
   type ParsedResponses,
   type RowCol,
@@ -42,9 +46,7 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
   const state = opts.state ?? ref<ScheduleOverlapState>(states.BEST_TIMES)
 
   const showBestTimes = opts.showBestTimes ?? ref<boolean>(
-    localStorage.showBestTimes === undefined
-      ? false
-      : localStorage.showBestTimes === "true"
+    readShowBestTimesPreference()
   )
 
   const defaultState = opts.defaultState ?? computed<ScheduleOverlapState>(() =>
@@ -245,7 +247,7 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
     localStorage.showEventOptions = String(showEventOptions.value)
   }
   const onShowBestTimesChange = () => {
-    localStorage.showBestTimes = String(showBestTimes.value)
+    writeShowBestTimesPreference(showBestTimes.value)
     if (
       state.value === states.BEST_TIMES ||
       state.value === states.HEATMAP

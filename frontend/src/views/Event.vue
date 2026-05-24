@@ -552,8 +552,14 @@ import {
 } from "@/composables/event/responseSubmissionBoundary"
 import {
   toScheduleOverlapEvent,
+  states as scheduleOverlapStates,
   type Timezone,
 } from "@/composables/schedule_overlap/types"
+import {
+  getGuestNameStorageKey,
+  readGuestName,
+  writeGuestName,
+} from "@/composables/schedule_overlap/scheduleOverlapStorage"
 import type { Event, User } from "@/types"
 import { fetchAuthUserProfile } from "@/utils/services/UserService"
 import { toQueryInstantString } from "@/utils/temporalQuery"
@@ -611,7 +617,7 @@ const selectedGuestRespondent = computed(() => scheduleOverlap.value?.selectedGu
 const numResponses = computed(() => scheduleOverlap.value?.respondents.length ?? 0)
 const isSettingSpecificTimes = computed(() => {
   const so = scheduleOverlap.value
-  return so ? so.state === so.states.SET_SPECIFIC_TIMES : false
+  return so ? so.state === scheduleOverlapStates.SET_SPECIFIC_TIMES : false
 })
 
 const isGroup = computed(() => (loader.event.value)?.type === eventTypes.GROUP)
@@ -963,10 +969,10 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
   let guestName = ""
   let guestEmail = ""
   if (isGuest) {
-    const guestNameKey = `${ev._id ?? ''}.guestName`
+    const guestNameKey = getGuestNameStorageKey(ev._id ?? "")
     if (forceGuestMode) {
       guestName = payloadGuestName ?? ""
-      localStorage[guestNameKey] = guestName
+      writeGuestName(guestNameKey, guestName)
       if (ev.collectEmails) {
         guestEmail = (e.data.payload?.guestEmail) ?? ""
         if (!guestEmail || guestEmail.length === 0) {
@@ -985,7 +991,7 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
         guestEmail = e.data.payload?.guestEmail ?? ev.responses?.[guestName]?.email ?? ""
       }
     } else {
-      const storedGuestName = localStorage[guestNameKey] as string | undefined
+      const storedGuestName = readGuestName(guestNameKey)
       if (!storedGuestName || storedGuestName.length === 0) {
         sendPluginError(
           requestId,
@@ -1159,11 +1165,9 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
   }
   const { timeMin, timeMax } = eventTimeRange
   try {
-    let guestName: string | null = null
-    if (typeof localStorage !== "undefined" && ev._id) {
-      const guestNameKey = `${ev._id}.guestName`
-      guestName = localStorage[guestNameKey] as string | null
-    }
+    const guestName = ev._id
+      ? readGuestName(getGuestNameStorageKey(ev._id)) ?? null
+      : null
     let url = `/events/${sanitizedId}/responses?timeMin=${toQueryInstantString(timeMin)}&timeMax=${toQueryInstantString(timeMax)}`
     if (guestName && guestName.length > 0) {
       url += `&guestName=${encodeURIComponent(guestName)}`
