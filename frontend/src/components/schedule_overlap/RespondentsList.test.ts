@@ -77,7 +77,7 @@ const mountRespondentsList = ({
           firstName: "Ada",
           lastName: "Lovelace",
           picture: "https://example.com/ada.png",
-        },
+        } as never,
       ],
       parsedResponses: {
         "user-1": {
@@ -86,7 +86,7 @@ const mountRespondentsList = ({
             firstName: "Ada",
             lastName: "Lovelace",
             picture: "https://example.com/ada.png",
-          },
+          } as never,
           availability: new ZdtSet(),
           ifNeeded: new ZdtSet([setEntry]),
         },
@@ -103,6 +103,7 @@ const mountRespondentsList = ({
       },
       showBestTimes: false,
       hideIfNeeded: false,
+      showAllHours: false,
       showEventOptions: false,
       guestAddedAvailability: false,
       addingAvailabilityAsGuest: false,
@@ -256,6 +257,7 @@ describe("RespondentsList", () => {
         },
         showBestTimes: true,
         hideIfNeeded: false,
+        showAllHours: false,
         showEventOptions: false,
         guestAddedAvailability: false,
         addingAvailabilityAsGuest: false,

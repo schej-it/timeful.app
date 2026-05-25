@@ -175,6 +175,51 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     return computeMinMaxHoursFromTimes(eventTimes)
   })
 
+  const specificTimesFallbackWindow = computed<{
+    startTime: Temporal.PlainTime
+    duration: Temporal.Duration
+  } | null>(() => {
+    if (!isSpecificTimes.value || state.value === states.SET_SPECIFIC_TIMES) {
+      return null
+    }
+
+    const explicitStartTime = event.value.startTime
+    const explicitDuration = event.value.duration
+    if (
+      explicitStartTime &&
+      explicitDuration &&
+      compareDuration(explicitDuration, durations.ZERO) > 0
+    ) {
+      return {
+        startTime: explicitStartTime,
+        duration: explicitDuration,
+      }
+    }
+
+    if (!specificTimesHourBounds.value) {
+      return null
+    }
+
+    return {
+      startTime: specificTimesHourBounds.value.minHours,
+      duration: specificTimesHourBounds.value.maxHours
+        .since(specificTimesHourBounds.value.minHours)
+        .add({ hours: 1 }),
+    }
+  })
+
+  const specificTimesDisplaySeedTime = computed<Temporal.PlainTime | null>(() => {
+    if (!isSpecificTimes.value || state.value === states.SET_SPECIFIC_TIMES) {
+      return null
+    }
+
+    if (event.value.startTime) {
+      return utcTimeToLocalTime(event.value.startTime, timezoneOffset.value)
+    }
+
+    return specificTimesFallbackWindow.value?.startTime ?? null
+  })
+
   const computeMinMaxHoursFromTimes = (
     timesArr: Temporal.ZonedDateTime[]
   ): { minHours: Temporal.PlainTime; maxHours: Temporal.PlainTime } => {
@@ -205,13 +250,15 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
    * */
   const splitTimes = computed<TimeItem[][]>(() => {
     const split: TimeItem[][] = [[], []]
-    const utcStartTime = specificTimesHourBounds.value
-      ? specificTimesHourBounds.value.minHours.add(timezoneOffset.value)
+    const utcStartTime = specificTimesFallbackWindow.value &&
+      (!event.value.startTime ||
+        !event.value.duration ||
+        compareDuration(event.value.duration, durations.ZERO) <= 0)
+      ? specificTimesFallbackWindow.value.startTime.add(timezoneOffset.value)
       : (event.value.startTime ?? Temporal.PlainTime.from({ hour: 0 }))
-    const durationHours = specificTimesHourBounds.value
-      ? specificTimesHourBounds.value.maxHours
-          .since(specificTimesHourBounds.value.minHours)
-          .add({ hours: 1 })
+    const durationHours = specificTimesFallbackWindow.value &&
+      (!event.value.duration || compareDuration(event.value.duration, durations.ZERO) <= 0)
+      ? specificTimesFallbackWindow.value.duration
       : (event.value.duration ?? durations.ZERO)
     const localStartTime = utcTimeToLocalTime(
       utcStartTime,
@@ -225,15 +272,30 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     )
 
     const getExtraTimes = (hoursOffset: Temporal.Duration): TimeItem[] => {
+      const absoluteMinutes = localStartMinutes + hoursOffset.total("minutes")
       if (compareDuration(timeslotDuration.value, durations.FIFTEEN_MINUTES) === 0) {
         return [
-          { hoursOffset: hoursOffset.add(durations.FIFTEEN_MINUTES) },
-          { hoursOffset: hoursOffset.add(durations.THIRTY_MINUTES) },
-          { hoursOffset: hoursOffset.add(durations.FORTY_FIVE_MINUTES) },
+          {
+            hoursOffset: hoursOffset.add(durations.FIFTEEN_MINUTES),
+            absoluteMinutes: absoluteMinutes + 15,
+          },
+          {
+            hoursOffset: hoursOffset.add(durations.THIRTY_MINUTES),
+            absoluteMinutes: absoluteMinutes + 30,
+          },
+          {
+            hoursOffset: hoursOffset.add(durations.FORTY_FIVE_MINUTES),
+            absoluteMinutes: absoluteMinutes + 45,
+          },
         ]
       }
       if (compareDuration(timeslotDuration.value, durations.THIRTY_MINUTES) === 0) {
-        return [{ hoursOffset: hoursOffset.add(durations.THIRTY_MINUTES) }]
+        return [
+          {
+            hoursOffset: hoursOffset.add(durations.THIRTY_MINUTES),
+            absoluteMinutes: absoluteMinutes + 30,
+          },
+        ]
       }
       return []
     }
@@ -263,6 +325,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
         target.push({
           hoursOffset,
           text: toLocalHourLabel(absoluteMinutes),
+          absoluteMinutes,
         })
       }
     }
@@ -272,9 +335,9 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
         const hoursOffset = Temporal.Duration.from({ hours: i })
         const text = timeNumToTimeText(i, timeType.value === timeTypes.HOUR12)
         if (i === 9) {
-          split[0].push({ id: "time-9", hoursOffset, text })
+          split[0].push({ id: "time-9", hoursOffset, text, absoluteMinutes: i * 60 })
         } else {
-          split[0].push({ hoursOffset, text })
+          split[0].push({ hoursOffset, text, absoluteMinutes: i * 60 })
         }
         split[0].push(...getExtraTimes(hoursOffset))
       }
@@ -360,12 +423,12 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
 
     for (const date of eventDates) {
       const zdt =
-        isSpecificTimes.value && specificTimesHourBounds.value
+        isSpecificTimes.value && specificTimesDisplaySeedTime.value
           ? getDateInTimezone(date, curTimezone.value)
               .toPlainDate()
               .toZonedDateTime({
                 timeZone: displayTimezoneId,
-                plainTime: specificTimesHourBounds.value.minHours,
+                plainTime: specificTimesDisplaySeedTime.value,
               })
           : date
       datesSoFar.add(date)
@@ -475,7 +538,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
 
     // Add start time to curDate
     const startTime =
-      specificTimesHourBounds.value?.minHours ??
+      specificTimesDisplaySeedTime.value ??
       event.value.startTime ??
       hoursPlainTime.ZERO
     let curZDT = curDate.toZonedDateTime({

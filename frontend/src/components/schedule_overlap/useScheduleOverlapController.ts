@@ -235,6 +235,10 @@ export function useScheduleOverlapController(
       opts.unsavedChanges.value = false
     }
 
+    if (nextState === states.EDIT_AVAILABILITY) {
+      opts.reanimateAvailability()
+    }
+
     if (nextState === states.SET_SPECIFIC_TIMES) {
       void nextTick(() => {
         const time9 = document.getElementById("time-9")

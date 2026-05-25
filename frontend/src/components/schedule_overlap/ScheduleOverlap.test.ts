@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { nextTick } from "vue"
+import { Temporal } from "temporal-polyfill"
 import {
   buildScheduleOverlapProps,
   installScheduleOverlapTestGlobals,
@@ -9,6 +10,20 @@ import {
 } from "./scheduleOverlapTestUtils"
 
 const smAndDown = { value: false }
+const zdt = (iso: string) => Temporal.Instant.from(iso).toZonedDateTimeISO("UTC")
+const { refreshAuthUserMock, showInfoMock, showErrorMock } = vi.hoisted(() => ({
+  refreshAuthUserMock: vi.fn(),
+  showInfoMock: vi.fn(),
+  showErrorMock: vi.fn(),
+}))
+const utcTimezone = {
+  value: "UTC",
+  offset: Temporal.Duration.from({ hours: 0 }),
+  label: "UTC",
+  gmtString: "GMT+0",
+}
+const buildUtcSpecificTimes = (date: string, times: string[]) =>
+  times.map((time) => zdt(`${date}T${time}Z`))
 
 vi.mock("vuetify", () => ({
   useDisplay: () => ({
@@ -19,9 +34,9 @@ vi.mock("vuetify", () => ({
 vi.mock("@/stores/main", () => ({
   useMainStore: () => ({
     authUser: null,
-    refreshAuthUser: vi.fn(),
-    showInfo: vi.fn(),
-    showError: vi.fn(),
+    refreshAuthUser: refreshAuthUserMock,
+    showInfo: showInfoMock,
+    showError: showErrorMock,
   }),
 }))
 
@@ -34,6 +49,9 @@ vi.mock("@/plugins/posthog", () => ({
 describe("ScheduleOverlap", () => {
   beforeEach(() => {
     smAndDown.value = false
+    refreshAuthUserMock.mockReset()
+    showInfoMock.mockReset()
+    showErrorMock.mockReset()
     installScheduleOverlapTestGlobals()
   })
 
@@ -370,5 +388,357 @@ describe("ScheduleOverlap", () => {
 
     expect(vm.timeslotSelected).toBe(false)
     expect(vm.curTimeslot).toEqual({ row: 1, col: 0 })
+  })
+
+  it("collapses hidden hours by default and expands them on demand", async () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        event: {
+          ...buildScheduleOverlapProps().event,
+          dates: [
+            Temporal.PlainDate.from("2026-01-01"),
+            Temporal.PlainDate.from("2026-01-02"),
+          ],
+          timeSeed: zdt("2026-01-01T09:00:00Z"),
+          hasSpecificTimes: true,
+          startTime: Temporal.PlainTime.from("09:00"),
+          duration: Temporal.Duration.from({ hours: 11 }),
+          times: [
+            zdt("2026-01-01T09:00:00Z"),
+            zdt("2026-01-01T12:00:00Z"),
+            zdt("2026-01-02T17:00:00Z"),
+            zdt("2026-01-02T20:00:00Z"),
+          ],
+        },
+        alwaysShowCalendarEvents: false,
+        sampleCalendarEventsByDay: [],
+        initialTimezone: {
+          value: "UTC",
+          offset: Temporal.Duration.from({ hours: 0 }),
+          label: "UTC",
+          gmtString: "GMT+0",
+        },
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      renderedRows: { id: string; kind: "timeslot" | "collapsed" | "filler" }[]
+      splitTimes: { absoluteMinutes?: number; text?: string }[][]
+      showAllHours: boolean
+      toggleCollapsedSpan: (id: string) => void
+      updateShowAllHours: (value: boolean) => void
+    }
+
+    expect(vm.showAllHours).toBe(false)
+
+    const initialCollapsedRows = vm.renderedRows.filter((row) => row.kind === "collapsed")
+    const initialTimeslotCount = vm.renderedRows.filter((row) => row.kind === "timeslot").length
+
+    expect(initialCollapsedRows.length).toBeGreaterThan(0)
+
+    vm.toggleCollapsedSpan(initialCollapsedRows[0].id)
+    await nextTick()
+
+    expect(vm.renderedRows.some((row) => row.id === initialCollapsedRows[0].id)).toBe(false)
+    expect(vm.renderedRows.filter((row) => row.kind === "timeslot").length).toBeGreaterThan(
+      initialTimeslotCount
+    )
+
+    vm.updateShowAllHours(true)
+    await nextTick()
+
+    expect(vm.showAllHours).toBe(true)
+    expect(vm.renderedRows.some((row) => row.kind === "collapsed")).toBe(false)
+  })
+
+  it("animates loaded availability when editing an existing respondent", async () => {
+    vi.useFakeTimers()
+
+    try {
+      const wrapper = mountScheduleOverlap({
+        props: {
+          event: {
+            ...buildScheduleOverlapProps().event,
+            dates: [
+              Temporal.PlainDate.from("2026-01-01"),
+              Temporal.PlainDate.from("2026-01-02"),
+            ],
+            timeSeed: zdt("2026-01-01T09:00:00Z"),
+            startTime: Temporal.PlainTime.from("09:00"),
+            duration: Temporal.Duration.from({ hours: 4 }),
+            timeIncrement: Temporal.Duration.from({ hours: 1 }),
+            responses: {
+              Mag: {
+                user: {
+                  _id: "Mag",
+                  firstName: "Mag",
+                  lastName: "",
+                  email: "",
+                },
+                availability: [],
+                ifNeeded: [],
+                manualAvailability: {},
+              },
+            },
+          },
+          initialTimezone: utcTimezone,
+        },
+      })
+
+      const vm = wrapper.vm as unknown as {
+        fetchedResponses: Record<string, { availability?: Temporal.ZonedDateTime[]; ifNeeded?: Temporal.ZonedDateTime[] }>
+        editGuestAvailability: (id: string) => void
+        availabilityAnimEnabled: boolean
+        availability: { size: number }
+      }
+
+      vm.fetchedResponses = {
+        Mag: {
+          availability: [
+            zdt("2026-01-01T09:00:00Z"),
+            zdt("2026-01-01T10:00:00Z"),
+          ],
+          ifNeeded: [],
+        },
+      }
+
+      vm.editGuestAvailability("Mag")
+      await nextTick()
+
+      expect(vm.availabilityAnimEnabled).toBe(true)
+      expect(vm.availability.size).toBe(0)
+      expect(showInfoMock).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(1000)
+
+      expect(vm.availability.size).toBe(2)
+      expect(showInfoMock).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("does not collapse leading or trailing grey hours, and keeps rows visible when any page day allows them", () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        event: {
+          ...buildScheduleOverlapProps().event,
+          dates: [
+            Temporal.PlainDate.from("2026-01-01"),
+            Temporal.PlainDate.from("2026-01-02"),
+          ],
+          timeSeed: zdt("2026-01-01T09:00:00Z"),
+          hasSpecificTimes: true,
+          startTime: Temporal.PlainTime.from("09:00"),
+          duration: Temporal.Duration.from({ hours: 14 }),
+          timeIncrement: Temporal.Duration.from({ hours: 1 }),
+          times: [
+            ...buildUtcSpecificTimes("2026-01-01", [
+              "13:00:00",
+              "14:00:00",
+              "15:00:00",
+              "16:00:00",
+              "17:00:00",
+              "18:00:00",
+              "19:00:00",
+            ]),
+            ...buildUtcSpecificTimes("2026-01-02", [
+              "11:00:00",
+              "12:00:00",
+              "13:00:00",
+              "14:00:00",
+              "15:00:00",
+              "16:00:00",
+              "17:00:00",
+              "18:00:00",
+              "19:00:00",
+              "20:00:00",
+              "21:00:00",
+              "22:00:00",
+            ]),
+          ],
+        },
+        alwaysShowCalendarEvents: false,
+        sampleCalendarEventsByDay: [],
+        initialTimezone: utcTimezone,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      renderedRows: { kind: "timeslot" | "collapsed" | "filler"; startLabel?: string; endLabel?: string }[]
+    }
+
+    expect(vm.renderedRows.filter((row) => row.kind === "collapsed")).toEqual([])
+  })
+
+  it("collapses interior gaps between discontiguous daily specific-time ranges", () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        event: {
+          ...buildScheduleOverlapProps().event,
+          dates: [
+            Temporal.PlainDate.from("2026-01-01"),
+            Temporal.PlainDate.from("2026-01-02"),
+          ],
+          timeSeed: zdt("2026-01-01T09:00:00Z"),
+          hasSpecificTimes: true,
+          startTime: Temporal.PlainTime.from("09:00"),
+          duration: Temporal.Duration.from({ hours: 8 }),
+          timeIncrement: Temporal.Duration.from({ hours: 1 }),
+          times: [
+            ...buildUtcSpecificTimes("2026-01-01", [
+              "09:00:00",
+              "10:00:00",
+              "15:00:00",
+              "16:00:00",
+            ]),
+            ...buildUtcSpecificTimes("2026-01-02", [
+              "09:00:00",
+              "10:00:00",
+              "15:00:00",
+              "16:00:00",
+            ]),
+          ],
+        },
+        alwaysShowCalendarEvents: false,
+        sampleCalendarEventsByDay: [],
+        initialTimezone: utcTimezone,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      renderedRows: { kind: "timeslot" | "collapsed" | "filler"; startLabel?: string; endLabel?: string }[]
+    }
+
+    expect(vm.renderedRows.filter((row) => row.kind === "collapsed")).toEqual([
+      expect.objectContaining({
+        startLabel: "11:00",
+        endLabel: "15:00",
+      }),
+    ])
+  })
+
+  it("does not collapse edge grey runs for discontiguous daily specific times", () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        event: {
+          ...buildScheduleOverlapProps().event,
+          dates: [
+            Temporal.PlainDate.from("2026-01-01"),
+            Temporal.PlainDate.from("2026-01-02"),
+          ],
+          timeSeed: zdt("2026-01-01T09:00:00Z"),
+          hasSpecificTimes: true,
+          startTime: Temporal.PlainTime.from("09:00"),
+          duration: Temporal.Duration.from({ hours: 12 }),
+          timeIncrement: Temporal.Duration.from({ hours: 1 }),
+          times: [
+            ...buildUtcSpecificTimes("2026-01-01", [
+              "14:00:00",
+              "15:00:00",
+              "16:00:00",
+              "17:00:00",
+            ]),
+            ...buildUtcSpecificTimes("2026-01-02", [
+              "14:00:00",
+              "15:00:00",
+              "16:00:00",
+              "17:00:00",
+            ]),
+          ],
+        },
+        alwaysShowCalendarEvents: false,
+        sampleCalendarEventsByDay: [],
+        initialTimezone: utcTimezone,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      renderedRows: { kind: "timeslot" | "collapsed" | "filler" }[]
+    }
+
+    expect(vm.renderedRows.filter((row) => row.kind === "collapsed")).toEqual([])
+  })
+
+  it("keeps a row expanded when any visible day allows that exact specific-time slot", () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        event: {
+          ...buildScheduleOverlapProps().event,
+          dates: [
+            Temporal.PlainDate.from("2026-01-01"),
+            Temporal.PlainDate.from("2026-01-02"),
+          ],
+          timeSeed: zdt("2026-01-01T09:00:00Z"),
+          hasSpecificTimes: true,
+          startTime: Temporal.PlainTime.from("09:00"),
+          duration: Temporal.Duration.from({ hours: 9 }),
+          timeIncrement: Temporal.Duration.from({ hours: 1 }),
+          times: [
+            ...buildUtcSpecificTimes("2026-01-01", [
+              "09:00:00",
+              "10:00:00",
+              "16:00:00",
+              "17:00:00",
+            ]),
+            ...buildUtcSpecificTimes("2026-01-02", [
+              "09:00:00",
+              "10:00:00",
+              "13:00:00",
+              "16:00:00",
+              "17:00:00",
+            ]),
+          ],
+        },
+        alwaysShowCalendarEvents: false,
+        sampleCalendarEventsByDay: [],
+        initialTimezone: utcTimezone,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      renderedRows: { kind: "timeslot" | "collapsed" | "filler"; startLabel?: string; endLabel?: string }[]
+    }
+
+    expect(vm.renderedRows.filter((row) => row.kind === "collapsed")).toEqual([])
+  })
+
+  it("collapses only whole interior hours for schedule-grey runs with partial-hour boundaries", () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        event: {
+          ...buildScheduleOverlapProps().event,
+          dates: [
+            Temporal.PlainDate.from("2026-01-01"),
+            Temporal.PlainDate.from("2026-01-02"),
+          ],
+          timeSeed: zdt("2026-01-01T08:15:00Z"),
+          hasSpecificTimes: true,
+          startTime: Temporal.PlainTime.from("08:15"),
+          duration: Temporal.Duration.from({ hours: 12 }),
+          times: [
+            zdt("2026-01-01T08:15:00Z"),
+            zdt("2026-01-01T10:15:00Z"),
+            zdt("2026-01-02T18:45:00Z"),
+            zdt("2026-01-02T20:15:00Z"),
+          ],
+        },
+        alwaysShowCalendarEvents: false,
+        sampleCalendarEventsByDay: [],
+        initialTimezone: utcTimezone,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      renderedRows: { kind: "timeslot" | "collapsed" | "filler"; startLabel?: string; endLabel?: string }[]
+    }
+
+    const collapsedRows = vm.renderedRows.filter((row) => row.kind === "collapsed")
+
+    expect(collapsedRows).toHaveLength(1)
+    expect(collapsedRows[0]).toMatchObject({
+      startLabel: "11:00",
+      endLabel: "18:00",
+    })
   })
 })

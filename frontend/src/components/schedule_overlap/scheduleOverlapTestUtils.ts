@@ -102,6 +102,7 @@ export const buildRespondentsPanelViewModel =
     showCalendarEvents: true,
     showBestTimes: false,
     hideIfNeeded: false,
+    showAllHours: false,
     showEventOptions: false,
     guestAddedAvailability: false,
     addingAvailabilityAsGuest: false,

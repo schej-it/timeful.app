@@ -95,6 +95,7 @@ const emit = defineEmits<{
   "update:showCalendarEvents": [value: boolean]
   "update:showBestTimes": [value: boolean]
   "update:hideIfNeeded": [value: boolean]
+  "update:showAllHours": [value: boolean]
   toggleShowEventOptions: []
   addAvailabilityAsGuest: []
   addAvailability: []
@@ -115,6 +116,9 @@ const respondentsPanelListeners = {
   },
   "onUpdate:hideIfNeeded": (value: boolean) => {
     emit("update:hideIfNeeded", value)
+  },
+  "onUpdate:showAllHours": (value: boolean) => {
+    emit("update:showAllHours", value)
   },
   onToggleShowEventOptions: () => {
     emit("toggleShowEventOptions")

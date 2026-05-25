@@ -41,6 +41,21 @@
         </template>
       </v-switch>
       <v-switch
+        v-if="!event.daysOnly && showAllHours !== undefined"
+        id="show-all-hours-toggle"
+        class="event-options-switch schedule-overlap-compact-switch"
+        inset
+        :model-value="showAllHours"
+        hide-details
+        @update:model-value="
+          (val: boolean | null) => $emit('update:showAllHours', !!val)
+        "
+      >
+        <template #label>
+          <div class="tw-text-sm tw-text-black">Show all hours</div>
+        </template>
+      </v-switch>
+      <v-switch
         v-if="showCalendarEvents !== undefined && isGroup && !isPhone"
         class="event-options-switch schedule-overlap-compact-switch"
         inset
@@ -89,6 +104,7 @@ const props = withDefaults(
     hideIfNeeded: boolean
     numResponses: number
     showEventOptions: boolean
+    showAllHours?: boolean
     showCalendarEvents?: boolean
     startCalendarOnMonday?: boolean
   }>(),
@@ -102,6 +118,7 @@ defineEmits<{
   toggleShowEventOptions: []
   "update:showBestTimes": [value: boolean]
   "update:hideIfNeeded": [value: boolean]
+  "update:showAllHours": [value: boolean]
   "update:showCalendarEvents": [value: boolean]
   "update:startCalendarOnMonday": [value: boolean]
 }>()

@@ -197,11 +197,11 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
 
   const deselectRespondents = (e: MouseEvent | Event) => {
     const target = e.target as Element | null
+    const clickedInsideOptions = Boolean(
+      opts.optionsSectionRef?.value?.contains(target ?? null)
+    )
     if (
-      target?.previousElementSibling?.id === "show-best-times-toggle" ||
-      (target?.firstChild as HTMLElement | null)?.firstChild &&
-        ((target?.firstChild as HTMLElement).firstChild as HTMLElement | null)
-          ?.id === "show-best-times-toggle" ||
+      clickedInsideOptions ||
       target?.classList.contains("timeslot")
     ) {
       return

@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watchEffect } from "vue"
+import { ref, computed, nextTick, watch, watchEffect } from "vue"
 import { useDisplay } from "vuetify"
 import { Temporal } from "temporal-polyfill"
 import {
@@ -51,6 +51,7 @@ import {
   ZdtSet,
   getTimezoneReferenceDateForEvent,
   normalizeOptionalTimezone,
+  zdtSetHas,
 } from "@/utils"
 import {
   availabilityTypes, eventTypes, UTC, type AvailabilityType
@@ -88,9 +89,11 @@ import { useScheduleOverlapPreferences } from "./useScheduleOverlapPreferences"
 import { useScheduleOverlapViewModels } from "./useScheduleOverlapViewModels"
 import {
   states,
+  COLLAPSED_HOURS_ROW_HEIGHT,
+  MIN_COLLAPSIBLE_HIDDEN_SPAN_HOURS,
 } from "@/composables/schedule_overlap/types"
 import type {
-  FetchedResponse, RowCol, Timezone, ScheduleOverlapState, ScheduleOverlapEvent, NormalizedCalendarEvent, CalendarEventsByDay, CalendarEventsMap,
+  FetchedResponse, RenderedTimeGridRow, RenderedTimeGridRowCell, RowCol, Timezone, ScheduleOverlapState, ScheduleOverlapEvent, NormalizedCalendarEvent, CalendarEventsByDay, CalendarEventsMap,
   SignUpBlockLite,
 } from "@/composables/schedule_overlap/types"
 import type {
@@ -99,6 +102,10 @@ import type {
   ScheduleOverlapToolRowActions,
 } from "./scheduleOverlapViewModels"
 import type { ScheduleOverlapSidebarExposed as ScheduleOverlapSidebarContract } from "./scheduleOverlapContracts"
+import {
+  readShowAllHoursPreference,
+  writeShowAllHoursPreference,
+} from "@/composables/schedule_overlap/scheduleOverlapStorage"
 
 // ── Props / Emits ──────────────────────────────────────────────────────
 const props = withDefaults(
@@ -180,6 +187,10 @@ const {
   setGuestName,
 } = useScheduleOverlapPreferences({
   eventId: computed(() => props.event._id ?? ""),
+})
+const showAllHours = ref(readShowAllHoursPreference())
+watch(showAllHours, (value) => {
+  writeShowAllHoursPreference(value)
 })
 
 const {
@@ -544,6 +555,283 @@ const formattedAttendees = computed(() =>
   props.event.attendees as { email: string; declined?: boolean }[] | undefined
 )
 
+function formatAbsoluteMinutes(absoluteMinutes: number | undefined): string {
+  if (typeof absoluteMinutes !== "number") {
+    return ""
+  }
+
+  const normalizedMinutes =
+    ((absoluteMinutes % (24 * 60)) + 24 * 60) % (24 * 60)
+  const hours = Math.floor(normalizedMinutes / 60)
+  const minutes = normalizedMinutes % 60
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
+}
+
+function ceilToHourMinutes(absoluteMinutes: number): number {
+  return Math.ceil(absoluteMinutes / 60) * 60
+}
+
+function floorToHourMinutes(absoluteMinutes: number): number {
+  return Math.floor(absoluteMinutes / 60) * 60
+}
+
+interface PageSlot {
+  id: string
+  kind: "timeslot" | "filler"
+  startMinutes: number
+  endMinutes: number
+  baseRowIndex?: number
+}
+
+interface CollapsedPageSegment {
+  id: string
+  hiddenStartIndex: number
+  hiddenEndIndex: number
+  startMinutes: number
+  endMinutes: number
+}
+
+const specificTimeAvailabilityByVisibleDay = computed<Map<number, ZdtSet>>(() => {
+  const availabilityByVisibleDay = new Map<number, ZdtSet>()
+
+  if (!isSpecificTimes.value) {
+    return availabilityByVisibleDay
+  }
+
+  const totalBaseRows = splitTimes.value[0].length + splitTimes.value[1].length
+  for (let visibleDayIndex = 0; visibleDayIndex < days.value.length; visibleDayIndex += 1) {
+    const availableDates = new ZdtSet()
+
+    for (let baseRowIndex = 0; baseRowIndex < totalBaseRows; baseRowIndex += 1) {
+      const date = getBaseRowScheduleDate(baseRowIndex, visibleDayIndex)
+      if (date && zdtSetHas(_specificTimesSet.value, date)) {
+        availableDates.add(date)
+      }
+    }
+
+    if (availableDates.size > 0) {
+      availabilityByVisibleDay.set(visibleDayIndex, availableDates)
+    }
+  }
+
+  return availabilityByVisibleDay
+})
+
+function getBaseRowTimeItem(baseRowIndex: number) {
+  const firstSplitLength = splitTimes.value[0].length
+  return baseRowIndex < firstSplitLength
+    ? splitTimes.value[0][baseRowIndex]
+    : splitTimes.value[1][baseRowIndex - firstSplitLength]
+}
+
+function getBaseRowScheduleDate(
+  baseRowIndex: number,
+  visibleDayIndex: number
+): Temporal.ZonedDateTime | null {
+  const time = getBaseRowTimeItem(baseRowIndex)
+  const absoluteDayIndex = page.value * maxDaysPerPage.value + visibleDayIndex
+  const hasSecondSplit = splitTimes.value[1].length > 0
+  const isFirstSplit = baseRowIndex < splitTimes.value[0].length
+
+  let adjustedDayIndex = absoluteDayIndex
+  if (hasSecondSplit) {
+    if (isFirstSplit) {
+      adjustedDayIndex = absoluteDayIndex - 1
+    } else if (absoluteDayIndex === allDays.value.length - 1) {
+      return null
+    }
+  }
+
+  if (adjustedDayIndex < 0 || adjustedDayIndex >= allDays.value.length) {
+    return null
+  }
+
+  const day = allDays.value[adjustedDayIndex]
+  if (day.excludeTimes) {
+    return null
+  }
+
+  return grid.getDateFromDayHoursOffset(adjustedDayIndex, time.hoursOffset)
+}
+
+function isDateAvailableForSettingAvailability(
+  date: Temporal.ZonedDateTime,
+  visibleDayIndex: number
+): boolean {
+  if (!isSpecificTimes.value) {
+    return true
+  }
+
+  return (
+    specificTimeAvailabilityByVisibleDay.value.get(visibleDayIndex)?.has(date) ??
+    false
+  )
+}
+
+function isBaseRowUnavailableOnEveryVisibleDay(baseRowIndex: number): boolean {
+  for (let visibleDayIndex = 0; visibleDayIndex < days.value.length; visibleDayIndex += 1) {
+    const date = getBaseRowScheduleDate(baseRowIndex, visibleDayIndex)
+    if (date && isDateAvailableForSettingAvailability(date, visibleDayIndex)) {
+      return false
+    }
+  }
+
+  return true
+}
+
+const pageSlots = computed<PageSlot[]>(() => {
+  const slots: PageSlot[] = []
+  const slotMinutes = Math.round(timeslotDuration.value.total("minutes"))
+  const firstSplitLength = splitTimes.value[0].length
+  const totalBaseRows = firstSplitLength + splitTimes.value[1].length
+
+  for (let baseRowIndex = 0; baseRowIndex < firstSplitLength; baseRowIndex += 1) {
+    const time = splitTimes.value[0][baseRowIndex]
+    const startMinutes = time.absoluteMinutes ?? 0
+    slots.push({
+      id: `time-${String(baseRowIndex)}`,
+      kind: "timeslot",
+      startMinutes,
+      endMinutes: startMinutes + slotMinutes,
+      baseRowIndex,
+    })
+  }
+
+  if (splitTimes.value[1].length > 0 && firstSplitLength > 0) {
+    const wrapStartMinutes =
+      (splitTimes.value[0][firstSplitLength - 1].absoluteMinutes ?? 0) + slotMinutes
+    const wrapEndMinutes = splitTimes.value[1][0].absoluteMinutes ?? wrapStartMinutes
+
+    for (
+      let absoluteMinutes = wrapStartMinutes;
+      absoluteMinutes < wrapEndMinutes;
+      absoluteMinutes += slotMinutes
+    ) {
+      slots.push({
+        id: `filler-${String(absoluteMinutes)}`,
+        kind: "filler",
+        startMinutes: absoluteMinutes,
+        endMinutes: absoluteMinutes + slotMinutes,
+      })
+    }
+  }
+
+  for (let baseRowIndex = firstSplitLength; baseRowIndex < totalBaseRows; baseRowIndex += 1) {
+    const time = splitTimes.value[1][baseRowIndex - firstSplitLength]
+    const startMinutes = time.absoluteMinutes ?? 0
+    slots.push({
+      id: `time-${String(baseRowIndex)}`,
+      kind: "timeslot",
+      startMinutes,
+      endMinutes: startMinutes + slotMinutes,
+      baseRowIndex,
+    })
+  }
+
+  return slots
+})
+
+const collapsedPageSegments = computed<CollapsedPageSegment[]>(() => {
+  if (!canCollapseTimes.value) {
+    return []
+  }
+
+  const slotMinutes = Math.round(timeslotDuration.value.total("minutes"))
+  const minimumSlotsToCollapse = Math.ceil(
+    (MIN_COLLAPSIBLE_HIDDEN_SPAN_HOURS * 60) / slotMinutes
+  )
+  const slots = pageSlots.value
+  const greyFlags = slots.map((slot) =>
+    slot.kind === "filler"
+      ? true
+      : isBaseRowUnavailableOnEveryVisibleDay(slot.baseRowIndex ?? -1)
+  )
+  const segments: CollapsedPageSegment[] = []
+
+  const buildCollapsedSegmentFromRun = (
+    runStartIndex: number,
+    runEndIndex: number
+  ): CollapsedPageSegment | null => {
+    const runStartMinutes = slots[runStartIndex]?.startMinutes
+    const runEndMinutes = slots[runEndIndex - 1]?.endMinutes
+
+    if (
+      typeof runStartMinutes !== "number" ||
+      typeof runEndMinutes !== "number"
+    ) {
+      return null
+    }
+
+    const collapsedStartMinutes = ceilToHourMinutes(runStartMinutes)
+    const collapsedEndMinutes = floorToHourMinutes(runEndMinutes)
+    if (collapsedEndMinutes <= collapsedStartMinutes) {
+      return null
+    }
+
+    const hiddenStartIndex = slots.findIndex(
+      (slot, slotIndex) =>
+        slotIndex >= runStartIndex && slotIndex < runEndIndex &&
+        slot.startMinutes === collapsedStartMinutes
+    )
+    const hiddenEndIndex = slots.findIndex(
+      (slot, slotIndex) =>
+        slotIndex >= runStartIndex && slotIndex < runEndIndex &&
+        slot.endMinutes === collapsedEndMinutes
+    )
+
+    if (hiddenStartIndex === -1 || hiddenEndIndex === -1) {
+      return null
+    }
+
+    if (hiddenEndIndex + 1 - hiddenStartIndex < minimumSlotsToCollapse) {
+      return null
+    }
+
+    return {
+      id: `collapsed-${String(collapsedStartMinutes)}-${String(collapsedEndMinutes)}`,
+      hiddenStartIndex,
+      hiddenEndIndex: hiddenEndIndex + 1,
+      startMinutes: collapsedStartMinutes,
+      endMinutes: collapsedEndMinutes,
+    }
+  }
+
+  let runStartIndex: number | null = null
+
+  const flushRun = (runEndIndex: number) => {
+    if (runStartIndex == null) {
+      return
+    }
+
+    const isInteriorRun =
+      runStartIndex > 0 &&
+      runEndIndex < slots.length &&
+      !greyFlags[runStartIndex - 1] &&
+      !greyFlags[runEndIndex]
+
+    if (isInteriorRun) {
+      const segment = buildCollapsedSegmentFromRun(runStartIndex, runEndIndex)
+      if (segment) {
+        segments.push(segment)
+      }
+    }
+
+    runStartIndex = null
+  }
+
+  for (let slotIndex = 0; slotIndex < slots.length; slotIndex += 1) {
+    if (greyFlags[slotIndex]) {
+      runStartIndex ??= slotIndex
+      continue
+    }
+
+    flushRun(slotIndex)
+  }
+
+  flushRun(slots.length)
+  return segments
+})
+
 const overlaidAvailability = computed(() => {
   return buildOverlaidAvailability({
     daysLength: days.value.length,
@@ -560,7 +848,7 @@ const overlaidAvailability = computed(() => {
   })
 })
 
-const timeslotClassStyle = computed(() => {
+const baseTimeslotClassStyle = computed(() => {
   if (isSignUp.value) {
     return Array.from(
       { length: days.value.length * times.value.length },
@@ -634,13 +922,160 @@ const dayTimeslotClassStyle = computed(() =>
   })
 )
 
-const timeslotVon = computed(() => {
+const baseTimeslotVon = computed(() => {
   const vons: Record<string, () => void>[] = []
   for (let d = 0; d < days.value.length; ++d)
     for (let t = 0; t < times.value.length; ++t)
       vons.push(getTimeslotVon(t, d))
   return vons
 })
+
+const expandedCollapsedSpanIds = ref<Set<string>>(new Set())
+const canCollapseTimes = computed(
+  () =>
+    !props.event.daysOnly &&
+    state.value !== states.EDIT_AVAILABILITY &&
+    state.value !== states.EDIT_SIGN_UP_BLOCKS &&
+    state.value !== states.SCHEDULE_EVENT &&
+    state.value !== states.SET_SPECIFIC_TIMES &&
+    !showAllHours.value
+)
+
+const collapseCandidateSpanIds = computed<Set<string>>(() => {
+  return new Set(collapsedPageSegments.value.map((segment) => segment.id))
+})
+
+const renderedRows = computed<RenderedTimeGridRow[]>(() => {
+  const rows: RenderedTimeGridRow[] = []
+
+  const pushTimeslotRow = (baseRowIndex: number, rowTop: number) => {
+    const timeItem = getBaseRowTimeItem(baseRowIndex)
+    const cells: RenderedTimeGridRowCell[] = []
+    for (let dayIndex = 0; dayIndex < days.value.length; dayIndex += 1) {
+      const cellIndex = dayIndex * times.value.length + baseRowIndex
+      cells.push({
+        class: baseTimeslotClassStyle.value[cellIndex]?.class ?? "",
+        style: baseTimeslotClassStyle.value[cellIndex]?.style ?? {},
+        von: baseTimeslotVon.value[cellIndex] ?? {},
+      })
+    }
+    rows.push({
+      id: `time-${String(baseRowIndex)}`,
+      kind: "timeslot",
+      height: timeslotHeight.value,
+      rowTop,
+      timeText: timeItem.text,
+      baseRowIndex,
+      cells,
+    })
+  }
+
+  const pushFillerRow = (slot: PageSlot, rowTop: number) => {
+    const cells: RenderedTimeGridRowCell[] = Array.from({ length: days.value.length }, () => ({
+      class: "tw-bg-light-gray-stroke",
+      style: { height: `${String(timeslotHeight.value)}px` },
+      von: {},
+    }))
+    rows.push({
+      id: slot.id,
+      kind: "filler",
+      height: timeslotHeight.value,
+      rowTop,
+      timeText: slot.startMinutes % 60 === 0 ? formatAbsoluteMinutes(slot.startMinutes) : undefined,
+      cells,
+    })
+  }
+
+  const appendCollapsedRow = (
+    id: string,
+    startMinutes: number,
+    endMinutes: number,
+    rowTop: number
+  ): number => {
+    rows.push({
+      id,
+      kind: "collapsed",
+      height: COLLAPSED_HOURS_ROW_HEIGHT,
+      rowTop,
+      startLabel: formatAbsoluteMinutes(startMinutes),
+      endLabel: formatAbsoluteMinutes(endMinutes),
+    })
+    return rowTop + COLLAPSED_HOURS_ROW_HEIGHT
+  }
+
+  const collapsedSegmentByStartIndex = new Map<number, CollapsedPageSegment>()
+  for (const segment of collapsedPageSegments.value) {
+    if (!expandedCollapsedSpanIds.value.has(segment.id)) {
+      collapsedSegmentByStartIndex.set(segment.hiddenStartIndex, segment)
+    }
+  }
+
+  let rowTop = 0
+
+  for (let slotIndex = 0; slotIndex < pageSlots.value.length; slotIndex += 1) {
+    const collapsedSegment = collapsedSegmentByStartIndex.get(slotIndex)
+    if (collapsedSegment) {
+      rowTop = appendCollapsedRow(
+        collapsedSegment.id,
+        collapsedSegment.startMinutes,
+        collapsedSegment.endMinutes,
+        rowTop
+      )
+      slotIndex = collapsedSegment.hiddenEndIndex - 1
+      continue
+    }
+
+    const slot = pageSlots.value[slotIndex]
+    if (slot.kind === "timeslot" && typeof slot.baseRowIndex === "number") {
+      pushTimeslotRow(slot.baseRowIndex, rowTop)
+    } else {
+      pushFillerRow(slot, rowTop)
+    }
+    rowTop += timeslotHeight.value
+  }
+
+  return rows
+})
+
+const timeslotClassStyle = computed(() =>
+  renderedRows.value.flatMap((row) =>
+    row.cells?.map((cell) => ({ class: cell.class, style: cell.style })) ?? []
+  )
+)
+
+const timeslotVon = computed(() =>
+  renderedRows.value.flatMap((row) => row.cells?.map((cell) => cell.von) ?? [])
+)
+
+watch(collapseCandidateSpanIds, (validIds) => {
+  const nextIds = [...expandedCollapsedSpanIds.value].filter((id) =>
+    validIds.has(id)
+  )
+  if (
+    nextIds.length === expandedCollapsedSpanIds.value.size &&
+    nextIds.every((id) => expandedCollapsedSpanIds.value.has(id))
+  ) {
+    return
+  }
+  expandedCollapsedSpanIds.value = new Set(nextIds)
+})
+
+function updateShowAllHours(value: boolean) {
+  showAllHours.value = value
+  if (value) {
+    expandedCollapsedSpanIds.value = new Set()
+  }
+}
+
+function toggleCollapsedSpan(id: string) {
+  const next = new Set(expandedCollapsedSpanIds.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    next.add(id)
+  }
+  expandedCollapsedSpanIds.value = next
+}
 
 const dayTimeslotVon = computed(() =>
   monthDays.value.map((_day, i) => getTimeslotVon(Math.floor(i / 7), i % 7))
@@ -713,6 +1148,7 @@ const toolRowActions = computed<ScheduleOverlapToolRowActions>(() => ({
   updateHideIfNeeded: (value) => {
     hideIfNeeded.value = value
   },
+  updateShowAllHours,
   updateStartCalendarOnMonday: (value) => {
     startCalendarOnMonday.value = value
   },
@@ -734,6 +1170,7 @@ const sharedDisplayListeners = {
   "update:showCalendarEvents": updateShowCalendarEvents,
   "update:showBestTimes": updateShowBestTimes,
   "update:hideIfNeeded": updateHideIfNeeded,
+  "update:showAllHours": updateShowAllHours,
   toggleShowEventOptions,
 }
 
@@ -799,6 +1236,7 @@ const timedGridActions = computed<ScheduleOverlapTimeGridActions>(() => ({
   signUpForBlock: (block) => {
     handleSignUpBlockClick(block, emitSignUpForBlock)
   },
+  toggleCollapsedSpan,
 }))
 
 const {
@@ -855,6 +1293,7 @@ const {
   showCalendarEvents,
   showBestTimes,
   hideIfNeeded,
+  showAllHours,
   showEventOptions,
   guestAddedAvailability,
   editing,
@@ -880,6 +1319,7 @@ const {
   timedGridActions,
   splitTimes,
   timeslotHeight,
+  renderedRows,
   days,
   isSpecificDates,
   sampleCalendarEventsByDay: computed(() => props.sampleCalendarEventsByDay),
@@ -949,12 +1389,30 @@ function getTimeslotVon(row: number, col: number): Record<string, () => void> {
 function getRenderedTimeBlockStyleForTemplate(
   timeBlock: { hoursOffset?: Temporal.Duration; hoursLength?: Temporal.Duration }
 ): Record<string, string> {
-  return getTimeBlockStyle({
+  const style = getTimeBlockStyle({
     timeBlock,
     firstSplitTimes: splitTimes.value[0],
     secondSplitTimes: splitTimes.value[1],
     timeslotHeight: timeslotHeight.value,
   })
+  const baseRowIndex = [...splitTimes.value[0], ...splitTimes.value[1]].findIndex(
+    (time) =>
+      time.hoursOffset.total("minutes") ===
+      (timeBlock.hoursOffset?.total("minutes") ?? 0)
+  )
+  if (baseRowIndex === -1) {
+    return style
+  }
+
+  const renderedRow = renderedRows.value.find(
+    (row) => row.kind === "timeslot" && row.baseRowIndex === baseRowIndex
+  )
+  if (!renderedRow) {
+    return style
+  }
+
+  style.top = `${String(renderedRow.rowTop)}px`
+  return style
 }
 
 function startEditing() {
@@ -987,7 +1445,7 @@ function editGuestAvailability(id: string) {
     startEditing()
   }
   void nextTick(() => {
-    populateUserAvailability(id)
+    populateUserAvailability(id, { animate: true })
     emit("setCurGuestId", id)
   })
 }
@@ -1055,10 +1513,6 @@ defineExpose({
 </script>
 
 <style scoped>
-.animate-bg-color {
-  transition: background-color 0.25s ease-in-out;
-}
-
 .break {
   flex-basis: 100%;
   height: 0;
@@ -1066,6 +1520,21 @@ defineExpose({
 </style>
 
 <style>
+@keyframes schedule-overlap-bg-blink {
+  0% {
+    opacity: 0.8;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-bg-color {
+  animation: schedule-overlap-bg-blink 0.35s ease-in-out 0s 4 alternate;
+  transition: background-color 0.25s ease-in-out;
+}
+
 /* Make timezone select element the same width as content */
 #timezone-select {
   width: 5px;

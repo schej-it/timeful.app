@@ -268,6 +268,7 @@
           @update:show-calendar-events="emit('update:showCalendarEvents', $event)"
           @update:show-best-times="emit('update:showBestTimes', $event)"
           @update:hide-if-needed="emit('update:hideIfNeeded', $event)"
+          @update:show-all-hours="emit('update:showAllHours', $event)"
           @toggle-show-event-options="emit('toggleShowEventOptions')"
           @add-availability="emit('addAvailability')"
           @add-availability-as-guest="emit('addAvailabilityAsGuest')"
@@ -330,6 +331,7 @@ const emit = defineEmits<{
   "update:showCalendarEvents": [value: boolean]
   "update:showBestTimes": [value: boolean]
   "update:hideIfNeeded": [value: boolean]
+  "update:showAllHours": [value: boolean]
   toggleShowEventOptions: []
   addAvailabilityAsGuest: []
   addAvailability: []

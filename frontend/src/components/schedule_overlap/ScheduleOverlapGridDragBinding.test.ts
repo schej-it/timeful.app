@@ -43,6 +43,7 @@ function createTimeGridViewModel() {
     resetCurTimeslot: vi.fn(),
     closeHint: vi.fn(),
     signUpForBlock: vi.fn(),
+    toggleCollapsedSpan: vi.fn(),
   }
 
   const timedGrid: ScheduleOverlapTimeGridViewModel = {
@@ -53,6 +54,7 @@ function createTimeGridViewModel() {
     hasNextPage: false,
     splitTimes: [[{ hoursOffset: Temporal.Duration.from({ hours: 9 }), text: "9am", id: "time-9" }], []],
     times: [{ hoursOffset: Temporal.Duration.from({ hours: 9 }), text: "9am", id: "time-9" }],
+    renderedRows: [],
     timeslotHeight: 60,
     days: [{
       dayText: "thu",
@@ -103,6 +105,7 @@ function createTimeGridViewModel() {
         updateMobileNumDays: vi.fn(),
         updateShowBestTimes: vi.fn(),
         updateHideIfNeeded: vi.fn(),
+        updateShowAllHours: vi.fn(),
         updateStartCalendarOnMonday: vi.fn(),
         updateWeekOffset: vi.fn(),
         toggleShowEventOptions: vi.fn(),
@@ -120,6 +123,7 @@ function createTimeGridViewModel() {
       startCalendarOnMonday: false,
       showBestTimes: false,
       hideIfNeeded: false,
+      showAllHours: false,
       isWeekly: false,
       calendarPermissionGranted: false,
       weekOffset: 0,
@@ -214,6 +218,7 @@ function createDaysOnlyGridViewModel() {
         updateMobileNumDays: vi.fn(),
         updateShowBestTimes: vi.fn(),
         updateHideIfNeeded: vi.fn(),
+        updateShowAllHours: vi.fn(),
         updateStartCalendarOnMonday: vi.fn(),
         updateWeekOffset: vi.fn(),
         toggleShowEventOptions: vi.fn(),
@@ -231,6 +236,7 @@ function createDaysOnlyGridViewModel() {
       startCalendarOnMonday: false,
       showBestTimes: false,
       hideIfNeeded: false,
+      showAllHours: false,
       isWeekly: false,
       calendarPermissionGranted: false,
       weekOffset: 0,
@@ -372,6 +378,53 @@ describe("ScheduleOverlap grid drag bindings", () => {
     expect(availableBlock.classes()).toContain("overlay-avail-shadow-green")
     expect(ifNeededBlock.classes()).toContain("time-grid-overlay-block")
     expect(ifNeededBlock.classes()).toContain("overlay-avail-shadow-yellow")
+  })
+
+  it("renders one structural collapsed-hours row and forwards expansion clicks", async () => {
+    const { timedGrid, actions } = createNonConsecutiveTimeGridViewModel()
+    timedGrid.state = states.HEATMAP
+    timedGrid.renderedRows = [
+      {
+        id: "collapsed-0-8",
+        kind: "collapsed",
+        height: 44,
+        rowTop: 0,
+        startLabel: "00:00",
+        endLabel: "04:00",
+      },
+      {
+        id: "time-8",
+        kind: "timeslot",
+        height: 60,
+        rowTop: 44,
+        timeText: "04:00",
+        baseRowIndex: 0,
+        cells: [
+          { class: "day-0", style: {}, von: {} },
+          { class: "day-1", style: {}, von: {} },
+        ],
+      },
+    ]
+
+    const wrapper = mount(ScheduleOverlapTimeGrid, {
+      props: { timedGrid },
+      global: {
+        ...global,
+        stubs: {
+          ...global.stubs,
+          "v-icon": iconStub,
+        },
+      },
+    })
+
+    const collapsedRows = wrapper.findAll("button.schedule-overlap-collapsed-row")
+
+    expect(collapsedRows).toHaveLength(1)
+    expect(collapsedRows[0].text()).toContain("00:00-04:00")
+
+    await collapsedRows[0].trigger("click")
+
+    expect(actions.toggleCollapsedSpan).toHaveBeenCalledWith("collapsed-0-8")
   })
 
   it("forwards days-only drag events through the rendered drag surface", async () => {

@@ -348,12 +348,14 @@
           :show-event-options="showEventOptions"
           :show-best-times="showBestTimes"
           :hide-if-needed="hideIfNeeded"
+          :show-all-hours="showAllHours"
           :show-calendar-events="showCalendarEvents"
           :start-calendar-on-monday="startCalendarOnMonday"
           :num-responses="respondents.length"
           @toggle-show-event-options="$emit('toggleShowEventOptions')"
           @update:show-best-times="(val) => $emit('update:showBestTimes', val)"
           @update:hide-if-needed="(val) => $emit('update:hideIfNeeded', val)"
+          @update:show-all-hours="(val) => $emit('update:showAllHours', val)"
           @update:show-calendar-events="
             (val) => $emit('update:showCalendarEvents', val)
           "
@@ -484,6 +486,7 @@ const props = defineProps<{
   timezone: Timezone
   showBestTimes: boolean
   hideIfNeeded: boolean
+  showAllHours: boolean
   startCalendarOnMonday?: boolean
   showEventOptions: boolean
   guestAddedAvailability: boolean
@@ -501,6 +504,7 @@ const emit = defineEmits<{
   "update:showBestTimes": [value: boolean]
   "update:showCalendarEvents": [value: boolean]
   "update:hideIfNeeded": [value: boolean]
+  "update:showAllHours": [value: boolean]
   "update:startCalendarOnMonday": [value: boolean]
   toggleShowEventOptions: []
 }>()

@@ -7,6 +7,7 @@ import type {
   MonthDayItem,
   NormalizedCalendarEvent,
   ParsedResponses,
+  RenderedTimeGridRow,
   RowCol,
   ScheduleOverlapEvent,
   ScheduleOverlapState,
@@ -31,6 +32,7 @@ export interface ScheduleOverlapToolRowActions {
   updateMobileNumDays: (value: number) => void
   updateShowBestTimes: (value: boolean) => void
   updateHideIfNeeded: (value: boolean) => void
+  updateShowAllHours: (value: boolean) => void
   updateStartCalendarOnMonday: (value: boolean) => void
   updateWeekOffset: (value: number) => void
   toggleShowEventOptions: () => void
@@ -59,6 +61,7 @@ export interface ScheduleOverlapTimeGridActions {
   resetCurTimeslot: () => void
   closeHint: () => void
   signUpForBlock: (block: SignUpBlockLite) => void
+  toggleCollapsedSpan: (id: string) => void
 }
 
 export interface ScheduleOverlapRespondentsPanelViewModel {
@@ -81,6 +84,7 @@ export interface ScheduleOverlapRespondentsPanelViewModel {
   showCalendarEvents: boolean
   showBestTimes: boolean
   hideIfNeeded: boolean
+  showAllHours: boolean
   showEventOptions: boolean
   guestAddedAvailability: boolean
   addingAvailabilityAsGuest: boolean
@@ -154,6 +158,7 @@ export interface ScheduleOverlapToolRowViewModel {
   startCalendarOnMonday: boolean
   showBestTimes: boolean
   hideIfNeeded: boolean
+  showAllHours: boolean
   isWeekly: boolean
   calendarPermissionGranted: boolean
   weekOffset: number
@@ -190,6 +195,7 @@ export interface ScheduleOverlapTimeGridViewModel {
   hasNextPage: boolean
   splitTimes: TimeItem[][]
   times: TimeItem[]
+  renderedRows: RenderedTimeGridRow[]
   timeslotHeight: number
   days: DayItem[]
   isSpecificDates: boolean

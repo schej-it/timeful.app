@@ -231,6 +231,7 @@
                       v-if="!isGroup && !authUser && selectedGuestRespondent"
                       min-width="10.25rem"
                       class="timeful-elevated-button tw-bg-green tw-text-white tw-transition-opacity"
+                      :class="{ 'timeful-availability-button-attention': availabilityBtnAttentionActive }"
                       :style="{ opacity: availabilityBtnOpacity }"
                       @click="editSelectedGuestAvailability"
                     >
@@ -244,7 +245,7 @@
                       v-else
                       width="10.25rem"
                       class="timeful-elevated-button tw-text-white tw-transition-opacity"
-                      :class="'tw-bg-green'"
+                      :class="['tw-bg-green', { 'timeful-availability-button-attention': availabilityBtnAttentionActive }]"
                       :disabled="loading && !userHasResponded"
                       :style="{ opacity: availabilityBtnOpacity }"
                       @click="addAvailability"
@@ -418,6 +419,7 @@
             <v-btn
               v-if="!isGroup && !authUser && selectedGuestRespondent"
               class="tw-bg-white tw-text-green tw-transition-opacity"
+              :class="{ 'timeful-availability-button-attention': availabilityBtnAttentionActive }"
               :style="{ opacity: availabilityBtnOpacity }"
               @click="editSelectedGuestAvailability"
             >
@@ -426,6 +428,7 @@
             <v-btn
               v-else
               class="tw-bg-white tw-text-green tw-transition-opacity"
+              :class="{ 'timeful-availability-button-attention': availabilityBtnAttentionActive }"
               :disabled="loading && !userHasResponded"
               :style="{ opacity: availabilityBtnOpacity }"
               @click="addAvailability"
@@ -704,7 +707,7 @@ const editing = useEventEditing({
 
 const {
   editEventDialog, choiceDialog, webviewDialog, guestDialog, pagesNotVisitedDialog,
-  availabilityBtnOpacity, addAvailability, addAvailabilityAsGuest, cancelEditing,
+  availabilityBtnOpacity, availabilityBtnAttentionActive, addAvailability, addAvailabilityAsGuest, cancelEditing,
   copyLink, deleteAvailability, editEvent, saveChanges,
   setAvailabilityAutomatically, setAvailabilityManually, editGuestAvailability,
   signInLinkApple, addedAppleCalendar, addedICSCalendar, highlightAvailabilityBtn,
@@ -1313,3 +1316,26 @@ watch(() => authUser.value?.calendarAccounts, () => {
   void loader.fetchAuthUserCalendarEvents()
 })
 </script>
+
+<style scoped>
+@keyframes timeful-availability-button-attention {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(0, 153, 76, 0.45);
+  }
+
+  45% {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 10px rgba(0, 153, 76, 0.12);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(0, 153, 76, 0);
+  }
+}
+
+.timeful-availability-button-attention {
+  animation: timeful-availability-button-attention 0.45s ease-in-out 0s 2;
+}
+</style>

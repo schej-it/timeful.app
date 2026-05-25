@@ -1,4 +1,5 @@
 const SHOW_BEST_TIMES_KEY = "showBestTimes"
+const SHOW_ALL_HOURS_KEY = "showAllHours"
 
 type StorageLike = Storage | Record<string, unknown>
 
@@ -77,4 +78,22 @@ export function writeShowBestTimesPreference(value: boolean) {
   }
 
   writeStorageValue(storage, SHOW_BEST_TIMES_KEY, String(value))
+}
+
+export function readShowAllHoursPreference(): boolean {
+  const storage = getLocalStorage()
+  if (!storage) {
+    return false
+  }
+
+  return readStorageValue(storage, SHOW_ALL_HOURS_KEY) === "true"
+}
+
+export function writeShowAllHoursPreference(value: boolean) {
+  const storage = getLocalStorage()
+  if (!storage) {
+    return
+  }
+
+  writeStorageValue(storage, SHOW_ALL_HOURS_KEY, String(value))
 }

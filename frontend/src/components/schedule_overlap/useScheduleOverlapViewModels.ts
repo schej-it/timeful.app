@@ -8,6 +8,7 @@ import type {
   FetchedResponse,
   MonthDayItem,
   ParsedResponses,
+  RenderedTimeGridRow,
   RowCol,
   ScheduleOverlapEvent,
   ScheduleOverlapState,
@@ -87,6 +88,7 @@ interface UseScheduleOverlapViewModelsOptions {
   showCalendarEvents: Ref<boolean>
   showBestTimes: Ref<boolean>
   hideIfNeeded: Ref<boolean>
+  showAllHours: Ref<boolean>
   showEventOptions: Ref<boolean>
   guestAddedAvailability: ComputedRef<boolean>
   editing: ComputedRef<boolean>
@@ -112,6 +114,7 @@ interface UseScheduleOverlapViewModelsOptions {
   timedGridActions: ComputedRef<ScheduleOverlapTimeGridActions>
   splitTimes: Ref<TimeItem[][]>
   timeslotHeight: Ref<number>
+  renderedRows: ComputedRef<RenderedTimeGridRow[]>
   days: Ref<DayItem[]>
   isSpecificDates: Ref<boolean>
   sampleCalendarEventsByDay: ComputedRef<CalendarEventsByDay>
@@ -174,6 +177,7 @@ export function useScheduleOverlapViewModels(
       showCalendarEvents: opts.showCalendarEvents.value,
       showBestTimes: opts.showBestTimes.value,
       hideIfNeeded: opts.hideIfNeeded.value,
+      showAllHours: opts.showAllHours.value,
       showEventOptions: opts.showEventOptions.value,
       guestAddedAvailability: opts.guestAddedAvailability.value,
       addingAvailabilityAsGuest: opts.addingAvailabilityAsGuest.value,
@@ -246,6 +250,7 @@ export function useScheduleOverlapViewModels(
     startCalendarOnMonday: opts.startCalendarOnMonday.value,
     showBestTimes: opts.showBestTimes.value,
     hideIfNeeded: opts.hideIfNeeded.value,
+    showAllHours: opts.showAllHours.value,
     isWeekly: opts.isWeekly.value,
     calendarPermissionGranted: opts.calendarPermissionGranted.value,
     weekOffset: opts.weekOffset.value,
@@ -283,6 +288,7 @@ export function useScheduleOverlapViewModels(
     hasNextPage: opts.hasNextPage.value,
     splitTimes: opts.splitTimes.value,
     times: opts.times.value,
+    renderedRows: opts.renderedRows.value,
     timeslotHeight: opts.timeslotHeight.value,
     days: opts.days.value,
     isSpecificDates: opts.isSpecificDates.value,

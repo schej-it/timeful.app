@@ -337,12 +337,45 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     }
   }
 
-  const populateUserAvailability = (id: string) => {
+  const getCurrentPageDateRange = (): {
+    startDate: Temporal.ZonedDateTime
+    endDate: Temporal.ZonedDateTime
+  } | null => {
+    const eventDates = getEventDateSeeds(opts.event.value)
+    if (eventDates.length === 0) {
+      return null
+    }
+
+    const startDate = getDateDayOffset(
+      eventDates[0],
+      opts.page.value * opts.maxDaysPerPage.value
+    )
+    const endDate = getDateDayOffset(startDate, opts.maxDaysPerPage.value)
+    return { startDate, endDate }
+  }
+
+  const populateUserAvailability = (
+    id: string,
+    options: { animate?: boolean } = {}
+  ) => {
     const resp = (
       parsedResponses.value as Record<string, ParsedResponse | undefined>
     )[id]
-    availability.value = new ZdtSet(resp?.availability ?? [])
     ifNeeded.value = new ZdtSet(resp?.ifNeeded ?? [])
+
+    if (options.animate) {
+      const pageDateRange = getCurrentPageDateRange()
+      if (pageDateRange) {
+        animateAvailability(new ZdtSet(resp?.availability ?? []), pageDateRange.startDate, pageDateRange.endDate, {
+          showSnackbar: false,
+        })
+      } else {
+        availability.value = new ZdtSet(resp?.availability ?? [])
+      }
+    } else {
+      availability.value = new ZdtSet(resp?.availability ?? [])
+    }
+
     void nextTick(() => (unsavedChanges.value = false))
   }
 
@@ -368,8 +401,10 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   const animateAvailability = (
     incoming: ZdtSet,
     startDate: Temporal.ZonedDateTime,
-    endDate: Temporal.ZonedDateTime
+    endDate: Temporal.ZonedDateTime,
+    options: { showSnackbar?: boolean } = {}
   ) => {
+    stopAvailabilityAnim()
     availabilityAnimEnabled.value = true
     availabilityAnimTimeouts.value = []
 
@@ -397,7 +432,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
           availabilityAnimTimeouts.value.push(
             setTimeout(() => {
               availabilityAnimEnabled.value = false
-              if (opts.showSnackbar.value) {
+              if (options.showSnackbar ?? opts.showSnackbar.value) {
                 mainStore.showInfo("Your availability has been autofilled!")
               }
               unsavedChanges.value = false
@@ -427,17 +462,14 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       },
     })
 
-    const eventDates = getEventDateSeeds(opts.event.value)
-    if (eventDates.length === 0) return
-    const pageStartDate = getDateDayOffset(
-      eventDates[0],
-      opts.page.value * opts.maxDaysPerPage.value
+    const pageDateRange = getCurrentPageDateRange()
+    if (!pageDateRange) return
+
+    animateAvailability(
+      tmpAvailability,
+      pageDateRange.startDate,
+      pageDateRange.endDate
     )
-    const pageEndDate = getDateDayOffset(
-      pageStartDate,
-      opts.maxDaysPerPage.value
-    )
-    animateAvailability(tmpAvailability, pageStartDate, pageEndDate)
   }
 
   const reanimateAvailability = () => {

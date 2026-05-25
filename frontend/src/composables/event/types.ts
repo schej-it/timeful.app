@@ -17,7 +17,7 @@ export interface ScheduleOverlapInstance {
   startEditing(): void
   stopEditing(): void
   setAvailabilityAutomatically(): void
-  populateUserAvailability(userId: string): void
+  populateUserAvailability(userId: string, options?: { animate?: boolean }): void
   submitAvailability(
     payload?: { name: string; email: string },
     sharedCalendarAccounts?: SharedCalendarAccounts

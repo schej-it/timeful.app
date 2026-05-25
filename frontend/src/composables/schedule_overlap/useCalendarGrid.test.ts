@@ -66,7 +66,7 @@ describe("useCalendarGrid", () => {
     expect(firstSlotBaseline?.withTimeZone("Europe/Moscow").toPlainTime().toString()).toBe(
       "09:00:00"
     )
-    expect(secondRenderedTime.hoursOffset.total("minutes")).toBe(15)
+    expect(secondRenderedTime.hoursOffset.total("minutes")).toBe(0)
     expect(firstIncludedSlot?.withTimeZone("Europe/Moscow").toPlainTime().toString()).toBe(
       "09:15:00"
     )
@@ -180,5 +180,47 @@ describe("useCalendarGrid", () => {
         .toPlainTime()
         .toString()
     ).toBe("20:00:00")
+  })
+
+  it("keeps the full event-constrained window for specific-time events with broader duration", () => {
+    const event = ref<ScheduleOverlapEvent>({
+      _id: "evt-4",
+      shortId: "grid-specific-window",
+      name: "Specific times in a broader window",
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [Temporal.PlainDate.from("2026-05-19")],
+      timeSeed: zdt("2026-05-19T09:00:00Z"),
+      startTime: Temporal.PlainTime.from("09:00"),
+      duration: Temporal.Duration.from({ hours: 12 }),
+      hasSpecificTimes: true,
+      times: [zdt("2026-05-19T09:00:00Z"), zdt("2026-05-19T17:00:00Z")],
+      notificationsEnabled: false,
+      blindAvailabilityEnabled: false,
+      daysOnly: false,
+      sendEmailAfterXResponses: -1,
+      collectEmails: false,
+      startOnMonday: true,
+      timeIncrement: durations.FIFTEEN_MINUTES,
+      creatorPosthogId: "creator-4",
+      remindees: [],
+    })
+
+    const grid = useCalendarGrid({
+      event,
+      weekOffset: ref(0),
+      curTimezone: ref({
+        value: UTC,
+        offset: Temporal.Duration.from({ hours: 0 }),
+        label: "UTC",
+        gmtString: "GMT+0",
+      }),
+      state: ref(states.HEATMAP),
+      isPhone: ref(false),
+    })
+
+    expect(grid.splitTimes.value[0]).toHaveLength(48)
+    expect(grid.splitTimes.value[0][0]?.text).toBe("9 am")
+    expect(grid.splitTimes.value[0][44]?.text).toBe("8 pm")
+    expect(grid.splitTimes.value[0][47]?.absoluteMinutes).toBe(20 * 60 + 45)
   })
 })

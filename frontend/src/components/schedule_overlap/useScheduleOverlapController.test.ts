@@ -251,4 +251,17 @@ describe("useScheduleOverlapController", () => {
 
     wrapper.unmount()
   })
+
+  it("reanimates availability when entering edit-availability mode", async () => {
+    const { wrapper, state, spies } = mountControllerHarness()
+
+    expect(spies.reanimateAvailability).not.toHaveBeenCalled()
+
+    state.value = states.EDIT_AVAILABILITY
+    await nextTick()
+
+    expect(spies.reanimateAvailability).toHaveBeenCalledTimes(1)
+
+    wrapper.unmount()
+  })
 })

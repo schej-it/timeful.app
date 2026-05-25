@@ -119,6 +119,7 @@ vi.mock("@/composables/event/useEventEditing", () => ({
     guestDialog: ref(false),
     pagesNotVisitedDialog: ref(false),
     availabilityBtnOpacity: ref(1),
+    availabilityBtnAttentionActive: ref(false),
     addAvailability: vi.fn(),
     addAvailabilityAsGuest: vi.fn(),
     cancelEditing: vi.fn(),

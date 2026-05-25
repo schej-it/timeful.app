@@ -43,6 +43,8 @@ export function useEventEditing(opts: UseEventEditingOptions) {
   const guestDialog = ref(false)
   const pagesNotVisitedDialog = ref(false)
   const availabilityBtnOpacity = ref(1)
+  const availabilityBtnAttentionActive = ref(false)
+  let availabilityBtnAttentionTimeout: ReturnType<typeof setTimeout> | null = null
 
   function getErrorMessage(err: unknown, fallback: string) {
     if (typeof err === "object" && err !== null) {
@@ -246,7 +248,7 @@ export function useEventEditing(opts: UseEventEditingOptions) {
     const id = userId ?? so.selectedGuestRespondent ?? ""
     opts.curGuestId.value = id
     so.startEditing()
-    void nextTick(() => { so.populateUserAvailability(id) })
+    void nextTick(() => { so.populateUserAvailability(id, { animate: true }) })
   }
 
   function signInLinkApple() {
@@ -276,8 +278,14 @@ export function useEventEditing(opts: UseEventEditingOptions) {
   }
 
   function highlightAvailabilityBtn() {
+    if (availabilityBtnAttentionTimeout) {
+      clearTimeout(availabilityBtnAttentionTimeout)
+    }
+
     availabilityBtnOpacity.value = 0.1
+    availabilityBtnAttentionActive.value = false
     setTimeout(() => {
+      availabilityBtnAttentionActive.value = true
       availabilityBtnOpacity.value = 1
       setTimeout(() => {
         availabilityBtnOpacity.value = 0.1
@@ -286,6 +294,11 @@ export function useEventEditing(opts: UseEventEditingOptions) {
         }, 100)
       }, 100)
     }, 100)
+
+    availabilityBtnAttentionTimeout = setTimeout(() => {
+      availabilityBtnAttentionActive.value = false
+      availabilityBtnAttentionTimeout = null
+    }, 1200)
   }
 
   function handleGuestDialogSubmit(guestPayload: { name: string; email: string }) {
@@ -299,6 +312,7 @@ export function useEventEditing(opts: UseEventEditingOptions) {
     guestDialog,
     pagesNotVisitedDialog,
     availabilityBtnOpacity,
+    availabilityBtnAttentionActive,
     addAvailability,
     addAvailabilityAsGuest,
     cancelEditing,
