@@ -252,6 +252,8 @@ export const getBaseTimeslotClassStyle = ({
 
 interface TimeGridTimeslotArgs extends TimeslotBaseArgs {
   date: Temporal.ZonedDateTime | null
+  timeHoursOffset?: Temporal.Duration
+  splitStartHoursOffset?: Temporal.Duration
   isFirstSplit: boolean
   isDisabled: boolean
   animateTimeslotAlways: boolean
@@ -282,6 +284,8 @@ export const getTimeGridTimeslotClassStyle = ({
   animateTimeslotAlways,
   availabilityAnimEnabled,
   timeslotHeight,
+  timeHoursOffset,
+  splitStartHoursOffset,
   timezoneOffset,
   curTimeslot,
   editing,
@@ -317,26 +321,30 @@ export const getTimeGridTimeslotClassStyle = ({
   ) {
     cs.class += "tw-border tw-border-dashed tw-border-black tw-z-10 "
   } else {
-    if (baseArgs.date) {
-      const offsetMinutes = timezoneOffset.total("minutes")
-      const localDate = baseArgs.date.subtract({ minutes: offsetMinutes })
-      const frac = localDate.minute
-      if (isFirstSplit && baseArgs.row === 0) {
-        cs.class += "tw-border-t "
-        cs.style.borderTopStyle = "solid"
-        cs.style.borderTopWidth = "0.5px"
-        cs.style.borderTopColor = GRID_HOUR_SEPARATOR
-      } else if (frac === 0) {
-        cs.class += "tw-border-t "
-        cs.style.borderTopStyle = "solid"
-        cs.style.borderTopWidth = "0.5px"
-        cs.style.borderTopColor = GRID_HOUR_SEPARATOR
-      } else if (frac === 30) {
-        cs.class += "tw-border-t "
-        cs.style.borderTopStyle = "dashed"
-        cs.style.borderTopWidth = "1px"
-        cs.style.borderTopColor = GRID_SEPARATOR
-      }
+    const splitStartOffsetMinutes = splitStartHoursOffset?.total("minutes")
+    const offsetMinutes = timeHoursOffset?.total("minutes")
+    const localMinute =
+      baseArgs.date
+        ? baseArgs.date.subtract({ minutes: timezoneOffset.total("minutes") }).minute
+        : typeof offsetMinutes === "number" &&
+            typeof splitStartOffsetMinutes === "number"
+          ? (((offsetMinutes - splitStartOffsetMinutes) % 60) + 60) % 60
+          : null
+    if (isFirstSplit && baseArgs.row === 0) {
+      cs.class += "tw-border-t "
+      cs.style.borderTopStyle = "solid"
+      cs.style.borderTopWidth = "0.5px"
+      cs.style.borderTopColor = GRID_HOUR_SEPARATOR
+    } else if (localMinute === 0) {
+      cs.class += "tw-border-t "
+      cs.style.borderTopStyle = "solid"
+      cs.style.borderTopWidth = "0.5px"
+      cs.style.borderTopColor = GRID_HOUR_SEPARATOR
+    } else if (localMinute === 30) {
+      cs.class += "tw-border-t "
+      cs.style.borderTopStyle = "dashed"
+      cs.style.borderTopWidth = "1px"
+      cs.style.borderTopColor = GRID_SEPARATOR
     }
 
     cs.class += "tw-border-r "
@@ -381,7 +389,7 @@ export const getTimeGridTimeslotClassStyle = ({
   }
 
   if (isDisabled) {
-    cs.class += "tw-bg-light-gray-stroke tw-border-light-gray-stroke "
+    cs.class += "tw-bg-light-gray-stroke "
   }
   if (cs.style.backgroundColor === UNAVAILABLE_BG) {
     cs.style.backgroundColor = UNAVAILABLE_BG_TIME_GRID
@@ -399,12 +407,17 @@ export const buildTimeGridTimeslotClassStyles = ({
   const out: ClassStyle[] = []
 
   for (let col = 0; col < sharedArgs.daysLength; col += 1) {
+    const firstSplitStartHoursOffset = firstSplitTimes[0]?.hoursOffset
+    const secondSplitStartHoursOffset = secondSplitTimes[0]?.hoursOffset
+
     for (let row = 0; row < firstSplitTimes.length; row += 1) {
       const date = getDateFromRowCol(row, col)
       out.push(
         getTimeGridTimeslotClassStyle({
           ...sharedArgs,
           date,
+          timeHoursOffset: firstSplitTimes[row]?.hoursOffset,
+          splitStartHoursOffset: firstSplitStartHoursOffset,
           row,
           col,
           isFirstSplit: true,
@@ -424,6 +437,8 @@ export const buildTimeGridTimeslotClassStyles = ({
         getTimeGridTimeslotClassStyle({
           ...sharedArgs,
           date,
+          timeHoursOffset: secondSplitTimes[secondSplitRow]?.hoursOffset,
+          splitStartHoursOffset: secondSplitStartHoursOffset,
           row,
           col,
           isFirstSplit: false,

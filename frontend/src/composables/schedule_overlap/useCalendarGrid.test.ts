@@ -111,4 +111,74 @@ describe("useCalendarGrid", () => {
     expect(grid.times.value).not.toHaveLength(0)
     expect(grid.splitTimes.value.flat().some((time) => time.hoursOffset.total("minutes") === -30)).toBe(true)
   })
+
+  it("rounds weird-offset timed grids to whole local hours", () => {
+    const event = ref<ScheduleOverlapEvent>({
+      _id: "evt-3",
+      shortId: "grid-quarter-hour",
+      name: "Quarter-hour timezone",
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [Temporal.PlainDate.from("2026-05-19")],
+      timeSeed: zdt("2026-05-19T05:30:00Z"),
+      startTime: Temporal.PlainTime.from("05:30"),
+      duration: Temporal.Duration.from({ hours: 8 }),
+      hasSpecificTimes: false,
+      notificationsEnabled: false,
+      blindAvailabilityEnabled: false,
+      daysOnly: false,
+      sendEmailAfterXResponses: -1,
+      collectEmails: false,
+      startOnMonday: true,
+      timeIncrement: durations.FIFTEEN_MINUTES,
+      creatorPosthogId: "creator-3",
+      remindees: [],
+    })
+
+    const grid = useCalendarGrid({
+      event,
+      weekOffset: ref(0),
+      curTimezone: ref({
+        value: "Asia/Kathmandu",
+        offset: Temporal.Duration.from({ minutes: -345 }),
+        label: "Asia/Kathmandu",
+        gmtString: "GMT+5:45",
+      }),
+      state: ref(states.HEATMAP),
+      isPhone: ref(false),
+    })
+
+    const firstRenderedTime = grid.splitTimes.value[0][0]
+    const secondRenderedTime = grid.splitTimes.value[0][1]
+    const lastRenderedTime =
+      grid.splitTimes.value[0][grid.splitTimes.value[0].length - 1]
+
+    expect(firstRenderedTime.text).toBe("11 am")
+    expect(firstRenderedTime.hoursOffset.total("minutes")).toBe(-15)
+    expect(secondRenderedTime.hoursOffset.total("minutes")).toBe(0)
+    expect(
+      grid
+        .getDateFromDayHoursOffset(0, firstRenderedTime.hoursOffset)
+        ?.withTimeZone("Asia/Kathmandu")
+        .toPlainTime()
+        .toString()
+    ).toBe("11:00:00")
+    expect(
+      grid
+        .getDateFromDayTimeIndex(0, 1)
+        ?.withTimeZone("Asia/Kathmandu")
+        .toPlainTime()
+        .toString()
+    ).toBe("11:15:00")
+    expect(lastRenderedTime.hoursOffset.total("minutes")).toBe(510)
+    expect(
+      grid
+        .getDateFromDayHoursOffset(
+          0,
+          lastRenderedTime.hoursOffset.add(durations.FIFTEEN_MINUTES)
+        )
+        ?.withTimeZone("Asia/Kathmandu")
+        .toPlainTime()
+        .toString()
+    ).toBe("20:00:00")
+  })
 })

@@ -14,7 +14,6 @@ import {
   prefersStartOnMonday,
   timeNumToTimeText,
   utcTimeToLocalTime,
-  utcTimeToLocalTimeNum,
   userPrefers12h,
   ZdtMap,
   ZdtSet,
@@ -67,8 +66,8 @@ export interface UseCalendarGridOptions {
 export function useCalendarGrid(opts: UseCalendarGridOptions) {
   const { event, weekOffset, curTimezone, state, isPhone } = opts
 
-  const durationFromHoursNumber = (hours: number): Temporal.Duration =>
-    Temporal.Duration.from({ minutes: Math.round(hours * 60) })
+  const durationFromMinutesNumber = (minutes: number): Temporal.Duration =>
+    Temporal.Duration.from({ minutes: Math.round(minutes) })
 
   const timeType = ref<TimeType>(
     (localStorage.getItem("timeType") as TimeType | null) ??
@@ -214,19 +213,16 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
           .since(specificTimesHourBounds.value.minHours)
           .add({ hours: 1 })
       : (event.value.duration ?? durations.ZERO)
-    const utcEndTime = utcStartTime.add(durationHours)
     const localStartTime = utcTimeToLocalTime(
       utcStartTime,
       timezoneOffset.value
     )
-    const localEndTime = utcTimeToLocalTime(utcEndTime, timezoneOffset.value)
-
-    const isWeirdTimezone = timezoneOffset.value.total("hours") % 1 !== 0
-    const startTimeIsWeird = utcStartTime.second !== 0
-    let timeOffset = durations.ZERO
-    if (isWeirdTimezone !== startTimeIsWeird) {
-      timeOffset = durations.THIRTY_MINUTES.negated()
-    }
+    const localStartMinutes = localStartTime.hour * 60 + localStartTime.minute
+    const localEndMinutes =
+      localStartMinutes + Math.round(durationHours.total("minutes"))
+    const timeslotDurationMinutes = Math.round(
+      timeslotDuration.value.total("minutes")
+    )
 
     const getExtraTimes = (hoursOffset: Temporal.Duration): TimeItem[] => {
       if (compareDuration(timeslotDuration.value, durations.FIFTEEN_MINUTES) === 0) {
@@ -240,6 +236,35 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
         return [{ hoursOffset: hoursOffset.add(durations.THIRTY_MINUTES) }]
       }
       return []
+    }
+
+    const toLocalHourLabel = (absoluteMinutes: number): string | undefined => {
+      const normalizedMinutes = ((absoluteMinutes % (24 * 60)) + 24 * 60) % (24 * 60)
+      if (normalizedMinutes % 60 !== 0) return undefined
+      return timeNumToTimeText(
+        normalizedMinutes / 60,
+        timeType.value === timeTypes.HOUR12
+      )
+    }
+
+    const addRangeToSplit = (
+      target: TimeItem[],
+      startMinutes: number,
+      endMinutes: number
+    ) => {
+      for (
+        let absoluteMinutes = startMinutes;
+        absoluteMinutes < endMinutes;
+        absoluteMinutes += timeslotDurationMinutes
+      ) {
+        const hoursOffset = durationFromMinutesNumber(
+          absoluteMinutes - localStartMinutes
+        )
+        target.push({
+          hoursOffset,
+          text: toLocalHourLabel(absoluteMinutes),
+        })
+      }
     }
 
     if (state.value === states.SET_SPECIFIC_TIMES) {
@@ -256,85 +281,14 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       return split
     }
 
-    if (
-      Temporal.PlainTime.compare(localEndTime, localStartTime) <= 0 &&
-      // TODO
-      !localEndTime.equals(Temporal.PlainTime.from({ hour: 0 }))
-    ) {
-      // Convert PlainTime to hours for iteration
-      const localEndHour = localEndTime.hour
-      for (let i = 0; i < localEndHour; ++i) {
-        // TODO
-        // Calculate hoursOffsetValue as a number
-        const localEndHoursNum = localEndTime.hour + localEndTime.minute / 60
-        const hoursOffsetValue =
-          durationHours.total("hours") - (localEndHoursNum - i)
-        split[0].push({
-          hoursOffset: durationFromHoursNumber(hoursOffsetValue),
-          text: timeNumToTimeText(i, timeType.value === timeTypes.HOUR12),
-        })
-        split[0].push(
-          ...getExtraTimes(durationFromHoursNumber(hoursOffsetValue))
-        )
-      }
+    const displayStartMinutes = Math.floor(localStartMinutes / 60) * 60
+    const displayEndMinutes = Math.ceil(localEndMinutes / 60) * 60
 
-      // Convert localStartTime to hours for iteration
-      const localStartHoursNum =
-        localStartTime.hour + localStartTime.minute / 60
-      for (let i = 0; i < 24 - localStartHoursNum; ++i) {
-        const adjustedI = i + timeOffset.total("hours")
-        const localTimeNum = localStartHoursNum + adjustedI
-        split[1].push({
-          hoursOffset: durationFromHoursNumber(adjustedI),
-          text: timeNumToTimeText(
-            localTimeNum,
-            timeType.value === timeTypes.HOUR12
-          ),
-        })
-        split[1].push(
-          ...getExtraTimes(durationFromHoursNumber(adjustedI))
-        )
-      }
+    if (displayEndMinutes > 24 * 60) {
+      addRangeToSplit(split[0], 24 * 60, displayEndMinutes)
+      addRangeToSplit(split[1], displayStartMinutes, 24 * 60)
     } else {
-      // Convert duration to number of hours for iteration
-      const durationHoursNum = durationHours.total("hours")
-      const utcStartTimeNum = utcStartTime.hour + utcStartTime.minute / 60
-
-      for (let i = 0; i < durationHoursNum; ++i) {
-        const adjustedI = i + timeOffset.total("hours")
-        const utcTimeNum = utcStartTimeNum + adjustedI
-        const localTimeNum = utcTimeToLocalTimeNum(
-          utcTimeNum,
-          timezoneOffset.value
-        )
-        split[0].push({
-          hoursOffset: durationFromHoursNumber(adjustedI),
-          text: timeNumToTimeText(
-            localTimeNum,
-            timeType.value === timeTypes.HOUR12
-          ),
-        })
-        split[0].push(
-          ...getExtraTimes(durationFromHoursNumber(adjustedI))
-        )
-      }
-      if (timeOffset.total("hours") !== 0) {
-        const localTimeNum = utcTimeToLocalTimeNum(
-          utcStartTimeNum + durationHoursNum - 0.5,
-          timezoneOffset.value
-        )
-        split[0].push({
-          hoursOffset: durationFromHoursNumber(durationHoursNum - 0.5),
-          text: timeNumToTimeText(
-            localTimeNum,
-            timeType.value === timeTypes.HOUR12
-          ),
-        })
-        split[0].push(
-          ...getExtraTimes(durationFromHoursNumber(durationHoursNum - 0.5))
-        )
-      }
-      split[1] = []
+      addRangeToSplit(split[0], displayStartMinutes, displayEndMinutes)
     }
 
     return split
