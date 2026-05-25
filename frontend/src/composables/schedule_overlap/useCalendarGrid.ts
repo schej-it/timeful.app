@@ -67,6 +67,9 @@ export interface UseCalendarGridOptions {
 export function useCalendarGrid(opts: UseCalendarGridOptions) {
   const { event, weekOffset, curTimezone, state, isPhone } = opts
 
+  const durationFromHoursNumber = (hours: number): Temporal.Duration =>
+    Temporal.Duration.from({ minutes: Math.round(hours * 60) })
+
   const timeType = ref<TimeType>(
     (localStorage.getItem("timeType") as TimeType | null) ??
       (userPrefers12h() ? timeTypes.HOUR12 : timeTypes.HOUR24)
@@ -267,11 +270,11 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
         const hoursOffsetValue =
           durationHours.total("hours") - (localEndHoursNum - i)
         split[0].push({
-          hoursOffset: Temporal.Duration.from({ hours: hoursOffsetValue }),
+          hoursOffset: durationFromHoursNumber(hoursOffsetValue),
           text: timeNumToTimeText(i, timeType.value === timeTypes.HOUR12),
         })
         split[0].push(
-          ...getExtraTimes(Temporal.Duration.from({ hours: hoursOffsetValue }))
+          ...getExtraTimes(durationFromHoursNumber(hoursOffsetValue))
         )
       }
 
@@ -282,14 +285,14 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
         const adjustedI = i + timeOffset.total("hours")
         const localTimeNum = localStartHoursNum + adjustedI
         split[1].push({
-          hoursOffset: Temporal.Duration.from({ hours: adjustedI }),
+          hoursOffset: durationFromHoursNumber(adjustedI),
           text: timeNumToTimeText(
             localTimeNum,
             timeType.value === timeTypes.HOUR12
           ),
         })
         split[1].push(
-          ...getExtraTimes(Temporal.Duration.from({ hours: adjustedI }))
+          ...getExtraTimes(durationFromHoursNumber(adjustedI))
         )
       }
     } else {
@@ -305,14 +308,14 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
           timezoneOffset.value
         )
         split[0].push({
-          hoursOffset: Temporal.Duration.from({ hours: adjustedI }),
+          hoursOffset: durationFromHoursNumber(adjustedI),
           text: timeNumToTimeText(
             localTimeNum,
             timeType.value === timeTypes.HOUR12
           ),
         })
         split[0].push(
-          ...getExtraTimes(Temporal.Duration.from({ hours: adjustedI }))
+          ...getExtraTimes(durationFromHoursNumber(adjustedI))
         )
       }
       if (timeOffset.total("hours") !== 0) {
@@ -321,18 +324,14 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
           timezoneOffset.value
         )
         split[0].push({
-          hoursOffset: Temporal.Duration.from({
-            hours: durationHoursNum - 0.5,
-          }),
+          hoursOffset: durationFromHoursNumber(durationHoursNum - 0.5),
           text: timeNumToTimeText(
             localTimeNum,
             timeType.value === timeTypes.HOUR12
           ),
         })
         split[0].push(
-          ...getExtraTimes(
-            Temporal.Duration.from({ hours: durationHoursNum - 0.5 })
-          )
+          ...getExtraTimes(durationFromHoursNumber(durationHoursNum - 0.5))
         )
       }
       split[1] = []

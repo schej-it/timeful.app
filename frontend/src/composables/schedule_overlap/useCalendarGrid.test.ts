@@ -71,4 +71,44 @@ describe("useCalendarGrid", () => {
       "09:15:00"
     )
   })
+
+  it("builds split times for half-hour-offset timezones without fractional-hour Duration errors", () => {
+    const event = ref<ScheduleOverlapEvent>({
+      _id: "evt-2",
+      shortId: "grid-half-hour",
+      name: "Half-hour timezone",
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [Temporal.PlainDate.from("2026-05-19")],
+      timeSeed: zdt("2026-05-19T06:00:00Z"),
+      startTime: Temporal.PlainTime.from("06:00"),
+      duration: Temporal.Duration.from({ hours: 2 }),
+      hasSpecificTimes: false,
+      notificationsEnabled: false,
+      blindAvailabilityEnabled: false,
+      daysOnly: false,
+      sendEmailAfterXResponses: -1,
+      collectEmails: false,
+      startOnMonday: true,
+      timeIncrement: durations.THIRTY_MINUTES,
+      creatorPosthogId: "creator-2",
+      remindees: [],
+    })
+
+    const grid = useCalendarGrid({
+      event,
+      weekOffset: ref(0),
+      curTimezone: ref({
+        value: "Asia/Kolkata",
+        offset: Temporal.Duration.from({ minutes: -330 }),
+        label: "Asia/Kolkata",
+        gmtString: "GMT+5:30",
+      }),
+      state: ref(states.HEATMAP),
+      isPhone: ref(false),
+    })
+
+    expect(grid.splitTimes.value[0]).not.toHaveLength(0)
+    expect(grid.times.value).not.toHaveLength(0)
+    expect(grid.splitTimes.value.flat().some((time) => time.hoursOffset.total("minutes") === -30)).toBe(true)
+  })
 })
