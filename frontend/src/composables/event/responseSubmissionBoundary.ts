@@ -9,6 +9,9 @@ import { toRawCalendarOptions, toTransportDateTimeStrings } from "@/types/transp
 interface GuestPayload {
   name: string
   email?: string
+  guestId?: string
+  guestEditToken?: string
+  guestEditPolicy?: "protected" | "open"
 }
 
 export interface EventResponseSubmissionPayload {
@@ -17,6 +20,9 @@ export interface EventResponseSubmissionPayload {
   guest: boolean
   name?: string
   email?: string
+  guestId?: string
+  guestEditToken?: string
+  guestEditPolicy?: "protected" | "open"
 }
 
 export interface EncodedEventResponseSubmissionPayload {
@@ -25,6 +31,21 @@ export interface EncodedEventResponseSubmissionPayload {
   guest: boolean
   name?: string
   email?: string
+  guestId?: string
+  guestEditToken?: string
+  guestEditPolicy?: "protected" | "open"
+}
+
+export interface GuestResponseCredentials {
+  name?: string
+  guestId: string
+  guestEditToken: string
+  guestEditPolicy: "protected" | "open"
+  guestOwnershipMode: "token"
+}
+
+export interface GuestResponseMutationResult {
+  guestCredentials?: GuestResponseCredentials
 }
 
 export interface GroupResponseSubmissionPayload {
@@ -68,6 +89,9 @@ export function toEventResponseSubmissionPayload(input: {
     guest: true,
     name: input.guestPayload.name,
     email: input.guestPayload.email,
+    guestId: input.guestPayload.guestId,
+    guestEditToken: input.guestPayload.guestEditToken,
+    guestEditPolicy: input.guestPayload.guestEditPolicy,
   }
 }
 
@@ -102,6 +126,9 @@ export function encodeEventResponseSubmissionPayload(
     guest: payload.guest,
     name: payload.name,
     email: payload.email,
+    guestId: payload.guestId,
+    guestEditToken: payload.guestEditToken,
+    guestEditPolicy: payload.guestEditPolicy,
   }
 }
 

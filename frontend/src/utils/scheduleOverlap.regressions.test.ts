@@ -119,7 +119,7 @@ describe("schedule-overlap Temporal regressions", () => {
       timeslotDuration: computed(() => durations.ONE_HOUR),
       timezoneOffset: computed(() => durations.ZERO),
       isGroup: computed(() => false),
-      guestName: computed(() => undefined),
+      guestOwnership: computed(() => undefined),
       getDateFromDayTimeIndex: (dayIndex: number, timeIndex: number) =>
         dayIndex === 0 && timeIndex === 0 ? zdt("2026-01-01T09:00:00Z") : null,
       fetchedResponses: ref({}),

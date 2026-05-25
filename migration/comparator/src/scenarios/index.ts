@@ -7,6 +7,7 @@ import { eventDescriptionStyleScenario } from "./event-description-style.js"
 import { eventDescriptionRealScenario } from "./event-description-real.js"
 import { eventTimezoneMenuScenario } from "./event-timezone-menu.js"
 import { eventRespondentsPanelScenario } from "./event-respondents-panel.js"
+import { eventRespondentsPanelGuestEditScenario } from "./event-respondents-panel-guest-edit.js"
 import { eventRespondentsPanelHoverScenario } from "./event-respondents-panel-hover.js"
 import { eventBestTimesGridScenario } from "./event-best-times-grid.js"
 import { eventCollapseHoursScenario } from "./event-collapse-hours.js"
@@ -33,6 +34,7 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
   "event-description-style": eventDescriptionStyleScenario,
   "event-description-real": eventDescriptionRealScenario,
   "event-respondents-panel": eventRespondentsPanelScenario,
+  "event-respondents-panel-guest-edit": eventRespondentsPanelGuestEditScenario,
   "event-respondents-panel-hover": eventRespondentsPanelHoverScenario,
   "event-best-times-grid": eventBestTimesGridScenario,
   "event-collapse-hours": eventCollapseHoursScenario,

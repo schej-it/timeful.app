@@ -85,7 +85,7 @@ export async function dismissConsentIfPresent(page: Page, timeoutMs = 3_000) {
   })
 }
 
-const SHARED_EVENT_GUEST_NAME = "sdjkf"
+export const SHARED_EVENT_GUEST_NAME = "sdjkf"
 
 export async function prepareSharedEventGridPage(
   page: Page,

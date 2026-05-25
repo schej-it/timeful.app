@@ -6,9 +6,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { eventTypes, guestUserId } from "@/constants"
 import EventView from "./Event.vue"
 
+type GuestResponseMap = Record<
+  string,
+  {
+    name: string
+    user: {
+      _id: string
+      firstName: string
+      lastName: string
+      email: string
+    }
+    availability: unknown[]
+  }
+>
+
 const {
   editGuestAvailabilityMock,
   authUserState,
+  curGuestIdState,
   loaderEventState,
   refreshEventMock,
   checkOwnerPremiumMock,
@@ -17,6 +32,7 @@ const {
 } = vi.hoisted(() => ({
   editGuestAvailabilityMock: vi.fn(),
   authUserState: { value: null as null | { _id: string } },
+  curGuestIdState: { value: "" },
   refreshEventMock: vi.fn().mockResolvedValue(undefined),
   checkOwnerPremiumMock: vi.fn().mockResolvedValue(undefined),
   fetchCalendarAvailabilitiesMock: vi.fn().mockResolvedValue(undefined),
@@ -39,7 +55,7 @@ const {
           },
           availability: [],
         },
-      },
+      } as GuestResponseMap,
       blindAvailabilityEnabled: false,
     },
   },
@@ -102,7 +118,7 @@ vi.mock("@/composables/event/useEventLoader", () => ({
 
 vi.mock("@/composables/event/useEventRespondent", () => ({
   useEventRespondent: () => ({
-    curGuestId: ref(""),
+    curGuestId: ref(curGuestIdState.value),
     addingAvailabilityAsGuest: ref(false),
     currSignUpBlock: ref(null),
     signUpForSlotDialog: ref(false),
@@ -177,6 +193,20 @@ const ScheduleOverlapStub = {
   template: "<div />",
 }
 
+const ScheduleOverlapNoGuestSelectionStub = {
+  ...ScheduleOverlapStub,
+  data() {
+    return {
+      ...ScheduleOverlapStub.data(),
+      selectedGuestRespondent: "",
+      respondents: [
+        { _id: "khh", name: "khh" },
+        { _id: "ada", name: "ada" },
+      ],
+    }
+  },
+}
+
 const eventDescriptionCanEditStub = {
   name: "EventDescriptionStub",
   props: {
@@ -213,6 +243,7 @@ describe("Event guest edit action", () => {
     vi.clearAllMocks()
     vi.useFakeTimers()
     authUserState.value = null
+    curGuestIdState.value = ""
     loaderEventState.value = {
       _id: "evt-1",
       shortId: "dEeaF",
@@ -230,7 +261,7 @@ describe("Event guest edit action", () => {
           },
           availability: [],
         },
-      },
+      } as GuestResponseMap,
       blindAvailabilityEnabled: false,
     }
   })
@@ -241,7 +272,212 @@ describe("Event guest edit action", () => {
     await nextTick()
   }
 
-  it("passes the selected guest respondent id instead of the click event", async () => {
+  it("shows Edit guest availability by default when a single guest respondent exists", async () => {
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonClickStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.text()).toContain("Edit khh's availability")
+  })
+
+  it("shows Add availability when multiple guest responses exist without an explicit guest target", async () => {
+    loaderEventState.value = {
+      ...loaderEventState.value,
+      responses: {
+        khh: {
+          name: "khh",
+          user: {
+            _id: "000000000000000000000000",
+            firstName: "khh",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+        },
+        ada: {
+          name: "ada",
+          user: {
+            _id: "111111111111111111111111",
+            firstName: "ada",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+        },
+      },
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapNoGuestSelectionStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonClickStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.text()).toContain("Add availability")
+    expect(wrapper.text()).not.toContain("Edit khh's availability")
+  })
+
+  it("uses curGuestId as the explicit guest edit target for the CTA", async () => {
+    curGuestIdState.value = "khh"
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonClickStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    const guestEditButton = wrapper
+      .findAll("button")
+      .find((node) => node.text().includes("Edit khh's availability"))
+
+    expect(guestEditButton).toBeDefined()
+    if (!guestEditButton) {
+      throw new Error("Expected guest edit button to be rendered")
+    }
+
+    await guestEditButton.trigger("click")
+
+    expect(editGuestAvailabilityMock).toHaveBeenCalledWith("khh")
+  })
+
+  it("uses generic edit copy for blind availability when a guest target is selected", async () => {
+    curGuestIdState.value = "khh"
+    loaderEventState.value = {
+      ...loaderEventState.value,
+      blindAvailabilityEnabled: true,
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonClickStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.text()).toContain("Edit availability")
+    expect(wrapper.text()).not.toContain("Edit khh's availability")
+  })
+
+  it("passes the explicit guest respondent target instead of the click event", async () => {
+    curGuestIdState.value = "khh"
+
     const wrapper = shallowMount(EventView, {
       props: {
         eventId: "dEeaF",

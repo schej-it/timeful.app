@@ -142,6 +142,8 @@ export function useEventEditing(opts: UseEventEditingOptions) {
         const guestChangesSaved = await saveChangesAsGuest({
           name: opts.curGuestId.value,
           email: ev?.responses?.[opts.curGuestId.value]?.email ?? "",
+          allowOthersToEdit:
+            ev?.responses?.[opts.curGuestId.value]?.guestEditPolicy === "open",
         })
         if (guestChangesSaved) {
           opts.curGuestId.value = ""
@@ -164,7 +166,11 @@ export function useEventEditing(opts: UseEventEditingOptions) {
     }
   }
 
-  async function saveChangesAsGuest(payload: { name: string; email: string }) {
+  async function saveChangesAsGuest(payload: {
+    name: string
+    email: string
+    allowOthersToEdit?: boolean
+  }) {
     const so = opts.scheduleOverlapRef.value
     if (!so) return false
     if (payload.name.length > 0) {
@@ -245,7 +251,8 @@ export function useEventEditing(opts: UseEventEditingOptions) {
   function editGuestAvailability(userId?: string) {
     const so = opts.scheduleOverlapRef.value
     if (!so) return
-    const id = userId ?? so.selectedGuestRespondent ?? ""
+    const id = userId ?? ""
+    if (id.length === 0) return
     opts.curGuestId.value = id
     so.startEditing()
     void nextTick(() => { so.populateUserAvailability(id, { animate: true }) })
@@ -301,7 +308,11 @@ export function useEventEditing(opts: UseEventEditingOptions) {
     }, 1200)
   }
 
-  function handleGuestDialogSubmit(guestPayload: { name: string; email: string }) {
+  function handleGuestDialogSubmit(guestPayload: {
+    name: string
+    email: string
+    allowOthersToEdit?: boolean
+  }) {
     void saveChangesAsGuest(guestPayload)
   }
 

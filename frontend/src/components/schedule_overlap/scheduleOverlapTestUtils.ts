@@ -80,6 +80,8 @@ export const buildRespondentsPanelViewModel =
   (): ScheduleOverlapRespondentsPanelViewModel => ({
     event: buildScheduleOverlapProps().event,
     eventId: "evt-1",
+    curGuestId: "",
+    guestResponseLookupKey: "",
     days: [zdt("2026-01-01T23:00:00Z")],
     times: [],
     curDate: zdt("2026-01-01T23:00:00Z"),

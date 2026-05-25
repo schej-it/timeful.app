@@ -56,6 +56,31 @@ const VTextFieldStub = defineComponent({
   `,
 })
 
+const VCheckboxStub = defineComponent({
+  name: "VCheckbox",
+  props: {
+    modelValue: {
+      type: Boolean,
+      default: false,
+    },
+    label: {
+      type: String,
+      default: "",
+    },
+  },
+  emits: ["update:modelValue"],
+  template: `
+    <label>
+      <input
+        type="checkbox"
+        :checked="modelValue"
+        @change="$emit('update:modelValue', $event.target.checked)"
+      />
+      {{ label }}
+    </label>
+  `,
+})
+
 const baseEvent = {
   _id: "evt-1",
   collectEmails: true,
@@ -89,6 +114,7 @@ describe("GuestDialog", () => {
           "v-card": passThroughStub,
           "v-card-text": passThroughStub,
           "v-card-title": passThroughStub,
+          "v-checkbox": VCheckboxStub,
           "v-dialog": passThroughStub,
           "v-form": createFormStub(formRefMethods),
           "v-icon": nullStub,
@@ -115,7 +141,7 @@ describe("GuestDialog", () => {
 
     expect(formRefMethods.validate).toHaveBeenCalledTimes(1)
     expect(wrapper.emitted("submit")).toEqual([
-      [{ name: "guest", email: "guest@example.com" }],
+      [{ name: "guest", email: "guest@example.com", allowOthersToEdit: false }],
     ])
   })
 
@@ -144,6 +170,7 @@ describe("GuestDialog", () => {
           "v-card": passThroughStub,
           "v-card-text": passThroughStub,
           "v-card-title": passThroughStub,
+          "v-checkbox": VCheckboxStub,
           "v-dialog": passThroughStub,
           "v-form": createFormStub(formRefMethods),
           "v-icon": nullStub,
@@ -161,6 +188,7 @@ describe("GuestDialog", () => {
     expect(onSubmit).toHaveBeenCalledWith({
       name: "guest",
       email: "guest@example.com",
+      allowOthersToEdit: false,
     })
   })
 
@@ -179,6 +207,7 @@ describe("GuestDialog", () => {
           "v-card": passThroughStub,
           "v-card-text": passThroughStub,
           "v-card-title": passThroughStub,
+          "v-checkbox": VCheckboxStub,
           "v-dialog": passThroughStub,
           "v-form": createFormStub(formRefMethods),
           "v-icon": nullStub,
@@ -195,6 +224,43 @@ describe("GuestDialog", () => {
 
     expect(formRefMethods.validate).toHaveBeenCalledTimes(1)
     expect(wrapper.emitted("submit")).toBeUndefined()
+  })
+
+  it("defaults guest ownership to protected and emits open mode when toggled", async () => {
+    const wrapper = mount(GuestDialog, {
+      props: {
+        modelValue: true,
+        event: baseEvent,
+        respondents: [],
+      },
+      global: {
+        stubs: mergeComponentStubs({
+          "v-btn": VBtnStub,
+          "v-card": passThroughStub,
+          "v-card-text": passThroughStub,
+          "v-card-title": passThroughStub,
+          "v-checkbox": VCheckboxStub,
+          "v-dialog": passThroughStub,
+          "v-form": createFormStub(formRefMethods),
+          "v-icon": nullStub,
+          "v-spacer": nullStub,
+          "v-text-field": VTextFieldStub,
+        }),
+      },
+    })
+
+    const checkbox = wrapper.find('input[type="checkbox"]')
+    expect((checkbox.element as HTMLInputElement).checked).toBe(false)
+
+    const inputs = wrapper.findAll('input[type="text"], input:not([type])')
+    await inputs[0]?.setValue("guest")
+    await inputs[1]?.setValue("guest@example.com")
+    await checkbox.setValue(true)
+    await getSubmitButton(wrapper).trigger("click")
+
+    expect(wrapper.emitted("submit")).toEqual([
+      [{ name: "guest", email: "guest@example.com", allowOthersToEdit: true }],
+    ])
   })
 
 })

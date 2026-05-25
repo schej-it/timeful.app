@@ -9,6 +9,7 @@ import { ZdtSet } from "@/utils"
 import {
   states,
   type ScheduleOverlapEvent,
+  type ScheduleOverlapState,
   type ScheduledEvent,
 } from "@/composables/schedule_overlap/types"
 import { useScheduleOverlapController } from "./useScheduleOverlapController"
@@ -42,7 +43,7 @@ const mountControllerHarness = (options: ControllerHarnessOptions = {}) => {
   const event = ref<ScheduleOverlapEvent>(options.event ?? baseEvent())
   const fromEditEvent = ref(options.fromEditEvent ?? false)
   const showBestTimes = ref(options.showBestTimes ?? false)
-  const state = ref(states.BEST_TIMES)
+  const state = ref<ScheduleOverlapState>(states.BEST_TIMES)
   const availability = shallowRef(new ZdtSet())
   const parsedResponses = computed(() => ({}))
   const respondents = ref(options.respondents ?? [])

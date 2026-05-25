@@ -7,9 +7,11 @@ import { useAvailabilityData } from "@/composables/schedule_overlap/useAvailabil
 import { useCalendarEvents } from "@/composables/schedule_overlap/useCalendarEvents"
 import { useEventScheduling } from "@/composables/schedule_overlap/useEventScheduling"
 import { states, type DayItem, type TimeItem } from "@/composables/schedule_overlap/types"
+import type { GuestOwnershipState } from "@/composables/schedule_overlap/scheduleOverlapStorage"
 
 export const zdt = (iso: string) => Temporal.Instant.from(iso).toZonedDateTimeISO(UTC)
 export const epochMs = (iso: string) => Temporal.Instant.from(iso).epochMilliseconds
+const emptyGuestOwnership = computed<GuestOwnershipState | undefined>(() => undefined)
 
 export const makeAvailabilityData = (
   eventType: string = eventTypes.SPECIFIC_DATES
@@ -57,6 +59,11 @@ export const makeAvailabilityData = (
     isOwner: computed(() => false),
     guestNameKey: computed(() => "guestName"),
     guestName: computed(() => undefined),
+    guestOwnership: emptyGuestOwnership,
+    guestResponseLookupKey: computed(() => undefined),
+    setGuestName: vi.fn(),
+    setGuestOwnership: vi.fn(),
+    clearStoredGuestOwnership: vi.fn(),
     getDateFromRowCol: (row: number, col: number) =>
       row === 0 && col === 0 ? zdt("2026-01-01T09:00:00Z") : null,
     calendarEventsByDay: computed(() => []),
@@ -110,7 +117,7 @@ export const makeCalendarEventsHarness = ({
     timeslotDuration: computed(() => timeslotDuration),
     timezoneOffset: computed(() => durations.ZERO),
     isGroup: computed(() => false),
-    guestName: computed(() => undefined),
+    guestOwnership: emptyGuestOwnership,
     getDateFromDayTimeIndex: (dayIndex: number, timeIndex: number) =>
       dayIndex === 0 && timeIndex === 0 ? slotStart : null,
     fetchedResponses: ref({}),

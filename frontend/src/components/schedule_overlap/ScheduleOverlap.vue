@@ -82,7 +82,10 @@ import { useAvailabilityData } from "@/composables/schedule_overlap/useAvailabil
 import { useDragPaint } from "@/composables/schedule_overlap/useDragPaint"
 import { useEventScheduling } from "@/composables/schedule_overlap/useEventScheduling"
 import { useSignUpForm } from "@/composables/schedule_overlap/useSignUpForm"
-import { useScheduleOverlapUI } from "@/composables/schedule_overlap/useScheduleOverlapUI"
+import {
+  canGuestEditResponse,
+  useScheduleOverlapUI,
+} from "@/composables/schedule_overlap/useScheduleOverlapUI"
 import { useOwnedTimezone } from "@/composables/timezone/useOwnedTimezone"
 import { useScheduleOverlapController } from "./useScheduleOverlapController"
 import { useScheduleOverlapPreferences } from "./useScheduleOverlapPreferences"
@@ -103,6 +106,7 @@ import type {
 } from "./scheduleOverlapViewModels"
 import type { ScheduleOverlapSidebarExposed as ScheduleOverlapSidebarContract } from "./scheduleOverlapContracts"
 import {
+  appendGuestIdentityQuery,
   readShowAllHoursPreference,
   writeShowAllHoursPreference,
 } from "@/composables/schedule_overlap/scheduleOverlapStorage"
@@ -163,6 +167,7 @@ const emit = defineEmits<{
   signUpForBlock: [block: SignUpBlockLite]
   addAvailability: []
   deleteAvailability: []
+  guestAvailabilityDeleted: [userId: string]
 }>()
 
 // ── Store / Vuetify ────────────────────────────────────────────────────
@@ -182,9 +187,13 @@ const scheduleTimezoneReferenceDate = computed(() =>
 )
 const {
   guestNameKey,
+  guestOwnership,
   guestName,
+  guestResponseLookupKey,
   showBestTimes,
   setGuestName,
+  setGuestOwnership,
+  clearStoredGuestOwnership,
 } = useScheduleOverlapPreferences({
   eventId: computed(() => props.event._id ?? ""),
 })
@@ -276,7 +285,7 @@ const calEvents = useCalendarEvents({
   timeslotDuration: grid.timeslotDuration,
   timezoneOffset: grid.timezoneOffset,
   isGroup,
-  guestName,
+  guestOwnership,
   getDateFromDayTimeIndex: grid.getDateFromDayTimeIndex,
   fetchedResponses,
   loadingResponses,
@@ -305,6 +314,11 @@ const avail = useAvailabilityData({
   isOwner,
   guestNameKey,
   guestName,
+  guestOwnership,
+  guestResponseLookupKey,
+  setGuestName,
+  setGuestOwnership,
+  clearStoredGuestOwnership,
   getDateFromRowCol: grid.getDateFromRowCol,
   calendarEventsByDay: calEvents.calendarEventsByDay,
   groupCalendarEventsByDay: calEvents.groupCalendarEventsByDay,
@@ -381,7 +395,10 @@ const drag = useDragPaint({
 // ── 7. useScheduleOverlapUI ────────────────────────────────────────────
 const guestAddedAvailability = computed(
   () =>
-    Boolean(guestName.value?.length && guestName.value in avail.parsedResponses.value)
+    Boolean(
+      guestResponseLookupKey.value?.length &&
+        guestResponseLookupKey.value in avail.parsedResponses.value
+    )
 )
 
 const ui = useScheduleOverlapUI({
@@ -402,6 +419,7 @@ const ui = useScheduleOverlapUI({
   respondents: avail.respondents,
   curGuestId: computed(() => props.curGuestId),
   guestName,
+  guestResponseLookupKey,
   guestAddedAvailability,
   optionsSectionRef,
   respondentsListRef,
@@ -1164,6 +1182,7 @@ const sharedRespondentListeners = {
   mouseLeaveRespondent,
   clickRespondent,
   editGuestAvailability,
+  guestAvailabilityDeleted: handleGuestAvailabilityDeleted,
 }
 
 const sharedDisplayListeners = {
@@ -1259,6 +1278,7 @@ const {
   signUpBlocksToAddByDay,
   tempTimes,
   curGuestId: computed(() => props.curGuestId),
+  guestResponseLookupKey: computed(() => guestResponseLookupKey.value ?? ""),
   userHasResponded,
   addingAvailabilityAsGuest: computed(() => props.addingAvailabilityAsGuest),
   canEditGuestName,
@@ -1439,13 +1459,15 @@ function refreshEvent() {
 }
 
 function editGuestAvailability(id: string) {
-  if (mainStore.authUser) {
-    emit("addAvailabilityAsGuest")
-  } else {
-    startEditing()
+  if (
+    mainStore.authUser ||
+    !canGuestEditResponse(avail.parsedResponses.value[id], guestResponseLookupKey.value)
+  ) {
+    return
   }
+  startEditing()
   void nextTick(() => {
-    populateUserAvailability(id, { animate: true })
+    populateUserAvailability(id)
     emit("setCurGuestId", id)
   })
 }
@@ -1455,26 +1477,67 @@ function handleDeleteAvailability() {
   deleteAvailabilityDialog.value = false
 }
 
+function handleGuestAvailabilityDeleted(userId: string) {
+  if (userId.length === 0) return
+  if (props.curGuestId === userId) {
+    emit("setCurGuestId", "")
+    _stopEditing()
+  }
+  emit("guestAvailabilityDeleted", userId)
+}
+
 function openEditGuestNameDialog() {
-  newGuestName.value = props.curGuestId
+  newGuestName.value =
+    props.event.responses?.[props.curGuestId]?.name ?? props.curGuestId
   editGuestNameDialog.value = true
 }
 
 async function saveGuestName() {
   const name = newGuestName.value.trim()
+  const currentGuestName =
+    props.event.responses?.[props.curGuestId]?.name ?? props.curGuestId
   if (name.length === 0) {
     mainStore.showError("Guest name cannot be empty")
     return
   }
-  if (name === props.curGuestId) {
+  if (name === currentGuestName) {
     editGuestNameDialog.value = false
     return
   }
   try {
-    await post(`/events/${props.event._id ?? ""}/rename-user`, {
-      oldName: props.curGuestId,
-      newName: name,
-    })
+    const response = await post<{
+      guestCredentials?: {
+        name?: string
+        guestId: string
+        guestEditToken: string
+        guestEditPolicy: "protected" | "open"
+        guestOwnershipMode: "token"
+      }
+    }>(
+      appendGuestIdentityQuery(
+        `/events/${props.event._id ?? ""}/rename-user`,
+        guestOwnership.value,
+        guestName.value ?? null
+      ),
+      {
+        oldName: currentGuestName,
+        newName: name,
+        guestId: props.event.responses?.[props.curGuestId]?.guestId,
+        guestEditToken:
+          props.curGuestId === guestResponseLookupKey.value
+            ? guestOwnership.value?.guestEditToken
+            : undefined,
+      }
+    )
+    if (response.guestCredentials) {
+      setGuestOwnership({
+        name,
+        guestId: response.guestCredentials.guestId,
+        guestEditToken: response.guestCredentials.guestEditToken,
+        guestEditPolicy: response.guestCredentials.guestEditPolicy,
+        guestOwnershipMode: response.guestCredentials.guestOwnershipMode,
+      })
+    }
     setGuestName(name)
     mainStore.showInfo("Guest name updated successfully")
     editGuestNameDialog.value = false

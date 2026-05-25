@@ -25,7 +25,6 @@ import {
 import { eventTypes, durations, UTC } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
-import { readGuestName, writeGuestName } from "./scheduleOverlapStorage"
 import { Temporal } from "temporal-polyfill"
 import {
   normalizeCalendarOptions,
@@ -46,9 +45,14 @@ import {
 import {
   encodeEventResponseSubmissionPayload,
   type EncodedEventResponseSubmissionPayload,
+  type GuestResponseMutationResult,
   toEventResponseSubmissionPayload,
   toGroupResponseSubmissionPayload,
 } from "@/composables/event/responseSubmissionBoundary"
+import {
+  appendGuestIdentityQuery,
+  type GuestOwnershipState,
+} from "./scheduleOverlapStorage"
 
 declare global {
   interface Window {
@@ -88,6 +92,11 @@ export interface UseAvailabilityDataOptions {
   isOwner: ComputedRef<boolean>
   guestNameKey: ComputedRef<string>
   guestName: ComputedRef<string | undefined>
+  guestOwnership: ComputedRef<GuestOwnershipState | undefined>
+  guestResponseLookupKey: ComputedRef<string | undefined>
+  setGuestName: (name: string) => void
+  setGuestOwnership: (value: GuestOwnershipState) => void
+  clearStoredGuestOwnership: () => void
   // TODO
   getDateFromRowCol: (row: number, col: number) => Temporal.ZonedDateTime | null
 
@@ -195,6 +204,10 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
             calendarOptions: normalizeCalendarOptions(
               responses[userId].calendarOptions
             ),
+            guest: Boolean(responses[userId].name),
+            guestId: responses[userId].guestId,
+            guestEditPolicy: responses[userId].guestEditPolicy,
+            guestOwnershipMode: responses[userId].guestOwnershipMode,
           }
         } else {
           parsed[userId] = {
@@ -203,6 +216,10 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
               _id: responses[userId].user?._id ?? userId,
             },
             availability: new ZdtSet(),
+            guest: Boolean(responses[userId].name),
+            guestId: responses[userId].guestId,
+            guestEditPolicy: responses[userId].guestEditPolicy,
+            guestOwnershipMode: responses[userId].guestOwnershipMode,
           }
         }
       }
@@ -214,8 +231,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
         .blindAvailabilityEnabled &&
       !opts.isOwner.value
     ) {
-      const guestName = readGuestName(opts.guestNameKey.value) ?? ""
-      const userId = authUser?._id ?? guestName
+      const userId = authUser?._id ?? opts.guestResponseLookupKey.value ?? ""
       if (userId in responses) {
         const user = {
           ...(responses[userId].user ?? {}),
@@ -233,6 +249,10 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
           calendarOptions: normalizeCalendarOptions(
             responses[userId].calendarOptions
           ),
+          guest: Boolean(responses[userId].name),
+          guestId: responses[userId].guestId,
+          guestEditPolicy: responses[userId].guestEditPolicy,
+          guestOwnershipMode: responses[userId].guestOwnershipMode,
         }
       }
       return parsed
@@ -249,6 +269,10 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
         ifNeeded: new ZdtSet(opts.fetchedResponses.value[k]?.ifNeeded ?? []),
         enabledCalendars: responses[k].enabledCalendars,
         calendarOptions: normalizeCalendarOptions(responses[k].calendarOptions),
+        guest: Boolean(responses[k].name),
+        guestId: responses[k].guestId,
+        guestEditPolicy: responses[k].guestEditPolicy,
+        guestOwnershipMode: responses[k].guestOwnershipMode,
       }
     }
     return parsed
@@ -642,13 +666,18 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   }
 
   const submitAvailability = async (
-    guestPayload: { name: string; email: string } = { name: "", email: "" },
+    guestPayload: {
+      name: string
+      email: string
+      allowOthersToEdit?: boolean
+    } = { name: "", email: "" },
     sharedCalendarAccounts?: SharedCalendarAccounts
   ) => {
     const eventId =
       typeof opts.event.value._id === "string" ? opts.event.value._id : ""
     let type: string
     const authUser = mainStore.authUser
+    const existingGuestLookupKey = opts.guestResponseLookupKey.value
     let payload: EncodedEventResponseSubmissionPayload | ReturnType<
       typeof toGroupResponseSubmissionPayload
     >
@@ -667,18 +696,41 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       type = "availability"
       payload = encodeEventResponseSubmissionPayload(
         toEventResponseSubmissionPayload({
-        availability: availabilityArray.value,
-        ifNeeded: ifNeededArray.value,
-        authUserId: authUser?._id,
-        addingAvailabilityAsGuest: opts.addingAvailabilityAsGuest.value,
-        guestPayload,
-      }))
-      if (payload.guest) {
-        writeGuestName(opts.guestNameKey.value, guestPayload.name)
-      }
+          availability: availabilityArray.value,
+          ifNeeded: ifNeededArray.value,
+          authUserId: authUser?._id,
+          addingAvailabilityAsGuest: opts.addingAvailabilityAsGuest.value,
+          guestPayload: {
+            ...guestPayload,
+            guestId: opts.guestOwnership.value?.guestId,
+            guestEditToken: opts.guestOwnership.value?.guestEditToken,
+            guestEditPolicy: guestPayload.allowOthersToEdit ? "open" : "protected",
+          },
+        })
+      )
     }
 
-    await post(`/events/${eventId}/response`, payload)
+    const response = await post<GuestResponseMutationResult>(
+      appendGuestIdentityQuery(
+        `/events/${eventId}/response`,
+        opts.guestOwnership.value,
+        opts.guestName.value ?? null
+      ),
+      payload
+    )
+    if (!opts.isGroup.value && payload.guest) {
+      opts.setGuestOwnership({
+        name: guestPayload.name,
+        guestId: response.guestCredentials?.guestId,
+        guestEditToken: response.guestCredentials?.guestEditToken,
+        guestEditPolicy:
+          response.guestCredentials?.guestEditPolicy ??
+          (guestPayload.allowOthersToEdit ? "open" : "protected"),
+        guestOwnershipMode:
+          response.guestCredentials?.guestOwnershipMode ?? "legacy",
+      })
+      opts.setGuestName(guestPayload.name)
+    }
 
     const addedIfNeededTimes = ifNeededArray.value.length > 0
     if (authUser) {
@@ -699,7 +751,10 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
         })
       }
     } else {
-      if (guestPayload.name in parsedResponses.value) {
+      if (
+        (existingGuestLookupKey && existingGuestLookupKey in parsedResponses.value) ||
+        guestPayload.name in parsedResponses.value
+      ) {
         posthog.capture(`Edited ${type} as guest`, {
           eventId: opts.event.value._id,
           addedIfNeededTimes,
@@ -730,12 +785,30 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     } else {
       payload.guest = true
       payload.name = name
+      payload.guestId =
+        name === opts.guestResponseLookupKey.value
+          ? opts.guestOwnership.value?.guestId
+          : undefined
+      payload.guestEditToken =
+        name === opts.guestResponseLookupKey.value
+          ? opts.guestOwnership.value?.guestEditToken
+          : undefined
       posthog.capture("Deleted availability as guest", {
         eventId: opts.event.value._id,
         name,
       })
     }
-    await _delete(`/events/${eventId}/response`, payload)
+    await _delete(
+      appendGuestIdentityQuery(
+        `/events/${eventId}/response`,
+        opts.guestOwnership.value,
+        opts.guestName.value ?? null
+      ),
+      payload
+    )
+    if (name === opts.guestResponseLookupKey.value) {
+      opts.clearStoredGuestOwnership()
+    }
     availability.value = new ZdtSet()
     if (opts.isGroup.value) {
       // group navigation handled by caller

@@ -218,7 +218,7 @@
                       </template>
                       <v-list class="tw-py-1" density="compact">
                         <v-list-item
-                          v-if="isGuest(user)"
+                          v-if="canEditGuestAvailability(user)"
                           @click="$emit('editGuestAvailability', user._id ?? '')"
                         >
                           <v-list-item-title class="tw-flex tw-items-center">
@@ -244,7 +244,7 @@
                   </template>
                   <template v-else>
                     <v-btn
-                      v-if="isGuest(user)"
+                      v-if="canEditGuestAvailability(user)"
                       icon
                       size="small"
                       class="tw-bg-white"
@@ -460,6 +460,7 @@ import type {
   ScheduleOverlapEvent,
   Timezone,
 } from "@/composables/schedule_overlap/types"
+import { canGuestEditResponse } from "@/composables/schedule_overlap/useScheduleOverlapUI"
 import type { User } from "@/types"
 import { useRespondentsCsvExport } from "./useRespondentsCsvExport"
 import { useRespondentsListSizing } from "./useRespondentsListSizing"
@@ -468,6 +469,8 @@ import { useRespondentsListState } from "./useRespondentsListState"
 const props = defineProps<{
   eventId: string
   event: ScheduleOverlapEvent
+  curGuestId: string
+  guestResponseLookupKey: string
   days: unknown[]
   times: unknown[]
   curDate?: Temporal.ZonedDateTime
@@ -498,6 +501,7 @@ const emit = defineEmits<{
   mouseLeaveRespondent: []
   clickRespondent: [e: MouseEvent, userId: string]
   editGuestAvailability: [userId: string]
+  guestAvailabilityDeleted: [userId: string]
   addAvailabilityAsGuest: []
   addAvailability: []
   refreshEvent: []
@@ -559,14 +563,27 @@ function clickRespondent(e: MouseEvent, userId: string) {
   emit("clickRespondent", e, userId)
 }
 
+function canEditGuestAvailability(user: User) {
+  if (authUser.value || user._id == null) {
+    return false
+  }
+  return canGuestEditResponse(
+    props.parsedResponses[user._id],
+    props.guestResponseLookupKey
+  )
+}
+
 async function deleteAvailability(user: User | null) {
   if (!user) return
   try {
+    const parsedResponse = user._id ? props.parsedResponses[user._id] : undefined
     await _delete(`/events/${props.eventId}/response`, {
       guest: isGuest(user),
       userId: user._id,
-      name: user._id,
+      name: user.firstName,
+      guestId: parsedResponse?.guestId,
     })
+    emit("guestAvailabilityDeleted", user._id ?? "")
     emit("refreshEvent")
     showInfo("Availability successfully deleted!")
 

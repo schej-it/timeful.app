@@ -67,6 +67,8 @@ export interface ScheduleOverlapTimeGridActions {
 export interface ScheduleOverlapRespondentsPanelViewModel {
   event: ScheduleOverlapEvent
   eventId: string
+  curGuestId: string
+  guestResponseLookupKey: string
   days: unknown[]
   times: unknown[]
   curDate?: Temporal.ZonedDateTime

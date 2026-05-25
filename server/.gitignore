@@ -3,4 +3,4 @@ tmp
 .vscode/*
 !.vscode/tasks.json
 schej-service-account-key.json
-.go-cache
+.gocache

@@ -2,7 +2,7 @@
 
 import { shallowMount } from "@vue/test-utils"
 import { describe, expect, it, vi } from "vitest"
-import { defineComponent, ref } from "vue"
+import { ref } from "vue"
 import { Temporal } from "temporal-polyfill"
 import { durations, UTC } from "@/constants"
 import {
@@ -64,6 +64,8 @@ const mountRespondentsList = ({
         duration: durations.ONE_HOUR,
         daysOnly: false,
       },
+      curGuestId: "",
+      guestResponseLookupKey: "",
       days: [],
       times: [],
       curDate,
@@ -89,6 +91,7 @@ const mountRespondentsList = ({
           } as never,
           availability: new ZdtSet(),
           ifNeeded: new ZdtSet([setEntry]),
+          guest: false,
         },
       },
       isOwner: false,
@@ -189,11 +192,11 @@ describe("RespondentsList", () => {
     isPhoneValue.value = false
 
     const baseDate = zdt("2026-01-01T09:00:00Z")
-    const VSwitchStub = defineComponent({
+    const VSwitchStub = {
       emits: ["update:modelValue"],
       template:
         '<button class="desktop-best-times-toggle" @click="$emit(\'update:modelValue\', false)" />',
-    })
+    }
 
     const wrapper = shallowMount(RespondentsList, {
       props: {
@@ -206,6 +209,8 @@ describe("RespondentsList", () => {
           duration: durations.ONE_HOUR,
           daysOnly: false,
         },
+        curGuestId: "",
+        guestResponseLookupKey: "guest",
         days: [],
         times: [],
         curDate: baseDate,
@@ -234,6 +239,7 @@ describe("RespondentsList", () => {
             },
             availability: new ZdtSet(),
             ifNeeded: new ZdtSet(),
+            guest: false,
           },
           "user-2": {
             user: {
@@ -243,6 +249,7 @@ describe("RespondentsList", () => {
             },
             availability: new ZdtSet(),
             ifNeeded: new ZdtSet(),
+            guest: false,
           },
         },
         isOwner: false,
@@ -285,5 +292,340 @@ describe("RespondentsList", () => {
     expect(respondentsListSource).not.toContain("<v-list class=\"tw-py-1\" dense>")
     expect(respondentsListSource).not.toContain("\n                      solo\n")
     expect(respondentsListSource).not.toContain('item-text="text"')
+  })
+
+  it("keeps row clicks separate from the guest pencil edit action", async () => {
+    isPhoneValue.value = false
+
+    const VBtnStub = {
+      emits: ["click"],
+      template: '<button @click.stop="$emit(\'click\', $event)"><slot /></button>',
+    }
+    const VIconStub = {
+      template: "<span><slot /></span>",
+    }
+
+    const wrapper = shallowMount(RespondentsList, {
+      props: {
+        eventId: "evt-1",
+        event: {
+          blindAvailabilityEnabled: false,
+          collectEmails: false,
+          dates: [Temporal.PlainDate.from("2026-01-01")],
+          timeSeed: zdt("2026-01-01T09:00:00Z"),
+          duration: durations.ONE_HOUR,
+          daysOnly: false,
+        },
+        curGuestId: "",
+        guestResponseLookupKey: "guest",
+        days: [],
+        times: [],
+        curDate: zdt("2026-01-01T09:00:00Z"),
+        curRespondent: "",
+        curRespondents: [],
+        curTimeslot: { dayIndex: -1, timeIndex: -1 },
+        curTimeslotAvailability: { guest: true },
+        respondents: [
+          {
+            _id: "guest",
+            firstName: "guest",
+            lastName: "",
+          },
+        ],
+        parsedResponses: {
+          guest: {
+            user: {
+              _id: "guest",
+              firstName: "guest",
+              lastName: "",
+            },
+            availability: new ZdtSet(),
+            ifNeeded: new ZdtSet(),
+            guest: true,
+          },
+        },
+        isOwner: false,
+        isGroup: false,
+        showCalendarEvents: false,
+        responsesFormatted: new ZdtMap<Set<string>>(),
+        timezone: {
+          value: UTC,
+          offset: durations.ZERO,
+          label: UTC,
+          gmtString: "GMT",
+        },
+        showBestTimes: false,
+        hideIfNeeded: false,
+        showAllHours: false,
+        showEventOptions: false,
+        guestAddedAvailability: false,
+        addingAvailabilityAsGuest: false,
+      },
+      global: {
+        stubs: {
+          ...sharedRespondentsListStubs,
+          "v-btn": VBtnStub,
+          "v-icon": VIconStub,
+        },
+      },
+    })
+
+    await wrapper.get(".respondent-row").trigger("click")
+
+    const pencilButton = wrapper
+      .findAll("button")
+      .find((node) => node.text().includes("mdi-pencil"))
+
+    expect(pencilButton).toBeDefined()
+    if (!pencilButton) {
+      throw new Error("Expected guest pencil action to be rendered")
+    }
+
+    await pencilButton.trigger("click")
+
+    expect(wrapper.emitted("clickRespondent")).toEqual([
+      [expect.any(MouseEvent), "guest"],
+    ])
+    expect(wrapper.emitted("editGuestAvailability")).toEqual([["guest"]])
+    isPhoneValue.value = true
+  })
+
+  it("hides the guest pencil for protected guest responses owned by someone else", () => {
+    isPhoneValue.value = false
+
+    const wrapper = shallowMount(RespondentsList, {
+      props: {
+        eventId: "evt-1",
+        event: {
+          blindAvailabilityEnabled: false,
+          collectEmails: false,
+          dates: [Temporal.PlainDate.from("2026-01-01")],
+          timeSeed: zdt("2026-01-01T09:00:00Z"),
+          duration: durations.ONE_HOUR,
+          daysOnly: false,
+        },
+        curGuestId: "",
+        guestResponseLookupKey: "different-guest",
+        days: [],
+        times: [],
+        curDate: zdt("2026-01-01T09:00:00Z"),
+        curRespondent: "",
+        curRespondents: [],
+        curTimeslot: { dayIndex: -1, timeIndex: -1 },
+        curTimeslotAvailability: { guest: true },
+        respondents: [
+          {
+            _id: "guest",
+            firstName: "guest",
+            lastName: "",
+          },
+        ],
+        parsedResponses: {
+          guest: {
+            user: {
+              _id: "guest",
+              firstName: "guest",
+              lastName: "",
+            },
+            availability: new ZdtSet(),
+            ifNeeded: new ZdtSet(),
+            guest: true,
+            guestId: "guest-token-id",
+            guestEditPolicy: "protected",
+            guestOwnershipMode: "token",
+          },
+        },
+        isOwner: false,
+        isGroup: false,
+        showCalendarEvents: false,
+        responsesFormatted: new ZdtMap<Set<string>>(),
+        timezone: {
+          value: UTC,
+          offset: durations.ZERO,
+          label: UTC,
+          gmtString: "GMT",
+        },
+        showBestTimes: false,
+        hideIfNeeded: false,
+        showAllHours: false,
+        showEventOptions: false,
+        guestAddedAvailability: false,
+        addingAvailabilityAsGuest: false,
+      },
+      global: {
+        stubs: sharedRespondentsListStubs,
+      },
+    })
+
+    expect(wrapper.text()).not.toContain("mdi-pencil")
+    isPhoneValue.value = true
+  })
+
+  it("shows the guest pencil only for the matching legacy guest row", () => {
+    isPhoneValue.value = false
+
+    const VBtnStub = {
+      template: "<button><slot /></button>",
+    }
+    const VIconStub = {
+      template: "<span><slot /></span>",
+    }
+
+    const wrapper = shallowMount(RespondentsList, {
+      props: {
+        eventId: "evt-1",
+        event: {
+          blindAvailabilityEnabled: false,
+          collectEmails: false,
+          dates: [Temporal.PlainDate.from("2026-01-01")],
+          timeSeed: zdt("2026-01-01T09:00:00Z"),
+          duration: durations.ONE_HOUR,
+          daysOnly: false,
+        },
+        curGuestId: "",
+        guestResponseLookupKey: "Legacy Ada",
+        days: [],
+        times: [],
+        curDate: zdt("2026-01-01T09:00:00Z"),
+        curRespondent: "",
+        curRespondents: [],
+        curTimeslot: { dayIndex: -1, timeIndex: -1 },
+        curTimeslotAvailability: { "Legacy Ada": true, "Legacy Grace": true },
+        respondents: [
+          { _id: "Legacy Ada", firstName: "Legacy Ada", lastName: "" },
+          { _id: "Legacy Grace", firstName: "Legacy Grace", lastName: "" },
+        ],
+        parsedResponses: {
+          "Legacy Ada": {
+            user: { _id: "Legacy Ada", firstName: "Legacy Ada", lastName: "" },
+            availability: new ZdtSet(),
+            ifNeeded: new ZdtSet(),
+            guest: true,
+            guestOwnershipMode: "legacy",
+          },
+          "Legacy Grace": {
+            user: { _id: "Legacy Grace", firstName: "Legacy Grace", lastName: "" },
+            availability: new ZdtSet(),
+            ifNeeded: new ZdtSet(),
+            guest: true,
+            guestOwnershipMode: "legacy",
+          },
+        },
+        isOwner: false,
+        isGroup: false,
+        showCalendarEvents: false,
+        responsesFormatted: new ZdtMap<Set<string>>(),
+        timezone: {
+          value: UTC,
+          offset: durations.ZERO,
+          label: UTC,
+          gmtString: "GMT",
+        },
+        showBestTimes: false,
+        hideIfNeeded: false,
+        showAllHours: false,
+        showEventOptions: false,
+        guestAddedAvailability: false,
+        addingAvailabilityAsGuest: false,
+      },
+      global: {
+        stubs: {
+          ...sharedRespondentsListStubs,
+          "v-btn": VBtnStub,
+          "v-icon": VIconStub,
+        },
+      },
+    })
+
+    const pencilButtons = wrapper
+      .findAll("button")
+      .filter((node) => node.text().includes("mdi-pencil"))
+
+    expect(pencilButtons).toHaveLength(1)
+    expect(wrapper.text()).toContain("Legacy Ada")
+    expect(wrapper.text()).toContain("Legacy Grace")
+    isPhoneValue.value = true
+  })
+
+  it("keeps token-backed open guest responses editable by another guest", () => {
+    isPhoneValue.value = false
+
+    const VBtnStub = {
+      template: "<button><slot /></button>",
+    }
+    const VIconStub = {
+      template: "<span><slot /></span>",
+    }
+
+    const wrapper = shallowMount(RespondentsList, {
+      props: {
+        eventId: "evt-1",
+        event: {
+          blindAvailabilityEnabled: false,
+          collectEmails: false,
+          dates: [Temporal.PlainDate.from("2026-01-01")],
+          timeSeed: zdt("2026-01-01T09:00:00Z"),
+          duration: durations.ONE_HOUR,
+          daysOnly: false,
+        },
+        curGuestId: "",
+        guestResponseLookupKey: "different-guest",
+        days: [],
+        times: [],
+        curDate: zdt("2026-01-01T09:00:00Z"),
+        curRespondent: "",
+        curRespondents: [],
+        curTimeslot: { dayIndex: -1, timeIndex: -1 },
+        curTimeslotAvailability: { guest: true },
+        respondents: [
+          {
+            _id: "guest",
+            firstName: "guest",
+            lastName: "",
+          },
+        ],
+        parsedResponses: {
+          guest: {
+            user: {
+              _id: "guest",
+              firstName: "guest",
+              lastName: "",
+            },
+            availability: new ZdtSet(),
+            ifNeeded: new ZdtSet(),
+            guest: true,
+            guestId: "guest-token-id",
+            guestEditPolicy: "open",
+            guestOwnershipMode: "token",
+          },
+        },
+        isOwner: false,
+        isGroup: false,
+        showCalendarEvents: false,
+        responsesFormatted: new ZdtMap<Set<string>>(),
+        timezone: {
+          value: UTC,
+          offset: durations.ZERO,
+          label: UTC,
+          gmtString: "GMT",
+        },
+        showBestTimes: false,
+        hideIfNeeded: false,
+        showAllHours: false,
+        showEventOptions: false,
+        guestAddedAvailability: false,
+        addingAvailabilityAsGuest: false,
+      },
+      global: {
+        stubs: {
+          ...sharedRespondentsListStubs,
+          "v-btn": VBtnStub,
+          "v-icon": VIconStub,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain("mdi-pencil")
+    isPhoneValue.value = true
   })
 })

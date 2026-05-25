@@ -103,6 +103,7 @@ const emit = defineEmits<{
   mouseLeaveRespondent: []
   clickRespondent: [e: MouseEvent, userId: string]
   editGuestAvailability: [userId: string]
+  guestAvailabilityDeleted: [userId: string]
   refreshEvent: []
   saveTempTimes: []
 }>()
@@ -140,6 +141,9 @@ const respondentsPanelListeners = {
   },
   onEditGuestAvailability: (userId: string) => {
     emit("editGuestAvailability", userId)
+  },
+  onGuestAvailabilityDeleted: (userId: string) => {
+    emit("guestAvailabilityDeleted", userId)
   },
   onRefreshEvent: () => {
     emit("refreshEvent")

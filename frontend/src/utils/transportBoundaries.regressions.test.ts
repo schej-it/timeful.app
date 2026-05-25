@@ -150,6 +150,20 @@ describe("transport and timezone regression boundaries", () => {
     ).toEqual(["2026-05-15T10:00:00+00:00[UTC]"])
   })
 
+  it("keeps guest ownership metadata at the response transport boundary", () => {
+    const response = fromRawResponse({
+      name: "Ada",
+      guestId: "guest_1",
+      guestEditPolicy: "protected",
+      guestOwnershipMode: "token",
+    })
+
+    expect(response.name).toBe("Ada")
+    expect(response.guestId).toBe("guest_1")
+    expect(response.guestEditPolicy).toBe("protected")
+    expect(response.guestOwnershipMode).toBe("token")
+  })
+
   it("exposes an explicit time seed alongside decoded event dates", () => {
     const event = fromRawEvent({
       dates: [epochMs("2026-01-02T09:30:00Z")],

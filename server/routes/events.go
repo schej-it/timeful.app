@@ -498,14 +498,13 @@ func getEvent(c *gin.Context) {
 	}
 	eventResponses := db.GetEventResponses(event.Id.Hex())
 
-	// Convert to old format for backward compatibility
-	utils.ConvertEventToOldFormat(event, eventResponses)
-
 	// Convert responses to map format for JSON response
 	responsesMap := getResponsesMap(eventResponses)
 
 	// Populate user fields
 	for userId, response := range responsesMap {
+		responseKey := userId
+		normalizeGuestResponseForPayload(response)
 		user := db.GetUserById(userId)
 		if user == nil {
 			if len(response.Name) == 0 {
@@ -514,7 +513,6 @@ func getEvent(c *gin.Context) {
 				continue
 			} else {
 				// User is guest
-				userId = response.Name
 				response.User = &models.User{
 					FirstName: response.Name,
 					Email:     response.Email,
@@ -524,7 +522,7 @@ func getEvent(c *gin.Context) {
 			response.User = user
 			response.User.CalendarAccounts = nil
 		}
-		responsesMap[userId] = response
+		responsesMap[responseKey] = response
 
 		// Remove availability arrays
 		responsesMap[userId].Availability = nil
@@ -568,6 +566,7 @@ func getEvent(c *gin.Context) {
 		userSesh = userIdInterface.(string)
 	}
 	guestName := c.Query("guestName")
+	guestId := c.Query("guestId")
 	isOwner := userSesh != "" && ownerSesh == userSesh
 
 	// Strip sensitive user info from all responses
@@ -624,13 +623,13 @@ func getEvent(c *gin.Context) {
 			}
 			privatizedResponse, err = utils.PrivatizeEventResponse(event, privateFields, partialOmissions)
 		}
-	} else if guestName != "" {
+	} else if guestQueryLookupKey(guestId, guestName) != "" {
 		// Guest name query parameter exists
 		privateFields := []string{"numResponses"}
 		partialOmissions := []utils.PartialOmission{
 			{
 				FieldName: "responses",
-				KeepKey:   guestName,
+				KeepKey:   guestQueryLookupKey(guestId, guestName),
 			},
 		}
 		privatizedResponse, err = utils.PrivatizeEventResponse(event, privateFields, partialOmissions)
@@ -689,6 +688,7 @@ func getResponses(c *gin.Context) {
 
 	// Filter availability slice based on timeMin and timeMax
 	for userId, response := range responsesMap {
+		normalizeGuestResponseForPayload(response)
 		subsetAvailability := make([]primitive.DateTime, 0)
 		for _, timestamp := range response.Availability {
 			if timestamp.Time().Compare(payload.TimeMin) >= 0 && timestamp.Time().Compare(payload.TimeMax) <= 0 {
@@ -724,6 +724,7 @@ func getResponses(c *gin.Context) {
 		userSesh = userIdInterface.(string)
 	}
 	guestName := c.Query("guestName")
+	guestId := c.Query("guestId")
 	isOwner := userSesh != "" && ownerSesh == userSesh
 
 	// Strip sensitive user info from all responses
@@ -762,11 +763,12 @@ func getResponses(c *gin.Context) {
 			c.JSON(http.StatusOK, filteredMap)
 			return
 		}
-	} else if guestName != "" {
+	} else if guestQueryLookupKey(guestId, guestName) != "" {
 		// Guest name query parameter exists - return only that guest's response
 		filteredMap := make(map[string]*models.Response)
-		if guestResponse, exists := responsesMap[guestName]; exists {
-			filteredMap[guestName] = guestResponse
+		guestLookupKey := guestQueryLookupKey(guestId, guestName)
+		if guestResponse, exists := responsesMap[guestLookupKey]; exists {
+			filteredMap[guestLookupKey] = guestResponse
 		}
 		c.JSON(http.StatusOK, filteredMap)
 		return
@@ -791,9 +793,12 @@ func updateEventResponse(c *gin.Context) {
 		IfNeeded     []primitive.DateTime `json:"ifNeeded"`
 
 		// Guest information
-		Guest *bool  `json:"guest" binding:"required"`
-		Name  string `json:"name"`
-		Email string `json:"email"`
+		Guest           *bool   `json:"guest" binding:"required"`
+		Name            string  `json:"name"`
+		Email           string  `json:"email"`
+		GuestId         string  `json:"guestId"`
+		GuestEditToken  string  `json:"guestEditToken"`
+		GuestEditPolicy *string `json:"guestEditPolicy"`
 
 		// Calendar availability variables for Availability Groups feature
 		UseCalendarAvailability *bool                                        `json:"useCalendarAvailability"`
@@ -809,6 +814,10 @@ func updateEventResponse(c *gin.Context) {
 	}
 	session := sessions.Default(c)
 	eventId := c.Param("eventId")
+	callerGuestLookupKey := guestQueryLookupKey(
+		c.Query("guestId"),
+		c.Query("guestName"),
+	)
 	event := db.GetEventByEitherId(eventId)
 	if event == nil {
 		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
@@ -838,17 +847,67 @@ func updateEventResponse(c *gin.Context) {
 
 	var userIdString string
 	var userHasResponded bool
+	mutationResult := guestResponseMutationResult{}
+	responseIndex := -1
 	if !utils.Coalesce(event.IsSignUpForm) {
 		// Populate response differently if guest vs signed in user
 		var response models.Response
 		if *payload.Guest {
-			userIdString = payload.Name
-
+			if !hasValidGuestName(payload.Name) {
+				c.JSON(http.StatusBadRequest, responses.Error{Error: "Guest name is required"})
+				return
+			}
 			response = models.Response{
 				Name:         payload.Name,
 				Email:        payload.Email,
 				Availability: payload.Availability,
 				IfNeeded:     payload.IfNeeded,
+			}
+			requestedPolicy := guestEditPolicyProtected
+			if payload.GuestEditPolicy != nil {
+				requestedPolicy = normalizeGuestEditPolicy(*payload.GuestEditPolicy)
+			}
+
+			existingIndex, existingEventResponse := findGuestResponseByGuestId(eventResponses, payload.GuestId)
+			if existingIndex == -1 {
+				existingIndex, existingEventResponse = findGuestResponseByName(eventResponses, payload.Name)
+			}
+
+			if existingIndex != -1 && existingEventResponse != nil {
+				if !canMutateGuestResponse(
+					existingEventResponse.Response,
+					callerGuestLookupKey,
+					payload.GuestEditToken,
+				) {
+					c.JSON(http.StatusForbidden, responses.Error{Error: "This guest response is protected and cannot be edited without its edit token"})
+					c.Abort()
+					return
+				}
+				if payload.Name != existingEventResponse.Response.Name && guestDisplayNameExists(eventResponses, payload.Name, existingIndex) {
+					c.JSON(http.StatusBadRequest, responses.Error{Error: "A guest with this name already exists for this event"})
+					return
+				}
+				responseIndex = existingIndex
+				if isTokenBackedGuestResponse(existingEventResponse.Response) {
+					effectivePolicy := existingEventResponse.Response.GuestEditPolicy
+					if payload.GuestEditPolicy != nil {
+						effectivePolicy = *payload.GuestEditPolicy
+					}
+					response.GuestId = existingEventResponse.Response.GuestId
+					response.GuestEditToken = existingEventResponse.Response.GuestEditToken
+					response.GuestEditPolicy = normalizeGuestEditPolicy(effectivePolicy)
+					response.GuestOwnershipMode = guestOwnershipModeToken
+				} else {
+					mutationResult.GuestCredentials = ensureGuestTokenOwnership(&response, requestedPolicy)
+				}
+				userIdString = guestResponseLookupKey(models.EventResponse{UserId: existingEventResponse.UserId, Response: &response})
+				if mutationResult.GuestCredentials == nil {
+					mutationResult.GuestCredentials = buildGuestCredentialsResponse(&response, payload.Name)
+				}
+				userHasResponded = true
+			} else {
+				mutationResult.GuestCredentials = ensureGuestTokenOwnership(&response, requestedPolicy)
+				userIdString = response.GuestId
 			}
 		} else {
 			userIdInterface := session.Get("userId")
@@ -923,14 +982,18 @@ func updateEventResponse(c *gin.Context) {
 
 		// Check if user has responded to event before (edit response) or not (new response)
 		idx, _ := findResponse(eventResponses, userIdString)
-		userHasResponded = idx != -1
+		if !*payload.Guest {
+			responseIndex = idx
+			userHasResponded = idx != -1
+		}
 
 		// Update event responses
 		if userHasResponded {
 			db.EventResponsesCollection.UpdateOne(context.Background(), bson.M{
-				"_id": eventResponses[idx].Id,
+				"_id": eventResponses[responseIndex].Id,
 			}, bson.M{
 				"$set": bson.M{
+					"userId":   userIdString,
 					"response": &response,
 				},
 			})
@@ -1063,7 +1126,7 @@ func updateEventResponse(c *gin.Context) {
 		logger.StdErr.Panicln(err)
 	}
 
-	c.JSON(http.StatusOK, gin.H{})
+	c.JSON(http.StatusOK, mutationResult)
 }
 
 // @Summary Delete the current user's availability
@@ -1076,15 +1139,21 @@ func updateEventResponse(c *gin.Context) {
 // @Router /events/{eventId}/response [delete]
 func deleteEventResponse(c *gin.Context) {
 	payload := struct {
-		UserId string `json:"userId"`
-		Guest  *bool  `json:"guest" binding:"required"`
-		Name   string `json:"name"`
+		UserId         string `json:"userId"`
+		Guest          *bool  `json:"guest" binding:"required"`
+		Name           string `json:"name"`
+		GuestId        string `json:"guestId"`
+		GuestEditToken string `json:"guestEditToken"`
 	}{}
 	if err := c.Bind(&payload); err != nil {
 		return
 	}
 	session := sessions.Default(c)
 	eventId := c.Param("eventId")
+	callerGuestLookupKey := guestQueryLookupKey(
+		c.Query("guestId"),
+		c.Query("guestName"),
+	)
 	event := db.GetEventByEitherId(eventId)
 	if event == nil {
 		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
@@ -1093,19 +1162,34 @@ func deleteEventResponse(c *gin.Context) {
 	eventResponses := db.GetEventResponses(event.Id.Hex())
 
 	if *payload.Guest {
+		if !hasValidGuestName(payload.Name) {
+			c.JSON(http.StatusBadRequest, responses.Error{Error: "Guest name is required"})
+			return
+		}
 		if utils.Coalesce(event.IsSignUpForm) {
 			delete(event.SignUpResponses, payload.Name)
 		} else {
-			// Remove response from array
-			for i := range eventResponses {
-				if eventResponses[i].Response.Name == payload.Name {
-					db.EventResponsesCollection.DeleteOne(context.Background(), bson.M{
-						"_id": eventResponses[i].Id,
-					})
-					*event.NumResponses--
-					break
-				}
+			idx, guestResponse := findGuestResponseByGuestId(eventResponses, payload.GuestId)
+			if idx == -1 {
+				idx, guestResponse = findGuestResponseByName(eventResponses, payload.Name)
 			}
+			if idx == -1 || guestResponse == nil {
+				c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
+				return
+			}
+			if !canMutateGuestResponse(
+				guestResponse.Response,
+				callerGuestLookupKey,
+				payload.GuestEditToken,
+			) {
+				c.JSON(http.StatusForbidden, responses.Error{Error: "This guest response is protected and cannot be deleted without its edit token"})
+				c.Abort()
+				return
+			}
+			db.EventResponsesCollection.DeleteOne(context.Background(), bson.M{
+				"_id": eventResponses[idx].Id,
+			})
+			*event.NumResponses--
 		}
 	} else {
 		userIdInterface := session.Get("userId")
@@ -1180,31 +1264,75 @@ func deleteEventResponse(c *gin.Context) {
 // @Router /events/{eventId}/rename-user [post]
 func renameUser(c *gin.Context) {
 	payload := struct {
-		OldName string `json:"oldName"`
-		NewName string `json:"newName"`
+		OldName        string `json:"oldName"`
+		NewName        string `json:"newName"`
+		GuestId        string `json:"guestId"`
+		GuestEditToken string `json:"guestEditToken"`
 	}{}
 	if err := c.Bind(&payload); err != nil {
 		return
 	}
 	eventId := c.Param("eventId")
+	callerGuestLookupKey := guestQueryLookupKey(
+		c.Query("guestId"),
+		c.Query("guestName"),
+	)
 	event := db.GetEventByEitherId(eventId)
 	if event == nil {
 		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
 		return
 	}
 
-	// Check if the new name already exists (only if it's different from the old name)
-	if payload.NewName != payload.OldName {
-		if db.GuestNameExists(event.Id.Hex(), payload.NewName) {
-			c.JSON(http.StatusBadRequest, responses.Error{Error: "A guest with this name already exists for this event"})
-			return
-		}
+	if !hasValidGuestName(payload.OldName) {
+		c.JSON(http.StatusBadRequest, responses.Error{Error: "Existing guest name is required"})
+		return
+	}
+	if !hasValidGuestName(payload.NewName) {
+		c.JSON(http.StatusBadRequest, responses.Error{Error: "New guest name is required"})
+		return
 	}
 
-	// Check if old name is a guest response
-	db.UpdateGuestResponseName(event.Id.Hex(), payload.OldName, payload.NewName)
+	eventResponses := db.GetEventResponses(event.Id.Hex())
+	idx, guestResponse := findGuestResponseByGuestId(eventResponses, payload.GuestId)
+	if idx == -1 {
+		idx, guestResponse = findGuestResponseByName(eventResponses, payload.OldName)
+	}
+	if idx == -1 || guestResponse == nil || guestResponse.Response == nil {
+		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
+		return
+	}
+	if !canMutateGuestResponse(
+		guestResponse.Response,
+		callerGuestLookupKey,
+		payload.GuestEditToken,
+	) {
+		c.JSON(http.StatusForbidden, responses.Error{Error: "This guest response is protected and cannot be renamed without its edit token"})
+		return
+	}
+	if payload.NewName != guestResponse.Response.Name && guestDisplayNameExists(eventResponses, payload.NewName, idx) {
+		c.JSON(http.StatusBadRequest, responses.Error{Error: "A guest with this name already exists for this event"})
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{})
+	updatedResponse := *guestResponse.Response
+	updatedResponse.Name = payload.NewName
+	mutationResult := guestResponseMutationResult{}
+	if !isTokenBackedGuestResponse(&updatedResponse) {
+		mutationResult.GuestCredentials = ensureGuestTokenOwnership(&updatedResponse, guestEditPolicyProtected)
+	} else {
+		mutationResult.GuestCredentials = buildGuestCredentialsResponse(&updatedResponse, payload.NewName)
+	}
+
+	db.EventResponsesCollection.UpdateOne(context.Background(), bson.M{
+		"_id": guestResponse.Id,
+	}, bson.M{
+		"$set": bson.M{
+			"userId":   guestResponseLookupKey(models.EventResponse{UserId: guestResponse.UserId, Response: &updatedResponse}),
+			"response": &updatedResponse,
+		},
+	})
+
+	c.JSON(http.StatusOK, mutationResult)
 }
 
 // @Summary Mark the user as having responded to this event
@@ -1907,7 +2035,7 @@ func stripSensitiveUserFields(user *models.User) {
 func getResponsesMap(responses []models.EventResponse) map[string]*models.Response {
 	result := make(map[string]*models.Response)
 	for _, resp := range responses {
-		result[resp.UserId] = resp.Response
+		result[guestResponseLookupKey(resp)] = resp.Response
 	}
 	return result
 }

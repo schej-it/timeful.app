@@ -43,6 +43,11 @@
             persistent-hint
             @keyup.enter="submit"
           ></v-text-field>
+          <v-checkbox
+            v-model="allowOthersToEdit"
+            hide-details
+            label="Allow others to edit this availability"
+          />
           <div class="tw-flex">
             <v-spacer />
             <v-btn
@@ -79,12 +84,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "update:modelValue": [value: boolean]
-  submit: [payload: { name: string; email: string }]
+  submit: [
+    payload: { name: string; email: string; allowOthersToEdit: boolean },
+  ]
 }>()
 
 const formValid = ref(false)
 const name = ref("")
 const email = ref("")
+const allowOthersToEdit = ref(false)
 const validationRequested = ref(false)
 const formRef = ref<FormRef | null>(null)
 const trimmedName = computed(() => name.value.trim())
@@ -119,6 +127,7 @@ const canSubmit = computed(() =>
 const initializeForm = () => {
   name.value = ""
   email.value = ""
+  allowOthersToEdit.value = false
   validationRequested.value = false
   formRef.value?.resetValidation()
 }
@@ -128,7 +137,11 @@ const submit = async () => {
   const result = await formRef.value?.validate()
   const valid = typeof result === "boolean" ? result : result?.valid
   if (!valid) return
-  emit("submit", { name: trimmedName.value, email: trimmedEmail.value })
+  emit("submit", {
+    name: trimmedName.value,
+    email: trimmedEmail.value,
+    allowOthersToEdit: allowOthersToEdit.value,
+  })
 }
 
 watch(

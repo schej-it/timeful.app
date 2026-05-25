@@ -8,6 +8,8 @@
       :max-height="maxHeight"
       :event="panel.event"
       :event-id="panel.eventId"
+      :cur-guest-id="panel.curGuestId"
+      :guest-response-lookup-key="panel.guestResponseLookupKey"
       :days="panel.days"
       :times="panel.times"
       :cur-date="panel.curDate"
@@ -37,6 +39,7 @@
       @mouse-leave-respondent="emit('mouseLeaveRespondent')"
       @click-respondent="(e, userId) => emit('clickRespondent', e, userId)"
       @edit-guest-availability="emit('editGuestAvailability', $event)"
+      @guest-availability-deleted="emit('guestAvailabilityDeleted', $event)"
       @refresh-event="emit('refreshEvent')"
     />
   </div>
@@ -65,6 +68,7 @@ const emit = defineEmits<{
   mouseLeaveRespondent: []
   clickRespondent: [e: MouseEvent, userId: string]
   editGuestAvailability: [userId: string]
+  guestAvailabilityDeleted: [userId: string]
   refreshEvent: []
 }>()
 

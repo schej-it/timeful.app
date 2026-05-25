@@ -58,7 +58,7 @@
             @click="emit('openEditGuestNameDialog')"
           >
             <span class="tw-font-medium group-hover:tw-underline">{{
-              sidebar.curGuestId
+              currentGuestName
             }}</span>
             <v-icon small>mdi-pencil</v-icon>
           </div>
@@ -276,6 +276,7 @@
           @mouse-leave-respondent="emit('mouseLeaveRespondent')"
           @click-respondent="(e, userId) => emit('clickRespondent', e, userId)"
           @edit-guest-availability="emit('editGuestAvailability', $event)"
+          @guest-availability-deleted="emit('guestAvailabilityDeleted', $event)"
           @refresh-event="emit('refreshEvent')"
         />
       </template>
@@ -339,6 +340,7 @@ const emit = defineEmits<{
   mouseLeaveRespondent: []
   clickRespondent: [e: MouseEvent, userId: string]
   editGuestAvailability: [userId: string]
+  guestAvailabilityDeleted: [userId: string]
   refreshEvent: []
 }>()
 
@@ -372,9 +374,15 @@ const availabilityActorName = computed(() => {
     return `${props.sidebar.authUser.firstName ?? ""} ${props.sidebar.authUser.lastName ?? ""}`.trim()
   }
   if ((props.sidebar.curGuestId ?? "").length > 0) {
-    return props.sidebar.curGuestId ?? ""
+    return currentGuestName.value
   }
   return "a guest"
+})
+
+const currentGuestName = computed(() => {
+  const guestId = props.sidebar.curGuestId ?? ""
+  if (!guestId) return ""
+  return props.sidebar.event.responses?.[guestId]?.name ?? guestId
 })
 
 const showCalendarAccounts = computed(

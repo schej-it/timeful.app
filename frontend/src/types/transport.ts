@@ -28,7 +28,11 @@ export type RawUser = Schemas["models.User"] & {
 
 export type RawEvent = Schemas["models.Event"]
 export type RawFolder = Schemas["models.Folder"]
-export type RawResponse = Schemas["models.Response"]
+export type RawResponse = Schemas["models.Response"] & {
+  guestId?: string
+  guestEditPolicy?: "protected" | "open"
+  guestOwnershipMode?: "legacy" | "token"
+}
 export type RawSignUpBlock = Schemas["models.SignUpBlock"]
 export type RawSignUpResponse = Schemas["models.SignUpResponse"]
 export type RawCalendarAccount = Schemas["models.CalendarAccount"]

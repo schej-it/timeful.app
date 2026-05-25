@@ -10,6 +10,8 @@ import type {
 import { getRealOwnerId } from "@/composables/event/eventOwnership"
 import {
   getGuestNameStorageKey,
+  getGuestOwnershipStorageKey,
+  readGuestOwnership,
   readGuestName,
 } from "@/composables/schedule_overlap/scheduleOverlapStorage"
 import type { ScheduleOverlapInstance } from "./types"
@@ -68,11 +70,18 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
     } catch {
       // continue with fallback
     }
-    const guestName = resolvedLongId
-      ? readGuestName(getGuestNameStorageKey(resolvedLongId)) ?? null
-      : null
+    const guestOwnership = resolvedLongId
+      ? readGuestOwnership(getGuestOwnershipStorageKey(resolvedLongId))
+      : undefined
+    const guestName =
+      guestOwnership?.name ??
+      (resolvedLongId ? readGuestName(getGuestNameStorageKey(resolvedLongId)) ?? null : null)
     let url = `/events/${sanitizedId}`
-    if (guestName && guestName.length > 0) url += `?guestName=${encodeURIComponent(guestName)}`
+    if (guestOwnership?.guestId && guestOwnership.guestId.length > 0) {
+      url += `?guestId=${encodeURIComponent(guestOwnership.guestId)}`
+    } else if (guestName && guestName.length > 0) {
+      url += `?guestName=${encodeURIComponent(guestName)}`
+    }
     const fetchedEvent = await fetchEventFromPath(url)
     event.value = fetchedEvent
     processEvent(fetchedEvent, getEventRenderedWeekStart())

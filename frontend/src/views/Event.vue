@@ -29,7 +29,7 @@
       <GuestDialog
         v-model="guestDialog"
         :event="event"
-        :respondents="event ? Object.keys(event.responses ?? {}) : []"
+        :respondents="guestRespondentNames"
         @submit="handleGuestDialogSubmit"
       />
 
@@ -228,18 +228,14 @@
                 >
                   <template v-if="!isEditing">
                     <v-btn
-                      v-if="!isGroup && !authUser && selectedGuestRespondent"
+                      v-if="showGuestActionButton"
                       min-width="10.25rem"
                       class="timeful-elevated-button tw-bg-green tw-text-white tw-transition-opacity"
                       :class="{ 'timeful-availability-button-attention': availabilityBtnAttentionActive }"
                       :style="{ opacity: availabilityBtnOpacity }"
                       @click="editSelectedGuestAvailability"
                     >
-                      {{
-                        event.blindAvailabilityEnabled
-                          ? "Edit availability"
-                          : `Edit ${selectedGuestRespondent}'s availability`
-                      }}
+                      {{ guestActionButtonText }}
                     </v-btn>
                     <v-btn
                       v-else
@@ -417,13 +413,13 @@
             >
             <v-spacer />
             <v-btn
-              v-if="!isGroup && !authUser && selectedGuestRespondent"
+              v-if="showGuestActionButton"
               class="tw-bg-white tw-text-green tw-transition-opacity"
               :class="{ 'timeful-availability-button-attention': availabilityBtnAttentionActive }"
               :style="{ opacity: availabilityBtnOpacity }"
               @click="editSelectedGuestAvailability"
             >
-              {{ mobileGuestActionButtonText }}
+              {{ guestActionButtonText }}
             </v-btn>
             <v-btn
               v-else
@@ -559,8 +555,13 @@ import {
   type Timezone,
 } from "@/composables/schedule_overlap/types"
 import {
+  appendGuestIdentityQuery,
+  getGuestOwnershipStorageKey,
   getGuestNameStorageKey,
+  getGuestResponseLookupKey,
+  readGuestOwnership,
   readGuestName,
+  writeGuestOwnership,
   writeGuestName,
 } from "@/composables/schedule_overlap/scheduleOverlapStorage"
 import type { Event, User } from "@/types"
@@ -616,7 +617,9 @@ const isEditing = computed(() => scheduleOverlap.value?.editing ?? false)
 const isScheduling = computed(() => scheduleOverlap.value?.scheduling ?? false)
 const allowScheduleEvent = computed(() => scheduleOverlap.value?.allowScheduleEvent ?? false)
 const areUnsavedChanges = computed(() => scheduleOverlap.value?.unsavedChanges ?? false)
-const selectedGuestRespondent = computed(() => scheduleOverlap.value?.selectedGuestRespondent)
+const selectedGuestRespondent = computed(
+  () => scheduleOverlap.value?.selectedGuestRespondent ?? ""
+)
 const numResponses = computed(() => scheduleOverlap.value?.respondents.length ?? 0)
 const isSettingSpecificTimes = computed(() => {
   const so = scheduleOverlap.value
@@ -662,12 +665,30 @@ const actionButtonText = computed(() => {
   else if (userHasResponded.value || isGroup.value) return "Edit availability"
   return "Add availability"
 })
-const mobileGuestActionButtonText = computed(() => {
+const activeGuestRespondent = computed(
+  () => curGuestId.value || selectedGuestRespondent.value
+)
+const activeGuestRespondentName = computed(() => {
+  const guestKey = activeGuestRespondent.value
+  if (!guestKey) return ""
+  return loader.event.value?.responses?.[guestKey]?.name ?? guestKey
+})
+const showGuestActionButton = computed(
+  () =>
+    !isGroup.value &&
+    !userHasResponded.value &&
+    activeGuestRespondent.value.length > 0
+)
+const guestActionButtonText = computed(() => {
   const ev = loader.event.value
   return ev?.blindAvailabilityEnabled
     ? "Edit availability"
-    : `Edit ${selectedGuestRespondent.value ?? ""}'s availability`
+    : `Edit ${activeGuestRespondentName.value}'s availability`
 })
+const guestRespondentNames = computed(() =>
+  Object.values(loader.event.value?.responses ?? {})
+    .flatMap((response) => (response.name ? [response.name] : []))
+)
 const mobileActionButtonText = computed(() => {
   if (isSignUp.value) return "Edit slots"
   return userHasResponded.value ? "Edit availability" : "Add availability"
@@ -730,7 +751,7 @@ const scheduleOverlapEvent = computed(() =>
 )
 
 function editSelectedGuestAvailability() {
-  editGuestAvailability(selectedGuestRespondent.value)
+  editGuestAvailability(activeGuestRespondent.value)
 }
 
 function resetWeekOffset() {
@@ -973,9 +994,15 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
   let guestEmail = ""
   if (isGuest) {
     const guestNameKey = getGuestNameStorageKey(ev._id ?? "")
+    const guestOwnershipKey = getGuestOwnershipStorageKey(ev._id ?? "")
+    const storedGuestOwnership = readGuestOwnership(guestOwnershipKey)
     if (forceGuestMode) {
       guestName = payloadGuestName ?? ""
       writeGuestName(guestNameKey, guestName)
+      writeGuestOwnership(guestOwnershipKey, {
+        ...(storedGuestOwnership ?? {}),
+        name: guestName,
+      })
       if (ev.collectEmails) {
         guestEmail = (e.data.payload?.guestEmail) ?? ""
         if (!guestEmail || guestEmail.length === 0) {
@@ -991,7 +1018,10 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
           return
         }
       } else {
-        guestEmail = e.data.payload?.guestEmail ?? ev.responses?.[guestName]?.email ?? ""
+        const responseLookupKey =
+          getGuestResponseLookupKey(storedGuestOwnership) ?? guestName
+        guestEmail =
+          e.data.payload?.guestEmail ?? ev.responses?.[responseLookupKey]?.email ?? ""
       }
     } else {
       const storedGuestName = readGuestName(guestNameKey)
@@ -1004,7 +1034,10 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
         return
       }
       guestName = storedGuestName
-      guestEmail = e.data.payload?.guestEmail ?? ev.responses?.[guestName]?.email ?? ""
+      const responseLookupKey =
+        getGuestResponseLookupKey(storedGuestOwnership) ?? guestName
+      guestEmail =
+        e.data.payload?.guestEmail ?? ev.responses?.[responseLookupKey]?.email ?? ""
     }
   }
   let slots: SlotEntry[] = e.data.payload?.slots ?? []
@@ -1119,15 +1152,48 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
     const ifNeeded = allIfNeededTimestamps.map((ms) =>
       Temporal.Instant.fromEpochMilliseconds(ms).toZonedDateTimeISO("UTC")
     )
+    const storedGuestOwnership = event.value._id
+      ? readGuestOwnership(getGuestOwnershipStorageKey(event.value._id))
+      : undefined
     const payload = encodeEventResponseSubmissionPayload(
       toEventResponseSubmissionPayload({
       availability,
       ifNeeded,
       authUserId: isGuest ? undefined : authUser.value?._id,
       addingAvailabilityAsGuest: isGuest,
-      guestPayload: { name: guestName, email: guestEmail },
+      guestPayload: {
+        name: guestName,
+        email: guestEmail,
+        guestId: storedGuestOwnership?.guestId,
+        guestEditToken: storedGuestOwnership?.guestEditToken,
+        guestEditPolicy: storedGuestOwnership?.guestEditPolicy ?? "protected",
+      },
     }))
-    await post(`/events/${sanitizedId}/response`, payload)
+    const response = await post<{
+      guestCredentials?: {
+        name?: string
+        guestId: string
+        guestEditToken: string
+        guestEditPolicy: "protected" | "open"
+        guestOwnershipMode: "token"
+      }
+    }>(
+      appendGuestIdentityQuery(
+        `/events/${sanitizedId}/response`,
+        storedGuestOwnership,
+        guestName
+      ),
+      payload
+    )
+    if (isGuest && ev._id && response.guestCredentials) {
+      writeGuestOwnership(getGuestOwnershipStorageKey(ev._id), {
+        name: guestName,
+        guestId: response.guestCredentials.guestId,
+        guestEditToken: response.guestCredentials.guestEditToken,
+        guestEditPolicy: response.guestCredentials.guestEditPolicy,
+        guestOwnershipMode: response.guestCredentials.guestOwnershipMode,
+      })
+    }
     await loader.refreshEvent()
     sendPluginSuccess(requestId, command)
   } catch (err: unknown) {
@@ -1168,11 +1234,16 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
   }
   const { timeMin, timeMax } = eventTimeRange
   try {
+    const guestOwnership = ev._id
+      ? readGuestOwnership(getGuestOwnershipStorageKey(ev._id))
+      : undefined
     const guestName = ev._id
       ? readGuestName(getGuestNameStorageKey(ev._id)) ?? null
       : null
     let url = `/events/${sanitizedId}/responses?timeMin=${toQueryInstantString(timeMin)}&timeMax=${toQueryInstantString(timeMax)}`
-    if (guestName && guestName.length > 0) {
+    if (guestOwnership?.guestId && guestOwnership.guestId.length > 0) {
+      url += `&guestId=${encodeURIComponent(guestOwnership.guestId)}`
+    } else if (guestName && guestName.length > 0) {
       url += `&guestName=${encodeURIComponent(guestName)}`
     }
     const responses = await fetchEventResponses(url)

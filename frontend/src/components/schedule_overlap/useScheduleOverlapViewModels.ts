@@ -54,6 +54,7 @@ interface UseScheduleOverlapViewModelsOptions {
   signUpBlocksToAddByDay: Ref<SignUpBlockLite[][]>
   tempTimes: Ref<{ size: number }>
   curGuestId: ComputedRef<string>
+  guestResponseLookupKey: ComputedRef<string>
   userHasResponded: Ref<boolean>
   addingAvailabilityAsGuest: ComputedRef<boolean>
   canEditGuestName: ComputedRef<boolean>
@@ -151,6 +152,8 @@ export function useScheduleOverlapViewModels(
     () => ({
       event: opts.event.value,
       eventId: opts.event.value._id ?? "",
+      curGuestId: opts.curGuestId.value,
+      guestResponseLookupKey: opts.guestResponseLookupKey.value,
       days: opts.allDays.value,
       times: opts.times.value,
       curDate: (() => {

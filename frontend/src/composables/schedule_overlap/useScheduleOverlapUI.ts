@@ -9,6 +9,7 @@ import {
 } from "./scheduleOverlapStorage"
 import {
   states,
+  type ParsedResponse,
   type ParsedResponses,
   type RowCol,
   type ScheduleOverlapState,
@@ -34,10 +35,33 @@ export interface UseScheduleOverlapUIOptions {
   respondents: ComputedRef<{ _id?: string }[]>
   curGuestId: Ref<string>
   guestName: ComputedRef<string | undefined>
+  guestResponseLookupKey: ComputedRef<string | undefined>
   guestAddedAvailability: ComputedRef<boolean>
   // refs to other components for visibility checks
   optionsSectionRef?: Ref<HTMLElement | null>
   respondentsListRef?: Ref<HTMLElement | null>
+}
+
+export function canGuestEditResponse(
+  response: ParsedResponse | undefined,
+  guestResponseLookupKey: string | undefined
+) {
+  if (response?.guest !== true) return false
+  if (response.guestOwnershipMode !== "token") {
+    return (
+      guestResponseLookupKey != null &&
+      guestResponseLookupKey.length > 0 &&
+      guestResponseLookupKey === response.user._id
+    )
+  }
+  if (response.guestEditPolicy === "open") {
+    return true
+  }
+  return (
+    guestResponseLookupKey != null &&
+    guestResponseLookupKey.length > 0 &&
+    guestResponseLookupKey === response.guestId
+  )
 }
 
 export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
@@ -216,7 +240,14 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
   }
 
   const isGuest = (user: { _id?: string; firstName?: string }): boolean =>
-    user._id === user.firstName
+    user._id != null
+      ? (
+          opts.parsedResponses.value as Record<
+            string,
+            ParsedResponses[string] | undefined
+          >
+        )[user._id]?.guest ?? false
+      : false
 
   const checkElementsVisible = () => {
     const optionsSectionEl = opts.optionsSectionRef?.value
@@ -270,15 +301,29 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
   const guestNameKey = computed(() => "") // overridden by caller; provided here for shape parity
 
   const selectedGuestRespondent = computed(() => {
-    if (opts.guestAddedAvailability.value) return opts.guestName.value ?? ""
+    if (opts.guestAddedAvailability.value) {
+      return opts.guestResponseLookupKey.value ?? ""
+    }
     if (curRespondents.value.length !== 1) return ""
     const parsedResp = (opts.parsedResponses.value as Record<string, (typeof opts.parsedResponses.value)[string] | undefined>)[curRespondents.value[0]]
-    const user = parsedResp?.user
-    if (!user) return ""
-    return isGuest(user) ? user._id : ""
+    if (!parsedResp) return ""
+    if (!canGuestEditResponse(parsedResp, opts.guestResponseLookupKey.value)) {
+      return ""
+    }
+    return parsedResp.user._id
   })
 
-  const canEditGuestName = computed(() => true)
+  const canEditGuestName = computed(() => {
+    const guestId = opts.curGuestId.value
+    if (!guestId) return false
+    const response = (
+      opts.parsedResponses.value as Record<
+        string,
+        ParsedResponses[string] | undefined
+      >
+    )[guestId]
+    return canGuestEditResponse(response, opts.guestResponseLookupKey.value)
+  })
 
   return {
     // refs

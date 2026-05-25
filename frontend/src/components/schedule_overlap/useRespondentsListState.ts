@@ -165,7 +165,12 @@ export function useRespondentsListState(
   }
 
   function isGuest(user: User) {
-    return user._id === user.firstName
+    if (user._id == null) return false
+    const parsedResponses = opts.parsedResponses.value as Record<
+      string,
+      ParsedResponses[string] | undefined
+    >
+    return parsedResponses[user._id]?.guest ?? false
   }
 
   function shouldUseRichAvatar(user: User) {

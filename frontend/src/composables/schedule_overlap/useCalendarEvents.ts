@@ -31,6 +31,7 @@ import {
 } from "./types"
 import { fetchEventResponses } from "@/composables/event/eventTransportBoundary"
 import { toQueryInstantString } from "@/utils/temporalQuery"
+import type { GuestOwnershipState } from "./scheduleOverlapStorage"
 
 export interface UseCalendarEventsOptions {
   event: Ref<ScheduleOverlapEvent>
@@ -48,7 +49,7 @@ export interface UseCalendarEventsOptions {
   timeslotDuration: ComputedRef<Temporal.Duration>
   timezoneOffset: ComputedRef<Temporal.Duration>
   isGroup: ComputedRef<boolean>
-  guestName: ComputedRef<string | undefined>
+  guestOwnership: ComputedRef<GuestOwnershipState | undefined>
   getDateFromDayTimeIndex: (
     dayIndex: number,
     timeIndex: number
@@ -428,8 +429,15 @@ export function useCalendarEvents(opts: UseCalendarEventsOptions) {
     const eventId =
       typeof opts.event.value._id === "string" ? opts.event.value._id : ""
     let url = `/events/${eventId}/responses?timeMin=${toQueryInstantString(timeMin)}&timeMax=${toQueryInstantString(timeMax)}`
-    if (opts.guestName.value && opts.guestName.value.length > 0) {
-      url += `&guestName=${encodeURIComponent(opts.guestName.value)}`
+    const guestLookupKey = opts.guestOwnership.value?.guestId
+    const legacyGuestName =
+      opts.guestOwnership.value?.guestId == null
+        ? opts.guestOwnership.value?.name
+        : undefined
+    if (guestLookupKey && guestLookupKey.length > 0) {
+      url += `&guestId=${encodeURIComponent(guestLookupKey)}`
+    } else if (legacyGuestName && legacyGuestName.length > 0) {
+      url += `&guestName=${encodeURIComponent(legacyGuestName)}`
     }
 
     fetchEventResponses(url)

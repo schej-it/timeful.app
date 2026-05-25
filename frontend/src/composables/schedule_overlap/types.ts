@@ -250,6 +250,10 @@ export interface ParsedResponse {
   ifNeeded?: ZdtSet
   enabledCalendars?: Record<string, string[]>
   calendarOptions?: CalendarOptions
+  guest: boolean
+  guestId?: string
+  guestEditPolicy?: "protected" | "open"
+  guestOwnershipMode?: "legacy" | "token"
 }
 
 export type ParsedResponses = Record<string, ParsedResponse>

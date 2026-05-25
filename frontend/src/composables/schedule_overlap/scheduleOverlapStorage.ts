@@ -1,6 +1,14 @@
 const SHOW_BEST_TIMES_KEY = "showBestTimes"
 const SHOW_ALL_HOURS_KEY = "showAllHours"
 
+export interface GuestOwnershipState {
+  name?: string
+  guestId?: string
+  guestEditToken?: string
+  guestEditPolicy?: "protected" | "open"
+  guestOwnershipMode?: "legacy" | "token"
+}
+
 type StorageLike = Storage | Record<string, unknown>
 
 function getLocalStorage(): StorageLike | null {
@@ -44,6 +52,10 @@ export function getGuestNameStorageKey(eventId: string): string {
   return `${eventId}.guestName`
 }
 
+export function getGuestOwnershipStorageKey(eventId: string): string {
+  return `${eventId}.guestOwnership`
+}
+
 export function readGuestName(key: string): string | undefined {
   const storage = getLocalStorage()
   if (!storage) {
@@ -53,6 +65,24 @@ export function readGuestName(key: string): string | undefined {
   return readStorageValue(storage, key)
 }
 
+export function readGuestOwnership(key: string): GuestOwnershipState | undefined {
+  const storage = getLocalStorage()
+  if (!storage) {
+    return undefined
+  }
+
+  const rawValue = readStorageValue(storage, key)
+  if (!rawValue) {
+    return undefined
+  }
+
+  try {
+    return JSON.parse(rawValue) as GuestOwnershipState
+  } catch {
+    return undefined
+  }
+}
+
 export function writeGuestName(key: string, name: string) {
   const storage = getLocalStorage()
   if (!storage) {
@@ -60,6 +90,54 @@ export function writeGuestName(key: string, name: string) {
   }
 
   writeStorageValue(storage, key, name)
+}
+
+export function writeGuestOwnership(key: string, value: GuestOwnershipState) {
+  const storage = getLocalStorage()
+  if (!storage) {
+    return
+  }
+
+  writeStorageValue(storage, key, JSON.stringify(value))
+}
+
+export function clearGuestOwnership(key: string) {
+  const storage = getLocalStorage()
+  if (!storage) {
+    return
+  }
+
+  if (hasStorageSetItem(storage) && typeof storage.removeItem === "function") {
+    storage.removeItem(key)
+    return
+  }
+
+  Reflect.deleteProperty(storage, key)
+}
+
+export function getGuestResponseLookupKey(
+  ownership?: GuestOwnershipState
+): string | undefined {
+  return ownership?.guestId ?? ownership?.name
+}
+
+export function appendGuestIdentityQuery(
+  path: string,
+  ownership?: GuestOwnershipState,
+  fallbackGuestName?: string | null
+): string {
+  const guestId = ownership?.guestId
+  const guestName =
+    guestId == null ? ownership?.name ?? fallbackGuestName : undefined
+
+  if (guestId && guestId.length > 0) {
+    return `${path}${path.includes("?") ? "&" : "?"}guestId=${encodeURIComponent(guestId)}`
+  }
+  if (guestName && guestName.length > 0) {
+    return `${path}${path.includes("?") ? "&" : "?"}guestName=${encodeURIComponent(guestName)}`
+  }
+
+  return path
 }
 
 export function readShowBestTimesPreference(): boolean {

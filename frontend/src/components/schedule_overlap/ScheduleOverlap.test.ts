@@ -154,6 +154,35 @@ describe("ScheduleOverlap", () => {
     expect(overlayViewModel.respondentsPanel.eventId).toBe("evt-1")
   })
 
+  it("keeps the explicit guest edit target in the respondents panel view model", () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        curGuestId: "guest-1",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlapSidebar: {
+            name: "ScheduleOverlapSidebar",
+            props: {
+              sidebar: {
+                type: Object,
+                required: true,
+              },
+            },
+            template: "<div />",
+          },
+        },
+      },
+    })
+
+    const sidebarViewModel = wrapper.findComponent({ name: "ScheduleOverlapSidebar" })
+      .props("sidebar") as {
+      respondentsPanel: { curGuestId: string }
+    }
+
+    expect(sidebarViewModel.respondentsPanel.curGuestId).toBe("guest-1")
+  })
+
   it("passes cohesive timed and days-only grid view models to grid boundaries", () => {
     const timedWrapper = mountScheduleOverlap({
       global: {
@@ -227,6 +256,68 @@ describe("ScheduleOverlap", () => {
     expect(typeof daysOnlyGrid.actions.closeHint).toBe("function")
     expect(daysOnlyGrid.toolRow.numResponses).toBe(0)
     expect(typeof daysOnlyGrid.toolRow.actions.toggleShowEventOptions).toBe("function")
+  })
+
+  it("clears curGuestId when the selected guest is deleted from the respondents panel", async () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        curGuestId: "guest-1",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlapSidebar: {
+            name: "ScheduleOverlapSidebar",
+            emits: ["guestAvailabilityDeleted"],
+            template:
+              "<button class=\"delete-selected-guest\" @click=\"$emit('guestAvailabilityDeleted', 'guest-1')\" />",
+          },
+        },
+      },
+    })
+
+    await wrapper.get(".delete-selected-guest").trigger("click")
+
+    expect(wrapper.emitted("setCurGuestId")).toEqual([[""]])
+  })
+
+  it("leaves curGuestId unchanged when a different guest is deleted", async () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        curGuestId: "guest-1",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlapSidebar: {
+            name: "ScheduleOverlapSidebar",
+            emits: ["guestAvailabilityDeleted"],
+            template:
+              "<button class=\"delete-other-guest\" @click=\"$emit('guestAvailabilityDeleted', 'guest-2')\" />",
+          },
+        },
+      },
+    })
+
+    await wrapper.get(".delete-other-guest").trigger("click")
+
+    expect(wrapper.emitted("setCurGuestId")).toBeUndefined()
+  })
+
+  it("updates curGuestId when renaming the selected guest", async () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        curGuestId: "guest-1",
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      newGuestName: string
+      saveGuestName: () => Promise<void>
+    }
+
+    vm.newGuestName = "guest-2"
+    await vm.saveGuestName()
+
+    expect(wrapper.emitted("setCurGuestId")).toEqual([["guest-2"]])
   })
 
   it("keeps respondents in the sidebar view model for specific-date events", () => {
@@ -455,6 +546,8 @@ describe("ScheduleOverlap", () => {
     vi.useFakeTimers()
 
     try {
+      localStorage.setItem("evt-1.guestName", "Mag")
+
       const wrapper = mountScheduleOverlap({
         props: {
           event: {
@@ -469,6 +562,7 @@ describe("ScheduleOverlap", () => {
             timeIncrement: Temporal.Duration.from({ hours: 1 }),
             responses: {
               Mag: {
+                name: "Mag",
                 user: {
                   _id: "Mag",
                   firstName: "Mag",
@@ -505,12 +599,7 @@ describe("ScheduleOverlap", () => {
       vm.editGuestAvailability("Mag")
       await nextTick()
 
-      expect(vm.availabilityAnimEnabled).toBe(true)
-      expect(vm.availability.size).toBe(0)
-      expect(showInfoMock).not.toHaveBeenCalled()
-
-      await vi.advanceTimersByTimeAsync(1000)
-
+      expect(vm.availabilityAnimEnabled).toBe(false)
       expect(vm.availability.size).toBe(2)
       expect(showInfoMock).not.toHaveBeenCalled()
     } finally {
