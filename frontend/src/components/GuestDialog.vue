@@ -45,9 +45,20 @@
           ></v-text-field>
           <v-checkbox
             v-model="allowOthersToEdit"
+            color="primary"
             hide-details
-            label="Allow others to edit this availability"
-          />
+          >
+            <template #label>
+              <span
+                class="tw-text-sm"
+                :class="
+                  allowOthersToEdit ? 'tw-text-black' : 'tw-text-very-dark-gray'
+                "
+              >
+                Allow others to edit this availability
+              </span>
+            </template>
+          </v-checkbox>
           <div class="tw-flex">
             <v-spacer />
             <v-btn

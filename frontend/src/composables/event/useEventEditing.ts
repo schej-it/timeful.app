@@ -139,11 +139,11 @@ export function useEventEditing(opts: UseEventEditingOptions) {
     if (!opts.authUser.value || opts.addingAvailabilityAsGuest.value) {
       if (opts.curGuestId.value) {
         const ev = opts.event.value
+        const guestResponse = ev?.responses?.[opts.curGuestId.value]
         const guestChangesSaved = await saveChangesAsGuest({
-          name: opts.curGuestId.value,
-          email: ev?.responses?.[opts.curGuestId.value]?.email ?? "",
-          allowOthersToEdit:
-            ev?.responses?.[opts.curGuestId.value]?.guestEditPolicy === "open",
+          name: guestResponse?.name ?? opts.curGuestId.value,
+          email: guestResponse?.email ?? "",
+          allowOthersToEdit: guestResponse?.guestEditPolicy === "open",
         })
         if (guestChangesSaved) {
           opts.curGuestId.value = ""

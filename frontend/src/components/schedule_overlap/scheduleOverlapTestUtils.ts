@@ -12,6 +12,10 @@ import type {
   ScheduleOverlapSidebarViewModel,
 } from "./scheduleOverlapViewModels"
 
+export type ScheduleOverlapWrapper = ReturnType<
+  typeof shallowMount<typeof ScheduleOverlap>
+>
+
 export const zdt = (iso: string) => Temporal.Instant.from(iso).toZonedDateTimeISO(UTC)
 
 export const scheduleOverlapGlobalStubs = {
@@ -186,10 +190,10 @@ export const mountScheduleOverlap = (
     props?: Record<string, unknown>
     global?: { stubs?: Record<string, unknown> }
   } = {}
-) => {
+): ScheduleOverlapWrapper => {
   const { props, global, ...mountOptions } = options
 
-  return shallowMount(ScheduleOverlap as never, {
+  return shallowMount<typeof ScheduleOverlap>(ScheduleOverlap, {
     ...mountOptions,
     props: {
       ...buildScheduleOverlapProps(),
@@ -202,5 +206,5 @@ export const mountScheduleOverlap = (
         ...(global?.stubs ?? {}),
       },
     },
-  } as never)
+  })
 }

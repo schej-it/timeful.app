@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { nextTick } from "vue"
 import { Temporal } from "temporal-polyfill"
-import { timeTypes } from "@/constants"
+import type { timeTypes } from "@/constants"
 import {
   buildScheduleOverlapProps,
   installScheduleOverlapTestGlobals,
@@ -304,10 +304,119 @@ describe("ScheduleOverlap", () => {
     expect(wrapper.emitted("setCurGuestId")).toBeUndefined()
   })
 
-  it("updates curGuestId when renaming the selected guest", async () => {
+  it("keeps curGuestId on the token guest id when renaming the selected guest", async () => {
+    localStorage.setItem(
+      "evt-1.guestOwnership",
+      JSON.stringify({
+        name: "guest-1",
+        guestId: "guest-token-id",
+        guestEditToken: "edit-token",
+        guestEditPolicy: "protected",
+        guestOwnershipMode: "token",
+      })
+    )
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          headers: new Headers(),
+          text: () =>
+            Promise.resolve(
+              JSON.stringify({
+                guestCredentials: {
+                  guestId: "guest-token-id",
+                  guestEditToken: "edit-token-2",
+                  guestEditPolicy: "protected",
+                  guestOwnershipMode: "token",
+                },
+              })
+            ),
+        })
+      )
+    )
+
+    const wrapper = mountScheduleOverlap({
+      props: {
+        curGuestId: "guest-token-id",
+        event: {
+          ...buildScheduleOverlapProps().event,
+          responses: {
+            "guest-token-id": {
+              name: "guest-1",
+              guest: true,
+              guestId: "guest-token-id",
+              guestEditPolicy: "protected",
+              guestOwnershipMode: "token",
+              user: {
+                _id: "guest-token-id",
+                firstName: "guest-1",
+                lastName: "",
+                email: "",
+              },
+              availability: [],
+              ifNeeded: [],
+              manualAvailability: {},
+            },
+          },
+        },
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      newGuestName: string
+      saveGuestName: () => Promise<void>
+      canEditGuestName: boolean
+    }
+
+    expect(vm.canEditGuestName).toBe(true)
+
+    vm.newGuestName = "guest-2"
+    await vm.saveGuestName()
+    const selectedGuestKey = wrapper.emitted("setCurGuestId")?.[0]?.[0] as string
+
+    expect(selectedGuestKey).toBe("guest-token-id")
+
+    await wrapper.setProps({
+      curGuestId: selectedGuestKey,
+    })
+
+    expect(vm.canEditGuestName).toBe(true)
+  })
+
+  it("updates curGuestId to the renamed guest name for legacy guests", async () => {
+    localStorage.setItem(
+      "evt-1.guestOwnership",
+      JSON.stringify({
+        name: "guest-1",
+        guestOwnershipMode: "legacy",
+      })
+    )
+
     const wrapper = mountScheduleOverlap({
       props: {
         curGuestId: "guest-1",
+        event: {
+          ...buildScheduleOverlapProps().event,
+          responses: {
+            "guest-1": {
+              name: "guest-1",
+              guest: true,
+              guestOwnershipMode: "legacy",
+              user: {
+                _id: "guest-1",
+                firstName: "guest-1",
+                lastName: "",
+                email: "",
+              },
+              availability: [],
+              ifNeeded: [],
+              manualAvailability: {},
+            },
+          },
+        },
       },
     })
 
@@ -510,10 +619,16 @@ describe("ScheduleOverlap", () => {
 
     vm.getTimeslotVon(1, 0).mouseover()
     await nextTick()
+    const tooltipDate = vm.getDisplayDateFromRowCol(1, 0)
+
+    expect(tooltipDate).not.toBeNull()
+    if (tooltipDate == null) {
+      throw new Error("Expected a tooltip date for the grey specific-time gap")
+    }
 
     expect(vm.tooltipContent).toBe(
       formatTooltipContent({
-        date: vm.getDisplayDateFromRowCol(1, 0)!,
+        date: tooltipDate,
         curTimezone: vm.curTimezone,
         timeslotDuration: Temporal.Duration.from({ hours: 1 }),
         timeType: vm.timeType,

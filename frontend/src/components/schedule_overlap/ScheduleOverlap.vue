@@ -97,6 +97,7 @@ import {
 } from "@/composables/schedule_overlap/types"
 import type {
   FetchedResponse, RenderedTimeGridRow, RenderedTimeGridRowCell, RowCol, Timezone, ScheduleOverlapState, ScheduleOverlapEvent, NormalizedCalendarEvent, CalendarEventsByDay, CalendarEventsMap,
+  ScheduleOverlapResponse,
   SignUpBlockLite,
 } from "@/composables/schedule_overlap/types"
 import type {
@@ -1490,6 +1491,20 @@ function openEditGuestNameDialog() {
   editGuestNameDialog.value = true
 }
 
+function getRenamedGuestSelectionKey(
+  renamedGuestName: string,
+  currentResponse?: ScheduleOverlapResponse,
+  guestCredentials?: {
+    guestId: string
+  }
+) {
+  const tokenGuestId = guestCredentials?.guestId ?? currentResponse?.guestId
+  if (tokenGuestId && tokenGuestId.length > 0) {
+    return tokenGuestId
+  }
+  return renamedGuestName
+}
+
 async function saveGuestName() {
   const name = newGuestName.value.trim()
   const currentGuestName =
@@ -1503,6 +1518,7 @@ async function saveGuestName() {
     return
   }
   try {
+    const currentResponse = props.event.responses?.[props.curGuestId]
     const response = await post<{
       guestCredentials?: {
         name?: string
@@ -1520,7 +1536,7 @@ async function saveGuestName() {
       {
         oldName: currentGuestName,
         newName: name,
-        guestId: props.event.responses?.[props.curGuestId]?.guestId,
+        guestId: currentResponse?.guestId,
         guestEditToken:
           props.curGuestId === guestResponseLookupKey.value
             ? guestOwnership.value?.guestEditToken
@@ -1539,7 +1555,10 @@ async function saveGuestName() {
     setGuestName(name)
     mainStore.showInfo("Guest name updated successfully")
     editGuestNameDialog.value = false
-    emit("setCurGuestId", name)
+    emit(
+      "setCurGuestId",
+      getRenamedGuestSelectionKey(name, currentResponse, response.guestCredentials)
+    )
     refreshEvent()
   } catch (err: unknown) {
     const e = err as { parsed?: { error?: string }; message?: string }

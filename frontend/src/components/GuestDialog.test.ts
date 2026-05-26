@@ -76,7 +76,7 @@ const VCheckboxStub = defineComponent({
         :checked="modelValue"
         @change="$emit('update:modelValue', $event.target.checked)"
       />
-      {{ label }}
+      <slot name="label">{{ label }}</slot>
     </label>
   `,
 })
@@ -261,6 +261,39 @@ describe("GuestDialog", () => {
     expect(wrapper.emitted("submit")).toEqual([
       [{ name: "guest", email: "guest@example.com", allowOthersToEdit: true }],
     ])
+  })
+
+  it("uses the shared slotted checkbox label styling for availability editing", async () => {
+    const wrapper = mount(GuestDialog, {
+      props: {
+        modelValue: true,
+        event: baseEvent,
+        respondents: [],
+      },
+      global: {
+        stubs: mergeComponentStubs({
+          "v-btn": VBtnStub,
+          "v-card": passThroughStub,
+          "v-card-text": passThroughStub,
+          "v-card-title": passThroughStub,
+          "v-checkbox": VCheckboxStub,
+          "v-dialog": passThroughStub,
+          "v-form": createFormStub(formRefMethods),
+          "v-icon": nullStub,
+          "v-spacer": nullStub,
+          "v-text-field": VTextFieldStub,
+        }),
+      },
+    })
+
+    const label = wrapper.get("span.tw-text-sm")
+    expect(label.classes()).toContain("tw-text-very-dark-gray")
+    expect(label.text()).toBe("Allow others to edit this availability")
+
+    await wrapper.get('input[type="checkbox"]').setValue(true)
+
+    expect(label.classes()).toContain("tw-text-black")
+    expect(label.classes()).not.toContain("tw-text-very-dark-gray")
   })
 
 })
