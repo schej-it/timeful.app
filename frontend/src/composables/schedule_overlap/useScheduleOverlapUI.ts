@@ -219,8 +219,10 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
     const clickedInsideOptions = Boolean(
       opts.optionsSectionRef?.value?.contains(target ?? null)
     )
+    const clickedInsideDragSection = Boolean(target?.closest("#drag-section"))
     if (
       clickedInsideOptions ||
+      clickedInsideDragSection ||
       target?.classList.contains("timeslot")
     ) {
       return

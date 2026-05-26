@@ -370,6 +370,7 @@ const drag = useDragPaint({
   dragging,
   dragStart,
   dragCur,
+  curTimeslot: avail.curTimeslot,
   splitTimes: grid.splitTimes,
   times: grid.times,
   days: grid.days,

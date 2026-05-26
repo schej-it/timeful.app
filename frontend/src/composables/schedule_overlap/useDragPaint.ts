@@ -41,6 +41,7 @@ export interface UseDragPaintOptions {
   dragging: Ref<boolean>
   dragStart: Ref<RowCol | null>
   dragCur: Ref<RowCol | null>
+  curTimeslot?: Ref<RowCol>
 
   // grid info
   splitTimes: ComputedRef<TimeItem[][]>
@@ -129,6 +130,16 @@ export function useDragPaint(opts: UseDragPaintOptions) {
     }
     activePointerId.value = null
     activePointerTarget.value = null
+  }
+
+  const updateCurTimeslot = (row: number, col: number) => {
+    if (opts.state.value !== states.EDIT_AVAILABILITY) {
+      return
+    }
+    if (!opts.curTimeslot) {
+      return
+    }
+    opts.curTimeslot.value = { row, col }
   }
 
   const normalizeXY = (
@@ -259,6 +270,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
     dragging.value = true
     dragStart.value = { row, col }
     dragCur.value = { row, col }
+    updateCurTimeslot(row, col)
 
     e.preventDefault()
     capturePointer(e)
@@ -301,6 +313,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
     }
 
     dragCur.value = { row, col }
+    updateCurTimeslot(row, col)
   }
 
   const endDrag = (e?: PointerEvent | MouseEvent | TouchEvent) => {
@@ -311,6 +324,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
     const ds = dragStart.value
     const dc = dragCur.value
     const eventValue = opts.event.value
+    updateCurTimeslot(dc.row, dc.col)
 
     if (
       opts.state.value === states.EDIT_AVAILABILITY ||
