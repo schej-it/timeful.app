@@ -649,9 +649,10 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     return getDateHoursOffset(day.dateObject, hoursOffset)
   }
 
-  const getDateFromDayTimeIndex = (
+  const getDateFromDayTimeIndexInternal = (
     dayIndex: number,
-    timeIndex: number
+    timeIndex: number,
+    includeSpecificTimesGaps = false
   ): Temporal.ZonedDateTime | null => {
     const hasSecondSplit = splitTimes.value[1].length > 0
     const isFirstSplit = timeIndex < splitTimes.value[0].length
@@ -674,6 +675,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       const eventTimes = (event.value as { times?: Temporal.ZonedDateTime[] })
         .times
       if (
+        !includeSpecificTimesGaps &&
         state.value !== states.SET_SPECIFIC_TIMES &&
         (eventTimes?.length ?? 0) > 0
       ) {
@@ -688,6 +690,27 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
         return null
     }
     return date
+  }
+
+  const getDateFromDayTimeIndex = (
+    dayIndex: number,
+    timeIndex: number
+  ): Temporal.ZonedDateTime | null =>
+    getDateFromDayTimeIndexInternal(dayIndex, timeIndex)
+
+  const getDisplayDateFromRowCol = (
+    row: number,
+    col: number
+  ): Temporal.ZonedDateTime | null => {
+    if (event.value.daysOnly) {
+      return getDateFromRowCol(row, col)
+    }
+
+    return getDateFromDayTimeIndexInternal(
+      maxDaysPerPage.value * page.value + col,
+      row,
+      true
+    )
   }
 
   const getDateFromRowCol = (
@@ -817,6 +840,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     isColConsecutive,
     getDateFromDayHoursOffset,
     getDateFromDayTimeIndex,
+    getDisplayDateFromRowCol,
     getDateFromRowCol,
     setTimeslotSize,
     onResize,

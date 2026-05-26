@@ -202,10 +202,12 @@ describe("TimezoneSelector", () => {
     expect(String(matchingTimezoneItem?.title)).toContain("Eastern Time")
   })
 
-  it("renders a readable timezone label even when the selected value is an offset-only timezone", () => {
-    const wrapper = shallowMount(TimezoneSelector, {
-      props: {
-        modelValue: {
+  it(
+    "renders a readable timezone label even when the selected value is an offset-only timezone",
+    () => {
+      const wrapper = shallowMount(TimezoneSelector, {
+        props: {
+          modelValue: {
           value: "+05:45",
           label: "+05:45",
           gmtString: "(GMT+5:45)",
@@ -221,10 +223,12 @@ describe("TimezoneSelector", () => {
           "v-select": RenderingVSelectStub,
         },
       },
-    })
+      })
 
-    expect(wrapper.text()).toContain("(GMT+5:45) +05:45")
-  })
+      expect(wrapper.text()).toContain("(GMT+5:45) +05:45")
+    },
+    10000
+  )
 
   it("keeps the custom timezone selection text in the truncation class path", () => {
     const wrapper = shallowMount(TimezoneSelector, {

@@ -35,7 +35,6 @@ export interface ScheduleOverlapToolRowActions {
   updateShowAllHours: (value: boolean) => void
   updateStartCalendarOnMonday: (value: boolean) => void
   updateWeekOffset: (value: number) => void
-  toggleShowEventOptions: () => void
   scheduleEvent: (e?: MouseEvent) => void
   cancelScheduleEvent: (e?: MouseEvent) => void
   confirmScheduleEvent: (useGcal: boolean) => void
@@ -87,7 +86,6 @@ export interface ScheduleOverlapRespondentsPanelViewModel {
   showBestTimes: boolean
   hideIfNeeded: boolean
   showAllHours: boolean
-  showEventOptions: boolean
   guestAddedAvailability: boolean
   addingAvailabilityAsGuest: boolean
 }
@@ -168,7 +166,6 @@ export interface ScheduleOverlapToolRowViewModel {
   numResponses: number
   mobileNumDays: number
   allowScheduleEvent: boolean
-  showEventOptions: boolean
   timeType: string
 }
 

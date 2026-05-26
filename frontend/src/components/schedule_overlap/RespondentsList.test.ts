@@ -107,7 +107,6 @@ const mountRespondentsList = ({
       showBestTimes: false,
       hideIfNeeded: false,
       showAllHours: false,
-      showEventOptions: false,
       guestAddedAvailability: false,
       addingAvailabilityAsGuest: false,
     },
@@ -188,14 +187,14 @@ describe("RespondentsList", () => {
     expect(wrapper.text()).toContain("* if needed")
   })
 
-  it("relays false when the desktop best-times switch is toggled off", async () => {
+  it("renders desktop best-times inside the options section", async () => {
     isPhoneValue.value = false
 
     const baseDate = zdt("2026-01-01T09:00:00Z")
-    const VSwitchStub = {
-      emits: ["update:modelValue"],
+    const EventOptionsStub = {
+      emits: ["update:showBestTimes"],
       template:
-        '<button class="desktop-best-times-toggle" @click="$emit(\'update:modelValue\', false)" />',
+        '<div><div class="event-options-heading">Options</div><button class="desktop-best-times-toggle" @click="$emit(\'update:showBestTimes\', false)" /></div>',
     }
 
     const wrapper = shallowMount(RespondentsList, {
@@ -265,17 +264,19 @@ describe("RespondentsList", () => {
         showBestTimes: true,
         hideIfNeeded: false,
         showAllHours: false,
-        showEventOptions: false,
         guestAddedAvailability: false,
         addingAvailabilityAsGuest: false,
       },
       global: {
         stubs: {
           ...sharedRespondentsListStubs,
-          "v-switch": VSwitchStub,
+          EventOptions: EventOptionsStub,
         },
       },
     })
+
+    expect(wrapper.find("#show-best-times-toggle").exists()).toBe(false)
+    expect(wrapper.find(".event-options-heading").text()).toBe("Options")
 
     await wrapper.get(".desktop-best-times-toggle").trigger("click")
 
@@ -357,7 +358,6 @@ describe("RespondentsList", () => {
         showBestTimes: false,
         hideIfNeeded: false,
         showAllHours: false,
-        showEventOptions: false,
         guestAddedAvailability: false,
         addingAvailabilityAsGuest: false,
       },
@@ -448,7 +448,6 @@ describe("RespondentsList", () => {
         showBestTimes: false,
         hideIfNeeded: false,
         showAllHours: false,
-        showEventOptions: false,
         guestAddedAvailability: false,
         addingAvailabilityAsGuest: false,
       },
@@ -524,7 +523,6 @@ describe("RespondentsList", () => {
         showBestTimes: false,
         hideIfNeeded: false,
         showAllHours: false,
-        showEventOptions: false,
         guestAddedAvailability: false,
         addingAvailabilityAsGuest: false,
       },
@@ -612,7 +610,6 @@ describe("RespondentsList", () => {
         showBestTimes: false,
         hideIfNeeded: false,
         showAllHours: false,
-        showEventOptions: false,
         guestAddedAvailability: false,
         addingAvailabilityAsGuest: false,
       },

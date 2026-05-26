@@ -3,11 +3,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { nextTick } from "vue"
 import { Temporal } from "temporal-polyfill"
+import { timeTypes } from "@/constants"
 import {
   buildScheduleOverlapProps,
   installScheduleOverlapTestGlobals,
   mountScheduleOverlap,
 } from "./scheduleOverlapTestUtils"
+import { formatTooltipContent } from "./scheduleOverlapRendering"
 
 const smAndDown = { value: false }
 const zdt = (iso: string) => Temporal.Instant.from(iso).toZonedDateTimeISO("UTC")
@@ -247,7 +249,7 @@ describe("ScheduleOverlap", () => {
       actions: { prevPage: () => void; closeHint: () => void }
       toolRow: {
         numResponses: number
-        actions: { toggleShowEventOptions: () => void }
+        actions: { updateShowBestTimes: (value: boolean) => void }
       }
     }
 
@@ -255,7 +257,7 @@ describe("ScheduleOverlap", () => {
     expect(typeof daysOnlyGrid.actions.prevPage).toBe("function")
     expect(typeof daysOnlyGrid.actions.closeHint).toBe("function")
     expect(daysOnlyGrid.toolRow.numResponses).toBe(0)
-    expect(typeof daysOnlyGrid.toolRow.actions.toggleShowEventOptions).toBe("function")
+    expect(typeof daysOnlyGrid.toolRow.actions.updateShowBestTimes).toBe("function")
   })
 
   it("clears curGuestId when the selected guest is deleted from the respondents panel", async () => {
@@ -389,7 +391,6 @@ describe("ScheduleOverlap", () => {
               <div>
                 <button class="sidebar-name" @click="$emit('update:newGuestName', 'Renamed guest')" />
                 <button class="sidebar-best-times" @click="$emit('update:showBestTimes', true)" />
-                <button class="sidebar-options" @click="$emit('toggleShowEventOptions')" />
                 <button class="sidebar-add-availability" @click="$emit('addAvailability')" />
               </div>
             `,
@@ -416,14 +417,13 @@ describe("ScheduleOverlap", () => {
 
     await wrapper.get(".sidebar-name").trigger("click")
     await wrapper.get(".sidebar-best-times").trigger("click")
-    await wrapper.get(".sidebar-options").trigger("click")
     await wrapper.get(".overlay-type").trigger("click")
     await nextTick()
 
     const sidebarViewModel = wrapper.findComponent({ name: "ScheduleOverlapSidebar" })
       .props("sidebar") as {
       newGuestName: string
-      respondentsPanel: { showBestTimes: boolean; showEventOptions: boolean }
+      respondentsPanel: { showBestTimes: boolean }
     }
     const overlayViewModel = wrapper.findComponent({
       name: "ScheduleOverlapMobileOverlay",
@@ -433,7 +433,6 @@ describe("ScheduleOverlap", () => {
 
     expect(sidebarViewModel.newGuestName).toBe("Renamed guest")
     expect(sidebarViewModel.respondentsPanel.showBestTimes).toBe(true)
-    expect(sidebarViewModel.respondentsPanel.showEventOptions).toBe(true)
     expect(overlayViewModel.availabilityType).toBe("ifNeeded")
 
     await wrapper.get(".sidebar-add-availability").trigger("click")
@@ -479,6 +478,48 @@ describe("ScheduleOverlap", () => {
 
     expect(vm.timeslotSelected).toBe(false)
     expect(vm.curTimeslot).toEqual({ row: 1, col: 0 })
+  })
+
+  it("shows tooltip text for grey specific-time gaps after save", async () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        event: {
+          ...buildScheduleOverlapProps().event,
+          dates: [Temporal.PlainDate.from("2026-01-01")],
+          timeSeed: zdt("2026-01-01T09:00:00Z"),
+          hasSpecificTimes: true,
+          startTime: Temporal.PlainTime.from("09:00"),
+          duration: Temporal.Duration.from({ hours: 3 }),
+          timeIncrement: Temporal.Duration.from({ hours: 1 }),
+          times: [
+            zdt("2026-01-01T09:00:00Z"),
+            zdt("2026-01-01T11:00:00Z"),
+          ],
+        },
+        initialTimezone: utcTimezone,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      curTimezone: typeof utcTimezone
+      timeType: (typeof timeTypes)[keyof typeof timeTypes]
+      tooltipContent: string
+      getDisplayDateFromRowCol: (row: number, col: number) => Temporal.ZonedDateTime | null
+      getTimeslotVon: (row: number, col: number) => Record<string, () => void>
+    }
+
+    vm.getTimeslotVon(1, 0).mouseover()
+    await nextTick()
+
+    expect(vm.tooltipContent).toBe(
+      formatTooltipContent({
+        date: vm.getDisplayDateFromRowCol(1, 0)!,
+        curTimezone: vm.curTimezone,
+        timeslotDuration: Temporal.Duration.from({ hours: 1 }),
+        timeType: vm.timeType,
+        isSpecificDates: true,
+      })
+    )
   })
 
   it("collapses hidden hours by default and expands them on demand", async () => {

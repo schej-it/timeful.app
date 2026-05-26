@@ -25,7 +25,7 @@ describe("ScheduleOverlapRespondentsPanel", () => {
     expect(wrapper.emitted("mouseOverRespondent")).toEqual([["evt", "user-1"]])
   })
 
-  it("forwards Options toggles through the presentational boundary", async () => {
+  it("forwards options updates through the presentational boundary", async () => {
     const wrapper = shallowMount(ScheduleOverlapRespondentsPanel, {
       props: {
         panel: buildRespondentsPanelViewModel(),
@@ -33,7 +33,8 @@ describe("ScheduleOverlapRespondentsPanel", () => {
       global: {
         stubs: {
           RespondentsList: {
-            template: "<button id=\"event-options-toggle\" @click=\"$emit('toggleShowEventOptions')\" />",
+            template:
+              "<button id=\"event-options-toggle\" @click=\"$emit('update:showBestTimes', false)\" />",
           },
         },
       },
@@ -41,6 +42,6 @@ describe("ScheduleOverlapRespondentsPanel", () => {
 
     await wrapper.get("#event-options-toggle").trigger("click")
 
-    expect(wrapper.emitted("toggleShowEventOptions")).toEqual([[]])
+    expect(wrapper.emitted("update:showBestTimes")).toEqual([[false]])
   })
 })

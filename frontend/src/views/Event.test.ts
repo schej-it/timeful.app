@@ -55,8 +55,16 @@ const {
           },
           availability: [],
         },
-      } as GuestResponseMap,
+      },
       blindAvailabilityEnabled: false,
+    } as {
+      _id: string
+      shortId: string
+      ownerId: string
+      name: string
+      type: string
+      responses: GuestResponseMap
+      blindAvailabilityEnabled: boolean
     },
   },
 }))
@@ -261,7 +269,7 @@ describe("Event guest edit action", () => {
           },
           availability: [],
         },
-      } as GuestResponseMap,
+      },
       blindAvailabilityEnabled: false,
     }
   })

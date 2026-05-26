@@ -90,7 +90,6 @@ interface UseScheduleOverlapViewModelsOptions {
   showBestTimes: Ref<boolean>
   hideIfNeeded: Ref<boolean>
   showAllHours: Ref<boolean>
-  showEventOptions: Ref<boolean>
   guestAddedAvailability: ComputedRef<boolean>
   editing: ComputedRef<boolean>
   isWeekly: Ref<boolean>
@@ -181,7 +180,6 @@ export function useScheduleOverlapViewModels(
       showBestTimes: opts.showBestTimes.value,
       hideIfNeeded: opts.hideIfNeeded.value,
       showAllHours: opts.showAllHours.value,
-      showEventOptions: opts.showEventOptions.value,
       guestAddedAvailability: opts.guestAddedAvailability.value,
       addingAvailabilityAsGuest: opts.addingAvailabilityAsGuest.value,
     })
@@ -261,7 +259,6 @@ export function useScheduleOverlapViewModels(
     numResponses: opts.respondents.value.length,
     mobileNumDays: opts.mobileNumDays.value,
     allowScheduleEvent: opts.allowScheduleEvent.value,
-    showEventOptions: opts.showEventOptions.value,
     timeType: opts.timeType.value,
   }))
 

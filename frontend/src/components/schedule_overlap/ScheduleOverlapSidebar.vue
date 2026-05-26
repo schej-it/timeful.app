@@ -269,7 +269,6 @@
           @update:show-best-times="emit('update:showBestTimes', $event)"
           @update:hide-if-needed="emit('update:hideIfNeeded', $event)"
           @update:show-all-hours="emit('update:showAllHours', $event)"
-          @toggle-show-event-options="emit('toggleShowEventOptions')"
           @add-availability="emit('addAvailability')"
           @add-availability-as-guest="emit('addAvailabilityAsGuest')"
           @mouse-over-respondent="(e, userId) => emit('mouseOverRespondent', e, userId)"
@@ -333,7 +332,6 @@ const emit = defineEmits<{
   "update:showBestTimes": [value: boolean]
   "update:hideIfNeeded": [value: boolean]
   "update:showAllHours": [value: boolean]
-  toggleShowEventOptions: []
   addAvailabilityAsGuest: []
   addAvailability: []
   mouseOverRespondent: [e: MouseEvent, userId: string]

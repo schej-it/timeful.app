@@ -1,13 +1,9 @@
 <template>
-  <ExpandableSection
-    v-if="event.daysOnly || numResponses >= 1"
-    label="Options"
-    :model-value="showEventOptions"
-    @update:model-value="$emit('toggleShowEventOptions')"
-  >
+  <section v-if="event.daysOnly || numResponses >= 1" class="tw-flex tw-flex-col">
+    <div class="tw-text-base tw-font-medium tw-text-black">Options</div>
     <div class="tw-flex tw-flex-col tw-gap-4 tw-pt-2">
       <v-switch
-        v-if="numResponses > 1 && isPhone"
+        v-if="numResponses > 1"
         id="show-best-times-toggle"
         class="event-options-switch schedule-overlap-compact-switch"
         inset
@@ -87,14 +83,13 @@
         </template>
       </v-switch>
     </div>
-  </ExpandableSection>
+  </section>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { eventTypes } from "@/constants"
-import ExpandableSection from "@/components/ExpandableSection.vue"
 import type { ScheduleOverlapEvent } from "@/composables/schedule_overlap/types"
 
 const props = withDefaults(
@@ -103,7 +98,6 @@ const props = withDefaults(
     showBestTimes: boolean
     hideIfNeeded: boolean
     numResponses: number
-    showEventOptions: boolean
     showAllHours?: boolean
     showCalendarEvents?: boolean
     startCalendarOnMonday?: boolean
@@ -115,7 +109,6 @@ const props = withDefaults(
 )
 
 defineEmits<{
-  toggleShowEventOptions: []
   "update:showBestTimes": [value: boolean]
   "update:hideIfNeeded": [value: boolean]
   "update:showAllHours": [value: boolean]

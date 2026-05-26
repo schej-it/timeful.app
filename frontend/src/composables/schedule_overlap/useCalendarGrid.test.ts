@@ -223,4 +223,46 @@ describe("useCalendarGrid", () => {
     expect(grid.splitTimes.value[0][44]?.text).toBe("8 pm")
     expect(grid.splitTimes.value[0][47]?.absoluteMinutes).toBe(20 * 60 + 45)
   })
+
+  it("returns a display date for grey specific-time gaps without treating them as event times", () => {
+    const event = ref<ScheduleOverlapEvent>({
+      _id: "evt-5",
+      shortId: "grid-specific-gap-tooltip",
+      name: "Specific time gap",
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [Temporal.PlainDate.from("2026-05-19")],
+      timeSeed: zdt("2026-05-19T09:00:00Z"),
+      startTime: Temporal.PlainTime.from("09:00"),
+      duration: Temporal.Duration.from({ hours: 3 }),
+      hasSpecificTimes: true,
+      times: [zdt("2026-05-19T09:00:00Z"), zdt("2026-05-19T11:00:00Z")],
+      notificationsEnabled: false,
+      blindAvailabilityEnabled: false,
+      daysOnly: false,
+      sendEmailAfterXResponses: -1,
+      collectEmails: false,
+      startOnMonday: true,
+      timeIncrement: durations.ONE_HOUR,
+      creatorPosthogId: "creator-5",
+      remindees: [],
+    })
+
+    const grid = useCalendarGrid({
+      event,
+      weekOffset: ref(0),
+      curTimezone: ref({
+        value: UTC,
+        offset: Temporal.Duration.from({ hours: 0 }),
+        label: "UTC",
+        gmtString: "GMT+0",
+      }),
+      state: ref(states.HEATMAP),
+      isPhone: ref(false),
+    })
+
+    expect(grid.getDateFromRowCol(1, 0)).toBeNull()
+    expect(grid.getDisplayDateFromRowCol(1, 0)?.toString()).toBe(
+      "2026-05-19T10:00:00+00:00[UTC]"
+    )
+  })
 })

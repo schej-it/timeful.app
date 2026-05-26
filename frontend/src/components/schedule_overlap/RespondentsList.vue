@@ -326,33 +326,14 @@
             authUser ? "+ Add guest availability" : "+ Add availability"
           }}</v-btn
         >
-        <v-switch
-          v-if="respondents.length > 1"
-          id="show-best-times-toggle"
-          class="schedule-overlap-compact-switch tw-mb-4"
-          inset
-          :model-value="showBestTimes"
-          hide-details
-          @update:model-value="
-            (val: boolean | null) => $emit('update:showBestTimes', !!val)
-          "
-        >
-          <template #label>
-            <div class="tw-text-sm tw-text-black">
-              Show best {{ event.daysOnly ? "days" : "times" }}
-            </div>
-          </template>
-        </v-switch>
         <EventOptions
           :event="event"
-          :show-event-options="showEventOptions"
           :show-best-times="showBestTimes"
           :hide-if-needed="hideIfNeeded"
           :show-all-hours="showAllHours"
           :show-calendar-events="showCalendarEvents"
           :start-calendar-on-monday="startCalendarOnMonday"
           :num-responses="respondents.length"
-          @toggle-show-event-options="$emit('toggleShowEventOptions')"
           @update:show-best-times="(val) => $emit('update:showBestTimes', val)"
           @update:hide-if-needed="(val) => $emit('update:hideIfNeeded', val)"
           @update:show-all-hours="(val) => $emit('update:showAllHours', val)"
@@ -491,7 +472,6 @@ const props = defineProps<{
   hideIfNeeded: boolean
   showAllHours: boolean
   startCalendarOnMonday?: boolean
-  showEventOptions: boolean
   guestAddedAvailability: boolean
   addingAvailabilityAsGuest: boolean
 }>()
@@ -510,7 +490,6 @@ const emit = defineEmits<{
   "update:hideIfNeeded": [value: boolean]
   "update:showAllHours": [value: boolean]
   "update:startCalendarOnMonday": [value: boolean]
-  toggleShowEventOptions: []
 }>()
 
 const mainStore = useMainStore()

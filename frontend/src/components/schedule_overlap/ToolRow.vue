@@ -100,13 +100,11 @@
             :show-best-times="toolRow.showBestTimes"
             :hide-if-needed="toolRow.hideIfNeeded"
             :show-all-hours="toolRow.showAllHours"
-            :show-event-options="toolRow.showEventOptions"
             :start-calendar-on-monday="toolRow.startCalendarOnMonday"
             :num-responses="toolRow.numResponses"
             @update:show-best-times="(val) => toolRow.actions.updateShowBestTimes(val)"
             @update:hide-if-needed="(val) => toolRow.actions.updateHideIfNeeded(val)"
             @update:show-all-hours="(val) => toolRow.actions.updateShowAllHours(val)"
-            @toggle-show-event-options="toolRow.actions.toggleShowEventOptions()"
             @update:start-calendar-on-monday="
               (val) => toolRow.actions.updateStartCalendarOnMonday(val)
             "

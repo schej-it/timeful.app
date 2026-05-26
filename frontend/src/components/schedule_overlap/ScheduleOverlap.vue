@@ -433,7 +433,7 @@ const {
   specificTimesSet: _specificTimesSet, splitTimes, times, allDays, days, monthDays, monthDayIncluded,
   curMonthText, columnOffsets: _columnOffsets, showLeftZigZag: _showLeftZigZag, showRightZigZag: _showRightZigZag, hasNextPage, hasPrevPage, hasPages: _hasPages,
   maxDaysPerPage, isColConsecutive, getDateFromDayHoursOffset: _getDateFromDayHoursOffset, getDateFromDayTimeIndex: _getDateFromDayTimeIndex,
-  getDateFromRowCol, setTimeslotSize, onResize, onCalendarScroll, getLocalTimezone: _getLocalTimezone,
+  getDisplayDateFromRowCol, getDateFromRowCol, setTimeslotSize, onResize, onCalendarScroll, getLocalTimezone: _getLocalTimezone,
   getMinMaxHoursFromTimes: _getMinMaxHoursFromTimes,
 } = grid
 
@@ -486,7 +486,7 @@ const {
 } = drag
 
 const {
-  showEditOptions, showEventOptions, showCalendarEvents,
+  showEditOptions, showCalendarEvents,
   overlayAvailability, deleteAvailabilityDialog, calendarOptionsDialog, editGuestNameDialog,
   newGuestName, tooltipContent, optionsVisible: _optionsVisible, scrolledToRespondents: _scrolledToRespondents,
   delayedShowStickyRespondents, delayedShowStickyRespondentsTimeout, hintState: _hintState, curRespondent,
@@ -495,7 +495,7 @@ const {
   hintStateLocalStorageKey: _hintStateLocalStorageKey, hintText, hintClosed: _hintClosed, hintTextShown, showOverlayAvailabilityToggle,
   selectedGuestRespondent: _selectedGuestRespondent, canEditGuestName, mouseOverRespondent, mouseLeaveRespondent,
   clickRespondent, deselectRespondents, isGuest: _isGuest, checkElementsVisible, onScroll,
-  toggleShowEditOptions, toggleShowEventOptions, onShowBestTimesChange,
+  toggleShowEditOptions, onShowBestTimesChange,
   updateOverlayAvailability, closeHint,
 } = ui
 
@@ -1171,7 +1171,6 @@ const toolRowActions = computed<ScheduleOverlapToolRowActions>(() => ({
     startCalendarOnMonday.value = value
   },
   updateWeekOffset: emitWeekOffsetUpdate,
-  toggleShowEventOptions,
   scheduleEvent,
   cancelScheduleEvent,
   confirmScheduleEvent,
@@ -1190,7 +1189,6 @@ const sharedDisplayListeners = {
   "update:showBestTimes": updateShowBestTimes,
   "update:hideIfNeeded": updateHideIfNeeded,
   "update:showAllHours": updateShowAllHours,
-  toggleShowEventOptions,
 }
 
 const sharedParentRelayListeners = {
@@ -1314,7 +1312,6 @@ const {
   showBestTimes,
   hideIfNeeded,
   showAllHours,
-  showEventOptions,
   guestAddedAvailability,
   editing,
   isWeekly,
@@ -1387,7 +1384,8 @@ function getTimeslotVon(row: number, col: number): Record<string, () => void> {
       if (!timeslotSelected.value) {
         showAvailability(row, col)
         if (!props.event.daysOnly) {
-          const date = getDateFromRowCol(row, col)
+          const date =
+            getDateFromRowCol(row, col) ?? getDisplayDateFromRowCol(row, col)
           if (date) {
             tooltipContent.value = formatTooltipContent({
               date,

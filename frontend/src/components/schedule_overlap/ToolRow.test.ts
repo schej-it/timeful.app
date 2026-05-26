@@ -61,7 +61,6 @@ const baseToolRow = {
     updateShowBestTimes: vi.fn(),
     updateHideIfNeeded: vi.fn(),
     updateShowAllHours: vi.fn(),
-    toggleShowEventOptions: vi.fn(),
     updateStartCalendarOnMonday: vi.fn(),
   },
   curTimezone: {
@@ -82,7 +81,6 @@ const baseToolRow = {
   numResponses: 2,
   mobileNumDays: 3,
   allowScheduleEvent: true,
-  showEventOptions: false,
   timeType: timeTypes.HOUR12,
 }
 

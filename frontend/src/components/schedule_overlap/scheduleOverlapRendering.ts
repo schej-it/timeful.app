@@ -312,7 +312,8 @@ export const getTimeGridTimeslotClassStyle = ({
     baseArgs.col === daysLength - 1 || !isColConsecutive(baseArgs.col + 1)
 
   if (
-    (respondents.length > 0 ||
+    (state === states.HEATMAP ||
+      state === states.BEST_TIMES ||
       editing ||
       state === states.SET_SPECIFIC_TIMES) &&
     curTimeslot.row === baseArgs.row &&

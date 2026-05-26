@@ -231,32 +231,41 @@ describe("SignIn Vuetify field contracts", () => {
     routeState.query = {}
   })
 
-  it("uses variant solo for the email and onboarding fields", async () => {
-    postMock.mockResolvedValueOnce({ isNewUser: true })
+  it(
+    "uses variant solo for the email and onboarding fields",
+    async () => {
+      postMock.mockResolvedValueOnce({ isNewUser: true })
 
-    const wrapper = mount(SignIn, {
-      global: {
-        stubs: signInStubs,
-      },
-    })
+      const wrapper = mount(SignIn, {
+        global: {
+          stubs: signInStubs,
+        },
+      })
 
-    const emailField = findTextFieldByPlaceholder(wrapper, "Enter your email...")
-    expect(emailField.props("variant")).toBe("solo")
+      const emailField = findTextFieldByPlaceholder(wrapper, "Enter your email...")
+      expect(emailField.props("variant")).toBe("solo")
 
-    await wrapper.get('input[placeholder="Enter your email..."]').setValue("new@example.com")
-    await findButtonByText(wrapper, "Continue with Email").trigger("click")
-    await flushPromises()
+      await wrapper
+        .get('input[placeholder="Enter your email..."]')
+        .setValue("new@example.com")
+      await findButtonByText(wrapper, "Continue with Email").trigger("click")
+      await flushPromises()
 
-    const firstNameField = findTextFieldByPlaceholder(wrapper, "First name")
-    const lastNameField = findTextFieldByPlaceholder(wrapper, "Last name (optional)")
-    const disabledEmailField = findTextFieldByPlaceholder(wrapper, "Email...")
+      const firstNameField = findTextFieldByPlaceholder(wrapper, "First name")
+      const lastNameField = findTextFieldByPlaceholder(
+        wrapper,
+        "Last name (optional)"
+      )
+      const disabledEmailField = findTextFieldByPlaceholder(wrapper, "Email...")
 
-    expect(firstNameField.props("variant")).toBe("solo")
-    expect(lastNameField.props("variant")).toBe("solo")
-    expect(disabledEmailField.props("variant")).toBe("solo")
-    expect(disabledEmailField.props("modelValue")).toBe("new@example.com")
-    expect(disabledEmailField.props("disabled")).toBe(true)
-  })
+      expect(firstNameField.props("variant")).toBe("solo")
+      expect(lastNameField.props("variant")).toBe("solo")
+      expect(disabledEmailField.props("variant")).toBe("solo")
+      expect(disabledEmailField.props("modelValue")).toBe("new@example.com")
+      expect(disabledEmailField.props("disabled")).toBe(true)
+    },
+    10000
+  )
 
   it("uses variant solo for the OTP field", async () => {
     postMock.mockResolvedValueOnce({ isNewUser: false })

@@ -100,11 +100,6 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
       ? false
       : localStorage.showEditOptions === "true"
   )
-  const showEventOptions = ref<boolean>(
-    localStorage.showEventOptions === undefined
-      ? false
-      : localStorage.showEventOptions === "true"
-  )
   const showCalendarEvents = ref(false)
 
   const availabilityType = opts.availabilityType ?? ref<AvailabilityType>(availabilityTypes.AVAILABLE)
@@ -273,10 +268,6 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
     showEditOptions.value = !showEditOptions.value
     localStorage.showEditOptions = String(showEditOptions.value)
   }
-  const toggleShowEventOptions = () => {
-    showEventOptions.value = !showEventOptions.value
-    localStorage.showEventOptions = String(showEventOptions.value)
-  }
   const onShowBestTimesChange = () => {
     writeShowBestTimesPreference(showBestTimes.value)
     if (
@@ -330,7 +321,6 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
     state,
     showBestTimes,
     showEditOptions,
-    showEventOptions,
     showCalendarEvents,
     availabilityType,
     overlayAvailability,
@@ -373,7 +363,6 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
     checkElementsVisible,
     onScroll,
     toggleShowEditOptions,
-    toggleShowEventOptions,
     onShowBestTimesChange,
     updateOverlayAvailability,
     closeHint,

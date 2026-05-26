@@ -24,7 +24,6 @@
       :attendees="panel.attendees"
       :responses-formatted="panel.responsesFormatted"
       :timezone="panel.timezone"
-      :show-event-options="panel.showEventOptions"
       :guest-added-availability="panel.guestAddedAvailability"
       :adding-availability-as-guest="panel.addingAvailabilityAsGuest"
       @update:show-calendar-events="emit('update:showCalendarEvents', $event)"
@@ -32,7 +31,6 @@
       @update:hide-if-needed="emit('update:hideIfNeeded', $event)"
       @update:show-all-hours="emit('update:showAllHours', $event)"
       @update:start-calendar-on-monday="emit('update:startCalendarOnMonday', $event)"
-      @toggle-show-event-options="emit('toggleShowEventOptions')"
       @add-availability="emit('addAvailability')"
       @add-availability-as-guest="emit('addAvailabilityAsGuest')"
       @mouse-over-respondent="(e, userId) => emit('mouseOverRespondent', e, userId)"
@@ -61,7 +59,6 @@ const emit = defineEmits<{
   "update:hideIfNeeded": [value: boolean]
   "update:showAllHours": [value: boolean]
   "update:startCalendarOnMonday": [value: boolean]
-  toggleShowEventOptions: []
   addAvailabilityAsGuest: []
   addAvailability: []
   mouseOverRespondent: [e: MouseEvent, userId: string]
