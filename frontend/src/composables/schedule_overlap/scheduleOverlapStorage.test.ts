@@ -5,13 +5,17 @@ import { createLocalStorageMock } from "@/test/localStorage"
 import {
   appendGuestIdentityQuery,
   getGuestNameStorageKey,
+  getGuestOwnershipCollectionStorageKey,
   getGuestOwnershipStorageKey,
-  getGuestResponseLookupKey,
-  readGuestOwnership,
+  getSelectedGuestOwnership,
+  readGuestOwnershipCollectionForEvent,
   readGuestName,
   readShowBestTimesPreference,
-  writeGuestOwnership,
+  removeGuestOwnershipRecord,
+  selectGuestOwnershipRecord,
+  upsertGuestOwnershipRecord,
   writeGuestName,
+  writeGuestOwnershipCollection,
   writeShowBestTimesPreference,
 } from "./scheduleOverlapStorage"
 
@@ -22,9 +26,109 @@ describe("scheduleOverlapStorage", () => {
     globalThis.localStorage.clear()
   })
 
-  it("uses the shared guest-name key contract", () => {
+  it("uses the shared guest-name and collection key contract", () => {
     expect(getGuestNameStorageKey("evt-123")).toBe("evt-123.guestName")
     expect(getGuestOwnershipStorageKey("evt-123")).toBe("evt-123.guestOwnership")
+    expect(getGuestOwnershipCollectionStorageKey("evt-123")).toBe(
+      "evt-123.guestOwnershipCollection"
+    )
+  })
+
+  it("migrates legacy single guest ownership into the collection on first access", () => {
+    localStorage.setItem("evt-123.guestName", "Ada")
+    localStorage.setItem(
+      "evt-123.guestOwnership",
+      JSON.stringify({
+        name: "Ada",
+        guestId: "guest_1",
+        guestEditToken: "secret",
+        guestEditPolicy: "protected",
+        guestOwnershipMode: "token",
+      })
+    )
+
+    const collection = readGuestOwnershipCollectionForEvent("evt-123")
+
+    expect(collection?.records).toHaveLength(1)
+    expect(collection?.selectedLookupKey).toBe("guest_1")
+    expect(getSelectedGuestOwnership(collection)?.guestEditToken).toBe("secret")
+  })
+
+  it("adds multiple owned guest identities without overwriting earlier ones", () => {
+    const first = upsertGuestOwnershipRecord(undefined, {
+      name: "Ada",
+      guestId: "guest_1",
+      guestEditToken: "secret-1",
+      guestEditPolicy: "protected",
+      guestOwnershipMode: "token",
+    })
+    const second = upsertGuestOwnershipRecord(first, {
+      name: "Grace",
+      guestId: "guest_2",
+      guestEditToken: "secret-2",
+      guestEditPolicy: "protected",
+      guestOwnershipMode: "token",
+    })
+
+    expect(second.records.map((record) => record.lookupKey).sort()).toEqual([
+      "guest_1",
+      "guest_2",
+    ])
+  })
+
+  it("updates only the targeted identity on rename", () => {
+    const first = upsertGuestOwnershipRecord(undefined, {
+      name: "Ada",
+      guestId: "guest_1",
+      guestEditToken: "secret-1",
+      guestEditPolicy: "protected",
+      guestOwnershipMode: "token",
+    })
+    const second = upsertGuestOwnershipRecord(first, {
+      name: "Grace",
+      guestId: "guest_2",
+      guestEditToken: "secret-2",
+      guestEditPolicy: "protected",
+      guestOwnershipMode: "token",
+    })
+    const selected = selectGuestOwnershipRecord(second, "guest_1")
+    const renamed = upsertGuestOwnershipRecord(selected, {
+      name: "Ada Lovelace",
+      guestId: "guest_1",
+      guestEditToken: "secret-1",
+      guestEditPolicy: "protected",
+      guestOwnershipMode: "token",
+    })
+
+    expect(
+      renamed.records.find((record) => record.lookupKey === "guest_1")?.name
+    ).toBe("Ada Lovelace")
+    expect(
+      renamed.records.find((record) => record.lookupKey === "guest_2")?.name
+    ).toBe("Grace")
+  })
+
+  it("removes only the targeted identity on delete", () => {
+    const first = upsertGuestOwnershipRecord(undefined, {
+      name: "Ada",
+      guestId: "guest_1",
+      guestEditToken: "secret-1",
+      guestEditPolicy: "protected",
+      guestOwnershipMode: "token",
+    })
+    const second = upsertGuestOwnershipRecord(first, {
+      name: "Grace",
+      guestId: "guest_2",
+      guestEditToken: "secret-2",
+      guestEditPolicy: "protected",
+      guestOwnershipMode: "token",
+    })
+
+    const updated = removeGuestOwnershipRecord(second, "guest_1")
+
+    expect(updated?.records.map((record) => record.lookupKey)).toEqual([
+      "guest_2",
+    ])
   })
 
   it("reads and writes guest-name ownership through the shared boundary", () => {
@@ -33,25 +137,28 @@ describe("scheduleOverlapStorage", () => {
     expect(readGuestName("evt-123.guestName")).toBe("Ada")
   })
 
-  it("persists opaque guest ownership separately from the display name", () => {
-    writeGuestOwnership("evt-123.guestOwnership", {
-      name: "Ada",
-      guestId: "guest_1",
-      guestEditToken: "secret",
-      guestEditPolicy: "protected",
-      guestOwnershipMode: "token",
+  it("persists collection-backed guest ownership records", () => {
+    writeGuestOwnershipCollection("evt-123.guestOwnershipCollection", {
+      version: 1,
+      selectedLookupKey: "guest_1",
+      records: [
+        {
+          name: "Ada",
+          lookupKey: "guest_1",
+          guestId: "guest_1",
+          guestEditToken: "secret",
+          guestEditPolicy: "protected",
+          guestOwnershipMode: "token",
+          lastUsedAt: 1,
+        },
+      ],
     })
 
-    expect(readGuestOwnership("evt-123.guestOwnership")).toEqual({
+    expect(getSelectedGuestOwnership(readGuestOwnershipCollectionForEvent("evt-123"))).toMatchObject({
       name: "Ada",
       guestId: "guest_1",
       guestEditToken: "secret",
-      guestEditPolicy: "protected",
-      guestOwnershipMode: "token",
     })
-    expect(
-      getGuestResponseLookupKey(readGuestOwnership("evt-123.guestOwnership"))
-    ).toBe("guest_1")
   })
 
   it("builds guest identity query strings with token ownership first and legacy fallback second", () => {
@@ -67,10 +174,6 @@ describe("scheduleOverlapStorage", () => {
         name: "Ada",
       })
     ).toBe("/events/evt-123/response?guestName=Ada")
-
-    expect(
-      appendGuestIdentityQuery("/events/evt-123/response", undefined, "Grace Hopper")
-    ).toBe("/events/evt-123/response?guestName=Grace%20Hopper")
   })
 
   it("reads and writes the best-times preference through the shared boundary", () => {

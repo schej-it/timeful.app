@@ -52,6 +52,7 @@ import {
 import {
   appendGuestIdentityQuery,
   type GuestOwnershipState,
+  type StoredGuestOwnership,
 } from "./scheduleOverlapStorage"
 
 declare global {
@@ -94,9 +95,17 @@ export interface UseAvailabilityDataOptions {
   guestName: ComputedRef<string | undefined>
   guestOwnership: ComputedRef<GuestOwnershipState | undefined>
   guestResponseLookupKey: ComputedRef<string | undefined>
+  ownedGuestResponses: ComputedRef<StoredGuestOwnership[]>
   setGuestName: (name: string) => void
-  setGuestOwnership: (value: GuestOwnershipState) => void
-  clearStoredGuestOwnership: () => void
+  setGuestOwnership: (
+    value: GuestOwnershipState,
+    options?: { select?: boolean }
+  ) => void
+  selectGuestOwnership: (lookupKey?: string) => void
+  removeGuestOwnership: (lookupKey: string) => void
+  getOwnedGuestOwnership: (
+    lookupKey?: string
+  ) => StoredGuestOwnership | undefined
   // TODO
   getDateFromRowCol: (row: number, col: number) => Temporal.ZonedDateTime | null
 
@@ -678,6 +687,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     let type: string
     const authUser = mainStore.authUser
     const existingGuestLookupKey = opts.guestResponseLookupKey.value
+    const selectedGuestOwnership = opts.guestOwnership.value
     let payload: EncodedEventResponseSubmissionPayload | ReturnType<
       typeof toGroupResponseSubmissionPayload
     >
@@ -702,8 +712,8 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
           addingAvailabilityAsGuest: opts.addingAvailabilityAsGuest.value,
           guestPayload: {
             ...guestPayload,
-            guestId: opts.guestOwnership.value?.guestId,
-            guestEditToken: opts.guestOwnership.value?.guestEditToken,
+            guestId: selectedGuestOwnership?.guestId,
+            guestEditToken: selectedGuestOwnership?.guestEditToken,
             guestEditPolicy: guestPayload.allowOthersToEdit ? "open" : "protected",
           },
         })
@@ -713,8 +723,8 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     const response = await post<GuestResponseMutationResult>(
       appendGuestIdentityQuery(
         `/events/${eventId}/response`,
-        opts.guestOwnership.value,
-        opts.guestName.value ?? null
+        selectedGuestOwnership,
+        selectedGuestOwnership?.name ?? null
       ),
       payload
     )
@@ -783,16 +793,13 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
         eventId: opts.event.value._id,
       })
     } else {
+      const currentResponse = opts.event.value.responses?.[name]
+      const targetLookupKey = currentResponse?.guestId ?? name
+      const targetOwnership = opts.getOwnedGuestOwnership(targetLookupKey)
       payload.guest = true
       payload.name = name
-      payload.guestId =
-        name === opts.guestResponseLookupKey.value
-          ? opts.guestOwnership.value?.guestId
-          : undefined
-      payload.guestEditToken =
-        name === opts.guestResponseLookupKey.value
-          ? opts.guestOwnership.value?.guestEditToken
-          : undefined
+      payload.guestId = targetOwnership?.guestId ?? currentResponse?.guestId
+      payload.guestEditToken = targetOwnership?.guestEditToken
       posthog.capture("Deleted availability as guest", {
         eventId: opts.event.value._id,
         name,
@@ -802,12 +809,19 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       appendGuestIdentityQuery(
         `/events/${eventId}/response`,
         opts.guestOwnership.value,
-        opts.guestName.value ?? null
+        opts.guestOwnership.value?.name ?? null
       ),
       payload
     )
-    if (name === opts.guestResponseLookupKey.value) {
-      opts.clearStoredGuestOwnership()
+    {
+      const currentResponse = opts.event.value.responses?.[name]
+      const targetLookupKey = currentResponse?.guestId ?? name
+      if (targetLookupKey) {
+        opts.removeGuestOwnership(targetLookupKey)
+        if (targetLookupKey === opts.guestResponseLookupKey.value) {
+          opts.selectGuestOwnership(undefined)
+        }
+      }
     }
     availability.value = new ZdtSet()
     if (opts.isGroup.value) {

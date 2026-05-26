@@ -67,6 +67,7 @@ export interface ScheduleOverlapRespondentsPanelViewModel {
   event: ScheduleOverlapEvent
   eventId: string
   curGuestId: string
+  ownedGuestResponseLookupKeys: string[]
   guestResponseLookupKey: string
   days: unknown[]
   times: unknown[]

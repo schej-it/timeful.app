@@ -43,7 +43,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch, watchEffect } from "vue"
+import {
+  ref,
+  computed,
+  nextTick,
+  watch,
+  watchEffect,
+  type ComputedRef,
+  type Ref,
+} from "vue"
 import { useDisplay } from "vuetify"
 import { Temporal } from "temporal-polyfill"
 import {
@@ -186,18 +194,72 @@ const weekOffsetRef = computed(() => props.weekOffset)
 const scheduleTimezoneReferenceDate = computed(() =>
   getTimezoneReferenceDateForEvent(props.event, props.weekOffset)
 )
-const {
-  guestNameKey,
-  guestOwnership,
-  guestName,
-  guestResponseLookupKey,
-  showBestTimes,
-  setGuestName,
-  setGuestOwnership,
-  clearStoredGuestOwnership,
-} = useScheduleOverlapPreferences({
+const scheduleOverlapPreferences = useScheduleOverlapPreferences({
   eventId: computed(() => props.event._id ?? ""),
-})
+}) as {
+  guestNameKey: ComputedRef<string>
+  ownedGuestResponses: ComputedRef<
+    {
+      lookupKey: string
+      lastUsedAt: number
+      name?: string
+      guestId?: string
+      guestEditToken?: string
+      guestEditPolicy?: "protected" | "open"
+      guestOwnershipMode?: "legacy" | "token"
+    }[]
+  >
+  guestOwnership: ComputedRef<
+    | {
+        lookupKey: string
+        lastUsedAt: number
+        name?: string
+        guestId?: string
+        guestEditToken?: string
+        guestEditPolicy?: "protected" | "open"
+        guestOwnershipMode?: "legacy" | "token"
+      }
+    | undefined
+  >
+  guestName: ComputedRef<string | undefined>
+  guestResponseLookupKey: ComputedRef<string | undefined>
+  showBestTimes: Ref<boolean>
+  setGuestName: (name: string) => void
+  setGuestOwnership: (
+    value: {
+      name?: string
+      guestId?: string
+      guestEditToken?: string
+      guestEditPolicy?: "protected" | "open"
+      guestOwnershipMode?: "legacy" | "token"
+    },
+    options?: { select?: boolean }
+  ) => void
+  selectGuestOwnership: (lookupKey?: string) => void
+  removeGuestOwnership: (lookupKey: string) => void
+  clearSelectedGuestOwnership: () => void
+  getOwnedGuestOwnership: (lookupKey?: string) => {
+    lookupKey: string
+    lastUsedAt: number
+    name?: string
+    guestId?: string
+    guestEditToken?: string
+    guestEditPolicy?: "protected" | "open"
+    guestOwnershipMode?: "legacy" | "token"
+  } | undefined
+}
+const guestNameKey = scheduleOverlapPreferences.guestNameKey
+const ownedGuestResponses = scheduleOverlapPreferences.ownedGuestResponses
+const guestOwnership = scheduleOverlapPreferences.guestOwnership
+const guestName = scheduleOverlapPreferences.guestName
+const guestResponseLookupKey = scheduleOverlapPreferences.guestResponseLookupKey
+const showBestTimes = scheduleOverlapPreferences.showBestTimes
+const setGuestName = scheduleOverlapPreferences.setGuestName
+const setGuestOwnership = scheduleOverlapPreferences.setGuestOwnership
+const selectGuestOwnership = scheduleOverlapPreferences.selectGuestOwnership
+const removeGuestOwnership = scheduleOverlapPreferences.removeGuestOwnership
+const clearSelectedGuestOwnership = scheduleOverlapPreferences.clearSelectedGuestOwnership
+const getOwnedGuestOwnership = scheduleOverlapPreferences.getOwnedGuestOwnership
 const showAllHours = ref(readShowAllHoursPreference())
 watch(showAllHours, (value) => {
   writeShowAllHoursPreference(value)
@@ -317,9 +379,12 @@ const avail = useAvailabilityData({
   guestName,
   guestOwnership,
   guestResponseLookupKey,
+  ownedGuestResponses,
   setGuestName,
   setGuestOwnership,
-  clearStoredGuestOwnership,
+  selectGuestOwnership,
+  removeGuestOwnership,
+  getOwnedGuestOwnership,
   getDateFromRowCol: grid.getDateFromRowCol,
   calendarEventsByDay: calEvents.calendarEventsByDay,
   groupCalendarEventsByDay: calEvents.groupCalendarEventsByDay,
@@ -395,12 +460,19 @@ const drag = useDragPaint({
 })
 
 // ── 7. useScheduleOverlapUI ────────────────────────────────────────────
-const guestAddedAvailability = computed(
+const guestAddedAvailability = computed<boolean>(
   () =>
-    Boolean(
-      guestResponseLookupKey.value?.length &&
-        guestResponseLookupKey.value in avail.parsedResponses.value
+    ownedGuestResponses.value.some((ownedGuest) =>
+      Object.values(avail.parsedResponses.value).some((response) =>
+        response.guestOwnershipMode === "token"
+          ? response.guestId === ownedGuest.lookupKey
+          : response.user._id === ownedGuest.lookupKey
+      )
     )
+)
+
+const ownedGuestResponseLookupKeys = computed<Set<string>>(
+  () => new Set(ownedGuestResponses.value.map((record) => record.lookupKey))
 )
 
 const ui = useScheduleOverlapUI({
@@ -421,6 +493,7 @@ const ui = useScheduleOverlapUI({
   respondents: avail.respondents,
   curGuestId: computed(() => props.curGuestId),
   guestName,
+  ownedGuestResponseLookupKeys,
   guestResponseLookupKey,
   guestAddedAvailability,
   optionsSectionRef,
@@ -1278,6 +1351,9 @@ const {
   signUpBlocksToAddByDay,
   tempTimes,
   curGuestId: computed(() => props.curGuestId),
+  ownedGuestResponseLookupKeys: computed(() =>
+    ownedGuestResponses.value.map((record) => record.lookupKey)
+  ),
   guestResponseLookupKey: computed(() => guestResponseLookupKey.value ?? ""),
   userHasResponded,
   addingAvailabilityAsGuest: computed(() => props.addingAvailabilityAsGuest),
@@ -1461,9 +1537,20 @@ function refreshEvent() {
 function editGuestAvailability(id: string) {
   if (
     mainStore.authUser ||
-    !canGuestEditResponse(avail.parsedResponses.value[id], guestResponseLookupKey.value)
+    !canGuestEditResponse(
+      avail.parsedResponses.value[id],
+      ownedGuestResponseLookupKeys.value
+    )
   ) {
     return
+  }
+  const response = avail.parsedResponses.value[id]
+  const ownedLookupKey =
+    response.guestOwnershipMode === "token"
+      ? response.guestId
+      : response.user._id
+  if (ownedLookupKey) {
+    selectGuestOwnership(ownedLookupKey)
   }
   startEditing()
   void nextTick(() => {
@@ -1479,6 +1566,16 @@ function handleDeleteAvailability() {
 
 function handleGuestAvailabilityDeleted(userId: string) {
   if (userId.length === 0) return
+  let ownedLookupKey: string | undefined
+  if (userId in avail.parsedResponses.value) {
+    const response = avail.parsedResponses.value[userId]
+    ownedLookupKey = response.guestOwnershipMode === "token"
+      ? response.guestId
+      : response.user._id
+  }
+  if (ownedLookupKey) {
+    removeGuestOwnership(ownedLookupKey)
+  }
   if (props.curGuestId === userId) {
     emit("setCurGuestId", "")
     _stopEditing()
@@ -1532,7 +1629,7 @@ async function saveGuestName() {
       appendGuestIdentityQuery(
         `/events/${props.event._id ?? ""}/rename-user`,
         guestOwnership.value,
-        guestName.value ?? null
+        guestOwnership.value?.name ?? null
       ),
       {
         oldName: currentGuestName,
@@ -1551,6 +1648,14 @@ async function saveGuestName() {
         guestEditToken: response.guestCredentials.guestEditToken,
         guestEditPolicy: response.guestCredentials.guestEditPolicy,
         guestOwnershipMode: response.guestCredentials.guestOwnershipMode,
+      })
+    } else {
+      const existingOwnership = getOwnedGuestOwnership(
+        currentResponse?.guestId ?? props.curGuestId
+      )
+      setGuestOwnership({
+        ...(existingOwnership ?? {}),
+        name,
       })
     }
     setGuestName(name)
@@ -1573,12 +1678,26 @@ defineExpose({
   allowScheduleEvent,
   unsavedChanges,
   selectedGuestRespondent: _selectedGuestRespondent,
+  ownedGuestResponses,
   pageHasChanged,
   hasPages: _hasPages,
   respondents,
   state,
   startEditing,
   stopEditing: _stopEditing,
+  clearSelectedGuestOwnership,
+  selectGuestOwnership,
+  editOwnedGuestAvailability: (lookupKey: string) => {
+    selectGuestOwnership(lookupKey)
+    const matchingResponse = Object.entries(avail.parsedResponses.value).find(
+      ([, response]) =>
+        response.guest &&
+        (response.guestId === lookupKey || response.user._id === lookupKey)
+    )
+    if (matchingResponse) {
+      editGuestAvailability(matchingResponse[0])
+    }
+  },
   setAvailabilityAutomatically: _setAvailabilityAutomatically,
   populateUserAvailability,
   submitAvailability: _submitAvailability,

@@ -12,7 +12,9 @@ const {
   captureMock,
   setGuestNameMock,
   setGuestOwnershipMock,
-  clearStoredGuestOwnershipMock,
+  selectGuestOwnershipMock,
+  removeGuestOwnershipMock,
+  getOwnedGuestOwnershipMock,
   refreshEventMock,
 } = vi.hoisted(
   () => ({
@@ -20,7 +22,9 @@ const {
     captureMock: vi.fn(),
     setGuestNameMock: vi.fn(),
     setGuestOwnershipMock: vi.fn(),
-    clearStoredGuestOwnershipMock: vi.fn(),
+    selectGuestOwnershipMock: vi.fn(),
+    removeGuestOwnershipMock: vi.fn(),
+    getOwnedGuestOwnershipMock: vi.fn(),
     refreshEventMock: vi.fn(),
   })
 )
@@ -51,7 +55,9 @@ describe("useAvailabilityData guest persistence", () => {
     captureMock.mockReset()
     setGuestNameMock.mockReset()
     setGuestOwnershipMock.mockReset()
-    clearStoredGuestOwnershipMock.mockReset()
+    selectGuestOwnershipMock.mockReset()
+    removeGuestOwnershipMock.mockReset()
+    getOwnedGuestOwnershipMock.mockReset()
     refreshEventMock.mockReset()
     postMock.mockResolvedValue({
       guestCredentials: {
@@ -115,9 +121,12 @@ describe("useAvailabilityData guest persistence", () => {
       guestName: computed(() => undefined),
       guestOwnership: computed(() => undefined),
       guestResponseLookupKey: computed(() => undefined),
+      ownedGuestResponses: computed(() => []),
       setGuestName: setGuestNameMock,
       setGuestOwnership: setGuestOwnershipMock,
-      clearStoredGuestOwnership: clearStoredGuestOwnershipMock,
+      selectGuestOwnership: selectGuestOwnershipMock,
+      removeGuestOwnership: removeGuestOwnershipMock,
+      getOwnedGuestOwnership: getOwnedGuestOwnershipMock,
       getDateFromRowCol: (row: number, col: number) => (row === 0 && col === 0 ? day : null),
       calendarEventsByDay: computed(() => []),
       groupCalendarEventsByDay: computed(() => ({})),

@@ -9,6 +9,7 @@
       :event="panel.event"
       :event-id="panel.eventId"
       :cur-guest-id="panel.curGuestId"
+      :owned-guest-response-lookup-keys="panel.ownedGuestResponseLookupKeys"
       :guest-response-lookup-key="panel.guestResponseLookupKey"
       :days="panel.days"
       :times="panel.times"

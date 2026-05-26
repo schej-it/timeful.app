@@ -451,6 +451,7 @@ const props = defineProps<{
   eventId: string
   event: ScheduleOverlapEvent
   curGuestId: string
+  ownedGuestResponseLookupKeys: string[]
   guestResponseLookupKey: string
   days: unknown[]
   times: unknown[]
@@ -548,7 +549,7 @@ function canEditGuestAvailability(user: User) {
   }
   return canGuestEditResponse(
     props.parsedResponses[user._id],
-    props.guestResponseLookupKey
+    new Set(props.ownedGuestResponseLookupKeys)
   )
 }
 

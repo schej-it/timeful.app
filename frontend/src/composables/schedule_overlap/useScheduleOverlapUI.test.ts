@@ -42,6 +42,7 @@ function createUi() {
     respondents: computed(() => [{ _id: "user-1" }]),
     curGuestId: ref(""),
     guestName: computed(() => undefined),
+    ownedGuestResponseLookupKeys: computed(() => new Set<string>()),
     guestResponseLookupKey: computed(() => undefined),
     guestAddedAvailability: computed(() => false),
   })

@@ -61,9 +61,12 @@ export const makeAvailabilityData = (
     guestName: computed(() => undefined),
     guestOwnership: emptyGuestOwnership,
     guestResponseLookupKey: computed(() => undefined),
+    ownedGuestResponses: computed(() => []),
     setGuestName: vi.fn(),
     setGuestOwnership: vi.fn(),
-    clearStoredGuestOwnership: vi.fn(),
+    selectGuestOwnership: vi.fn(),
+    removeGuestOwnership: vi.fn(),
+    getOwnedGuestOwnership: vi.fn(),
     getDateFromRowCol: (row: number, col: number) =>
       row === 0 && col === 0 ? zdt("2026-01-01T09:00:00Z") : null,
     calendarEventsByDay: computed(() => []),

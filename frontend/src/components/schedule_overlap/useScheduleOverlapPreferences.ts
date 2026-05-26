@@ -1,86 +1,166 @@
-import { computed, ref, watch, type ComputedRef } from "vue"
+import { computed, ref, watch, type ComputedRef, type Ref } from "vue"
 import {
-  clearGuestOwnership,
+  clearGuestOwnershipCollection,
   getGuestNameStorageKey,
-  getGuestOwnershipStorageKey,
+  getGuestOwnershipByLookupKey,
+  getGuestOwnershipCollectionStorageKey,
   getGuestResponseLookupKey,
-  readGuestOwnership,
+  getSelectedGuestOwnership,
   readGuestName,
+  readGuestOwnershipCollectionForEvent,
   readShowBestTimesPreference,
+  selectGuestOwnershipRecord,
+  sortStoredGuestOwnershipRecords,
   type GuestOwnershipState,
-  writeGuestOwnership,
+  type StoredGuestOwnership,
+  type StoredGuestOwnershipCollection,
+  upsertGuestOwnershipRecord,
   writeGuestName,
+  writeGuestOwnershipCollection,
+  removeGuestOwnershipRecord,
 } from "@/composables/schedule_overlap/scheduleOverlapStorage"
 
 export interface UseScheduleOverlapPreferencesOptions {
   eventId: ComputedRef<string>
 }
 
+export interface UseScheduleOverlapPreferencesReturn {
+  guestNameKey: ComputedRef<string>
+  guestOwnershipCollectionKey: ComputedRef<string>
+  guestName: ComputedRef<string | undefined>
+  guestOwnershipCollection: ComputedRef<StoredGuestOwnershipCollection | undefined>
+  ownedGuestResponses: ComputedRef<StoredGuestOwnership[]>
+  guestOwnership: ComputedRef<StoredGuestOwnership | undefined>
+  guestResponseLookupKey: ComputedRef<string | undefined>
+  showBestTimes: Ref<boolean>
+  setGuestName: (name: string) => void
+  setGuestOwnership: (
+    value: GuestOwnershipState,
+    options?: { select?: boolean }
+  ) => void
+  selectGuestOwnership: (lookupKey?: string) => void
+  removeGuestOwnership: (lookupKey: string) => void
+  clearSelectedGuestOwnership: () => void
+  getOwnedGuestOwnership: (
+    lookupKey?: string
+  ) => StoredGuestOwnership | undefined
+}
+
 export function useScheduleOverlapPreferences(
   opts: UseScheduleOverlapPreferencesOptions
-) {
+): UseScheduleOverlapPreferencesReturn {
   const guestNameKey = computed(() => getGuestNameStorageKey(opts.eventId.value))
-  const guestOwnershipKey = computed(() =>
-    getGuestOwnershipStorageKey(opts.eventId.value)
+  const guestOwnershipCollectionKey = computed(() =>
+    getGuestOwnershipCollectionStorageKey(opts.eventId.value)
   )
-  const guestOwnership = ref<GuestOwnershipState | undefined>(
-    readGuestOwnership(guestOwnershipKey.value)
+  const guestOwnershipCollection = ref<StoredGuestOwnershipCollection | undefined>(
+    readGuestOwnershipCollectionForEvent(opts.eventId.value)
   )
   const guestName = ref<string | undefined>(
-    guestOwnership.value?.name ?? readGuestName(guestNameKey.value)
+    getSelectedGuestOwnership(guestOwnershipCollection.value)?.name ??
+      readGuestName(guestNameKey.value)
   )
   const showBestTimes = ref(readShowBestTimesPreference())
 
   watch(
-    [guestNameKey, guestOwnershipKey],
-    ([nextGuestNameKey, nextGuestOwnershipKey]) => {
-      guestOwnership.value = readGuestOwnership(nextGuestOwnershipKey)
+    [guestNameKey, guestOwnershipCollectionKey],
+    ([nextGuestNameKey]) => {
+      guestOwnershipCollection.value = readGuestOwnershipCollectionForEvent(
+        opts.eventId.value
+      )
       guestName.value =
-        guestOwnership.value?.name ?? readGuestName(nextGuestNameKey)
+        getSelectedGuestOwnership(guestOwnershipCollection.value)?.name ??
+        readGuestName(nextGuestNameKey)
     },
     { immediate: true }
   )
 
+  function persistGuestOwnershipCollection(
+    nextCollection: StoredGuestOwnershipCollection | undefined
+  ) {
+    guestOwnershipCollection.value = nextCollection
+    if (!nextCollection || nextCollection.records.length === 0) {
+      clearGuestOwnershipCollection(guestOwnershipCollectionKey.value)
+      return
+    }
+
+    writeGuestOwnershipCollection(guestOwnershipCollectionKey.value, nextCollection)
+  }
+
   function setGuestName(name: string) {
     writeGuestName(guestNameKey.value, name)
-    guestOwnership.value = {
-      ...(guestOwnership.value ?? {}),
-      name,
-    }
-    writeGuestOwnership(guestOwnershipKey.value, guestOwnership.value)
     guestName.value = name
   }
 
-  function setGuestOwnership(value: GuestOwnershipState) {
-    const nextOwnership = {
-      ...(guestOwnership.value ?? {}),
-      ...value,
+  function setGuestOwnership(
+    value: GuestOwnershipState,
+    options: { select?: boolean } = {}
+  ) {
+    const nextCollection = upsertGuestOwnershipRecord(
+      guestOwnershipCollection.value,
+      value,
+      options
+    )
+    persistGuestOwnershipCollection(nextCollection)
+    if (value.name) {
+      setGuestName(value.name)
     }
-    guestOwnership.value = nextOwnership
-    if (nextOwnership.name) {
-      writeGuestName(guestNameKey.value, nextOwnership.name)
-      guestName.value = nextOwnership.name
-    }
-    writeGuestOwnership(guestOwnershipKey.value, nextOwnership)
   }
 
-  function clearStoredGuestOwnership() {
-    clearGuestOwnership(guestOwnershipKey.value)
-    guestOwnership.value = undefined
-    guestName.value = readGuestName(guestNameKey.value)
+  function selectGuestOwnership(lookupKey?: string) {
+    const nextCollection = selectGuestOwnershipRecord(
+      guestOwnershipCollection.value,
+      lookupKey
+    )
+    persistGuestOwnershipCollection(nextCollection)
+    guestName.value =
+      getSelectedGuestOwnership(nextCollection)?.name ??
+      readGuestName(guestNameKey.value)
+  }
+
+  function removeGuestOwnership(lookupKey: string) {
+    const nextCollection = removeGuestOwnershipRecord(
+      guestOwnershipCollection.value,
+      lookupKey
+    )
+    persistGuestOwnershipCollection(nextCollection)
+    guestName.value =
+      getSelectedGuestOwnership(nextCollection)?.name ??
+      readGuestName(guestNameKey.value)
+  }
+
+  function clearSelectedGuestOwnership() {
+    selectGuestOwnership(undefined)
+  }
+
+  function getOwnedGuestOwnership(lookupKey?: string) {
+    return getGuestOwnershipByLookupKey(guestOwnershipCollection.value, lookupKey)
   }
 
   return {
     guestNameKey,
-    guestOwnershipKey,
+    guestOwnershipCollectionKey,
     guestName: computed(() => guestName.value),
-    guestOwnership: computed(() => guestOwnership.value),
+    guestOwnershipCollection: computed(() => guestOwnershipCollection.value),
+    ownedGuestResponses: computed<StoredGuestOwnership[]>(() =>
+      sortStoredGuestOwnershipRecords(
+        guestOwnershipCollection.value?.records ?? []
+      )
+    ),
+    guestOwnership: computed(() =>
+      getSelectedGuestOwnership(guestOwnershipCollection.value)
+    ),
     guestResponseLookupKey: computed(() =>
-      getGuestResponseLookupKey(guestOwnership.value) ?? guestName.value
+      getGuestResponseLookupKey(
+        getSelectedGuestOwnership(guestOwnershipCollection.value)
+      )
     ),
     showBestTimes,
     setGuestName,
     setGuestOwnership,
-    clearStoredGuestOwnership,
+    selectGuestOwnership,
+    removeGuestOwnership,
+    clearSelectedGuestOwnership,
+    getOwnedGuestOwnership,
   }
 }

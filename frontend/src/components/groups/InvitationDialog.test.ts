@@ -156,9 +156,12 @@ describe("InvitationDialog", () => {
     }
     const cloned = cloneCalendarAccounts(source)
     const clonedAccount = cloned["owner@example.com_google"]
-    const clonedSubCalendar = clonedAccount.subCalendars?.["sub-1"]
+    const clonedSubCalendar = clonedAccount.subCalendars["sub-1"]
     const sourceAccount = source["owner@example.com_google"]
-    const sourceSubCalendar = sourceAccount.subCalendars?.["sub-1"]
+    if (sourceAccount.subCalendars == null) {
+      throw new Error("Expected seeded source sub-calendars")
+    }
+    const sourceSubCalendar = sourceAccount.subCalendars["sub-1"]
 
     clonedAccount.enabled = false
     clonedAccount.subCalendars = {
@@ -170,7 +173,7 @@ describe("InvitationDialog", () => {
     }
 
     expect(sourceAccount.enabled).toBe(true)
-    expect(sourceSubCalendar?.enabled).toBe(true)
+    expect(sourceSubCalendar.enabled).toBe(true)
   })
 
   it("submits the dialog-owned calendar state without mutating the auth user", async () => {

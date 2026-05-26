@@ -9,10 +9,8 @@ import type {
 } from "@/composables/schedule_overlap/types"
 import { getRealOwnerId } from "@/composables/event/eventOwnership"
 import {
-  getGuestNameStorageKey,
-  getGuestOwnershipStorageKey,
-  readGuestOwnership,
-  readGuestName,
+  getSelectedGuestOwnership,
+  readGuestOwnershipCollectionForEvent,
 } from "@/composables/schedule_overlap/scheduleOverlapStorage"
 import type { ScheduleOverlapInstance } from "./types"
 import { fetchEventFromPath } from "./eventTransportBoundary"
@@ -71,16 +69,15 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
       // continue with fallback
     }
     const guestOwnership = resolvedLongId
-      ? readGuestOwnership(getGuestOwnershipStorageKey(resolvedLongId))
+      ? getSelectedGuestOwnership(
+          readGuestOwnershipCollectionForEvent(resolvedLongId)
+        )
       : undefined
-    const guestName =
-      guestOwnership?.name ??
-      (resolvedLongId ? readGuestName(getGuestNameStorageKey(resolvedLongId)) ?? null : null)
     let url = `/events/${sanitizedId}`
     if (guestOwnership?.guestId && guestOwnership.guestId.length > 0) {
       url += `?guestId=${encodeURIComponent(guestOwnership.guestId)}`
-    } else if (guestName && guestName.length > 0) {
-      url += `?guestName=${encodeURIComponent(guestName)}`
+    } else if (guestOwnership?.name && guestOwnership.name.length > 0) {
+      url += `?guestName=${encodeURIComponent(guestOwnership.name)}`
     }
     const fetchedEvent = await fetchEventFromPath(url)
     event.value = fetchedEvent

@@ -64,6 +64,10 @@ export function useEventEditing(opts: UseEventEditingOptions) {
     const so = opts.scheduleOverlapRef.value
     if (!so) return
     const ev = opts.event.value
+    if (!opts.authUser.value) {
+      so.clearSelectedGuestOwnership()
+      opts.curGuestId.value = ""
+    }
 
     if (ev?.daysOnly) {
       so.startEditing()
@@ -81,6 +85,8 @@ export function useEventEditing(opts: UseEventEditingOptions) {
   }
 
   function addAvailabilityAsGuest() {
+    opts.scheduleOverlapRef.value?.clearSelectedGuestOwnership()
+    opts.curGuestId.value = ""
     opts.addingAvailabilityAsGuest.value = true
     setAvailabilityManually()
   }

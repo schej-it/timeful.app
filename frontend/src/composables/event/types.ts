@@ -2,6 +2,7 @@ import type {
   SharedCalendarAccounts,
   Timezone,
 } from "@/composables/schedule_overlap/types"
+import type { StoredGuestOwnership } from "@/composables/schedule_overlap/scheduleOverlapStorage"
 import type { Temporal } from "temporal-polyfill"
 
 export interface ScheduleOverlapInstance {
@@ -10,12 +11,16 @@ export interface ScheduleOverlapInstance {
   allowScheduleEvent: boolean
   unsavedChanges: boolean
   selectedGuestRespondent: string | undefined
+  ownedGuestResponses: StoredGuestOwnership[]
   pageHasChanged: boolean
   hasPages: boolean
   respondents: { _id?: string; name?: string }[]
   state: string
   startEditing(): void
   stopEditing(): void
+  clearSelectedGuestOwnership(): void
+  selectGuestOwnership(lookupKey?: string): void
+  editOwnedGuestAvailability(lookupKey: string): void
   setAvailabilityAutomatically(): void
   populateUserAvailability(userId: string, options?: { animate?: boolean }): void
   submitAvailability(

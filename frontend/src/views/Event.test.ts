@@ -6,22 +6,57 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { eventTypes, guestUserId } from "@/constants"
 import EventView from "./Event.vue"
 
-type GuestResponseMap = Record<
-  string,
-  {
-    name: string
-    user: {
-      _id: string
-      firstName: string
-      lastName: string
-      email: string
-    }
-    availability: unknown[]
+interface EventTestResponse {
+  name: string
+  user: {
+    _id: string
+    firstName: string
+    lastName: string
+    email: string
   }
->
+  availability: unknown[]
+  guestId?: string
+  guestOwnershipMode?: "legacy" | "token"
+}
+
+interface EventTestState {
+  _id: string
+  shortId: string
+  ownerId: string
+  name: string
+  type: string
+  responses: Record<string, EventTestResponse>
+  blindAvailabilityEnabled: boolean
+}
+
+function createDefaultEventState(): EventTestState {
+  const state: EventTestState = {
+    _id: "evt-1",
+    shortId: "dEeaF",
+    ownerId: "owner-1",
+    name: "dfg",
+    type: "specific_dates",
+    responses: {
+      khh: {
+        name: "khh",
+        user: {
+          _id: "000000000000000000000000",
+          firstName: "khh",
+          lastName: "",
+          email: "",
+        },
+        availability: [],
+      },
+    },
+    blindAvailabilityEnabled: false,
+  }
+
+  return state
+}
 
 const {
   editGuestAvailabilityMock,
+  editOwnedGuestAvailabilityMock,
   authUserState,
   curGuestIdState,
   loaderEventState,
@@ -31,6 +66,7 @@ const {
   fetchAuthUserCalendarEventsMock,
 } = vi.hoisted(() => ({
   editGuestAvailabilityMock: vi.fn(),
+  editOwnedGuestAvailabilityMock: vi.fn(),
   authUserState: { value: null as null | { _id: string } },
   curGuestIdState: { value: "" },
   refreshEventMock: vi.fn().mockResolvedValue(undefined),
@@ -38,34 +74,7 @@ const {
   fetchCalendarAvailabilitiesMock: vi.fn().mockResolvedValue(undefined),
   fetchAuthUserCalendarEventsMock: vi.fn().mockResolvedValue(undefined),
   loaderEventState: {
-    value: {
-      _id: "evt-1",
-      shortId: "dEeaF",
-      ownerId: "owner-1",
-      name: "dfg",
-      type: "specific_dates",
-      responses: {
-        khh: {
-          name: "khh",
-          user: {
-            _id: "000000000000000000000000",
-            firstName: "khh",
-            lastName: "",
-            email: "",
-          },
-          availability: [],
-        },
-      },
-      blindAvailabilityEnabled: false,
-    } as {
-      _id: string
-      shortId: string
-      ownerId: string
-      name: string
-      type: string
-      responses: GuestResponseMap
-      blindAvailabilityEnabled: boolean
-    },
+    value: createDefaultEventState(),
   },
 }))
 
@@ -73,6 +82,7 @@ const scheduleOverlapMethodMocks = {
   scheduleEvent: vi.fn(),
   cancelScheduleEvent: vi.fn(),
   confirmScheduleEvent: vi.fn(),
+  editOwnedGuestAvailability: editOwnedGuestAvailabilityMock,
 }
 
 vi.mock("vue-router", () => ({
@@ -178,7 +188,13 @@ const ScheduleOverlapStub = {
   },
   data() {
     return {
-      selectedGuestRespondent: "khh",
+      ownedGuestResponses: [
+        {
+          lookupKey: "000000000000000000000000",
+          name: "khh",
+          lastUsedAt: 1,
+        },
+      ],
       respondents: [{ _id: "khh", name: "khh" }],
       editing: false,
       scheduling: false,
@@ -194,6 +210,7 @@ const ScheduleOverlapStub = {
     scheduleEvent: scheduleOverlapMethodMocks.scheduleEvent,
     cancelScheduleEvent: scheduleOverlapMethodMocks.cancelScheduleEvent,
     confirmScheduleEvent: scheduleOverlapMethodMocks.confirmScheduleEvent,
+    editOwnedGuestAvailability: scheduleOverlapMethodMocks.editOwnedGuestAvailability,
     getAllValidTimeRanges() {
       return []
     },
@@ -206,10 +223,46 @@ const ScheduleOverlapNoGuestSelectionStub = {
   data() {
     return {
       ...ScheduleOverlapStub.data(),
-      selectedGuestRespondent: "",
+      ownedGuestResponses: [
+        {
+          lookupKey: "000000000000000000000000",
+          name: "khh",
+          lastUsedAt: 2,
+        },
+        {
+          lookupKey: "111111111111111111111111",
+          name: "ada",
+          lastUsedAt: 1,
+        },
+      ],
       respondents: [
         { _id: "khh", name: "khh" },
         { _id: "ada", name: "ada" },
+      ],
+    }
+  },
+}
+
+const ScheduleOverlapLegacyAndTokenGuestSelectionStub = {
+  ...ScheduleOverlapStub,
+  data() {
+    return {
+      ...ScheduleOverlapStub.data(),
+      ownedGuestResponses: [
+        {
+          lookupKey: "legacy-user-id",
+          name: "Saved legacy guest",
+          lastUsedAt: 2,
+        },
+        {
+          lookupKey: "guest-token-id",
+          name: "Saved token guest",
+          lastUsedAt: 1,
+        },
+      ],
+      respondents: [
+        { _id: "legacy-response", name: "Legacy Display Name" },
+        { _id: "token-response", name: "Token Display Name" },
       ],
     }
   },
@@ -253,24 +306,8 @@ describe("Event guest edit action", () => {
     authUserState.value = null
     curGuestIdState.value = ""
     loaderEventState.value = {
-      _id: "evt-1",
-      shortId: "dEeaF",
-      ownerId: "owner-1",
-      name: "dfg",
+      ...createDefaultEventState(),
       type: eventTypes.SPECIFIC_DATES,
-      responses: {
-        khh: {
-          name: "khh",
-          user: {
-            _id: "000000000000000000000000",
-            firstName: "khh",
-            lastName: "",
-            email: "",
-          },
-          availability: [],
-        },
-      },
-      blindAvailabilityEnabled: false,
     }
   })
 
@@ -280,7 +317,7 @@ describe("Event guest edit action", () => {
     await nextTick()
   }
 
-  it("shows Edit guest availability by default when a single guest respondent exists", async () => {
+  it("shows generic edit copy when one owned guest response exists", async () => {
     const wrapper = shallowMount(EventView, {
       props: {
         eventId: "dEeaF",
@@ -316,10 +353,10 @@ describe("Event guest edit action", () => {
 
     await flushDeferredMount()
 
-    expect(wrapper.text()).toContain("Edit khh's availability")
+    expect(wrapper.text()).toContain("Edit availability")
   })
 
-  it("shows Add availability when multiple guest responses exist without an explicit guest target", async () => {
+  it("keeps the top button label generic when multiple owned guest responses exist", async () => {
     loaderEventState.value = {
       ...loaderEventState.value,
       responses: {
@@ -381,13 +418,11 @@ describe("Event guest edit action", () => {
 
     await flushDeferredMount()
 
-    expect(wrapper.text()).toContain("Add availability")
-    expect(wrapper.text()).not.toContain("Edit khh's availability")
+    expect(wrapper.text()).toContain("Edit availability")
+    expect(wrapper.text()).not.toContain("Add availability")
   })
 
-  it("uses curGuestId as the explicit guest edit target for the CTA", async () => {
-    curGuestIdState.value = "khh"
-
+  it("opens direct guest editing when exactly one owned guest response exists", async () => {
     const wrapper = shallowMount(EventView, {
       props: {
         eventId: "dEeaF",
@@ -425,7 +460,7 @@ describe("Event guest edit action", () => {
 
     const guestEditButton = wrapper
       .findAll("button")
-      .find((node) => node.text().includes("Edit khh's availability"))
+      .find((node) => node.text().includes("Edit availability"))
 
     expect(guestEditButton).toBeDefined()
     if (!guestEditButton) {
@@ -434,11 +469,12 @@ describe("Event guest edit action", () => {
 
     await guestEditButton.trigger("click")
 
-    expect(editGuestAvailabilityMock).toHaveBeenCalledWith("khh")
+    expect(editOwnedGuestAvailabilityMock).toHaveBeenCalledWith(
+      "000000000000000000000000"
+    )
   })
 
   it("uses generic edit copy for blind availability when a guest target is selected", async () => {
-    curGuestIdState.value = "khh"
     loaderEventState.value = {
       ...loaderEventState.value,
       blindAvailabilityEnabled: true,
@@ -480,19 +516,41 @@ describe("Event guest edit action", () => {
     await flushDeferredMount()
 
     expect(wrapper.text()).toContain("Edit availability")
-    expect(wrapper.text()).not.toContain("Edit khh's availability")
   })
 
-  it("passes the explicit guest respondent target instead of the click event", async () => {
-    curGuestIdState.value = "khh"
-
+  it("does not jump straight into editing when multiple guest responses exist", async () => {
+    loaderEventState.value = {
+      ...loaderEventState.value,
+      responses: {
+        khh: {
+          name: "khh",
+          user: {
+            _id: "000000000000000000000000",
+            firstName: "khh",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+        },
+        ada: {
+          name: "ada",
+          user: {
+            _id: "111111111111111111111111",
+            firstName: "ada",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+        },
+      },
+    }
     const wrapper = shallowMount(EventView, {
       props: {
         eventId: "dEeaF",
       },
       global: {
         stubs: {
-          ScheduleOverlap: ScheduleOverlapStub,
+          ScheduleOverlap: ScheduleOverlapNoGuestSelectionStub,
           NewDialog: true,
           GuestDialog: true,
           SignUpForSlotDialog: true,
@@ -523,7 +581,7 @@ describe("Event guest edit action", () => {
 
     const guestEditButton = wrapper
       .findAll("button")
-      .find((node) => node.text().includes("Edit khh's availability"))
+      .find((node) => node.text().includes("Edit availability"))
 
     expect(guestEditButton).toBeDefined()
     if (!guestEditButton) {
@@ -531,8 +589,179 @@ describe("Event guest edit action", () => {
     }
 
     await guestEditButton.trigger("click")
+    await nextTick()
 
-    expect(editGuestAvailabilityMock).toHaveBeenCalledWith("khh")
+    expect(editOwnedGuestAvailabilityMock).not.toHaveBeenCalled()
+  })
+
+  it("matches legacy owned guest menu options by canonical stored identity instead of response name", async () => {
+    loaderEventState.value = {
+      ...loaderEventState.value,
+      responses: {
+        legacyResponse: {
+          name: "Legacy Display Name",
+          user: {
+            _id: "legacy-user-id",
+            firstName: "legacy",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+          guestOwnershipMode: "legacy",
+        },
+        tokenResponse: {
+          name: "Token Display Name",
+          user: {
+            _id: "unrelated-user-id",
+            firstName: "token",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+          guestId: "guest-token-id",
+          guestOwnershipMode: "token",
+        },
+      },
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapLegacyAndTokenGuestSelectionStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonClickStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.text()).toContain("Edit availability")
+
+    ;(wrapper.vm as unknown as { editSelectedGuestAvailability: () => void })
+      .editSelectedGuestAvailability()
+    await nextTick()
+
+    const legacyOption = wrapper
+      .findAll("button")
+      .find((node) => node.text().includes("Legacy Display Name"))
+
+    expect(legacyOption).toBeDefined()
+    if (!legacyOption) {
+      throw new Error("Expected legacy guest menu option to be rendered")
+    }
+
+    await legacyOption.trigger("click")
+
+    expect(editOwnedGuestAvailabilityMock).toHaveBeenCalledWith("legacy-user-id")
+  })
+
+  it("matches token-owned guest menu options by guest id", async () => {
+    loaderEventState.value = {
+      ...loaderEventState.value,
+      responses: {
+        legacyResponse: {
+          name: "Legacy Display Name",
+          user: {
+            _id: "legacy-user-id",
+            firstName: "legacy",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+          guestOwnershipMode: "legacy",
+        },
+        tokenResponse: {
+          name: "Token Display Name",
+          user: {
+            _id: "unrelated-user-id",
+            firstName: "token",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+          guestId: "guest-token-id",
+          guestOwnershipMode: "token",
+        },
+      },
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapLegacyAndTokenGuestSelectionStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonClickStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.text()).toContain("Edit availability")
+
+    ;(wrapper.vm as unknown as { editSelectedGuestAvailability: () => void })
+      .editSelectedGuestAvailability()
+    await nextTick()
+
+    const tokenOption = wrapper
+      .findAll("button")
+      .find((node) => node.text().includes("Token Display Name"))
+
+    expect(tokenOption).toBeDefined()
+    if (!tokenOption) {
+      throw new Error("Expected token guest menu option to be rendered")
+    }
+
+    await tokenOption.trigger("click")
+
+    expect(editOwnedGuestAvailabilityMock).toHaveBeenCalledWith("guest-token-id")
   })
 
   it("passes loaded event responses through to the schedule-overlap boundary", async () => {

@@ -35,6 +35,7 @@ export interface UseScheduleOverlapUIOptions {
   respondents: ComputedRef<{ _id?: string }[]>
   curGuestId: Ref<string>
   guestName: ComputedRef<string | undefined>
+  ownedGuestResponseLookupKeys: ComputedRef<Set<string>>
   guestResponseLookupKey: ComputedRef<string | undefined>
   guestAddedAvailability: ComputedRef<boolean>
   // refs to other components for visibility checks
@@ -44,23 +45,20 @@ export interface UseScheduleOverlapUIOptions {
 
 export function canGuestEditResponse(
   response: ParsedResponse | undefined,
-  guestResponseLookupKey: string | undefined
+  ownedGuestResponseLookupKeys: Set<string>
 ) {
   if (response?.guest !== true) return false
   if (response.guestOwnershipMode !== "token") {
-    return (
-      guestResponseLookupKey != null &&
-      guestResponseLookupKey.length > 0 &&
-      guestResponseLookupKey === response.user._id
+    return Boolean(
+      response.user._id &&
+        ownedGuestResponseLookupKeys.has(response.user._id)
     )
   }
   if (response.guestEditPolicy === "open") {
     return true
   }
-  return (
-    guestResponseLookupKey != null &&
-    guestResponseLookupKey.length > 0 &&
-    guestResponseLookupKey === response.guestId
+  return Boolean(
+    response.guestId && ownedGuestResponseLookupKeys.has(response.guestId)
   )
 }
 
@@ -295,12 +293,50 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
 
   const selectedGuestRespondent = computed(() => {
     if (opts.guestAddedAvailability.value) {
-      return opts.guestResponseLookupKey.value ?? ""
+      const selectedLookupKey = opts.guestResponseLookupKey.value
+      if (!selectedLookupKey) {
+        return ""
+      }
+      const explicitResponse = Object.entries(opts.parsedResponses.value).find(
+        ([, response]) =>
+          response.guest &&
+          (response.guestId === selectedLookupKey ||
+            response.user._id === selectedLookupKey)
+      )
+      return explicitResponse?.[0] ?? ""
+    }
+    const ownedGuestRespondents = Object.entries(opts.parsedResponses.value)
+      .filter(([, response]) =>
+        canGuestEditResponse(response, opts.ownedGuestResponseLookupKeys.value)
+      )
+      .filter(([, response]) => {
+        if (!response.guest) {
+          return false
+        }
+        if (response.guestOwnershipMode === "token") {
+          return Boolean(
+            response.guestId &&
+              opts.ownedGuestResponseLookupKeys.value.has(response.guestId)
+          )
+        }
+        return Boolean(
+          response.user._id &&
+            opts.ownedGuestResponseLookupKeys.value.has(response.user._id)
+        )
+      })
+      .map(([userId]) => userId)
+    if (ownedGuestRespondents.length === 1) {
+      return ownedGuestRespondents[0]
     }
     if (curRespondents.value.length !== 1) return ""
     const parsedResp = (opts.parsedResponses.value as Record<string, (typeof opts.parsedResponses.value)[string] | undefined>)[curRespondents.value[0]]
     if (!parsedResp) return ""
-    if (!canGuestEditResponse(parsedResp, opts.guestResponseLookupKey.value)) {
+    if (
+      !canGuestEditResponse(
+        parsedResp,
+        opts.ownedGuestResponseLookupKeys.value
+      )
+    ) {
       return ""
     }
     return parsedResp.user._id
@@ -315,7 +351,10 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
         ParsedResponses[string] | undefined
       >
     )[guestId]
-    return canGuestEditResponse(response, opts.guestResponseLookupKey.value)
+    return canGuestEditResponse(
+      response,
+      opts.ownedGuestResponseLookupKeys.value
+    )
   })
 
   return {
