@@ -150,3 +150,19 @@ Production Docker Compose:
 cp .env.production.example .env.production
 docker compose --env-file .env.production up -d --build
 ```
+
+## Server test modes
+
+Pure Go unit tests can run either on the host or in a container.
+
+Mongo-backed route tests should use the isolated Compose overlay by default so they run against a dedicated Docker network and test-only Mongo volume:
+
+```sh
+docker compose --env-file .env.development -f compose.yaml -f compose.test.yaml up -d mongo-test
+docker compose --env-file .env.development -f compose.yaml -f compose.test.yaml run --rm server-test
+docker compose --env-file .env.development -f compose.yaml -f compose.test.yaml down -v
+```
+
+The `server-test` service mounts `./server`, connects to `mongodb://mongo-test:27017`, and runs only the Mongo-backed route suite from `server/routes/events_read_filters_test.go`.
+
+Host-run Mongo-backed tests remain opt-in. When running them outside the Compose test stack, set `MONGODB_URI` explicitly to a dedicated test database. Do not rely on a local `127.0.0.1:27017` fallback.

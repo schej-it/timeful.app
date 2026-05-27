@@ -23,6 +23,18 @@ Canonical findings location:
 
 - `findings/*.md`
 
+## Server Test Workflow
+
+For backend work that touches Mongo-backed route tests:
+
+- use the isolated test overlay in `compose.test.yaml` as the default path
+- start test Mongo with `docker compose --env-file .env.development -f compose.yaml -f compose.test.yaml up -d mongo-test`
+- run the scoped route suite with `docker compose --env-file .env.development -f compose.yaml -f compose.test.yaml run --rm server-test`
+- clean up isolated test state with `docker compose --env-file .env.development -f compose.yaml -f compose.test.yaml down -v`
+- prefer the isolated Compose stack over host Mongo for repeatable local and CI-friendly runs
+- if Mongo-backed tests are run directly on the host, require an explicit `MONGODB_URI` pointing at a dedicated test database
+- do not rely on a `127.0.0.1:27017` fallback for Mongo-backed route tests
+
 ## Frontend Runtime Workflow
 
 For local frontend parity work against the backend:

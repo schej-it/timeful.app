@@ -22,6 +22,31 @@ import (
 
 var routesReadFiltersTestDBOnce sync.Once
 
+const (
+	routesReadFiltersComposeModeEnv  = "ROUTES_READ_FILTERS_TEST_MODE"
+	routesReadFiltersComposeMode     = "compose"
+	routesReadFiltersComposeMongoURI = "mongodb://mongo-test:27017/?serverSelectionTimeoutMS=2000&connectTimeoutMS=2000"
+)
+
+func routesReadFiltersTestMongoURI(t *testing.T) string {
+	t.Helper()
+
+	if mongoURI := os.Getenv("MONGODB_URI"); mongoURI != "" {
+		return mongoURI
+	}
+
+	if os.Getenv(routesReadFiltersComposeModeEnv) == routesReadFiltersComposeMode {
+		return routesReadFiltersComposeMongoURI
+	}
+
+	t.Fatal(
+		"MONGODB_URI must be set for Mongo-backed route tests; " +
+			"use the isolated compose test stack or point MONGODB_URI at a dedicated test database",
+	)
+
+	return ""
+}
+
 func initRoutesReadFiltersTestDB(t *testing.T) {
 	t.Helper()
 
@@ -30,9 +55,7 @@ func initRoutesReadFiltersTestDB(t *testing.T) {
 		if os.Getenv("SESSION_SECRET") == "" {
 			_ = os.Setenv("SESSION_SECRET", "01234567890123456789012345678901")
 		}
-		if os.Getenv("MONGODB_URI") == "" {
-			_ = os.Setenv("MONGODB_URI", "mongodb://127.0.0.1:27017/?serverSelectionTimeoutMS=2000&connectTimeoutMS=2000")
-		}
+		_ = os.Setenv("MONGODB_URI", routesReadFiltersTestMongoURI(t))
 		db.Init()
 	})
 }

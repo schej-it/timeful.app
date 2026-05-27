@@ -13,3 +13,17 @@ API docs (available when the server is running): http://localhost:3002/swagger/i
 
 - Run `mongodump --host="localhost:27017" --db=schej-it` to make a backup
 - Run `mongorestore --uri mongodb://localhost:27017 ./dump --drop` to restore
+
+## Tests
+
+Pure unit tests can run on the host or in a container.
+
+Mongo-backed route tests should use the isolated Compose test stack from the repo root:
+
+```sh
+docker compose --env-file .env.development -f compose.yaml -f compose.test.yaml up -d mongo-test
+docker compose --env-file .env.development -f compose.yaml -f compose.test.yaml run --rm server-test
+docker compose --env-file .env.development -f compose.yaml -f compose.test.yaml down -v
+```
+
+When running Mongo-backed tests directly on the host, set `MONGODB_URI` to a dedicated test database first. Those tests no longer default to `127.0.0.1:27017`.
