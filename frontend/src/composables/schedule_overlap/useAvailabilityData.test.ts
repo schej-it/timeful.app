@@ -69,7 +69,7 @@ describe("useAvailabilityData guest persistence", () => {
     })
   })
 
-  it("routes guest saves through the shared guest-name setter", async () => {
+  it("routes guest saves through shared guest ownership persistence without a second name write", async () => {
     const day = Temporal.Instant.from("2026-01-01T09:00:00Z").toZonedDateTimeISO(
       "UTC"
     )
@@ -143,7 +143,6 @@ describe("useAvailabilityData guest persistence", () => {
       email: "ada@example.com",
     })
 
-    expect(setGuestNameMock).toHaveBeenCalledWith("Ada")
     expect(setGuestOwnershipMock).toHaveBeenCalledWith({
       name: "Ada",
       guestId: "guest-token-id",
@@ -151,6 +150,7 @@ describe("useAvailabilityData guest persistence", () => {
       guestEditPolicy: "protected",
       guestOwnershipMode: "token",
     })
+    expect(setGuestNameMock).not.toHaveBeenCalled()
     expect(postMock).toHaveBeenCalledWith(
       "/events/evt-1/response",
       expect.objectContaining({

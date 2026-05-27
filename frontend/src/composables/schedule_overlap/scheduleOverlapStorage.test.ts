@@ -35,11 +35,11 @@ describe("scheduleOverlapStorage", () => {
   })
 
   it("migrates legacy single guest ownership into the collection on first access", () => {
-    localStorage.setItem("evt-123.guestName", "Ada")
+    localStorage.setItem("evt-123.guestName", "  Ada  ")
     localStorage.setItem(
       "evt-123.guestOwnership",
       JSON.stringify({
-        name: "Ada",
+        name: "  Ada  ",
         guestId: "guest_1",
         guestEditToken: "secret",
         guestEditPolicy: "protected",
@@ -52,6 +52,19 @@ describe("scheduleOverlapStorage", () => {
     expect(collection?.records).toHaveLength(1)
     expect(collection?.selectedLookupKey).toBe("guest_1")
     expect(getSelectedGuestOwnership(collection)?.guestEditToken).toBe("secret")
+    expect(getSelectedGuestOwnership(collection)?.name).toBe("Ada")
+  })
+
+  it("ignores legacy empty guest names during collection migration", () => {
+    localStorage.setItem("evt-123.guestName", "")
+
+    expect(readGuestOwnershipCollectionForEvent("evt-123")).toBeUndefined()
+  })
+
+  it("ignores legacy whitespace-only guest names during collection migration", () => {
+    localStorage.setItem("evt-123.guestName", "   ")
+
+    expect(readGuestOwnershipCollectionForEvent("evt-123")).toBeUndefined()
   })
 
   it("adds multiple owned guest identities without overwriting earlier ones", () => {
@@ -132,9 +145,16 @@ describe("scheduleOverlapStorage", () => {
   })
 
   it("reads and writes guest-name ownership through the shared boundary", () => {
-    writeGuestName("evt-123.guestName", "Ada")
+    writeGuestName("evt-123.guestName", "  Ada  ")
 
     expect(readGuestName("evt-123.guestName")).toBe("Ada")
+  })
+
+  it("clears guest-name ownership when the trimmed value is blank", () => {
+    writeGuestName("evt-123.guestName", "Ada")
+    writeGuestName("evt-123.guestName", "   ")
+
+    expect(readGuestName("evt-123.guestName")).toBeUndefined()
   })
 
   it("persists collection-backed guest ownership records", () => {
@@ -171,9 +191,26 @@ describe("scheduleOverlapStorage", () => {
 
     expect(
       appendGuestIdentityQuery("/events/evt-123/response", {
-        name: "Ada",
+        name: "  Ada  ",
       })
     ).toBe("/events/evt-123/response?guestName=Ada")
+  })
+
+  it("does not build guest-name query strings from blank legacy names", () => {
+    expect(
+      appendGuestIdentityQuery("/events/evt-123/response", {
+        name: "   ",
+      })
+    ).toBe("/events/evt-123/response")
+  })
+
+  it("does not create ownership records from blank guest names", () => {
+    const collection = upsertGuestOwnershipRecord(undefined, {
+      name: "   ",
+      guestOwnershipMode: "legacy",
+    })
+
+    expect(collection.records).toEqual([])
   })
 
   it("reads and writes the best-times preference through the shared boundary", () => {

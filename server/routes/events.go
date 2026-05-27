@@ -500,6 +500,12 @@ func getEvent(c *gin.Context) {
 
 	// Convert responses to map format for JSON response
 	responsesMap := getResponsesMap(eventResponses)
+	for userId, response := range responsesMap {
+		if shouldExposeGuestResponsePayload(userId, response) {
+			continue
+		}
+		delete(responsesMap, userId)
+	}
 
 	// Populate user fields
 	for userId, response := range responsesMap {
@@ -507,7 +513,7 @@ func getEvent(c *gin.Context) {
 		normalizeGuestResponseForPayload(response)
 		user := db.GetUserById(userId)
 		if user == nil {
-			if len(response.Name) == 0 {
+			if !hasValidGuestName(response.Name) {
 				// User was deleted
 				delete(responsesMap, userId)
 				continue
@@ -532,9 +538,13 @@ func getEvent(c *gin.Context) {
 
 	// Populate sign up form fields
 	for userId, response := range event.SignUpResponses {
+		if !shouldExposeGuestSignUpResponsePayload(userId, response) {
+			delete(event.SignUpResponses, userId)
+			continue
+		}
 		user := db.GetUserById(userId)
 		if user == nil {
-			if len(response.Name) == 0 {
+			if !hasValidGuestName(response.Name) {
 				// User was deleted
 				delete(event.SignUpResponses, userId)
 				continue
@@ -685,6 +695,12 @@ func getResponses(c *gin.Context) {
 	// Convert to map format and filter availability
 	eventResponses := db.GetEventResponses(event.Id.Hex())
 	responsesMap := getResponsesMap(eventResponses)
+	for userId, response := range responsesMap {
+		if shouldExposeGuestResponsePayload(userId, response) {
+			continue
+		}
+		delete(responsesMap, userId)
+	}
 
 	// Filter availability slice based on timeMin and timeMax
 	for userId, response := range responsesMap {

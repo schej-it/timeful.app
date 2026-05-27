@@ -592,6 +592,7 @@ import {
   writeGuestOwnershipCollection,
   getGuestOwnershipCollectionStorageKey,
 } from "@/composables/schedule_overlap/scheduleOverlapStorage"
+import { normalizeGuestName } from "@/utils/guestName"
 import type { Event, User } from "@/types"
 import { fetchAuthUserProfile } from "@/utils/services/UserService"
 import { toQueryInstantString } from "@/utils/temporalQuery"
@@ -1036,8 +1037,8 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
   }
   const ev = event.value
   const timeIncrement = getTimeIncrementMinutes(ev)
-  const payloadGuestName = e.data.payload?.guestName
-  const hasGuestName = Boolean(payloadGuestName && payloadGuestName.length > 0)
+  const payloadGuestName = normalizeGuestName(e.data.payload?.guestName)
+  const hasGuestName = payloadGuestName != null
   if (ev.blindAvailabilityEnabled) {
     const isOwner = isSignedInOwner(ev, authUser.value)
     if (!isOwner && hasGuestName) {
@@ -1066,7 +1067,7 @@ async function setSlots(e: MessageEvent<PluginMessageData>) {
         (record) => record.name === payloadGuestName
       ) ?? selectedGuestOwnership
     if (forceGuestMode) {
-      guestName = payloadGuestName ?? ""
+      guestName = payloadGuestName
       writeGuestName(guestNameKey, guestName)
       if (ev.collectEmails) {
         guestEmail = (e.data.payload?.guestEmail) ?? ""
@@ -1320,12 +1321,10 @@ async function getSlots(e: MessageEvent<PluginMessageData>) {
     const guestOwnership = ev._id
       ? getSelectedGuestOwnership(readGuestOwnershipCollectionForEvent(ev._id))
       : undefined
-    let url = `/events/${sanitizedId}/responses?timeMin=${toQueryInstantString(timeMin)}&timeMax=${toQueryInstantString(timeMax)}`
-    if (guestOwnership?.guestId && guestOwnership.guestId.length > 0) {
-      url += `&guestId=${encodeURIComponent(guestOwnership.guestId)}`
-    } else if (guestOwnership?.name && guestOwnership.name.length > 0) {
-      url += `&guestName=${encodeURIComponent(guestOwnership.name)}`
-    }
+    const url = appendGuestIdentityQuery(
+      `/events/${sanitizedId}/responses?timeMin=${toQueryInstantString(timeMin)}&timeMax=${toQueryInstantString(timeMax)}`,
+      guestOwnership
+    )
     const responses = await fetchEventResponses(url)
     const pluginResponses: Record<string, PluginResponseInput> = Object.fromEntries(
       Object.entries(responses).map(([userId, response]) => [

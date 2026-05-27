@@ -9,6 +9,7 @@ import type {
 } from "@/composables/schedule_overlap/types"
 import { getRealOwnerId } from "@/composables/event/eventOwnership"
 import {
+  appendGuestIdentityQuery,
   getSelectedGuestOwnership,
   readGuestOwnershipCollectionForEvent,
 } from "@/composables/schedule_overlap/scheduleOverlapStorage"
@@ -73,12 +74,7 @@ export function useEventLoader(opts: UseEventLoaderOptions) {
           readGuestOwnershipCollectionForEvent(resolvedLongId)
         )
       : undefined
-    let url = `/events/${sanitizedId}`
-    if (guestOwnership?.guestId && guestOwnership.guestId.length > 0) {
-      url += `?guestId=${encodeURIComponent(guestOwnership.guestId)}`
-    } else if (guestOwnership?.name && guestOwnership.name.length > 0) {
-      url += `?guestName=${encodeURIComponent(guestOwnership.name)}`
-    }
+    const url = appendGuestIdentityQuery(`/events/${sanitizedId}`, guestOwnership)
     const fetchedEvent = await fetchEventFromPath(url)
     event.value = fetchedEvent
     processEvent(fetchedEvent, getEventRenderedWeekStart())

@@ -739,7 +739,6 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
         guestOwnershipMode:
           response.guestCredentials?.guestOwnershipMode ?? "legacy",
       })
-      opts.setGuestName(guestPayload.name)
     }
 
     const addedIfNeededTimes = ifNeededArray.value.length > 0

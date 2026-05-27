@@ -1,4 +1,5 @@
 import { computed, ref, watch, type ComputedRef, type Ref } from "vue"
+import { normalizeGuestName } from "@/utils/guestName"
 import {
   clearGuestOwnershipCollection,
   getGuestNameStorageKey,
@@ -87,9 +88,17 @@ export function useScheduleOverlapPreferences(
     writeGuestOwnershipCollection(guestOwnershipCollectionKey.value, nextCollection)
   }
 
+  function syncGuestNameFromCurrentState(
+    collection: StoredGuestOwnershipCollection | undefined = guestOwnershipCollection.value
+  ) {
+    guestName.value =
+      getSelectedGuestOwnership(collection)?.name ?? readGuestName(guestNameKey.value)
+  }
+
   function setGuestName(name: string) {
+    const normalizedName = normalizeGuestName(name)
     writeGuestName(guestNameKey.value, name)
-    guestName.value = name
+    guestName.value = normalizedName
   }
 
   function setGuestOwnership(
@@ -102,9 +111,13 @@ export function useScheduleOverlapPreferences(
       options
     )
     persistGuestOwnershipCollection(nextCollection)
-    if (value.name) {
-      setGuestName(value.name)
+    const normalizedName = normalizeGuestName(value.name)
+    if (normalizedName) {
+      setGuestName(normalizedName)
+      return
     }
+
+    syncGuestNameFromCurrentState(nextCollection)
   }
 
   function selectGuestOwnership(lookupKey?: string) {
@@ -113,9 +126,7 @@ export function useScheduleOverlapPreferences(
       lookupKey
     )
     persistGuestOwnershipCollection(nextCollection)
-    guestName.value =
-      getSelectedGuestOwnership(nextCollection)?.name ??
-      readGuestName(guestNameKey.value)
+    syncGuestNameFromCurrentState(nextCollection)
   }
 
   function removeGuestOwnership(lookupKey: string) {
@@ -124,9 +135,7 @@ export function useScheduleOverlapPreferences(
       lookupKey
     )
     persistGuestOwnershipCollection(nextCollection)
-    guestName.value =
-      getSelectedGuestOwnership(nextCollection)?.name ??
-      readGuestName(guestNameKey.value)
+    syncGuestNameFromCurrentState(nextCollection)
   }
 
   function clearSelectedGuestOwnership() {

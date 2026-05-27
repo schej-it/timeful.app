@@ -1,4 +1,5 @@
 import { Temporal } from "temporal-polyfill"
+import { normalizeGuestName } from "@/utils/guestName"
 
 const SHOW_BEST_TIMES_KEY = "showBestTimes"
 const SHOW_ALL_HOURS_KEY = "showAllHours"
@@ -85,20 +86,35 @@ export function getGuestOwnershipCollectionStorageKey(eventId: string): string {
 export function getGuestResponseLookupKey(
   ownership?: GuestOwnershipState
 ): string | undefined {
-  return ownership?.guestId ?? ownership?.name
+  return ownership?.guestId ?? normalizeGuestName(ownership?.name)
+}
+
+function normalizeGuestOwnershipState(
+  ownership: GuestOwnershipState
+): GuestOwnershipState {
+  const normalizedName = normalizeGuestName(ownership.name)
+
+  return {
+    guestId: ownership.guestId,
+    guestEditToken: ownership.guestEditToken,
+    guestEditPolicy: ownership.guestEditPolicy,
+    guestOwnershipMode: ownership.guestOwnershipMode,
+    ...(normalizedName ? { name: normalizedName } : {}),
+  }
 }
 
 function normalizeStoredGuestOwnership(
   ownership: GuestOwnershipState,
   fallbackLastUsedAt: number
 ): StoredGuestOwnership | undefined {
-  const lookupKey = getGuestResponseLookupKey(ownership)
+  const normalizedOwnership = normalizeGuestOwnershipState(ownership)
+  const lookupKey = getGuestResponseLookupKey(normalizedOwnership)
   if (!lookupKey) {
     return undefined
   }
 
   return {
-    ...ownership,
+    ...normalizedOwnership,
     lookupKey,
     lastUsedAt: fallbackLastUsedAt,
   }
@@ -162,7 +178,7 @@ export function readGuestName(key: string): string | undefined {
     return undefined
   }
 
-  return readStorageValue(storage, key)
+  return normalizeGuestName(readStorageValue(storage, key))
 }
 
 export function readLegacyGuestOwnership(
@@ -179,7 +195,7 @@ export function readLegacyGuestOwnership(
   }
 
   try {
-    return JSON.parse(rawValue) as GuestOwnershipState
+    return normalizeGuestOwnershipState(JSON.parse(rawValue) as GuestOwnershipState)
   } catch {
     return undefined
   }
@@ -211,7 +227,13 @@ export function writeGuestName(key: string, name: string) {
     return
   }
 
-  writeStorageValue(storage, key, name)
+  const normalizedName = normalizeGuestName(name)
+  if (!normalizedName) {
+    clearStorageValue(storage, key)
+    return
+  }
+
+  writeStorageValue(storage, key, normalizedName)
 }
 
 export function writeGuestOwnershipCollection(
@@ -410,7 +432,9 @@ export function appendGuestIdentityQuery(
 ): string {
   const guestId = ownership?.guestId
   const guestName =
-    guestId == null ? ownership?.name ?? fallbackGuestName : undefined
+    guestId == null
+      ? normalizeGuestName(ownership?.name ?? fallbackGuestName)
+      : undefined
 
   if (guestId && guestId.length > 0) {
     return `${path}${path.includes("?") ? "&" : "?"}guestId=${encodeURIComponent(guestId)}`

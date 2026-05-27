@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"schej.it/server/models"
 )
 
@@ -186,5 +187,43 @@ func TestHasValidGuestNameRejectsBlankNames(t *testing.T) {
 	}
 	if !hasValidGuestName("Ada") {
 		t.Fatal("expected non-empty guest name to be valid")
+	}
+}
+
+func TestShouldExposeGuestResponsePayload(t *testing.T) {
+	if !shouldExposeGuestResponsePayload("", &models.Response{Name: "Ada"}) {
+		t.Fatal("expected named guest payload row to be exposed")
+	}
+	if shouldExposeGuestResponsePayload("", &models.Response{Name: ""}) {
+		t.Fatal("expected blank-named guest payload row to be hidden")
+	}
+	if shouldExposeGuestResponsePayload("", &models.Response{
+		Name:               "   ",
+		GuestId:            generateOpaqueGuestCredential(12),
+		GuestOwnershipMode: guestOwnershipModeToken,
+	}) {
+		t.Fatal("expected whitespace-only token guest payload row to be hidden")
+	}
+	if !shouldExposeGuestResponsePayload("", &models.Response{
+		UserId: primitive.NewObjectID(),
+	}) {
+		t.Fatal("expected signed-in payload row to remain exposed")
+	}
+}
+
+func TestShouldExposeGuestSignUpResponsePayload(t *testing.T) {
+	if !shouldExposeGuestSignUpResponsePayload("", &models.SignUpResponse{Name: "Ada"}) {
+		t.Fatal("expected named guest sign-up payload row to be exposed")
+	}
+	if shouldExposeGuestSignUpResponsePayload("", &models.SignUpResponse{Name: ""}) {
+		t.Fatal("expected blank-named guest sign-up payload row to be hidden")
+	}
+	if shouldExposeGuestSignUpResponsePayload("", &models.SignUpResponse{Name: "   "}) {
+		t.Fatal("expected whitespace-only guest sign-up payload row to be hidden")
+	}
+	if !shouldExposeGuestSignUpResponsePayload("", &models.SignUpResponse{
+		UserId: primitive.NewObjectID(),
+	}) {
+		t.Fatal("expected signed-in sign-up payload row to remain exposed")
 	}
 }

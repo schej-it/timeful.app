@@ -32,8 +32,12 @@ import {
 import { fetchUserEvents } from "@/utils/services/EventService"
 import { fetchUserFolders } from "@/utils/services/FolderService"
 import { toScheduleOverlapEvent } from "@/composables/schedule_overlap/types"
-import { toGroupResponseSubmissionPayload } from "@/composables/event/responseSubmissionBoundary"
-import { encodeEventResponseSubmissionPayload } from "@/composables/event/responseSubmissionBoundary"
+import {
+  encodeEventResponseSubmissionPayload,
+  toEventResponseSubmissionPayload,
+  toGroupResponseSubmissionPayload,
+  toSignUpBlockResponseSubmissionPayload,
+} from "@/composables/event/responseSubmissionBoundary"
 import type { SignUpBlockWithResponses } from "@/types"
 
 vi.mock("@/utils/fetch_utils", async () => {
@@ -162,6 +166,37 @@ describe("transport and timezone regression boundaries", () => {
     expect(response.guestId).toBe("guest_1")
     expect(response.guestEditPolicy).toBe("protected")
     expect(response.guestOwnershipMode).toBe("token")
+  })
+
+  it("omits whitespace-only guest names from event response submissions", () => {
+    const payload = toEventResponseSubmissionPayload({
+      availability: [],
+      ifNeeded: [],
+      addingAvailabilityAsGuest: true,
+      guestPayload: {
+        name: "   ",
+        email: "guest@example.com",
+        guestId: "guest_1",
+        guestEditToken: "secret",
+        guestEditPolicy: "protected",
+      },
+    })
+
+    expect(payload.name).toBeUndefined()
+    expect(payload.guestId).toBe("guest_1")
+    expect(encodeEventResponseSubmissionPayload(payload).name).toBeUndefined()
+  })
+
+  it("trims guest names for sign-up block submissions", () => {
+    expect(
+      toSignUpBlockResponseSubmissionPayload({
+        signUpBlockId: "block_1",
+        guestPayload: {
+          name: "  Ada  ",
+          email: "ada@example.com",
+        },
+      }).name
+    ).toBe("Ada")
   })
 
   it("exposes an explicit time seed alongside decoded event dates", () => {

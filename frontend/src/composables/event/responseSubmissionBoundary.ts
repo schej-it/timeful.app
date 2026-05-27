@@ -5,6 +5,7 @@ import type { SharedCalendarAccounts } from "@/composables/schedule_overlap/type
 import { generateEnabledCalendarsPayload } from "@/utils"
 import type { RawCalendarOptions } from "@/types/transport"
 import { toRawCalendarOptions, toTransportDateTimeStrings } from "@/types/transport"
+import { normalizeGuestName } from "@/utils/guestName"
 
 interface GuestPayload {
   name: string
@@ -83,11 +84,13 @@ export function toEventResponseSubmissionPayload(input: {
     }
   }
 
+  const guestName = normalizeGuestName(input.guestPayload.name)
+
   return {
     availability: input.availability,
     ifNeeded: input.ifNeeded,
     guest: true,
-    name: input.guestPayload.name,
+    name: guestName,
     email: input.guestPayload.email,
     guestId: input.guestPayload.guestId,
     guestEditToken: input.guestPayload.guestEditToken,
@@ -120,11 +123,13 @@ export function toGroupResponseSubmissionPayload(input: {
 export function encodeEventResponseSubmissionPayload(
   payload: EventResponseSubmissionPayload
 ): EncodedEventResponseSubmissionPayload {
+  const guestName = normalizeGuestName(payload.name)
+
   return {
     availability: toTransportDateTimeStrings(payload.availability) ?? [],
     ifNeeded: toTransportDateTimeStrings(payload.ifNeeded) ?? [],
     guest: payload.guest,
-    name: payload.name,
+    name: guestName,
     email: payload.email,
     guestId: payload.guestId,
     guestEditToken: payload.guestEditToken,
@@ -144,10 +149,12 @@ export function toSignUpBlockResponseSubmissionPayload(input: {
     }
   }
 
+  const guestName = normalizeGuestName(input.guestPayload.name)
+
   return {
     guest: true,
     signUpBlockIds: [input.signUpBlockId],
-    name: input.guestPayload.name,
+    name: guestName,
     email: input.guestPayload.email,
   }
 }

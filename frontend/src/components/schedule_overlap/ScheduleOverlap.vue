@@ -1658,7 +1658,6 @@ async function saveGuestName() {
         name,
       })
     }
-    setGuestName(name)
     mainStore.showInfo("Guest name updated successfully")
     editGuestNameDialog.value = false
     emit(

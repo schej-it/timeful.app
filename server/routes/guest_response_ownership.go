@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"strings"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"schej.it/server/models"
 )
 
@@ -210,4 +211,28 @@ func normalizeGuestResponseForPayload(response *models.Response) {
 
 func hasValidGuestName(name string) bool {
 	return strings.TrimSpace(name) != ""
+}
+
+func shouldExposeGuestResponsePayload(_ string, response *models.Response) bool {
+	if response == nil {
+		return true
+	}
+
+	if response.UserId != primitive.NilObjectID {
+		return true
+	}
+
+	return hasValidGuestName(response.Name)
+}
+
+func shouldExposeGuestSignUpResponsePayload(_ string, response *models.SignUpResponse) bool {
+	if response == nil {
+		return true
+	}
+
+	if response.UserId != primitive.NilObjectID {
+		return true
+	}
+
+	return hasValidGuestName(response.Name)
 }
