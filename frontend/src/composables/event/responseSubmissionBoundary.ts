@@ -4,8 +4,11 @@ import type { ZdtMap, ZdtSet } from "@/utils"
 import type { SharedCalendarAccounts } from "@/composables/schedule_overlap/types"
 import { generateEnabledCalendarsPayload } from "@/utils"
 import type { RawCalendarOptions } from "@/types/transport"
-import { toRawCalendarOptions, toTransportDateTimeStrings } from "@/types/transport"
-import { normalizeGuestName } from "@/utils/guestName"
+import {
+  toRawCalendarOptions,
+  toTransportDateTimeStrings,
+} from "@/types/transport"
+import { validateGuestName } from "@/utils/guestName"
 
 interface GuestPayload {
   name: string
@@ -84,7 +87,7 @@ export function toEventResponseSubmissionPayload(input: {
     }
   }
 
-  const guestName = normalizeGuestName(input.guestPayload.name)
+  const guestName = validateGuestName(input.guestPayload.name).normalizedName
 
   return {
     availability: input.availability,
@@ -123,7 +126,7 @@ export function toGroupResponseSubmissionPayload(input: {
 export function encodeEventResponseSubmissionPayload(
   payload: EventResponseSubmissionPayload
 ): EncodedEventResponseSubmissionPayload {
-  const guestName = normalizeGuestName(payload.name)
+  const guestName = validateGuestName(payload.name).normalizedName
 
   return {
     availability: toTransportDateTimeStrings(payload.availability) ?? [],
@@ -149,7 +152,7 @@ export function toSignUpBlockResponseSubmissionPayload(input: {
     }
   }
 
-  const guestName = normalizeGuestName(input.guestPayload.name)
+  const guestName = validateGuestName(input.guestPayload.name).normalizedName
 
   return {
     guest: true,

@@ -4,12 +4,19 @@
 import { defineComponent, ref } from "vue"
 import { mount } from "@vue/test-utils"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { createFormStub, mergeComponentStubs, nullStub, passThroughStub } from "@/test/componentStubs"
+import {
+  createFormStub,
+  mergeComponentStubs,
+  nullStub,
+  passThroughStub,
+} from "@/test/componentStubs"
 import type { Event } from "@/types"
 import GuestDialog from "./GuestDialog.vue"
 
 const formRefMethods = {
-  validate: vi.fn<() => Promise<{ valid: boolean }>>(() => Promise.resolve({ valid: true })),
+  validate: vi.fn<() => Promise<{ valid: boolean }>>(() =>
+    Promise.resolve({ valid: true })
+  ),
   resetValidation: vi.fn<() => void>(() => undefined),
 }
 
@@ -193,7 +200,9 @@ describe("GuestDialog", () => {
   })
 
   it("treats whitespace-only name differences as duplicate guest names", async () => {
-    formRefMethods.validate.mockImplementationOnce(() => Promise.resolve({ valid: false }))
+    formRefMethods.validate.mockImplementationOnce(() =>
+      Promise.resolve({ valid: false })
+    )
 
     const wrapper = mount(GuestDialog, {
       props: {
@@ -224,6 +233,39 @@ describe("GuestDialog", () => {
 
     expect(formRefMethods.validate).toHaveBeenCalledTimes(1)
     expect(wrapper.emitted("submit")).toBeUndefined()
+  })
+
+  it("normalizes repairable guest names before emitting the payload", async () => {
+    const wrapper = mount(GuestDialog, {
+      props: {
+        modelValue: true,
+        event: baseEvent,
+        respondents: [],
+      },
+      global: {
+        stubs: mergeComponentStubs({
+          "v-btn": VBtnStub,
+          "v-card": passThroughStub,
+          "v-card-text": passThroughStub,
+          "v-card-title": passThroughStub,
+          "v-checkbox": VCheckboxStub,
+          "v-dialog": passThroughStub,
+          "v-form": createFormStub(formRefMethods),
+          "v-icon": nullStub,
+          "v-spacer": nullStub,
+          "v-text-field": VTextFieldStub,
+        }),
+      },
+    })
+
+    const inputs = wrapper.findAll("input")
+    await inputs[0]?.setValue("  A\u200bda\u0301  ")
+    await inputs[1]?.setValue(" guest@example.com ")
+    await getSubmitButton(wrapper).trigger("click")
+
+    expect(wrapper.emitted("submit")).toEqual([
+      [{ name: "Adá", email: "guest@example.com", allowOthersToEdit: false }],
+    ])
   })
 
   it("defaults guest ownership to protected and emits open mode when toggled", async () => {
@@ -295,5 +337,4 @@ describe("GuestDialog", () => {
     expect(label.classes()).toContain("tw-text-black")
     expect(label.classes()).not.toContain("tw-text-very-dark-gray")
   })
-
 })

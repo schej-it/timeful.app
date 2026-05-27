@@ -140,4 +140,34 @@ describe("SignUpBlock", () => {
       },
     ])
   })
+
+  it("renders guest attendee names without leaking undefined last names", () => {
+    const wrapper = mount(SignUpBlock, {
+      props: {
+        signUpBlock: {
+          ...signUpBlock,
+          responses: [
+            {
+              name: "Ada",
+              user: {
+                firstName: "Ada",
+              },
+            },
+          ],
+        },
+      },
+      global: {
+        stubs: {
+          "v-avatar": true,
+          "v-btn": VBtnStub,
+          "v-icon": true,
+          "v-select": VSelectStub,
+          "v-text-field": VTextFieldStub,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain("Ada")
+    expect(wrapper.text()).not.toContain("undefined")
+  })
 })

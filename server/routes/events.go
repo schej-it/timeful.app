@@ -21,6 +21,7 @@ import (
 	"schej.it/server/logger"
 	"schej.it/server/middleware"
 	"schej.it/server/models"
+	"schej.it/server/respondents"
 	"schej.it/server/responses"
 	"schej.it/server/services/calendar"
 	"schej.it/server/services/gcloud"
@@ -499,68 +500,24 @@ func getEvent(c *gin.Context) {
 	eventResponses := db.GetEventResponses(event.Id.Hex())
 
 	// Convert responses to map format for JSON response
-	responsesMap := getResponsesMap(eventResponses)
-	for userId, response := range responsesMap {
-		if shouldExposeGuestResponsePayload(userId, response) {
-			continue
-		}
-		delete(responsesMap, userId)
+	canonicalResponses := make(map[string]models.EventResponse)
+	for _, eventResponse := range eventResponses {
+		storeCanonicalEventResponse(canonicalResponses, eventResponse)
 	}
-
-	// Populate user fields
-	for userId, response := range responsesMap {
-		responseKey := userId
-		normalizeGuestResponseForPayload(response)
-		user := db.GetUserById(userId)
-		if user == nil {
-			if !hasValidGuestName(response.Name) {
-				// User was deleted
-				delete(responsesMap, userId)
-				continue
-			} else {
-				// User is guest
-				response.User = &models.User{
-					FirstName: response.Name,
-					Email:     response.Email,
-				}
-			}
-		} else {
-			response.User = user
-			response.User.CalendarAccounts = nil
-		}
-		responsesMap[responseKey] = response
-
-		// Remove availability arrays
-		responsesMap[userId].Availability = nil
-		responsesMap[userId].IfNeeded = nil
-		responsesMap[userId].ManualAvailability = nil
+	responsesMap := make(map[string]*models.Response, len(canonicalResponses))
+	for lookupKey, eventResponse := range canonicalResponses {
+		eventResponse.Response.Availability = nil
+		eventResponse.Response.IfNeeded = nil
+		eventResponse.Response.ManualAvailability = nil
+		responsesMap[lookupKey] = eventResponse.Response
 	}
 
 	// Populate sign up form fields
+	normalizedSignUpResponses := make(map[string]canonicalSignUpResponseEntry)
 	for userId, response := range event.SignUpResponses {
-		if !shouldExposeGuestSignUpResponsePayload(userId, response) {
-			delete(event.SignUpResponses, userId)
-			continue
-		}
-		user := db.GetUserById(userId)
-		if user == nil {
-			if !hasValidGuestName(response.Name) {
-				// User was deleted
-				delete(event.SignUpResponses, userId)
-				continue
-			} else {
-				// User is guest
-				userId = response.Name
-				response.User = &models.User{
-					FirstName: response.Name,
-					Email:     response.Email,
-				}
-			}
-		} else {
-			response.User = user
-		}
-		event.SignUpResponses[userId] = response
+		storeCanonicalSignUpResponse(normalizedSignUpResponses, userId, response)
 	}
+	event.SignUpResponses = flattenCanonicalSignUpResponses(normalizedSignUpResponses)
 
 	if event.Type == models.GROUP {
 		attendees := db.GetAttendees(event.Id.Hex())
@@ -694,17 +651,17 @@ func getResponses(c *gin.Context) {
 
 	// Convert to map format and filter availability
 	eventResponses := db.GetEventResponses(event.Id.Hex())
-	responsesMap := getResponsesMap(eventResponses)
-	for userId, response := range responsesMap {
-		if shouldExposeGuestResponsePayload(userId, response) {
-			continue
-		}
-		delete(responsesMap, userId)
+	canonicalResponses := make(map[string]models.EventResponse)
+	for _, eventResponse := range eventResponses {
+		storeCanonicalEventResponse(canonicalResponses, eventResponse)
+	}
+	responsesMap := make(map[string]*models.Response, len(canonicalResponses))
+	for lookupKey, eventResponse := range canonicalResponses {
+		responsesMap[lookupKey] = eventResponse.Response
 	}
 
 	// Filter availability slice based on timeMin and timeMax
 	for userId, response := range responsesMap {
-		normalizeGuestResponseForPayload(response)
 		subsetAvailability := make([]primitive.DateTime, 0)
 		for _, timestamp := range response.Availability {
 			if timestamp.Time().Compare(payload.TimeMin) >= 0 && timestamp.Time().Compare(payload.TimeMax) <= 0 {
@@ -869,12 +826,14 @@ func updateEventResponse(c *gin.Context) {
 		// Populate response differently if guest vs signed in user
 		var response models.Response
 		if *payload.Guest {
-			if !hasValidGuestName(payload.Name) {
-				c.JSON(http.StatusBadRequest, responses.Error{Error: "Guest name is required"})
+			guestNameValidation := respondents.ValidateGuestName(payload.Name)
+			if guestNameValidation.Code != respondents.GuestNameValid {
+				c.JSON(http.StatusBadRequest, responses.Error{Error: guestNameValidationErrorMessage(guestNameValidation.Code)})
 				return
 			}
+			canonicalName := guestNameValidation.Name
 			response = models.Response{
-				Name:         payload.Name,
+				Name:         canonicalName,
 				Email:        payload.Email,
 				Availability: payload.Availability,
 				IfNeeded:     payload.IfNeeded,
@@ -886,7 +845,7 @@ func updateEventResponse(c *gin.Context) {
 
 			existingIndex, existingEventResponse := findGuestResponseByGuestId(eventResponses, payload.GuestId)
 			if existingIndex == -1 {
-				existingIndex, existingEventResponse = findGuestResponseByName(eventResponses, payload.Name)
+				existingIndex, existingEventResponse = findGuestResponseByName(eventResponses, canonicalName)
 			}
 
 			if existingIndex != -1 && existingEventResponse != nil {
@@ -899,7 +858,7 @@ func updateEventResponse(c *gin.Context) {
 					c.Abort()
 					return
 				}
-				if payload.Name != existingEventResponse.Response.Name && guestDisplayNameExists(eventResponses, payload.Name, existingIndex) {
+				if canonicalName != canonicalGuestName(existingEventResponse.Response.Name) && guestDisplayNameExists(eventResponses, canonicalName, existingIndex) {
 					c.JSON(http.StatusBadRequest, responses.Error{Error: "A guest with this name already exists for this event"})
 					return
 				}
@@ -918,7 +877,7 @@ func updateEventResponse(c *gin.Context) {
 				}
 				userIdString = guestResponseLookupKey(models.EventResponse{UserId: existingEventResponse.UserId, Response: &response})
 				if mutationResult.GuestCredentials == nil {
-					mutationResult.GuestCredentials = buildGuestCredentialsResponse(&response, payload.Name)
+					mutationResult.GuestCredentials = buildGuestCredentialsResponse(&response, canonicalName)
 				}
 				userHasResponded = true
 			} else {
@@ -1026,11 +985,17 @@ func updateEventResponse(c *gin.Context) {
 		var userIdString string
 		// Populate response differently if guest vs signed in user
 		if *payload.Guest {
-			userIdString = payload.Name
+			guestNameValidation := respondents.ValidateGuestName(payload.Name)
+			if guestNameValidation.Code != respondents.GuestNameValid {
+				c.JSON(http.StatusBadRequest, responses.Error{Error: guestNameValidationErrorMessage(guestNameValidation.Code)})
+				return
+			}
+			canonicalName := guestNameValidation.Name
+			userIdString = canonicalName
 
 			response = models.SignUpResponse{
 				SignUpBlockIds: payload.SignUpBlockIds,
-				Name:           payload.Name,
+				Name:           canonicalName,
 				Email:          payload.Email,
 			}
 		} else {
@@ -1076,10 +1041,14 @@ func updateEventResponse(c *gin.Context) {
 
 			var respondentName string
 			if *payload.Guest {
-				respondentName = payload.Name
+				respondentName = canonicalGuestName(payload.Name)
 			} else {
 				respondent := db.GetUserById(userIdString)
-				respondentName = fmt.Sprintf("%s %s", respondent.FirstName, respondent.LastName)
+				if respondent == nil {
+					respondentName = ""
+				} else {
+					_, _, respondentName = respondents.SanitizeUserDisplayName(respondent)
+				}
 			}
 
 			if event.Type == models.GROUP {
@@ -1178,16 +1147,21 @@ func deleteEventResponse(c *gin.Context) {
 	eventResponses := db.GetEventResponses(event.Id.Hex())
 
 	if *payload.Guest {
-		if !hasValidGuestName(payload.Name) {
+		canonicalName := canonicalGuestName(payload.Name)
+		if payload.GuestId == "" && canonicalName == "" {
 			c.JSON(http.StatusBadRequest, responses.Error{Error: "Guest name is required"})
 			return
 		}
 		if utils.Coalesce(event.IsSignUpForm) {
-			delete(event.SignUpResponses, payload.Name)
+			if canonicalName == "" {
+				c.JSON(http.StatusBadRequest, responses.Error{Error: "Guest name is required"})
+				return
+			}
+			delete(event.SignUpResponses, canonicalName)
 		} else {
 			idx, guestResponse := findGuestResponseByGuestId(eventResponses, payload.GuestId)
 			if idx == -1 {
-				idx, guestResponse = findGuestResponseByName(eventResponses, payload.Name)
+				idx, guestResponse = findGuestResponseByName(eventResponses, canonicalName)
 			}
 			if idx == -1 || guestResponse == nil {
 				c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
@@ -1299,19 +1273,22 @@ func renameUser(c *gin.Context) {
 		return
 	}
 
-	if !hasValidGuestName(payload.OldName) {
+	oldName := canonicalGuestName(payload.OldName)
+	if payload.GuestId == "" && oldName == "" {
 		c.JSON(http.StatusBadRequest, responses.Error{Error: "Existing guest name is required"})
 		return
 	}
-	if !hasValidGuestName(payload.NewName) {
-		c.JSON(http.StatusBadRequest, responses.Error{Error: "New guest name is required"})
+	newNameValidation := respondents.ValidateGuestName(payload.NewName)
+	if newNameValidation.Code != respondents.GuestNameValid {
+		c.JSON(http.StatusBadRequest, responses.Error{Error: guestNameValidationErrorMessage(newNameValidation.Code)})
 		return
 	}
+	newName := newNameValidation.Name
 
 	eventResponses := db.GetEventResponses(event.Id.Hex())
 	idx, guestResponse := findGuestResponseByGuestId(eventResponses, payload.GuestId)
 	if idx == -1 {
-		idx, guestResponse = findGuestResponseByName(eventResponses, payload.OldName)
+		idx, guestResponse = findGuestResponseByName(eventResponses, oldName)
 	}
 	if idx == -1 || guestResponse == nil || guestResponse.Response == nil {
 		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
@@ -1325,18 +1302,18 @@ func renameUser(c *gin.Context) {
 		c.JSON(http.StatusForbidden, responses.Error{Error: "This guest response is protected and cannot be renamed without its edit token"})
 		return
 	}
-	if payload.NewName != guestResponse.Response.Name && guestDisplayNameExists(eventResponses, payload.NewName, idx) {
+	if newName != canonicalGuestName(guestResponse.Response.Name) && guestDisplayNameExists(eventResponses, newName, idx) {
 		c.JSON(http.StatusBadRequest, responses.Error{Error: "A guest with this name already exists for this event"})
 		return
 	}
 
 	updatedResponse := *guestResponse.Response
-	updatedResponse.Name = payload.NewName
+	updatedResponse.Name = newName
 	mutationResult := guestResponseMutationResult{}
 	if !isTokenBackedGuestResponse(&updatedResponse) {
 		mutationResult.GuestCredentials = ensureGuestTokenOwnership(&updatedResponse, guestEditPolicyProtected)
 	} else {
-		mutationResult.GuestCredentials = buildGuestCredentialsResponse(&updatedResponse, payload.NewName)
+		mutationResult.GuestCredentials = buildGuestCredentialsResponse(&updatedResponse, newName)
 	}
 
 	db.EventResponsesCollection.UpdateOne(context.Background(), bson.M{
@@ -2047,11 +2024,106 @@ func stripSensitiveUserFields(user *models.User) {
 	user.PrimaryAccountKey = nil
 }
 
+type canonicalSignUpResponseEntry struct {
+	storedKey string
+	response  *models.SignUpResponse
+}
+
+func preferCanonicalEventResponse(current models.EventResponse, candidate models.EventResponse) bool {
+	currentUserID, _ := respondents.ResolveStoredUserID(current.Response.UserId, current.UserId)
+	candidateUserID, _ := respondents.ResolveStoredUserID(candidate.Response.UserId, candidate.UserId)
+
+	return respondents.CompareCanonicalRecency(
+		respondents.CanonicalRecency{
+			Primary:    candidate.Id,
+			Secondary:  candidateUserID,
+			TieBreaker: candidate.UserId,
+		},
+		respondents.CanonicalRecency{
+			Primary:    current.Id,
+			Secondary:  currentUserID,
+			TieBreaker: current.UserId,
+		},
+	) > 0
+}
+
+func storeCanonicalEventResponse(
+	result map[string]models.EventResponse,
+	eventResponse models.EventResponse,
+) {
+	lookupKey, keep := populateResponsePayloadIdentity(eventResponse.Response, eventResponse.UserId)
+	if !keep || !shouldExposeGuestResponsePayload(lookupKey, eventResponse.Response) {
+		return
+	}
+	normalizeGuestResponseForPayload(eventResponse.Response)
+
+	if existing, exists := result[lookupKey]; exists && !preferCanonicalEventResponse(existing, eventResponse) {
+		return
+	}
+
+	result[lookupKey] = eventResponse
+}
+
+func preferCanonicalSignUpResponse(
+	current canonicalSignUpResponseEntry,
+	candidate canonicalSignUpResponseEntry,
+) bool {
+	currentUserID, _ := respondents.ResolveStoredUserID(current.response.UserId, current.storedKey)
+	candidateUserID, _ := respondents.ResolveStoredUserID(candidate.response.UserId, candidate.storedKey)
+
+	return respondents.CompareCanonicalRecency(
+		respondents.CanonicalRecency{
+			Primary:    candidateUserID,
+			TieBreaker: candidate.storedKey,
+		},
+		respondents.CanonicalRecency{
+			Primary:    currentUserID,
+			TieBreaker: current.storedKey,
+		},
+	) > 0
+}
+
+func storeCanonicalSignUpResponse(
+	result map[string]canonicalSignUpResponseEntry,
+	storedKey string,
+	response *models.SignUpResponse,
+) {
+	lookupKey, keep := populateSignUpResponsePayloadIdentity(response, storedKey)
+	if !keep || !shouldExposeGuestSignUpResponsePayload(lookupKey, response) {
+		return
+	}
+
+	candidate := canonicalSignUpResponseEntry{
+		storedKey: storedKey,
+		response:  response,
+	}
+	if existing, exists := result[lookupKey]; exists && !preferCanonicalSignUpResponse(existing, candidate) {
+		return
+	}
+
+	result[lookupKey] = candidate
+}
+
+func flattenCanonicalSignUpResponses(
+	entries map[string]canonicalSignUpResponseEntry,
+) map[string]*models.SignUpResponse {
+	flattened := make(map[string]*models.SignUpResponse, len(entries))
+	for lookupKey, entry := range entries {
+		flattened[lookupKey] = entry.response
+	}
+	return flattened
+}
+
 // Helper function to get all responses as a map (for backward compatibility)
 func getResponsesMap(responses []models.EventResponse) map[string]*models.Response {
-	result := make(map[string]*models.Response)
+	canonicalResponses := make(map[string]models.EventResponse)
 	for _, resp := range responses {
-		result[guestResponseLookupKey(resp)] = resp.Response
+		storeCanonicalEventResponse(canonicalResponses, resp)
+	}
+
+	result := make(map[string]*models.Response, len(canonicalResponses))
+	for lookupKey, eventResponse := range canonicalResponses {
+		result[lookupKey] = eventResponse.Response
 	}
 	return result
 }

@@ -43,11 +43,7 @@
             persistent-hint
             @keyup.enter="submit"
           ></v-text-field>
-          <v-checkbox
-            v-model="allowOthersToEdit"
-            color="primary"
-            hide-details
-          >
+          <v-checkbox v-model="allowOthersToEdit" color="primary" hide-details>
             <template #label>
               <span
                 class="tw-text-sm"
@@ -79,6 +75,11 @@
 import { computed, ref, watch } from "vue"
 import { validateEmail } from "@/utils"
 import type { Event } from "@/types"
+import {
+  getGuestNameValidationMessage,
+  normalizeGuestName,
+  validateGuestName,
+} from "@/utils/guestName"
 
 type Rule = (val: string) => true | string
 
@@ -95,9 +96,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "update:modelValue": [value: boolean]
-  submit: [
-    payload: { name: string; email: string; allowOthersToEdit: boolean },
-  ]
+  submit: [payload: { name: string; email: string; allowOthersToEdit: boolean }]
 }>()
 
 const formValid = ref(false)
@@ -106,15 +105,16 @@ const email = ref("")
 const allowOthersToEdit = ref(false)
 const validationRequested = ref(false)
 const formRef = ref<FormRef | null>(null)
-const trimmedName = computed(() => name.value.trim())
+const validatedName = computed(() => validateGuestName(name.value))
+const normalizedName = computed(() => validatedName.value.normalizedName)
 const trimmedEmail = computed(() => email.value.trim())
 const isNameAvailable = (candidate: string) =>
-  !props.respondents.includes(candidate.trim())
+  !props.respondents.includes(normalizeGuestName(candidate) ?? "")
 const nameRules = computed<Rule[]>(() => [
   (candidate) =>
-    !validationRequested.value ||
-    candidate.trim().length > 0 ||
-    "Name is required",
+    (!validationRequested.value ||
+      getGuestNameValidationMessage(validateGuestName(candidate).code)) ??
+    true,
   (candidate) =>
     !validationRequested.value ||
     isNameAvailable(candidate) ||
@@ -126,13 +126,12 @@ const emailRules = computed<Rule[]>(() => [
     candidate.trim().length > 0 ||
     "Email is required",
   (candidate) =>
-    !validationRequested.value ||
-    !!validateEmail(candidate) ||
-    "Invalid email",
+    !validationRequested.value || !!validateEmail(candidate) || "Invalid email",
 ])
-const canSubmit = computed(() =>
-  trimmedName.value.length > 0 &&
-  (!props.event.collectEmails || trimmedEmail.value.length > 0)
+const canSubmit = computed(
+  () =>
+    normalizedName.value != null &&
+    (!props.event.collectEmails || trimmedEmail.value.length > 0)
 )
 
 const initializeForm = () => {
@@ -149,7 +148,7 @@ const submit = async () => {
   const valid = typeof result === "boolean" ? result : result?.valid
   if (!valid) return
   emit("submit", {
-    name: trimmedName.value,
+    name: normalizedName.value ?? "",
     email: trimmedEmail.value,
     allowOthersToEdit: allowOthersToEdit.value,
   })

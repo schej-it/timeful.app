@@ -188,6 +188,70 @@ describe("RespondentsList", () => {
     expect(wrapper.text()).toContain("* if needed")
   })
 
+  it("renders guest respondents without leaking undefined last names", () => {
+    const wrapper = shallowMount(RespondentsList, {
+      props: {
+        eventId: "evt-1",
+        event: {
+          blindAvailabilityEnabled: false,
+          collectEmails: false,
+          dates: [zdt("2026-01-01T09:00:00Z").toPlainDate()],
+          timeSeed: zdt("2026-01-01T09:00:00Z"),
+          duration: durations.ONE_HOUR,
+          daysOnly: false,
+        },
+        curGuestId: "",
+        ownedGuestResponseLookupKeys: [],
+        guestResponseLookupKey: "",
+        days: [],
+        times: [],
+        curDate: zdt("2026-01-01T09:00:00Z"),
+        curRespondent: "",
+        curRespondents: [],
+        curTimeslot: { dayIndex: -1, timeIndex: -1 },
+        curTimeslotAvailability: { "guest-1": true },
+        respondents: [
+          {
+            _id: "guest-1",
+            firstName: "Ada",
+          } as never,
+        ],
+        parsedResponses: {
+          "guest-1": {
+            user: {
+              _id: "guest-1",
+              firstName: "Ada",
+            } as never,
+            availability: new ZdtSet(),
+            ifNeeded: new ZdtSet(),
+            guest: true,
+          },
+        },
+        isOwner: false,
+        isGroup: false,
+        showCalendarEvents: false,
+        responsesFormatted: new ZdtMap<Set<string>>(),
+        timezone: {
+          value: UTC,
+          offset: durations.ZERO,
+          label: UTC,
+          gmtString: "GMT",
+        },
+        showBestTimes: false,
+        hideIfNeeded: false,
+        showAllHours: false,
+        guestAddedAvailability: false,
+        addingAvailabilityAsGuest: false,
+      },
+      global: {
+        stubs: sharedRespondentsListStubs,
+      },
+    })
+
+    expect(wrapper.text()).toContain("Ada")
+    expect(wrapper.text()).not.toContain("undefined")
+  })
+
   it("renders desktop best-times inside the options section", async () => {
     isPhoneValue.value = false
 

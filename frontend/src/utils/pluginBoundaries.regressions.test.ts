@@ -174,6 +174,53 @@ describe("plugin boundary regressions", () => {
     expect(roundTrippedSlots["user-1"].availability[0].hour).toBe(9)
   })
 
+  it("uses shared response display formatting for guest-only plugin metadata", () => {
+    const normalized = normalizePluginResponses({
+      responses: toPluginResponses({
+        responses: {
+          guest: {
+            name: "Ada",
+            availability: [epochMs("2026-01-07T03:15:00Z")],
+            ifNeeded: [],
+          },
+        },
+        responseMetadata: {
+          guest: {
+            user: {
+              firstName: "Ada",
+            },
+          },
+        },
+      }),
+      timezoneValue: "UTC",
+    })
+
+    expect(normalized.guest.name).toBe("Ada")
+  })
+
+  it("preserves metadata email when the display name comes from legacy plugin metadata fields", () => {
+    const normalized = normalizePluginResponses({
+      responses: toPluginResponses({
+        responses: {
+          guest: {
+            availability: [epochMs("2026-01-07T03:15:00Z")],
+            ifNeeded: [],
+          },
+        },
+        responseMetadata: {
+          guest: {
+            name: "Ada",
+            email: "ada@example.com",
+          },
+        },
+      }),
+      timezoneValue: "UTC",
+    })
+
+    expect(normalized.guest.name).toBe("Ada")
+    expect(normalized.guest.email).toBe("ada@example.com")
+  })
+
   it("reports malformed plugin local timestamps as structured parse errors", () => {
     const result = normalizePluginSetSlots(
       [

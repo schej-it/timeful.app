@@ -7,6 +7,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"schej.it/server/models"
+	"schej.it/server/respondents"
 )
 
 func TestGuestResponseLookupKeyUsesOpaqueGuestId(t *testing.T) {
@@ -87,6 +88,8 @@ func TestEnsureGuestTokenOwnershipUpgradesLegacyGuestResponse(t *testing.T) {
 }
 
 func TestGetResponsesMapUsesLegacyAndTokenGuestKeys(t *testing.T) {
+	signedInUserID := primitive.NewObjectID().Hex()
+
 	responses := []models.EventResponse{
 		{
 			UserId: "legacy-user-id",
@@ -103,7 +106,7 @@ func TestGetResponsesMapUsesLegacyAndTokenGuestKeys(t *testing.T) {
 			},
 		},
 		{
-			UserId:   "signed-in-user-id",
+			UserId:   signedInUserID,
 			Response: &models.Response{},
 		},
 	}
@@ -115,7 +118,7 @@ func TestGetResponsesMapUsesLegacyAndTokenGuestKeys(t *testing.T) {
 	if _, exists := responseMap["guest_opaque_id"]; !exists {
 		t.Fatal("expected token-backed guest response to be keyed by guest id")
 	}
-	if _, exists := responseMap["signed-in-user-id"]; !exists {
+	if _, exists := responseMap[signedInUserID]; !exists {
 		t.Fatal("expected signed-in response to remain keyed by user id")
 	}
 }
@@ -185,8 +188,32 @@ func TestHasValidGuestNameRejectsBlankNames(t *testing.T) {
 	if hasValidGuestName("   ") {
 		t.Fatal("expected whitespace-only guest name to be invalid")
 	}
-	if !hasValidGuestName("Ada") {
+	if hasValidGuestName("507f1f77bcf86cd799439011") {
+		t.Fatal("expected object-id-like guest name to be invalid")
+	}
+	if !hasValidGuestName(" A\u200bda ") {
 		t.Fatal("expected non-empty guest name to be valid")
+	}
+}
+
+func TestCanonicalGuestNameStripsFormattingAndNormalizesUnicode(t *testing.T) {
+	if canonicalName := canonicalGuestName(" A\u200bda\u0301 "); canonicalName != "Adá" {
+		t.Fatalf("expected canonical guest name, got %q", canonicalName)
+	}
+}
+
+func TestGuestNameValidationErrorMessageUsesSpecificMessages(t *testing.T) {
+	if message := guestNameValidationErrorMessage(respondents.GuestNameRequired); message != "Guest name is required" {
+		t.Fatalf("unexpected required guest name message %q", message)
+	}
+	if message := guestNameValidationErrorMessage(respondents.GuestNameInvalidFormatting); message == "" {
+		t.Fatal("expected invalid-formatting message")
+	}
+	if message := guestNameValidationErrorMessage(respondents.GuestNameObjectIDLike); message == "" {
+		t.Fatal("expected object-id-like message")
+	}
+	if message := guestNameValidationErrorMessage(respondents.GuestNameTooLong); message == "" {
+		t.Fatal("expected too-long message")
 	}
 }
 
@@ -225,5 +252,21 @@ func TestShouldExposeGuestSignUpResponsePayload(t *testing.T) {
 		UserId: primitive.NewObjectID(),
 	}) {
 		t.Fatal("expected signed-in sign-up payload row to remain exposed")
+	}
+}
+
+func TestFindGuestResponseByNameUsesCanonicalNormalizedNames(t *testing.T) {
+	responses := []models.EventResponse{
+		{
+			UserId: "legacy-guest",
+			Response: &models.Response{
+				Name: "  A\u200bda\u0301  ",
+			},
+		},
+	}
+
+	index, response := findGuestResponseByName(responses, "Adá")
+	if index != 0 || response == nil {
+		t.Fatalf("expected canonical lookup to find guest response, got index=%d response=%v", index, response)
 	}
 }

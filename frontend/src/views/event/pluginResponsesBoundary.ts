@@ -6,6 +6,7 @@ import {
   getEventDateSeeds,
   getRenderedWeekStart,
 } from "@/utils"
+import { getResponseDisplayName } from "@/utils/guestName"
 import type { Temporal } from "temporal-polyfill"
 
 type PluginEventWeekRangeInput = Pick<Event, "type" | "dates" | "startOnMonday">
@@ -50,8 +51,7 @@ export const getPluginEventTimeRange = (
 
   if (event.type === eventTypes.GROUP || event.type === eventTypes.DOW) {
     const targetWeekStart =
-      renderedWeekStart ??
-      getRenderedWeekStart(weekOffset, event.startOnMonday)
+      renderedWeekStart ?? getRenderedWeekStart(weekOffset, event.startOnMonday)
     timeMin = dateToDowDate(
       eventDates,
       timeMin,
@@ -86,20 +86,19 @@ export const normalizePluginResponses = (input: {
     const response = pluginResponse.response
     if (!response) continue
 
+    const metadataUser = pluginResponse.responseMetadata?.user
+    const displayName = getResponseDisplayName({
+      name: pluginResponse.responseMetadata?.name,
+      user: metadataUser,
+    })
+    const metadataEmail =
+      metadataUser?.email ?? pluginResponse.responseMetadata?.email ?? ""
     const [name, email] =
-      response.name && response.name.length > 0
+      displayName.length > 0
+        ? [displayName, metadataEmail]
+        : response.name && response.name.length > 0
         ? [response.name, response.email ?? ""]
-        : (() => {
-            const eventResponse = pluginResponse.responseMetadata
-            if (eventResponse?.user) {
-              const user = eventResponse.user
-              return [
-                `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
-                user.email ?? "",
-              ]
-            }
-            return [userId, ""]
-          })()
+        : [userId, ""]
 
     let availability = convertUTCSlotsToLocalISO(
       response.availability,

@@ -82,7 +82,7 @@
           </v-avatar>
         </div>
         <div v-if="!anonymize || response.user?._id == authUser?._id" class="tw-transition-all tw-text-sm">
-          {{ response.user?.firstName + " " + response.user?.lastName }}
+          {{ formatResponseName(response) }}
         </div>
         <div v-else class="tw-transition-all tw-text-sm tw-italic">Attendee</div>
       </div>
@@ -110,6 +110,7 @@
 import { computed, ref, watch } from "vue"
 import { storeToRefs } from "pinia"
 import { getStartEndDateString } from "@/utils"
+import { getResponseDisplayName } from "@/utils/guestName"
 import { useMainStore } from "@/stores/main"
 import type { SignUpBlock, SignUpBlockWithResponses } from "@/types"
 
@@ -166,6 +167,16 @@ const numberResponses = computed(() =>
 )
 
 const anonymize = computed(() => props.anonymous && !props.isOwner)
+
+function formatResponseName(response?: {
+  name?: string
+  user?: {
+    firstName?: string
+    lastName?: string
+  }
+}) {
+  return getResponseDisplayName(response)
+}
 
 const saveName = () => {
   emit("update:signUpBlock", {

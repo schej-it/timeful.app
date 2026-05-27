@@ -4,10 +4,10 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
-	"strings"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"schej.it/server/models"
+	"schej.it/server/respondents"
 )
 
 const (
@@ -31,7 +31,7 @@ type guestResponseMutationResult struct {
 }
 
 func isGuestResponseRecord(eventResponse models.EventResponse) bool {
-	return eventResponse.Response != nil && eventResponse.Response.Name != ""
+	return eventResponse.Response != nil && eventResponse.Response.UserId == primitive.NilObjectID
 }
 
 func isTokenBackedGuestResponse(response *models.Response) bool {
@@ -44,8 +44,10 @@ func guestResponseLookupKey(eventResponse models.EventResponse) string {
 	if isTokenBackedGuestResponse(eventResponse.Response) {
 		return eventResponse.Response.GuestId
 	}
-	if eventResponse.Response != nil && eventResponse.Response.Name != "" {
-		return eventResponse.Response.Name
+	if eventResponse.Response != nil {
+		if canonicalName := canonicalGuestName(eventResponse.Response.Name); canonicalName != "" {
+			return canonicalName
+		}
 	}
 	return eventResponse.UserId
 }
@@ -54,7 +56,7 @@ func guestQueryLookupKey(guestId string, guestName string) string {
 	if guestId != "" {
 		return guestId
 	}
-	return guestName
+	return canonicalGuestName(guestName)
 }
 
 func normalizeGuestEditPolicy(policy string) string {
@@ -81,8 +83,10 @@ func buildGuestCredentialsResponse(
 	}
 
 	name := response.Name
-	if name == "" {
-		name = fallbackName
+	if canonicalName := canonicalGuestName(name); canonicalName != "" {
+		name = canonicalName
+	} else if canonicalFallback := canonicalGuestName(fallbackName); canonicalFallback != "" {
+		name = canonicalFallback
 	}
 
 	return &guestCredentialsResponse{
@@ -143,12 +147,16 @@ func findGuestResponseByName(
 	if name == "" {
 		return -1, nil
 	}
+	canonicalName := canonicalGuestName(name)
+	if canonicalName == "" {
+		return -1, nil
+	}
 	for i := range responses {
 		response := &responses[i]
 		if !isGuestResponseRecord(*response) {
 			continue
 		}
-		if response.Response.Name == name {
+		if canonicalGuestName(response.Response.Name) == canonicalName {
 			return i, response
 		}
 	}
@@ -164,7 +172,7 @@ func guestDisplayNameExists(
 		if i == excludeIndex || !isGuestResponseRecord(response) {
 			continue
 		}
-		if response.Response.Name == name {
+		if canonicalGuestName(response.Response.Name) == canonicalGuestName(name) {
 			return true
 		}
 	}
@@ -180,7 +188,7 @@ func canMutateGuestResponse(
 		return false
 	}
 	if !isTokenBackedGuestResponse(response) {
-		return callerLookupKey != "" && response.Name == callerLookupKey
+		return callerLookupKey != "" && canonicalGuestName(response.Name) == callerLookupKey
 	}
 	if normalizeGuestEditPolicy(response.GuestEditPolicy) == guestEditPolicyOpen {
 		return true
@@ -195,8 +203,16 @@ func canMutateGuestResponse(
 }
 
 func normalizeGuestResponseForPayload(response *models.Response) {
-	if response == nil || response.Name == "" {
+	if response == nil {
 		return
+	}
+
+	if response.UserId == primitive.NilObjectID {
+		canonicalName := canonicalGuestName(response.Name)
+		if canonicalName == "" {
+			return
+		}
+		response.Name = canonicalName
 	}
 
 	if isTokenBackedGuestResponse(response) {
@@ -210,7 +226,7 @@ func normalizeGuestResponseForPayload(response *models.Response) {
 }
 
 func hasValidGuestName(name string) bool {
-	return strings.TrimSpace(name) != ""
+	return respondents.HasValidGuestName(name)
 }
 
 func shouldExposeGuestResponsePayload(_ string, response *models.Response) bool {

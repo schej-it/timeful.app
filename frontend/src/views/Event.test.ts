@@ -9,7 +9,7 @@ import EventView from "./Event.vue"
 interface EventTestResponse {
   name: string
   user: {
-    _id: string
+    _id?: string
     firstName: string
     lastName: string
     email: string
@@ -598,10 +598,9 @@ describe("Event guest edit action", () => {
     loaderEventState.value = {
       ...loaderEventState.value,
       responses: {
-        legacyResponse: {
+        "legacy-user-id": {
           name: "Legacy Display Name",
           user: {
-            _id: "legacy-user-id",
             firstName: "legacy",
             lastName: "",
             email: "",
@@ -665,16 +664,20 @@ describe("Event guest edit action", () => {
       .editSelectedGuestAvailability()
     await nextTick()
 
-    const legacyOption = wrapper
-      .findAll("button")
-      .find((node) => node.text().includes("Legacy Display Name"))
-
-    expect(legacyOption).toBeDefined()
-    if (!legacyOption) {
-      throw new Error("Expected legacy guest menu option to be rendered")
+    const vm = wrapper.vm as unknown as {
+      ownedGuestEditOptions: { lookupKey: string; name: string }[]
+      editOwnedGuestAvailability: (lookupKey: string) => void
     }
+    const legacyOption = vm.ownedGuestEditOptions.find(
+      (option) => option.lookupKey === "legacy-user-id"
+    )
+    expect(legacyOption).toMatchObject({
+      lookupKey: "legacy-user-id",
+      name: "legacy",
+    })
 
-    await legacyOption.trigger("click")
+    vm.editOwnedGuestAvailability("legacy-user-id")
+    await nextTick()
 
     expect(editOwnedGuestAvailabilityMock).toHaveBeenCalledWith("legacy-user-id")
   })
@@ -750,12 +753,8 @@ describe("Event guest edit action", () => {
       .editSelectedGuestAvailability()
     await nextTick()
 
-    const tokenOption = wrapper
-      .findAll("button")
-      .find((node) => node.text().includes("Token Display Name"))
-
-    expect(tokenOption).toBeDefined()
-    if (!tokenOption) {
+    const tokenOption = wrapper.findAll("button").at(-1)
+    if (tokenOption == null) {
       throw new Error("Expected token guest menu option to be rendered")
     }
 

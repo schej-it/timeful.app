@@ -185,12 +185,7 @@
                     class="tw-mr-1 tw-text-sm tw-leading-5 tw-transition-all"
                     :class="respondentClass(user._id ?? '')"
                   >
-                    {{
-                      user.firstName +
-                      " " +
-                      user.lastName +
-                      (respondentIfNeeded(user._id ?? '') ? "*" : "")
-                    }}
+                    {{ formatRespondentName(user) + (respondentIfNeeded(user._id ?? '') ? "*" : "") }}
                   </div>
                   <div
                     v-if="isOwner && event.collectEmails"
@@ -430,6 +425,7 @@ import { storeToRefs } from "pinia"
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { _delete } from "@/utils"
+import { getResponseDisplayName } from "@/utils/guestName"
 import { posthog } from "@/plugins/posthog"
 import UserAvatarContent from "../UserAvatarContent.vue"
 import EventOptions from "./EventOptions.vue"
@@ -541,6 +537,10 @@ const { exportCsvDialog, exportCsv, trackExportCsvClick } = useRespondentsCsvExp
 function clickRespondent(e: MouseEvent, userId: string) {
   e.stopImmediatePropagation()
   emit("clickRespondent", e, userId)
+}
+
+function formatRespondentName(user: User) {
+  return getResponseDisplayName({ user })
 }
 
 function canEditGuestAvailability(user: User) {
