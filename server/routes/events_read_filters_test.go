@@ -238,7 +238,7 @@ func TestGetEventFiltersUnnamedGuestResponses(t *testing.T) {
 		t.Fatal("expected signed-in user response to remain in event payload")
 	}
 
-	if _, exists := responseEvent.SignUpResponses["valid-guest-signup"]; !exists {
+	if _, exists := responseEvent.SignUpResponses["Sign Up Guest"]; !exists {
 		t.Fatal("expected valid guest sign-up response to remain in event payload")
 	}
 	if repairableGuest, exists := responseEvent.SignUpResponses["Adá"]; !exists {

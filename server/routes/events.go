@@ -1157,7 +1157,15 @@ func deleteEventResponse(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, responses.Error{Error: "Guest name is required"})
 				return
 			}
-			delete(event.SignUpResponses, canonicalName)
+			for storedKey, responseValue := range event.SignUpResponses {
+				if canonicalGuestName(storedKey) == canonicalName {
+					delete(event.SignUpResponses, storedKey)
+					continue
+				}
+				if responseValue != nil && canonicalGuestName(responseValue.Name) == canonicalName {
+					delete(event.SignUpResponses, storedKey)
+				}
+			}
 		} else {
 			idx, guestResponse := findGuestResponseByGuestId(eventResponses, payload.GuestId)
 			if idx == -1 {

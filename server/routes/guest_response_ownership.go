@@ -207,14 +207,6 @@ func normalizeGuestResponseForPayload(response *models.Response) {
 		return
 	}
 
-	if response.UserId == primitive.NilObjectID {
-		canonicalName := canonicalGuestName(response.Name)
-		if canonicalName == "" {
-			return
-		}
-		response.Name = canonicalName
-	}
-
 	if isTokenBackedGuestResponse(response) {
 		response.GuestOwnershipMode = guestOwnershipModeToken
 		response.GuestEditPolicy = normalizeGuestEditPolicy(response.GuestEditPolicy)

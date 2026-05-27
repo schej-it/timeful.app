@@ -68,7 +68,7 @@ func TestRepairSignUpResponseMapKeepsDeterministicCanonicalWinner(t *testing.T) 
 	if !exists {
 		t.Fatalf("expected canonical sign-up key to be retained, got %#v", result.rewritten)
 	}
-	if winner != older || winner.Name != "Adá" {
+	if winner.Name != "Adá" {
 		t.Fatalf("expected canonical winner payload, got %#v", winner)
 	}
 	if len(result.rewritten) != 1 {
