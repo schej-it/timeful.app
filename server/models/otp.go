@@ -12,4 +12,5 @@ type OtpCode struct {
 	Code      string             `json:"-" bson:"code"`
 	ExpiresAt time.Time          `json:"-" bson:"expiresAt"`
 	Attempts  int                `json:"-" bson:"attempts"`
+	CreatedAt time.Time          `json:"-" bson:"createdAt"`
 }
