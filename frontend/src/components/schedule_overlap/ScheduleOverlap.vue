@@ -914,17 +914,9 @@ const collapsedPageSegments = computed<CollapsedPageSegment[]>(() => {
       return
     }
 
-    const isInteriorRun =
-      runStartIndex > 0 &&
-      runEndIndex < slots.length &&
-      !greyFlags[runStartIndex - 1] &&
-      !greyFlags[runEndIndex]
-
-    if (isInteriorRun) {
-      const segment = buildCollapsedSegmentFromRun(runStartIndex, runEndIndex)
-      if (segment) {
-        segments.push(segment)
-      }
+    const segment = buildCollapsedSegmentFromRun(runStartIndex, runEndIndex)
+    if (segment) {
+      segments.push(segment)
     }
 
     runStartIndex = null

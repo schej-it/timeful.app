@@ -763,7 +763,7 @@ describe("ScheduleOverlap", () => {
     }
   })
 
-  it("does not collapse leading or trailing grey hours, and keeps rows visible when any page day allows them", () => {
+  it("keeps rows visible when any page day allows them, even if the same edge hours are grey on other days", () => {
     const wrapper = mountScheduleOverlap({
       props: {
         event: {
@@ -863,7 +863,7 @@ describe("ScheduleOverlap", () => {
     ])
   })
 
-  it("does not collapse edge grey runs for discontiguous daily specific times", () => {
+  it("collapses leading and trailing edge grey runs for discontiguous daily specific times", () => {
     const wrapper = mountScheduleOverlap({
       props: {
         event: {
@@ -875,7 +875,7 @@ describe("ScheduleOverlap", () => {
           timeSeed: zdt("2026-01-01T09:00:00Z"),
           hasSpecificTimes: true,
           startTime: Temporal.PlainTime.from("09:00"),
-          duration: Temporal.Duration.from({ hours: 12 }),
+          duration: Temporal.Duration.from({ hours: 13 }),
           timeIncrement: Temporal.Duration.from({ hours: 1 }),
           times: [
             ...buildUtcSpecificTimes("2026-01-01", [
@@ -899,10 +899,19 @@ describe("ScheduleOverlap", () => {
     })
 
     const vm = wrapper.vm as unknown as {
-      renderedRows: { kind: "timeslot" | "collapsed" | "filler" }[]
+      renderedRows: { kind: "timeslot" | "collapsed" | "filler"; startLabel?: string; endLabel?: string }[]
     }
 
-    expect(vm.renderedRows.filter((row) => row.kind === "collapsed")).toEqual([])
+    expect(vm.renderedRows.filter((row) => row.kind === "collapsed")).toEqual([
+      expect.objectContaining({
+        startLabel: "09:00",
+        endLabel: "14:00",
+      }),
+      expect.objectContaining({
+        startLabel: "18:00",
+        endLabel: "22:00",
+      }),
+    ])
   })
 
   it("keeps a row expanded when any visible day allows that exact specific-time slot", () => {
@@ -980,10 +989,11 @@ describe("ScheduleOverlap", () => {
 
     const collapsedRows = vm.renderedRows.filter((row) => row.kind === "collapsed")
 
-    expect(collapsedRows).toHaveLength(1)
-    expect(collapsedRows[0]).toMatchObject({
-      startLabel: "11:00",
-      endLabel: "18:00",
-    })
+    expect(collapsedRows).toEqual([
+      expect.objectContaining({
+        startLabel: "11:00",
+        endLabel: "18:00",
+      }),
+    ])
   })
 })
