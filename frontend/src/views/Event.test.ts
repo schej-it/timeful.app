@@ -64,6 +64,9 @@ const {
   checkOwnerPremiumMock,
   fetchCalendarAvailabilitiesMock,
   fetchAuthUserCalendarEventsMock,
+  routerPushMock,
+  routerReplaceMock,
+  showErrorMock,
 } = vi.hoisted(() => ({
   editGuestAvailabilityMock: vi.fn(),
   editOwnedGuestAvailabilityMock: vi.fn(),
@@ -76,6 +79,9 @@ const {
   loaderEventState: {
     value: createDefaultEventState(),
   },
+  routerPushMock: vi.fn(),
+  routerReplaceMock: vi.fn(),
+  showErrorMock: vi.fn(),
 }))
 
 const scheduleOverlapMethodMocks = {
@@ -87,10 +93,11 @@ const scheduleOverlapMethodMocks = {
 
 vi.mock("vue-router", () => ({
   useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
+    push: routerPushMock,
+    replace: routerReplaceMock,
   }),
   useRoute: () => ({
+    name: "event",
     query: {},
   }),
 }))
@@ -105,7 +112,7 @@ vi.mock("pinia", () => ({
 vi.mock("@/stores/main", () => ({
   useMainStore: () => ({
     showInfo: vi.fn(),
-    showError: vi.fn(),
+    showError: showErrorMock,
     setAuthUser: vi.fn(),
   }),
 }))
@@ -316,6 +323,59 @@ describe("Event guest edit action", () => {
     vi.runAllTimers()
     await nextTick()
   }
+
+  it("renders a durable inline not-found state for missing event fetches", async () => {
+    loaderEventState.value = null as unknown as EventTestState
+    refreshEventMock.mockRejectedValueOnce({
+      status: 404,
+      parsed: { error: "event-not-found" },
+    })
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": true,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+    await Promise.resolve()
+    await nextTick()
+
+    expect(wrapper.text()).toContain("Event not found")
+    expect(wrapper.text()).toContain(
+      "This event may have been deleted, or the link may be incorrect."
+    )
+    expect(routerReplaceMock).not.toHaveBeenCalled()
+    expect(showErrorMock).not.toHaveBeenCalled()
+    expect(wrapper.findComponent(ScheduleOverlapStub).exists()).toBe(false)
+  })
 
   it("shows generic edit copy when one owned guest response exists", async () => {
     const wrapper = shallowMount(EventView, {

@@ -5,7 +5,7 @@
     />
     <!-- Video Ad (desktop only, when ads enabled) -->
     <div v-if="!isPhone && showAds" ref="videoAdContainer"></div>
-    <div v-if="event" class="tw-mt-8 tw-h-full">
+    <div v-if="eventLoadStatus === 'ready' && event" class="tw-mt-8 tw-h-full">
       <!-- Mark availability option dialog -->
       <MarkAvailabilityDialog
         v-model="choiceDialog"
@@ -541,6 +541,26 @@
         </AsyncPubliftAd>
       </div>
     </div>
+    <div
+      v-else-if="eventLoadStatus === 'notFound'"
+      class="tw-mx-auto tw-mt-12 tw-max-w-2xl tw-px-4"
+    >
+      <div
+        class="tw-rounded-lg tw-border tw-border-light-gray tw-bg-white tw-p-6 tw-text-center"
+      >
+        <h1 class="tw-text-2xl tw-font-medium tw-text-black">
+          Event not found
+        </h1>
+        <p class="tw-mt-3 tw-text-base tw-text-very-dark-gray">
+          This event may have been deleted, or the link may be incorrect.
+        </p>
+        <RouterLink to="/home">
+          <v-btn class="timeful-elevated-button tw-mt-6 tw-bg-green tw-text-white">
+            Back to home
+          </v-btn>
+        </RouterLink>
+      </div>
+    </div>
   </span>
 </template>
 
@@ -670,6 +690,7 @@ const scheduleOverlapLoaded = ref(false)
 const scheduleOverlapReady = ref(false)
 const adsBootstrapped = ref(false)
 const secondaryBootQueued = ref(false)
+const eventLoadStatus = ref<"loading" | "ready" | "notFound">("loading")
 
 const isEditing = computed(() => scheduleOverlap.value?.editing ?? false)
 const isScheduling = computed(() => scheduleOverlap.value?.scheduling ?? false)
@@ -897,6 +918,21 @@ function editOwnedGuestAvailability(lookupKey: string) {
 
 function resetWeekOffset() {
   weekOffset.value = 0
+}
+
+function getErrorCode(err: unknown) {
+  if (!err || typeof err !== "object") return undefined
+  const directError = (err as { error?: unknown }).error
+  if (typeof directError === "string") return directError
+
+  const parsed = (err as { parsed?: unknown }).parsed
+  if (!parsed || typeof parsed !== "object") return undefined
+  const parsedError = (parsed as { error?: unknown }).error
+  return typeof parsedError === "string" ? parsedError : undefined
+}
+
+function isEventNotFoundError(err: unknown) {
+  return getErrorCode(err) === errors.EventNotFound
 }
 
 async function handleEditDialogRefresh(payload?: { fromEditEvent?: boolean }) {
@@ -1535,14 +1571,13 @@ async function bootstrapEvent() {
         }
       }
     }
+    eventLoadStatus.value = "ready"
   } catch (err: unknown) {
     logEventBoot("EventView", "bootstrap:error", {
       error: err instanceof Error ? err.message : String(err),
     })
-    const errObj = err as Record<string, unknown>
-    if (errObj.error === errors.EventNotFound) {
-      mainStore.showError("The specified event does not exist!")
-      void router.replace({ name: "home" })
+    if (isEventNotFoundError(err)) {
+      eventLoadStatus.value = "notFound"
       return
     }
   }
