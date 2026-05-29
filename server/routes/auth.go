@@ -17,6 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"schej.it/server/db"
 	"schej.it/server/errs"
 	"schej.it/server/logger"
@@ -367,6 +368,22 @@ func sendOtp(c *gin.Context) {
 
 	email := strings.ToLower(strings.TrimSpace(payload.Email))
 
+	// Rate limit: refuse to send a new code if one was already sent to this
+	// email within the cooldown window. Without this, the endpoint can be
+	// abused to bomb arbitrary inboxes with OTP emails (and to enumerate
+	// accounts by timing). The 5-attempt cap on verification is unaffected.
+	const otpSendCooldown = 30 * time.Second
+	var lastOtp models.OtpCode
+	findErr := db.OtpCodesCollection.FindOne(
+		context.Background(),
+		bson.M{"email": email},
+		options.FindOne().SetSort(bson.M{"createdAt": -1}),
+	).Decode(&lastOtp)
+	if findErr == nil && time.Since(lastOtp.CreatedAt) < otpSendCooldown {
+		c.JSON(http.StatusTooManyRequests, responses.Error{Error: errs.OtpRateLimited})
+		return
+	}
+
 	// Delete any existing OTP codes for this email
 	db.OtpCodesCollection.DeleteMany(context.Background(), bson.M{"email": email})
 
@@ -376,6 +393,7 @@ func sendOtp(c *gin.Context) {
 		Code:      code,
 		ExpiresAt: time.Now().Add(10 * time.Minute),
 		Attempts:  0,
+		CreatedAt: time.Now(),
 	}
 
 	_, err := db.OtpCodesCollection.InsertOne(context.Background(), otpDoc)
