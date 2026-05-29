@@ -123,6 +123,21 @@ func main() {
 
 	// Session
 	store := cookie.NewStore([]byte(os.Getenv("SESSION_SECRET")))
+	// Harden the session cookie. Without these flags the gorilla cookie store
+	// defaults leave the session cookie readable by JavaScript (no HttpOnly),
+	// sendable over plain HTTP (no Secure), and with no explicit SameSite,
+	// making session theft via XSS and CSRF much easier.
+	//   - HttpOnly: keep the cookie out of reach of page JavaScript.
+	//   - Secure: only send over HTTPS in production (left off in dev so
+	//     http://localhost still works).
+	//   - SameSite=Lax: mitigate CSRF while still allowing top-level navigations.
+	store.Options(sessions.Options{
+		Path:     "/",
+		MaxAge:   60 * 60 * 24 * 30, // 30 days
+		HttpOnly: true,
+		Secure:   utils.IsRelease(),
+		SameSite: http.SameSiteLaxMode,
+	})
 	router.Use(sessions.Sessions("session", store))
 
 	// Init routes
