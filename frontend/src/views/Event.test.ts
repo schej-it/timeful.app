@@ -654,6 +654,86 @@ describe("Event guest edit action", () => {
     expect(editOwnedGuestAvailabilityMock).not.toHaveBeenCalled()
   })
 
+  it("closes the owned guest edit menu when clicking outside it", async () => {
+    loaderEventState.value = {
+      ...loaderEventState.value,
+      responses: {
+        khh: {
+          name: "khh",
+          user: {
+            _id: "000000000000000000000000",
+            firstName: "khh",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+        },
+        ada: {
+          name: "ada",
+          user: {
+            _id: "111111111111111111111111",
+            firstName: "ada",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+        },
+      },
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapNoGuestSelectionStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonClickStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    ;(
+      wrapper.vm as unknown as { editSelectedGuestAvailability: () => void }
+    ).editSelectedGuestAvailability()
+    await nextTick()
+
+    expect(
+      (wrapper.vm as unknown as { showGuestEditMenu: boolean }).showGuestEditMenu
+    ).toBe(true)
+
+    document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    await nextTick()
+
+    expect(
+      (wrapper.vm as unknown as { showGuestEditMenu: boolean }).showGuestEditMenu
+    ).toBe(false)
+    expect(editOwnedGuestAvailabilityMock).not.toHaveBeenCalled()
+  })
+
   it("matches legacy owned guest menu options by canonical stored identity instead of response name", async () => {
     loaderEventState.value = {
       ...loaderEventState.value,

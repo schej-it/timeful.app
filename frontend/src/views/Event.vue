@@ -226,6 +226,7 @@
                 </div>
                 <div
                   v-if="!isPhone && (!isSignUp || canEditAvailability)"
+                  ref="desktopGuestEditMenuRoot"
                   class="tw-relative tw-flex tw-w-40"
                 >
                   <template v-if="!isEditing">
@@ -430,6 +431,7 @@
           isPhone &&
           (!isSignUp || canEditAvailability)
         "
+        ref="mobileGuestEditMenuRoot"
         class="tw-fixed tw-bottom-0 tw-z-20 tw-flex tw-w-full tw-flex-col"
         :style="showAds ? { bottom: '115px' } : {}"
       >
@@ -681,6 +683,8 @@ const { isPhone } = useDisplayHelpers()
 const scheduleOverlap = ref<ScheduleOverlapInstance | null>(null)
 const scheduleOverlapRenderKey = ref(0)
 const videoAdContainer = ref<HTMLElement | null>(null)
+const desktopGuestEditMenuRoot = ref<HTMLElement | null>(null)
+const mobileGuestEditMenuRoot = ref<HTMLElement | null>(null)
 const weekOffset = ref(0)
 
 const invitationDialog = ref(false)
@@ -819,6 +823,25 @@ const mobileActionButtonText = computed(() => {
 })
 const isIOS = computed(() => isIOSFn())
 
+function closeGuestEditMenu() {
+  showGuestEditMenu.value = false
+}
+
+function isGuestEditMenuTargetInside(target: EventTarget | null) {
+  if (!(target instanceof Node)) return false
+
+  return (
+    desktopGuestEditMenuRoot.value?.contains(target) === true ||
+    mobileGuestEditMenuRoot.value?.contains(target) === true
+  )
+}
+
+function handleGuestEditMenuDocumentClick(event: MouseEvent) {
+  if (!showGuestEditMenu.value) return
+  if (isGuestEditMenuTargetInside(event.target)) return
+  closeGuestEditMenu()
+}
+
 const loader = useEventLoader({
   eventId: toRef(props, "eventId"),
   weekOffset,
@@ -905,7 +928,7 @@ function editSelectedGuestAvailability() {
     scheduleOverlap.value?.editOwnedGuestAvailability(
       ownedGuestEditOptions.value[0].lookupKey
     )
-    showGuestEditMenu.value = false
+    closeGuestEditMenu()
     return
   }
   showGuestEditMenu.value = !showGuestEditMenu.value
@@ -913,8 +936,29 @@ function editSelectedGuestAvailability() {
 
 function editOwnedGuestAvailability(lookupKey: string) {
   scheduleOverlap.value?.editOwnedGuestAvailability(lookupKey)
-  showGuestEditMenu.value = false
+  closeGuestEditMenu()
 }
+
+watch(
+  [showGuestActionButton, hasMultipleOwnedGuestResponses, isEditing],
+  ([showGuestActionButtonValue, hasMultipleOwnedGuestResponsesValue, isEditingValue]) => {
+    if (
+      !showGuestActionButtonValue ||
+      !hasMultipleOwnedGuestResponsesValue ||
+      isEditingValue
+    ) {
+      closeGuestEditMenu()
+    }
+  }
+)
+
+onMounted(() => {
+  document.addEventListener("click", handleGuestEditMenuDocumentClick, true)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleGuestEditMenuDocumentClick, true)
+})
 
 function resetWeekOffset() {
   weekOffset.value = 0
