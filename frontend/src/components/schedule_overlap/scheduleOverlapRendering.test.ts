@@ -149,9 +149,12 @@ describe("scheduleOverlapRendering", () => {
     expect(styles[0].style.boxShadow).toBeUndefined()
     expect(styles[0].style.borderLeftStyle).toBe("solid")
     expect(styles[0].style.borderRightStyle).toBe("solid")
-    expect(styles[0].style.borderLeftColor).toBe("var(--timeful-grid-separator-strong)")
-    expect(styles[0].style.borderRightColor).toBe("var(--timeful-grid-separator-strong)")
-    expect(styles[0].style.borderBottomColor).toBe("var(--timeful-grid-separator-soft)")
+    expect(styles[0].class).not.toContain("tw-border-l-gray")
+    expect(styles[0].class).not.toContain("tw-border-r-gray")
+    expect(styles[0].class).not.toContain("tw-border-b-gray")
+    expect(styles[0].style.borderLeftColor).toBe("var(--timeful-grid-line-color)")
+    expect(styles[0].style.borderRightColor).toBe("var(--timeful-grid-line-color)")
+    expect(styles[0].style.borderBottomColor).toBe("var(--timeful-grid-line-color)")
     expect(styles[2].class).toContain("tw-bg-light-gray-stroke")
   })
 
@@ -198,9 +201,10 @@ describe("scheduleOverlapRendering", () => {
       inDragRange: () => false,
     })
 
-    expect(classStyle.style.borderTopColor).toBe("var(--timeful-grid-separator)")
+    expect(classStyle.style.borderTopColor).toBe("var(--timeful-grid-line-color)")
     expect(classStyle.style.borderTopStyle).toBe("dashed")
-    expect(classStyle.style.borderTopWidth).toBe("1px")
+    expect(classStyle.style.borderTopWidth).toBe("var(--timeful-grid-line-width)")
+    expect(classStyle.class).not.toContain("tw-border-t-gray")
   })
 
   it("keeps the top frame visible for disabled timed-grid rows", () => {
@@ -246,8 +250,9 @@ describe("scheduleOverlapRendering", () => {
 
     expect(classStyle.class).toContain("tw-bg-light-gray-stroke")
     expect(classStyle.style.borderTopStyle).toBe("solid")
-    expect(classStyle.style.borderTopWidth).toBe("0.5px")
-    expect(classStyle.style.borderTopColor).toBe("var(--timeful-grid-hour-separator)")
+    expect(classStyle.style.borderTopWidth).toBe("var(--timeful-grid-line-width)")
+    expect(classStyle.style.borderTopColor).toBe("var(--timeful-grid-line-color)")
+    expect(classStyle.class).not.toContain("tw-border-t-gray")
   })
 
   it("keeps the half-hour separator visible for disabled timed-grid rows", () => {
@@ -291,9 +296,9 @@ describe("scheduleOverlapRendering", () => {
       inDragRange: () => false,
     })
 
-    expect(classStyle.style.borderTopColor).toBe("var(--timeful-grid-separator)")
+    expect(classStyle.style.borderTopColor).toBe("var(--timeful-grid-line-color)")
     expect(classStyle.style.borderTopStyle).toBe("dashed")
-    expect(classStyle.style.borderTopWidth).toBe("1px")
+    expect(classStyle.style.borderTopWidth).toBe("var(--timeful-grid-line-width)")
   })
 
   it("anchors disabled timed-grid separators to the displayed split start", () => {
@@ -337,9 +342,9 @@ describe("scheduleOverlapRendering", () => {
       inDragRange: () => false,
     })
 
-    expect(classStyle.style.borderTopColor).toBe("var(--timeful-grid-separator)")
+    expect(classStyle.style.borderTopColor).toBe("var(--timeful-grid-line-color)")
     expect(classStyle.style.borderTopStyle).toBe("dashed")
-    expect(classStyle.style.borderTopWidth).toBe("1px")
+    expect(classStyle.style.borderTopWidth).toBe("var(--timeful-grid-line-width)")
   })
 
   it("draws the top border on the first timed-grid row instead of relying on a shared overlay", () => {
@@ -386,8 +391,8 @@ describe("scheduleOverlapRendering", () => {
     })
 
     expect(classStyle.style.borderTopStyle).toBe("solid")
-    expect(classStyle.style.borderTopWidth).toBe("0.5px")
-    expect(classStyle.style.borderTopColor).toBe("var(--timeful-grid-hour-separator)")
+    expect(classStyle.style.borderTopWidth).toBe("var(--timeful-grid-line-width)")
+    expect(classStyle.style.borderTopColor).toBe("var(--timeful-grid-line-color)")
   })
 
   it("positions second-split blocks after the split gap", () => {
@@ -470,9 +475,9 @@ describe("scheduleOverlapRendering", () => {
     expect(classStyle.style.backgroundColor).toBe("var(--timeful-unavailable-bg-time-grid)")
     expect(classStyle.style.borderLeftStyle).toBe("solid")
     expect(classStyle.style.borderRightStyle).toBe("solid")
-    expect(classStyle.style.borderLeftColor).toBe("var(--timeful-grid-separator-strong)")
-    expect(classStyle.style.borderRightColor).toBe("var(--timeful-grid-separator-strong)")
-    expect(classStyle.style.borderBottomColor).toBe("var(--timeful-grid-separator-soft)")
+    expect(classStyle.style.borderLeftColor).toBe("var(--timeful-grid-line-color)")
+    expect(classStyle.style.borderRightColor).toBe("var(--timeful-grid-line-color)")
+    expect(classStyle.style.borderBottomColor).toBe("var(--timeful-grid-line-color)")
   })
 
   it("uses the timed-grid unavailable token for zero-response heatmap slots", () => {
@@ -612,7 +617,7 @@ describe("scheduleOverlapRendering", () => {
     expect(classStyle.class).not.toContain("tw-border-dashed")
     expect(classStyle.class).not.toContain("tw-border-black")
     expect(classStyle.style.borderRightStyle).toBe("solid")
-    expect(classStyle.style.borderRightColor).toBe("var(--timeful-grid-separator-strong)")
+    expect(classStyle.style.borderRightColor).toBe("var(--timeful-grid-line-color)")
     expect(classStyle.style.boxShadow).toBe("inset 0 0 0 2px var(--timeful-selection-strong)")
     expect(classStyle.style.backgroundImage).toContain("repeating-linear-gradient")
     expect(classStyle.style.backgroundImage).toContain("5px 7px")
@@ -751,9 +756,9 @@ describe("scheduleOverlapRendering", () => {
     expect(classStyle.style.backgroundColor).toBe("var(--timeful-unavailable-bg-time-grid)")
     expect(classStyle.style.borderLeftStyle).toBe("solid")
     expect(classStyle.style.borderRightStyle).toBe("solid")
-    expect(classStyle.style.borderLeftColor).toBe("var(--timeful-grid-separator-strong)")
-    expect(classStyle.style.borderRightColor).toBe("var(--timeful-grid-separator-strong)")
-    expect(classStyle.style.borderBottomColor).toBe("var(--timeful-grid-separator-soft)")
+    expect(classStyle.style.borderLeftColor).toBe("var(--timeful-grid-line-color)")
+    expect(classStyle.style.borderRightColor).toBe("var(--timeful-grid-line-color)")
+    expect(classStyle.style.borderBottomColor).toBe("var(--timeful-grid-line-color)")
   })
 
   it("uses the timed-grid unavailable token for zero-response best-times slots", () => {
@@ -891,6 +896,8 @@ describe("scheduleOverlapRendering", () => {
     expect(classStyle.style.borderRightStyle).toBe("solid")
     expect(classStyle.class).toContain("tw-border-l")
     expect(classStyle.class).toContain("tw-border-r")
+    expect(classStyle.class).not.toContain("tw-border-l-gray")
+    expect(classStyle.class).not.toContain("tw-border-r-gray")
   })
 
   it("uses strong vertical separators at non-consecutive date boundaries in the default timed grid", () => {
@@ -934,8 +941,8 @@ describe("scheduleOverlapRendering", () => {
       inDragRange: () => false,
     })
 
-    expect(classStyle.style.borderLeftColor).toBe("var(--timeful-grid-separator-strong)")
-    expect(classStyle.style.borderRightColor).toBe("var(--timeful-grid-separator-strong)")
-    expect(classStyle.style.borderBottomColor).toBe("var(--timeful-grid-separator-soft)")
+    expect(classStyle.style.borderLeftColor).toBe("var(--timeful-grid-line-color)")
+    expect(classStyle.style.borderRightColor).toBe("var(--timeful-grid-line-color)")
+    expect(classStyle.style.borderBottomColor).toBe("var(--timeful-grid-line-color)")
   })
 })

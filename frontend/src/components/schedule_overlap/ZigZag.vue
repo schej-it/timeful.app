@@ -40,18 +40,20 @@ const lineStyle = computed(() => ({
   background: linear-gradient(
     45deg,
     white,
-    white 49%,
-    black 49%,
-    transparent 51%
+    white calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% + var(--timeful-grid-line-half-width)),
+    transparent calc(50% + var(--timeful-grid-line-half-width))
   );
 }
 .line2-left {
   background: linear-gradient(
     -45deg,
     transparent,
-    transparent 49%,
-    black 49%,
-    white 51%
+    transparent calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% + var(--timeful-grid-line-half-width)),
+    white calc(50% + var(--timeful-grid-line-half-width))
   );
 }
 
@@ -59,18 +61,20 @@ const lineStyle = computed(() => ({
   background: linear-gradient(
     45deg,
     transparent,
-    transparent 49%,
-    black 51%,
-    white 51%
+    transparent calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% + var(--timeful-grid-line-half-width)),
+    white calc(50% + var(--timeful-grid-line-half-width))
   );
 }
 .line2-right {
   background: linear-gradient(
     -45deg,
     white,
-    white 49%,
-    black 51%,
-    transparent 51%
+    white calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% + var(--timeful-grid-line-half-width)),
+    transparent calc(50% + var(--timeful-grid-line-half-width))
   );
 }
 </style>

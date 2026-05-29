@@ -5,14 +5,18 @@
 :root {
   --timeful-selection-bg: #f2faf6;
   --timeful-selection-fg: #00994c;
+  --timeful-selection-strong: #1c7d45;
   --timeful-error-foreground: #dc2626;
   --timeful-unavailable-bg: #e523230d;
   --timeful-unavailable-bg-time-grid: #f9cccc;
   --timeful-unavailable-bg-day-grid: #e523233b;
-  --timeful-grid-separator: #a29e9e;
-  --timeful-grid-hour-separator: #999999;
-  --timeful-grid-separator-strong: #999999;
-  --timeful-grid-separator-soft: #dddddd99;
+  --timeful-grid-line-color: #999999;
+  --timeful-grid-line-width: 1px;
+  --timeful-grid-line-half-width: 0.5px;
+  --timeful-grid-separator: var(--timeful-grid-line-color);
+  --timeful-grid-hour-separator: var(--timeful-grid-line-color);
+  --timeful-grid-separator-strong: var(--timeful-grid-line-color);
+  --timeful-grid-separator-soft: var(--timeful-grid-line-color);
   --timeful-muted-foreground: rgba(0, 0, 0, 0.6);
   --timeful-disabled-foreground: rgba(0, 0, 0, 0.38);
   --timeful-disabled-checkbox-icon: #aaaaaa;

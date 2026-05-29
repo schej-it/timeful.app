@@ -44,10 +44,8 @@ export interface OverlaidAvailabilityBlock {
 const UNAVAILABLE_BG = "var(--timeful-unavailable-bg)"
 const UNAVAILABLE_BG_TIME_GRID = "var(--timeful-unavailable-bg-time-grid)"
 const UNAVAILABLE_BG_DAY_GRID = "var(--timeful-unavailable-bg-day-grid)"
-const GRID_SEPARATOR = "var(--timeful-grid-separator)"
-const GRID_HOUR_SEPARATOR = "var(--timeful-grid-hour-separator)"
-const GRID_SEPARATOR_STRONG = "var(--timeful-grid-separator-strong)"
-const GRID_SEPARATOR_SOFT = "var(--timeful-grid-separator-soft)"
+const GRID_LINE_COLOR = "var(--timeful-grid-line-color)"
+const GRID_LINE_WIDTH = "var(--timeful-grid-line-width)"
 const SELECTION_STRONG = "var(--timeful-selection-strong)"
 
 interface TimeslotBaseArgs {
@@ -323,7 +321,8 @@ export const getTimeGridTimeslotClassStyle = ({
   ) {
     cs.class += "tw-border-r tw-z-10 "
     cs.style.borderRightStyle = "solid"
-    cs.style.borderRightColor = GRID_SEPARATOR_STRONG
+    cs.style.borderRightWidth = GRID_LINE_WIDTH
+    cs.style.borderRightColor = GRID_LINE_COLOR
     cs.style.boxShadow = `inset 0 0 0 2px ${SELECTION_STRONG}`
     cs.style.backgroundImage =
       `repeating-linear-gradient(135deg, transparent 0 5px, ${SELECTION_STRONG} 5px 7px, transparent 7px 11px)`
@@ -340,59 +339,49 @@ export const getTimeGridTimeslotClassStyle = ({
     if (isFirstSplit && baseArgs.row === 0) {
       cs.class += "tw-border-t "
       cs.style.borderTopStyle = "solid"
-      cs.style.borderTopWidth = "0.5px"
-      cs.style.borderTopColor = GRID_HOUR_SEPARATOR
+      cs.style.borderTopWidth = GRID_LINE_WIDTH
+      cs.style.borderTopColor = GRID_LINE_COLOR
     } else if (localMinute === 0) {
       cs.class += "tw-border-t "
       cs.style.borderTopStyle = "solid"
-      cs.style.borderTopWidth = "0.5px"
-      cs.style.borderTopColor = GRID_HOUR_SEPARATOR
+      cs.style.borderTopWidth = GRID_LINE_WIDTH
+      cs.style.borderTopColor = GRID_LINE_COLOR
     } else if (localMinute === 30) {
       cs.class += "tw-border-t "
       cs.style.borderTopStyle = "dashed"
-      cs.style.borderTopWidth = "1px"
-      cs.style.borderTopColor = GRID_SEPARATOR
+      cs.style.borderTopWidth = GRID_LINE_WIDTH
+      cs.style.borderTopColor = GRID_LINE_COLOR
     }
 
     cs.class += "tw-border-r "
     cs.style.borderRightStyle = "solid"
+    cs.style.borderRightWidth = GRID_LINE_WIDTH
     if (isLeftDateBoundary) {
-      cs.class += "tw-border-l tw-border-l-gray "
+      cs.class += "tw-border-l "
       cs.style.borderLeftStyle = "solid"
+      cs.style.borderLeftWidth = GRID_LINE_WIDTH
     }
     if (isRightDateBoundary) {
-      cs.class += "tw-border-r-gray "
+      cs.class += "tw-border-r "
     }
     if (!isFirstSplit && baseArgs.row === baseArgs.firstSplitLength) {
-      cs.class += "tw-border-t tw-border-t-gray "
+      cs.class += "tw-border-t "
       cs.style.borderTopStyle = "solid"
+      cs.style.borderTopWidth = GRID_LINE_WIDTH
     }
     if (isFirstSplit && baseArgs.row === baseArgs.firstSplitLength - 1) {
-      cs.class += "tw-border-b tw-border-b-gray "
+      cs.class += "tw-border-b "
       cs.style.borderBottomStyle = "solid"
+      cs.style.borderBottomWidth = GRID_LINE_WIDTH
     }
     if (!isFirstSplit && baseArgs.row === baseArgs.lastRow) {
-      cs.class += "tw-border-b tw-border-b-gray "
+      cs.class += "tw-border-b "
       cs.style.borderBottomStyle = "solid"
+      cs.style.borderBottomWidth = GRID_LINE_WIDTH
     }
-
-    const total =
-      state === states.SUBSET_AVAILABILITY
-        ? curRespondents.length
-        : respondents.length
-    if (
-      state === states.EDIT_AVAILABILITY ||
-      state === states.SINGLE_AVAILABILITY ||
-      total === 1
-    ) {
-      cs.style.borderLeftColor = GRID_SEPARATOR_STRONG
-      cs.style.borderRightColor = GRID_SEPARATOR_STRONG
-      cs.style.borderBottomColor = GRID_SEPARATOR_STRONG
-    } else {
-      cs.style.borderLeftColor = GRID_SEPARATOR_STRONG
-      cs.style.borderRightColor = GRID_SEPARATOR_STRONG
-      cs.style.borderBottomColor = GRID_SEPARATOR_SOFT
-    }
+    cs.style.borderLeftColor = GRID_LINE_COLOR
+    cs.style.borderRightColor = GRID_LINE_COLOR
+    cs.style.borderBottomColor = GRID_LINE_COLOR
   }
 
   if (isDisabled) {
@@ -509,18 +498,26 @@ export const getDayGridTimeslotClassStyle = ({
     cs.style.outlineColor = SELECTION_STRONG
   } else {
     if (baseArgs.col === 0) {
-      cs.class += "tw-border-l tw-border-l-gray "
+      cs.class += "tw-border-l "
       cs.style.borderLeftStyle = "solid"
+      cs.style.borderLeftWidth = GRID_LINE_WIDTH
+      cs.style.borderLeftColor = GRID_LINE_COLOR
     }
-    cs.class += "tw-border-r tw-border-r-gray "
+    cs.class += "tw-border-r "
+    cs.style.borderRightWidth = GRID_LINE_WIDTH
     cs.style.borderRightStyle = baseArgs.col !== 6 ? "dashed" : "solid"
+    cs.style.borderRightColor = GRID_LINE_COLOR
     if (baseArgs.row === 0) {
-      cs.class += "tw-border-t tw-border-t-gray "
+      cs.class += "tw-border-t "
       cs.style.borderTopStyle = "solid"
+      cs.style.borderTopWidth = GRID_LINE_WIDTH
+      cs.style.borderTopColor = GRID_LINE_COLOR
     }
-    cs.class += "tw-border-b tw-border-b-gray "
+    cs.class += "tw-border-b "
+    cs.style.borderBottomWidth = GRID_LINE_WIDTH
     cs.style.borderBottomStyle =
       baseArgs.row !== baseArgs.lastMonthRow ? "dashed" : "solid"
+    cs.style.borderBottomColor = GRID_LINE_COLOR
   }
 
   return cs

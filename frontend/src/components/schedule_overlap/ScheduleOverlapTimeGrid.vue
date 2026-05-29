@@ -357,10 +357,10 @@ defineProps<{
 
 .schedule-overlap-collapsed-row {
   background: #f8f8f8;
-  border-top: 1px dashed var(--timeful-grid-separator);
-  border-right: 1px dashed var(--timeful-grid-separator);
-  border-bottom: 1px dashed var(--timeful-grid-separator);
-  border-left: 1px dashed var(--timeful-grid-separator);
+  border-top: var(--timeful-grid-line-width) dashed var(--timeful-grid-line-color);
+  border-right: var(--timeful-grid-line-width) dashed var(--timeful-grid-line-color);
+  border-bottom: var(--timeful-grid-line-width) dashed var(--timeful-grid-line-color);
+  border-left: var(--timeful-grid-line-width) dashed var(--timeful-grid-line-color);
   color: rgba(0, 0, 0, 0.7);
   min-height: 44px;
 }
