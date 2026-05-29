@@ -35,6 +35,8 @@ vi.mock("@/plugins/posthog", () => ({
 }))
 
 const zdt = (iso: string) => Temporal.Instant.from(iso).toZonedDateTimeISO(UTC)
+const plainTimeInZone = (time: Temporal.ZonedDateTime, timeZone: string) =>
+  time.withTimeZone(timeZone).toPlainTime()
 
 describe("useEventScheduling", () => {
   beforeEach(() => {
@@ -121,15 +123,15 @@ describe("useEventScheduling", () => {
       "2026-05-18",
     ])
     expect(event.value.timeSeed?.toString()).toBe("2026-05-18T00:00:00+00:00[UTC]")
-    expect(event.value.duration?.toString()).toBe("PT1H")
+    expect(event.value.duration?.toString()).toBe("PT60M")
     expect(event.value.startTime?.toString()).toBe("00:00:00")
-    expect(event.value.endTime?.toString()).toBe("01:00:00")
+    expect(event.value.endTime?.toString()).toBe("00:15:00")
     expect(event.value).not.toBe(originalEvent)
     expect(state.value).toBe(states.HEATMAP)
     expect(showErrorMock).not.toHaveBeenCalled()
   })
 
-  it("rebuilds specific-time event seeds from the schedule timezone using integer local hours", async () => {
+  it("rebuilds specific-time event seeds from the exact selected local times", async () => {
     const state = ref(states.SET_SPECIFIC_TIMES)
     const event = ref<ScheduleOverlapEvent>({
       _id: "evt-2",
@@ -146,7 +148,7 @@ describe("useEventScheduling", () => {
       sendEmailAfterXResponses: -1,
       collectEmails: false,
       startOnMonday: true,
-      timeIncrement: durations.ONE_HOUR,
+      timeIncrement: durations.FIFTEEN_MINUTES,
       creatorPosthogId: "creator-2",
       remindees: [],
     })
@@ -162,7 +164,7 @@ describe("useEventScheduling", () => {
       state,
       defaultState: computed(() => states.HEATMAP),
       splitTimes: computed(() => [[{ hoursOffset: durations.ZERO, text: "slot" }], []]),
-      timeslotDuration: computed(() => durations.ONE_HOUR),
+      timeslotDuration: computed(() => durations.FIFTEEN_MINUTES),
       timeslotHeight: computed(() => 16),
       timezoneOffset: computed(() => Temporal.Duration.from({ hours: -3 })),
       isWeekly: computed(() => false),
@@ -171,7 +173,7 @@ describe("useEventScheduling", () => {
       getDateFromRowCol: () => null,
       getMinMaxHoursFromTimes: (times) => {
         const plainTimes = times.map((time) =>
-          Temporal.PlainTime.from({ hour: time.withTimeZone("Europe/Moscow").hour })
+          plainTimeInZone(time, "Europe/Moscow")
         )
         return {
           minHours: plainTimes.reduce((min, time) =>
@@ -199,12 +201,245 @@ describe("useEventScheduling", () => {
 
     expect(putMock).toHaveBeenCalledTimes(1)
     expect(putMock.mock.calls[0]?.[1]).toMatchObject({
-      dates: ["2026-05-19T06:00:00Z"],
+      dates: ["2026-05-19T06:15:00Z"],
       times: ["2026-05-19T06:15:00Z", "2026-05-19T06:30:00Z"],
     })
-    expect(event.value.timeSeed?.toString()).toBe("2026-05-19T06:00:00+00:00[UTC]")
-    expect(event.value.startTime?.toString()).toBe("06:00:00")
-    expect(event.value.duration?.toString()).toBe("PT1H")
+    expect(event.value.timeSeed?.toString()).toBe("2026-05-19T06:15:00+00:00[UTC]")
+    expect(event.value.startTime?.toString()).toBe("06:15:00")
+    expect(event.value.duration?.toString()).toBe("PT30M")
+    expect(showErrorMock).not.toHaveBeenCalled()
+  })
+
+  it("rebuilds specific-time membership days from the selected instants instead of stale event dates", async () => {
+    const state = ref(states.SET_SPECIFIC_TIMES)
+    const event = ref<ScheduleOverlapEvent>({
+      _id: "evt-3",
+      shortId: "seed456",
+      name: "Specific times local day rebuild",
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [Temporal.PlainDate.from("2026-05-28"), Temporal.PlainDate.from("2026-05-29")],
+      timeSeed: zdt("2026-05-28T00:00:00Z"),
+      duration: Temporal.Duration.from({ hours: 24 }),
+      hasSpecificTimes: true,
+      notificationsEnabled: false,
+      blindAvailabilityEnabled: false,
+      daysOnly: false,
+      sendEmailAfterXResponses: -1,
+      collectEmails: false,
+      startOnMonday: true,
+      timeIncrement: durations.ONE_HOUR,
+      creatorPosthogId: "creator-3",
+      remindees: [],
+    })
+    const scheduling = useEventScheduling({
+      event,
+      weekOffset: ref(0),
+      curTimezone: ref({
+        value: "Europe/Belgrade",
+        offset: Temporal.Duration.from({ hours: -2 }),
+        label: "Europe/Belgrade",
+        gmtString: "GMT+2",
+      }),
+      state,
+      defaultState: computed(() => states.HEATMAP),
+      splitTimes: computed(() => [[{ hoursOffset: durations.ZERO, text: "slot" }], []]),
+      timeslotDuration: computed(() => durations.ONE_HOUR),
+      timeslotHeight: computed(() => 16),
+      timezoneOffset: computed(() => Temporal.Duration.from({ hours: -2 })),
+      isWeekly: computed(() => false),
+      isGroup: computed(() => false),
+      isSpecificTimes: computed(() => true),
+      getDateFromRowCol: () => null,
+      getMinMaxHoursFromTimes: (times) => {
+        const plainTimes = times.map((time) =>
+          plainTimeInZone(time, "Europe/Belgrade")
+        )
+        return {
+          minHours: plainTimes.reduce((min, time) =>
+            Temporal.PlainTime.compare(time, min) < 0 ? time : min
+          ),
+          maxHours: plainTimes.reduce((max, time) =>
+            Temporal.PlainTime.compare(time, max) > 0 ? time : max
+          ),
+        }
+      },
+      dragging: ref(false),
+      dragStart: ref(null),
+      dragCur: ref(null),
+      tempTimes: shallowRef(
+        new ZdtSet([
+          zdt("2026-05-28T22:00:00Z"),
+          zdt("2026-05-28T23:00:00Z"),
+          zdt("2026-05-29T22:00:00Z"),
+          zdt("2026-05-29T23:00:00Z"),
+        ])
+      ),
+      respondents: computed(() => []),
+    })
+
+    scheduling.saveTempTimes()
+    await Promise.resolve()
+
+    expect(putMock).toHaveBeenCalledTimes(1)
+    expect(putMock.mock.calls[0]?.[1]).toMatchObject({
+      dates: ["2026-05-28T22:00:00Z", "2026-05-29T22:00:00Z"],
+      times: [
+        "2026-05-28T22:00:00Z",
+        "2026-05-28T23:00:00Z",
+        "2026-05-29T22:00:00Z",
+        "2026-05-29T23:00:00Z",
+      ],
+    })
+    expect(event.value.timeSeed?.toString()).toBe("2026-05-28T22:00:00+00:00[UTC]")
+    expect(event.value.dates?.map((date) => date.toString())).toEqual([
+      "2026-05-28",
+      "2026-05-29",
+    ])
+    expect(showErrorMock).not.toHaveBeenCalled()
+  })
+
+  it("saves the exact UTC quarter-hour payload for a two-day specific-times drag selection", async () => {
+    const state = ref(states.SET_SPECIFIC_TIMES)
+    const event = ref<ScheduleOverlapEvent>({
+      _id: "evt-4",
+      shortId: "drag789",
+      name: "Specific times drag save",
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [Temporal.PlainDate.from("2026-05-29"), Temporal.PlainDate.from("2026-05-30")],
+      timeSeed: zdt("2026-05-29T00:00:00Z"),
+      duration: Temporal.Duration.from({ hours: 24 }),
+      hasSpecificTimes: true,
+      notificationsEnabled: false,
+      blindAvailabilityEnabled: false,
+      daysOnly: false,
+      sendEmailAfterXResponses: -1,
+      collectEmails: false,
+      startOnMonday: true,
+      timeIncrement: durations.FIFTEEN_MINUTES,
+      creatorPosthogId: "creator-4",
+      remindees: [],
+    })
+    const selectedTimes = new ZdtSet(
+      ["2026-05-29", "2026-05-30"].flatMap((date) =>
+        [
+          "01:00:00",
+          "01:15:00",
+          "01:30:00",
+          "01:45:00",
+          "02:00:00",
+          "02:15:00",
+          "02:30:00",
+          "02:45:00",
+          "03:00:00",
+          "03:15:00",
+          "03:30:00",
+          "03:45:00",
+          "04:00:00",
+        ].map((time) => zdt(`${date}T${time}Z`))
+      )
+    )
+    const scheduling = useEventScheduling({
+      event,
+      weekOffset: ref(0),
+      curTimezone: ref({
+        value: UTC,
+        offset: durations.ZERO,
+        label: "UTC",
+        gmtString: "GMT",
+      }),
+      state,
+      defaultState: computed(() => states.HEATMAP),
+      splitTimes: computed(() => [[{ hoursOffset: durations.ZERO, text: "slot" }], []]),
+      timeslotDuration: computed(() => durations.FIFTEEN_MINUTES),
+      timeslotHeight: computed(() => 16),
+      timezoneOffset: computed(() => durations.ZERO),
+      isWeekly: computed(() => false),
+      isGroup: computed(() => false),
+      isSpecificTimes: computed(() => true),
+      getDateFromRowCol: () => null,
+      getMinMaxHoursFromTimes: (times) => {
+        const plainTimes = times.map((time) => plainTimeInZone(time, UTC))
+        return {
+          minHours: plainTimes.reduce((min, time) =>
+            Temporal.PlainTime.compare(time, min) < 0 ? time : min
+          ),
+          maxHours: plainTimes.reduce((max, time) =>
+            Temporal.PlainTime.compare(time, max) > 0 ? time : max
+          ),
+        }
+      },
+      dragging: ref(false),
+      dragStart: ref(null),
+      dragCur: ref(null),
+      tempTimes: shallowRef(selectedTimes),
+      respondents: computed(() => []),
+    })
+
+    scheduling.saveTempTimes()
+    await Promise.resolve()
+
+    expect(putMock).toHaveBeenCalledTimes(1)
+    expect(putMock.mock.calls[0]?.[1]).toMatchObject({
+      dates: ["2026-05-29T01:00:00Z", "2026-05-30T01:00:00Z"],
+      duration: 3.25,
+      times: [
+        "2026-05-29T01:00:00Z",
+        "2026-05-29T01:15:00Z",
+        "2026-05-29T01:30:00Z",
+        "2026-05-29T01:45:00Z",
+        "2026-05-29T02:00:00Z",
+        "2026-05-29T02:15:00Z",
+        "2026-05-29T02:30:00Z",
+        "2026-05-29T02:45:00Z",
+        "2026-05-29T03:00:00Z",
+        "2026-05-29T03:15:00Z",
+        "2026-05-29T03:30:00Z",
+        "2026-05-29T03:45:00Z",
+        "2026-05-29T04:00:00Z",
+        "2026-05-30T01:00:00Z",
+        "2026-05-30T01:15:00Z",
+        "2026-05-30T01:30:00Z",
+        "2026-05-30T01:45:00Z",
+        "2026-05-30T02:00:00Z",
+        "2026-05-30T02:15:00Z",
+        "2026-05-30T02:30:00Z",
+        "2026-05-30T02:45:00Z",
+        "2026-05-30T03:00:00Z",
+        "2026-05-30T03:15:00Z",
+        "2026-05-30T03:30:00Z",
+        "2026-05-30T03:45:00Z",
+        "2026-05-30T04:00:00Z",
+      ],
+    })
+    expect(
+      event.value.times?.map((time: Temporal.ZonedDateTime) => time.toString())
+    ).toEqual(
+      ["2026-05-29", "2026-05-30"].flatMap((date) =>
+        [
+          "01:00:00",
+          "01:15:00",
+          "01:30:00",
+          "01:45:00",
+          "02:00:00",
+          "02:15:00",
+          "02:30:00",
+          "02:45:00",
+          "03:00:00",
+          "03:15:00",
+          "03:30:00",
+          "03:45:00",
+          "04:00:00",
+        ].map((time) => `${date}T${time}+00:00[UTC]`)
+      )
+    )
+    expect(event.value.dates?.map((date) => date.toString())).toEqual([
+      "2026-05-29",
+      "2026-05-30",
+    ])
+    expect(event.value.timeSeed?.toString()).toBe("2026-05-29T01:00:00+00:00[UTC]")
+    expect(event.value.duration?.toString()).toBe("PT3H15M")
+    expect(event.value.startTime?.toString()).toBe("01:00:00")
+    expect(event.value.endTime?.toString()).toBe("04:15:00")
     expect(showErrorMock).not.toHaveBeenCalled()
   })
 })

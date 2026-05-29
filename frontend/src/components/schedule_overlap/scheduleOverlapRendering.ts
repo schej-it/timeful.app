@@ -253,6 +253,7 @@ interface TimeGridTimeslotArgs extends TimeslotBaseArgs {
   date: Temporal.ZonedDateTime | null
   timeHoursOffset?: Temporal.Duration
   splitStartHoursOffset?: Temporal.Duration
+  absoluteMinutes?: number
   isFirstSplit: boolean
   isDisabled: boolean
   animateTimeslotAlways: boolean
@@ -329,12 +330,18 @@ export const getTimeGridTimeslotClassStyle = ({
   } else {
     const splitStartOffsetMinutes = splitStartHoursOffset?.total("minutes")
     const offsetMinutes = timeHoursOffset?.total("minutes")
-    const localMinute =
-      baseArgs.date
-        ? baseArgs.date.subtract({ minutes: timezoneOffset.total("minutes") }).minute
+    const displayedMinutes =
+      typeof baseArgs.absoluteMinutes === "number"
+        ? baseArgs.absoluteMinutes
         : typeof offsetMinutes === "number" &&
             typeof splitStartOffsetMinutes === "number"
-          ? (((offsetMinutes - splitStartOffsetMinutes) % 60) + 60) % 60
+          ? offsetMinutes - splitStartOffsetMinutes
+          : null
+    const localMinute =
+      typeof displayedMinutes === "number"
+        ? (((displayedMinutes % 60) + 60) % 60)
+        : baseArgs.date
+          ? baseArgs.date.subtract({ minutes: timezoneOffset.total("minutes") }).minute
           : null
     if (isFirstSplit && baseArgs.row === 0) {
       cs.class += "tw-border-t "
@@ -413,6 +420,7 @@ export const buildTimeGridTimeslotClassStyles = ({
           ...sharedArgs,
           date,
           timeHoursOffset: firstSplitTimes[row]?.hoursOffset,
+          absoluteMinutes: firstSplitTimes[row]?.absoluteMinutes,
           splitStartHoursOffset: firstSplitStartHoursOffset,
           row,
           col,
@@ -434,6 +442,7 @@ export const buildTimeGridTimeslotClassStyles = ({
           ...sharedArgs,
           date,
           timeHoursOffset: secondSplitTimes[secondSplitRow]?.hoursOffset,
+          absoluteMinutes: secondSplitTimes[secondSplitRow]?.absoluteMinutes,
           splitStartHoursOffset: secondSplitStartHoursOffset,
           row,
           col,

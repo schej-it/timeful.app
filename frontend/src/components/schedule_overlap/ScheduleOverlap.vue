@@ -103,6 +103,7 @@ import {
   states,
   COLLAPSED_HOURS_ROW_HEIGHT,
   MIN_COLLAPSIBLE_HIDDEN_SPAN_HOURS,
+  SPLIT_GAP_HEIGHT,
 } from "@/composables/schedule_overlap/types"
 import type {
   FetchedResponse, RenderedTimeGridRow, RenderedTimeGridRowCell, RowCol, Timezone, ScheduleOverlapState, ScheduleOverlapEvent, NormalizedCalendarEvent, CalendarEventsByDay, CalendarEventsMap,
@@ -739,30 +740,7 @@ function getBaseRowScheduleDate(
   baseRowIndex: number,
   visibleDayIndex: number
 ): Temporal.ZonedDateTime | null {
-  const time = getBaseRowTimeItem(baseRowIndex)
-  const absoluteDayIndex = page.value * maxDaysPerPage.value + visibleDayIndex
-  const hasSecondSplit = splitTimes.value[1].length > 0
-  const isFirstSplit = baseRowIndex < splitTimes.value[0].length
-
-  let adjustedDayIndex = absoluteDayIndex
-  if (hasSecondSplit) {
-    if (isFirstSplit) {
-      adjustedDayIndex = absoluteDayIndex - 1
-    } else if (absoluteDayIndex === allDays.value.length - 1) {
-      return null
-    }
-  }
-
-  if (adjustedDayIndex < 0 || adjustedDayIndex >= allDays.value.length) {
-    return null
-  }
-
-  const day = allDays.value[adjustedDayIndex]
-  if (day.excludeTimes) {
-    return null
-  }
-
-  return grid.getDateFromDayHoursOffset(adjustedDayIndex, time.hoursOffset)
+  return getDisplayDateFromRowCol(baseRowIndex, visibleDayIndex)
 }
 
 function isDateAvailableForSettingAvailability(
@@ -808,25 +786,6 @@ const pageSlots = computed<PageSlot[]>(() => {
     })
   }
 
-  if (splitTimes.value[1].length > 0 && firstSplitLength > 0) {
-    const wrapStartMinutes =
-      (splitTimes.value[0][firstSplitLength - 1].absoluteMinutes ?? 0) + slotMinutes
-    const wrapEndMinutes = splitTimes.value[1][0].absoluteMinutes ?? wrapStartMinutes
-
-    for (
-      let absoluteMinutes = wrapStartMinutes;
-      absoluteMinutes < wrapEndMinutes;
-      absoluteMinutes += slotMinutes
-    ) {
-      slots.push({
-        id: `filler-${String(absoluteMinutes)}`,
-        kind: "filler",
-        startMinutes: absoluteMinutes,
-        endMinutes: absoluteMinutes + slotMinutes,
-      })
-    }
-  }
-
   for (let baseRowIndex = firstSplitLength; baseRowIndex < totalBaseRows; baseRowIndex += 1) {
     const time = splitTimes.value[1][baseRowIndex - firstSplitLength]
     const startMinutes = time.absoluteMinutes ?? 0
@@ -842,6 +801,46 @@ const pageSlots = computed<PageSlot[]>(() => {
   return slots
 })
 
+const pageGreyFlags = computed(() =>
+  pageSlots.value.map((slot) =>
+    slot.kind === "filler"
+      ? true
+      : isBaseRowUnavailableOnEveryVisibleDay(slot.baseRowIndex ?? -1)
+  )
+)
+
+const trimmedPageSlotRange = computed<{
+  startIndex: number
+  endIndex: number
+}>(() => {
+  const slots = pageSlots.value
+  if (!canCollapseTimes.value) {
+    return {
+      startIndex: 0,
+      endIndex: slots.length,
+    }
+  }
+
+  const greyFlags = pageGreyFlags.value
+  const firstVisibleIndex = greyFlags.findIndex((isGrey) => !isGrey)
+  if (firstVisibleIndex === -1) {
+    return {
+      startIndex: 0,
+      endIndex: slots.length,
+    }
+  }
+
+  let lastVisibleIndex = greyFlags.length - 1
+  while (lastVisibleIndex >= firstVisibleIndex && greyFlags[lastVisibleIndex]) {
+    lastVisibleIndex -= 1
+  }
+
+  return {
+    startIndex: firstVisibleIndex,
+    endIndex: lastVisibleIndex + 1,
+  }
+})
+
 const collapsedPageSegments = computed<CollapsedPageSegment[]>(() => {
   if (!canCollapseTimes.value) {
     return []
@@ -852,11 +851,8 @@ const collapsedPageSegments = computed<CollapsedPageSegment[]>(() => {
     (MIN_COLLAPSIBLE_HIDDEN_SPAN_HOURS * 60) / slotMinutes
   )
   const slots = pageSlots.value
-  const greyFlags = slots.map((slot) =>
-    slot.kind === "filler"
-      ? true
-      : isBaseRowUnavailableOnEveryVisibleDay(slot.baseRowIndex ?? -1)
-  )
+  const greyFlags = pageGreyFlags.value
+  const { startIndex, endIndex } = trimmedPageSlotRange.value
   const segments: CollapsedPageSegment[] = []
 
   const buildCollapsedSegmentFromRun = (
@@ -922,7 +918,7 @@ const collapsedPageSegments = computed<CollapsedPageSegment[]>(() => {
     runStartIndex = null
   }
 
-  for (let slotIndex = 0; slotIndex < slots.length; slotIndex += 1) {
+  for (let slotIndex = startIndex; slotIndex < endIndex; slotIndex += 1) {
     if (greyFlags[slotIndex]) {
       runStartIndex ??= slotIndex
       continue
@@ -931,7 +927,7 @@ const collapsedPageSegments = computed<CollapsedPageSegment[]>(() => {
     flushRun(slotIndex)
   }
 
-  flushRun(slots.length)
+  flushRun(endIndex)
   return segments
 })
 
@@ -1106,6 +1102,16 @@ const renderedRows = computed<RenderedTimeGridRow[]>(() => {
     return rowTop + COLLAPSED_HOURS_ROW_HEIGHT
   }
 
+  const appendSplitGapRow = (rowTop: number): number => {
+    rows.push({
+      id: "split-gap",
+      kind: "split-gap",
+      height: SPLIT_GAP_HEIGHT,
+      rowTop,
+    })
+    return rowTop + SPLIT_GAP_HEIGHT
+  }
+
   const collapsedSegmentByStartIndex = new Map<number, CollapsedPageSegment>()
   for (const segment of collapsedPageSegments.value) {
     if (!expandedCollapsedSpanIds.value.has(segment.id)) {
@@ -1114,8 +1120,9 @@ const renderedRows = computed<RenderedTimeGridRow[]>(() => {
   }
 
   let rowTop = 0
+  const { startIndex, endIndex } = trimmedPageSlotRange.value
 
-  for (let slotIndex = 0; slotIndex < pageSlots.value.length; slotIndex += 1) {
+  for (let slotIndex = startIndex; slotIndex < endIndex; slotIndex += 1) {
     const collapsedSegment = collapsedSegmentByStartIndex.get(slotIndex)
     if (collapsedSegment) {
       rowTop = appendCollapsedRow(
@@ -1130,6 +1137,13 @@ const renderedRows = computed<RenderedTimeGridRow[]>(() => {
 
     const slot = pageSlots.value[slotIndex]
     if (slot.kind === "timeslot" && typeof slot.baseRowIndex === "number") {
+      if (
+        splitTimes.value[1].length > 0 &&
+        slot.baseRowIndex === splitTimes.value[0].length &&
+        rows.at(-1)?.kind !== "split-gap"
+      ) {
+        rowTop = appendSplitGapRow(rowTop)
+      }
       pushTimeslotRow(slot.baseRowIndex, rowTop)
     } else {
       pushFillerRow(slot, rowTop)

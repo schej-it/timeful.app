@@ -159,52 +159,32 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     return new ZdtSet(times ?? [])
   })
 
-  const specificTimesHourBounds = computed<{
-    minHours: Temporal.PlainTime
-    maxHours: Temporal.PlainTime
-  } | null>(() => {
-    const eventTimes = (event.value as { times?: Temporal.ZonedDateTime[] }).times ?? []
-    if (
-      !isSpecificTimes.value ||
-      state.value === states.SET_SPECIFIC_TIMES ||
-      eventTimes.length === 0
-    ) {
-      return null
-    }
-
-    return computeMinMaxHoursFromTimes(eventTimes)
-  })
-
-  const specificTimesFallbackWindow = computed<{
+  const savedSpecificTimesWindow = computed<{
     startTime: Temporal.PlainTime
     duration: Temporal.Duration
+    localStartMinutes: number
+    localEndMinutes: number
   } | null>(() => {
     if (!isSpecificTimes.value || state.value === states.SET_SPECIFIC_TIMES) {
       return null
     }
 
-    const explicitStartTime = event.value.startTime
-    const explicitDuration = event.value.duration
-    if (
-      explicitStartTime &&
-      explicitDuration &&
-      compareDuration(explicitDuration, durations.ZERO) > 0
-    ) {
-      return {
-        startTime: explicitStartTime,
-        duration: explicitDuration,
-      }
-    }
-
-    if (!specificTimesHourBounds.value) {
+    const eventTimes = (event.value as { times?: Temporal.ZonedDateTime[] }).times ?? []
+    if (eventTimes.length === 0) {
       return null
     }
 
+    const { minHours, maxHours } = computeMinMaxHoursFromTimes(eventTimes)
+    const slotDuration = event.value.timeIncrement ?? timeslotDuration.value
+    const localStartMinutes = minHours.hour * 60 + minHours.minute
+    const localEndMinutes =
+      maxHours.hour * 60 + maxHours.minute + Math.round(slotDuration.total("minutes"))
+
     return {
-      startTime: specificTimesHourBounds.value.minHours,
-      duration: specificTimesHourBounds.value.maxHours
-        .since(specificTimesHourBounds.value.minHours)
-        .add({ hours: 1 }),
+      startTime: minHours,
+      duration: durationFromMinutesNumber(localEndMinutes - localStartMinutes),
+      localStartMinutes,
+      localEndMinutes,
     }
   })
 
@@ -213,11 +193,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       return null
     }
 
-    if (event.value.startTime) {
-      return utcTimeToLocalTime(event.value.startTime, timezoneOffset.value)
-    }
-
-    return specificTimesFallbackWindow.value?.startTime ?? null
+    return savedSpecificTimesWindow.value?.startTime ?? null
   })
 
   const computeMinMaxHoursFromTimes = (
@@ -228,64 +204,66 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       return { minHours: zeroHours, maxHours: zeroHours }
     }
 
-    const firstLocalHour = getDateInTimezone(timesArr[0], curTimezone.value).hour
-    let minHours = Temporal.PlainTime.from({ hour: firstLocalHour })
+    const firstLocalTime = getDateInTimezone(timesArr[0], curTimezone.value)
+      .toPlainTime()
+    let minHours = firstLocalTime
     let maxHours = minHours
     for (const time of timesArr.slice(1)) {
-      const localHours = Temporal.PlainTime.from({
-        hour: getDateInTimezone(time, curTimezone.value).hour,
-      })
-      if (Temporal.PlainTime.compare(localHours, minHours) < 0) minHours = localHours
-      if (Temporal.PlainTime.compare(localHours, maxHours) > 0) maxHours = localHours
+      const localTime = getDateInTimezone(time, curTimezone.value).toPlainTime()
+      if (Temporal.PlainTime.compare(localTime, minHours) < 0) minHours = localTime
+      if (Temporal.PlainTime.compare(localTime, maxHours) > 0) maxHours = localTime
     }
     return { minHours, maxHours }
   }
 
-  /**
-   * Returns a two dimensional array of times
-   * IF endTime < startTime:
-   * the first element is an array of times between 12am and end time and the second element is an array of times between start time and 12am
-   * ELSE:
-   * the first element is an array of times between start time and end time. the second element is an empty array
-   * */
   const splitTimes = computed<TimeItem[][]>(() => {
     const split: TimeItem[][] = [[], []]
-    const utcStartTime = specificTimesFallbackWindow.value &&
-      (!event.value.startTime ||
-        !event.value.duration ||
-        compareDuration(event.value.duration, durations.ZERO) <= 0)
-      ? specificTimesFallbackWindow.value.startTime.add(timezoneOffset.value)
-      : (event.value.startTime ?? Temporal.PlainTime.from({ hour: 0 }))
-    const durationHours = specificTimesFallbackWindow.value &&
-      (!event.value.duration || compareDuration(event.value.duration, durations.ZERO) <= 0)
-      ? specificTimesFallbackWindow.value.duration
-      : (event.value.duration ?? durations.ZERO)
-    const localStartTime = utcTimeToLocalTime(
-      utcStartTime,
-      timezoneOffset.value
-    )
-    const localStartMinutes = localStartTime.hour * 60 + localStartTime.minute
+    const preferredSpecificTimesWindow = savedSpecificTimesWindow.value
+    const utcStartTime =
+      preferredSpecificTimesWindow == null
+        ? (event.value.startTime ?? Temporal.PlainTime.from({ hour: 0 }))
+        : null
+    const durationHours =
+      preferredSpecificTimesWindow?.duration ?? (event.value.duration ?? durations.ZERO)
+    const localStartMinutes =
+      preferredSpecificTimesWindow?.localStartMinutes ??
+      (() => {
+        const localStartTime = utcTimeToLocalTime(
+          utcStartTime ?? Temporal.PlainTime.from({ hour: 0 }),
+          timezoneOffset.value
+        )
+        return localStartTime.hour * 60 + localStartTime.minute
+      })()
     const localEndMinutes =
-      localStartMinutes + Math.round(durationHours.total("minutes"))
+      preferredSpecificTimesWindow?.localEndMinutes ??
+      (localStartMinutes + Math.round(durationHours.total("minutes")))
     const timeslotDurationMinutes = Math.round(
       timeslotDuration.value.total("minutes")
     )
 
-    const getExtraTimes = (hoursOffset: Temporal.Duration): TimeItem[] => {
-      const absoluteMinutes = localStartMinutes + hoursOffset.total("minutes")
+    const getExtraTimes = (
+      hoursOffset: Temporal.Duration,
+      baseAbsoluteMinutes = localStartMinutes
+    ): TimeItem[] => {
+      const absoluteMinutes = baseAbsoluteMinutes + hoursOffset.total("minutes")
+      const displayedMinutes =
+        ((absoluteMinutes % (24 * 60)) + 24 * 60) % (24 * 60)
       if (compareDuration(timeslotDuration.value, durations.FIFTEEN_MINUTES) === 0) {
         return [
           {
             hoursOffset: hoursOffset.add(durations.FIFTEEN_MINUTES),
             absoluteMinutes: absoluteMinutes + 15,
+            displayedMinutes: (displayedMinutes + 15) % (24 * 60),
           },
           {
             hoursOffset: hoursOffset.add(durations.THIRTY_MINUTES),
             absoluteMinutes: absoluteMinutes + 30,
+            displayedMinutes: (displayedMinutes + 30) % (24 * 60),
           },
           {
             hoursOffset: hoursOffset.add(durations.FORTY_FIVE_MINUTES),
             absoluteMinutes: absoluteMinutes + 45,
+            displayedMinutes: (displayedMinutes + 45) % (24 * 60),
           },
         ]
       }
@@ -294,6 +272,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
           {
             hoursOffset: hoursOffset.add(durations.THIRTY_MINUTES),
             absoluteMinutes: absoluteMinutes + 30,
+            displayedMinutes: (displayedMinutes + 30) % (24 * 60),
           },
         ]
       }
@@ -309,11 +288,11 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       )
     }
 
-    const addRangeToSplit = (
-      target: TimeItem[],
+    const buildTimeRange = (
       startMinutes: number,
       endMinutes: number
-    ) => {
+    ): TimeItem[] => {
+      const items: TimeItem[] = []
       for (
         let absoluteMinutes = startMinutes;
         absoluteMinutes < endMinutes;
@@ -322,24 +301,39 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
         const hoursOffset = durationFromMinutesNumber(
           absoluteMinutes - localStartMinutes
         )
-        target.push({
+        items.push({
           hoursOffset,
           text: toLocalHourLabel(absoluteMinutes),
           absoluteMinutes,
+          displayedMinutes:
+            ((absoluteMinutes % (24 * 60)) + 24 * 60) % (24 * 60),
         })
       }
+      return items
     }
 
     if (state.value === states.SET_SPECIFIC_TIMES) {
       for (let i = 0; i <= 23; ++i) {
         const hoursOffset = Temporal.Duration.from({ hours: i })
         const text = timeNumToTimeText(i, timeType.value === timeTypes.HOUR12)
+        const absoluteMinutes = i * 60
         if (i === 9) {
-          split[0].push({ id: "time-9", hoursOffset, text, absoluteMinutes: i * 60 })
+          split[0].push({
+            id: "time-9",
+            hoursOffset,
+            text,
+            absoluteMinutes,
+            displayedMinutes: absoluteMinutes,
+          })
         } else {
-          split[0].push({ hoursOffset, text, absoluteMinutes: i * 60 })
+          split[0].push({
+            hoursOffset,
+            text,
+            absoluteMinutes,
+            displayedMinutes: absoluteMinutes,
+          })
         }
-        split[0].push(...getExtraTimes(hoursOffset))
+        split[0].push(...getExtraTimes(hoursOffset, 0))
       }
       return split
     }
@@ -348,19 +342,33 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     const displayEndMinutes = Math.ceil(localEndMinutes / 60) * 60
 
     if (displayEndMinutes > 24 * 60) {
-      addRangeToSplit(split[0], 24 * 60, displayEndMinutes)
-      addRangeToSplit(split[1], displayStartMinutes, 24 * 60)
+      const wrappedEndMinutes = displayEndMinutes - 24 * 60
+      const overlapsOrTouchesInDisplayedLocalDay =
+        displayStartMinutes <= wrappedEndMinutes
+
+      if (overlapsOrTouchesInDisplayedLocalDay) {
+        split[0] = buildTimeRange(24 * 60, 48 * 60)
+      } else {
+        split[0] = buildTimeRange(24 * 60, displayEndMinutes)
+        split[1] = buildTimeRange(displayStartMinutes, 24 * 60)
+      }
     } else {
-      addRangeToSplit(split[0], displayStartMinutes, displayEndMinutes)
+      split[0] = buildTimeRange(displayStartMinutes, displayEndMinutes)
     }
 
     return split
   })
 
-  const times = computed<TimeItem[]>(() => [
-    ...splitTimes.value[1],
+  const displayedTimes = computed<TimeItem[]>(() => [
     ...splitTimes.value[0],
+    ...splitTimes.value[1],
   ])
+
+  const times = computed<TimeItem[]>(() =>
+    splitTimes.value[1].length > 0
+      ? [...splitTimes.value[1], ...splitTimes.value[0]]
+      : displayedTimes.value
+  )
 
   const allDays = computed<DayItem[]>(() => {
     const days: DayItem[] = []
@@ -406,8 +414,26 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       isSpecificTimes.value &&
       (state.value === states.SET_SPECIFIC_TIMES || eventTimes?.length === 0)
     ) {
+      const specificTimesDaySource =
+        eventTimes && eventTimes.length > 0 ? eventTimes : eventDates
       for (const day of getSpecificTimesDayStarts(
-        eventDates,
+        specificTimesDaySource,
+        curTimezone.value
+      )) {
+        const { dayString, dateString } = getDateString(day.dateObject)
+        days.push({
+          dayText: dayString,
+          dateString,
+          dateObject: day.dateObject,
+          isConsecutive: day.isConsecutive,
+        })
+      }
+      return days
+    }
+
+    if (isSpecificTimes.value && eventTimes && eventTimes.length > 0) {
+      for (const day of getSpecificTimesDayStarts(
+        eventTimes,
         curTimezone.value
       )) {
         const { dayString, dateString } = getDateString(day.dateObject)
@@ -457,7 +483,6 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
             dayText: dayString,
             dateString,
             dateObject: nextZDT,
-            excludeTimes: true,
           })
           dayIndex++
         }
@@ -649,28 +674,86 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     return getDateHoursOffset(day.dateObject, hoursOffset)
   }
 
+  const getLocalDayKey = (date: Temporal.ZonedDateTime): string =>
+    getDateInTimezone(date, curTimezone.value).toPlainDate().toString()
+
+  const timedGridIntervalsByLocalDay = computed<
+    Map<string, { start: Temporal.ZonedDateTime; end: Temporal.ZonedDateTime }[]>
+  >(() => {
+    const intervalsByDay = new Map<
+      string,
+      { start: Temporal.ZonedDateTime; end: Temporal.ZonedDateTime }[]
+    >()
+
+    if (event.value.daysOnly || isSpecificTimes.value) {
+      return intervalsByDay
+    }
+
+    const duration = event.value.duration ?? durations.ZERO
+    if (compareDuration(duration, durations.ZERO) <= 0) {
+      return intervalsByDay
+    }
+
+    for (const eventDate of getEventDateSeeds(event.value)) {
+      let segmentStart = getDateInTimezone(eventDate, curTimezone.value)
+      const localEnd = segmentStart.add(duration)
+
+      while (Temporal.ZonedDateTime.compare(segmentStart, localEnd) < 0) {
+        const key = segmentStart.toPlainDate().toString()
+        const nextDayStart = segmentStart.toPlainDate().add({ days: 1 }).toZonedDateTime({
+          timeZone: curTimezone.value.value,
+          plainTime: hoursPlainTime.ZERO,
+        })
+        const segmentEnd =
+          Temporal.ZonedDateTime.compare(localEnd, nextDayStart) < 0
+            ? localEnd
+            : nextDayStart
+        const existing = intervalsByDay.get(key) ?? []
+        existing.push({ start: segmentStart, end: segmentEnd })
+        intervalsByDay.set(key, existing)
+        segmentStart = segmentEnd
+      }
+    }
+
+    return intervalsByDay
+  })
+
+  const getDateFromDisplayedAbsoluteMinutes = (
+    day: DayItem,
+    absoluteMinutes: number
+  ): Temporal.ZonedDateTime => {
+    const localPlainDate = getDateInTimezone(
+      day.dateObject,
+      curTimezone.value
+    ).toPlainDate()
+    const normalizedMinutes =
+      ((absoluteMinutes % (24 * 60)) + 24 * 60) % (24 * 60)
+    const plainTime = Temporal.PlainTime.from({
+      hour: Math.floor(normalizedMinutes / 60),
+      minute: normalizedMinutes % 60,
+    })
+
+    return localPlainDate
+      .toZonedDateTime({
+        timeZone: curTimezone.value.value,
+        plainTime,
+      })
+      .withTimeZone(day.dateObject.timeZoneId)
+  }
+
   const getDateFromDayTimeIndexInternal = (
     dayIndex: number,
     timeIndex: number,
     includeSpecificTimesGaps = false
   ): Temporal.ZonedDateTime | null => {
-    const hasSecondSplit = splitTimes.value[1].length > 0
-    const isFirstSplit = timeIndex < splitTimes.value[0].length
-    const time = isFirstSplit
-      ? (splitTimes.value[0] as (TimeItem | undefined)[])[timeIndex]
-      : (splitTimes.value[1] as (TimeItem | undefined)[])[
-          timeIndex - splitTimes.value[0].length
-        ]
-    let adjustedDayIndex = dayIndex
-    if (hasSecondSplit) {
-      if (isFirstSplit) adjustedDayIndex = dayIndex - 1
-      else if (dayIndex === allDays.value.length - 1) return null
-    }
-    const day = (allDays.value as (DayItem | undefined)[])[adjustedDayIndex]
+    const time = (displayedTimes.value as (TimeItem | undefined)[])[timeIndex]
+    const day = (allDays.value as (DayItem | undefined)[])[dayIndex]
     if (!day || !time) return null
-    if (day.excludeTimes) return null
 
-    const date = getDateHoursOffset(day.dateObject, time.hoursOffset)
+    const date =
+      typeof time.absoluteMinutes === "number"
+        ? getDateFromDisplayedAbsoluteMinutes(day, time.absoluteMinutes)
+        : getDateHoursOffset(day.dateObject, time.hoursOffset)
     if (isSpecificTimes.value) {
       const eventTimes = (event.value as { times?: Temporal.ZonedDateTime[] })
         .times
@@ -682,12 +765,17 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
         if (!zdtSetHas(specificTimesSet.value, date)) return null
       }
     } else {
-      const durationHours = event.value.duration?.total("hours") ?? 0
-      if (
-        time.hoursOffset.total("hours") < 0 ||
-        time.hoursOffset.total("hours") >= durationHours
+      const intervals = timedGridIntervalsByLocalDay.value.get(
+        getLocalDayKey(day.dateObject)
       )
+      const isInInterval = intervals?.some(
+        ({ start, end }) =>
+          Temporal.ZonedDateTime.compare(date, start) >= 0 &&
+          Temporal.ZonedDateTime.compare(date, end) < 0
+      )
+      if (!isInInterval) {
         return null
+      }
     }
     return date
   }

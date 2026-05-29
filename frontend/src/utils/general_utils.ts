@@ -2,7 +2,7 @@
   General utils
 */
 
-import { eventTypes, UTC } from "@/constants"
+import { durations, eventTypes, UTC } from "@/constants"
 import type { Event } from "@/types"
 import { getEventDateSeeds } from "./eventDateRules"
 import {
@@ -13,6 +13,7 @@ import type { ZonedDateTime } from "./temporalPrimitives"
 import { toZDT } from "./timezoneDateRules"
 import Color from "color"
 import type { useDisplay } from "vuetify"
+import { Temporal } from "temporal-polyfill"
 
 type Display = ReturnType<typeof useDisplay>
 
@@ -119,6 +120,21 @@ export const processEvent = (
   event: Event,
   renderedWeekStart?: ZonedDateTime
 ): void => {
+  if (event.hasSpecificTimes && event.times && event.times.length > 0) {
+    const sortedTimes = [...event.times].sort((a, b) =>
+      Temporal.ZonedDateTime.compare(a, b)
+    )
+    const slotDuration = event.timeIncrement ?? durations.ONE_HOUR
+    const startZDT = toZDT(sortedTimes[0], UTC)
+    const endZDT = toZDT(sortedTimes[sortedTimes.length - 1], UTC).add(
+      slotDuration
+    )
+
+    event.startTime = startZDT.toPlainTime()
+    event.endTime = endZDT.toPlainTime()
+    return
+  }
+
   if (!event.dates?.length || event.duration == null) return
   const eventDateSeeds = getEventDateSeeds(event)
   if (eventDateSeeds.length === 0) return

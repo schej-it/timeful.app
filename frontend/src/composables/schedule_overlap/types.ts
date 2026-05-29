@@ -62,6 +62,7 @@ export interface TimeItem {
   text?: string
   id?: string
   absoluteMinutes?: number
+  displayedMinutes?: number
 }
 
 export interface RenderedTimeGridRowCell {
@@ -72,7 +73,7 @@ export interface RenderedTimeGridRowCell {
 
 export interface RenderedTimeGridRow {
   id: string
-  kind: "timeslot" | "collapsed" | "filler"
+  kind: "timeslot" | "collapsed" | "filler" | "split-gap"
   height: number
   rowTop: number
   timeText?: string

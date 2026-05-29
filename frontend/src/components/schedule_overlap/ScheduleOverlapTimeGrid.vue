@@ -27,9 +27,9 @@
           :id="row.kind === 'timeslot' ? `time-row-${row.baseRowIndex ?? 0}` : row.id"
           :key="row.id"
             class="tw-pr-1 tw-text-right tw-text-xs tw-font-light tw-uppercase sm:tw-pr-2"
-            :style="{ height: `${row.height}px` }"
-          >
-            <span v-if="row.kind !== 'collapsed'">{{ row.timeText }}</span>
+          :style="{ height: `${row.height}px` }"
+        >
+            <span v-if="row.kind !== 'collapsed' && row.kind !== 'split-gap'">{{ row.timeText }}</span>
           </div>
       </div>
   </div>
@@ -105,6 +105,10 @@
                     <span>{{ row.startLabel }}-{{ row.endLabel }}</span>
                     <v-icon size="18">mdi-chevron-down</v-icon>
                   </button>
+                  <div
+                    v-else-if="row.kind === 'split-gap'"
+                    class="schedule-overlap-split-gap tw-w-full"
+                  ></div>
                   <template v-else>
                     <template v-for="(day, d) in timedGrid.days" :key="`${row.id}-${d}`">
                       <div
@@ -123,6 +127,8 @@
                           class="timeslot tw-h-full tw-w-full"
                           :class="row.cells?.[d]?.class"
                           :style="row.cells?.[d]?.style"
+                          :data-row="row.kind === 'timeslot' ? row.baseRowIndex : undefined"
+                          :data-col="row.kind === 'timeslot' ? d : undefined"
                           v-on="row.cells?.[d]?.von"
                         ></div>
                       </div>

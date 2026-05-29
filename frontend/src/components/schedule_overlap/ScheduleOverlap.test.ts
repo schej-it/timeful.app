@@ -2,18 +2,23 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { nextTick } from "vue"
+import { mount } from "@vue/test-utils"
 import { Temporal } from "temporal-polyfill"
 import type { timeTypes } from "@/constants"
+import type * as UtilsModule from "@/utils"
 import {
   buildScheduleOverlapProps,
   installScheduleOverlapTestGlobals,
   mountScheduleOverlap,
+  scheduleOverlapGlobalStubs,
 } from "./scheduleOverlapTestUtils"
 import { formatTooltipContent } from "./scheduleOverlapRendering"
+import ScheduleOverlap from "./ScheduleOverlap.vue"
 
 const smAndDown = { value: false }
 const zdt = (iso: string) => Temporal.Instant.from(iso).toZonedDateTimeISO("UTC")
-const { refreshAuthUserMock, showInfoMock, showErrorMock } = vi.hoisted(() => ({
+const { putMock, refreshAuthUserMock, showInfoMock, showErrorMock } = vi.hoisted(() => ({
+  putMock: vi.fn(),
   refreshAuthUserMock: vi.fn(),
   showInfoMock: vi.fn(),
   showErrorMock: vi.fn(),
@@ -33,6 +38,14 @@ vi.mock("vuetify", () => ({
   }),
 }))
 
+vi.mock("@/utils", async () => {
+  const actual = await vi.importActual<typeof UtilsModule>("@/utils")
+  return {
+    ...actual,
+    put: putMock,
+  }
+})
+
 vi.mock("@/stores/main", () => ({
   useMainStore: () => ({
     authUser: null,
@@ -51,6 +64,8 @@ vi.mock("@/plugins/posthog", () => ({
 describe("ScheduleOverlap", () => {
   beforeEach(() => {
     smAndDown.value = false
+    putMock.mockReset()
+    putMock.mockResolvedValue(undefined)
     refreshAuthUserMock.mockReset()
     showInfoMock.mockReset()
     showErrorMock.mockReset()
@@ -59,6 +74,254 @@ describe("ScheduleOverlap", () => {
 
   it("renders overnight split calendar events without comparing Temporal.Duration via valueOf", () => {
     expect(() => mountScheduleOverlap()).not.toThrow()
+  })
+
+  it("maps a rendered specific-times drag to the exact UTC quarter-hour instants", async () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {
+          return undefined
+        }
+
+        disconnect() {
+          return undefined
+        }
+      }
+    )
+    vi.stubGlobal("scrollTo", vi.fn())
+
+    const wrapper = mount(ScheduleOverlap, {
+      props: {
+        ...buildScheduleOverlapProps(),
+        fromEditEvent: true,
+        initialTimezone: utcTimezone,
+        event: {
+          ...buildScheduleOverlapProps().event,
+          name: "Specific times drag mapping",
+          dates: [
+            Temporal.PlainDate.from("2026-05-29"),
+            Temporal.PlainDate.from("2026-05-30"),
+          ],
+          timeSeed: zdt("2026-05-29T00:00:00Z"),
+          startTime: Temporal.PlainTime.from("00:00"),
+          duration: Temporal.Duration.from({ hours: 24 }),
+          hasSpecificTimes: true,
+          timeIncrement: Temporal.Duration.from({ minutes: 15 }),
+          times: [],
+        },
+      },
+      global: {
+        stubs: {
+          ...scheduleOverlapGlobalStubs,
+          ScheduleOverlapSidebar: true,
+          ScheduleOverlapMobileOverlay: true,
+        },
+      },
+    })
+
+    await nextTick()
+    await nextTick()
+
+    const startCell = wrapper.get('[data-row="0"][data-col="0"]')
+    const endCell = wrapper.get('[data-row="15"][data-col="1"]')
+
+    await startCell.trigger("mousedown", { clientX: 5, clientY: 5 })
+    await endCell.trigger("mousemove", { clientX: 10, clientY: 10 })
+    await endCell.trigger("mouseup", { clientX: 10, clientY: 10 })
+
+    const vm = wrapper.vm as unknown as {
+      tempTimes: Set<Temporal.ZonedDateTime>
+    }
+
+    expect(
+      [...vm.tempTimes]
+        .sort((a, b) => Temporal.ZonedDateTime.compare(a, b))
+        .map((time) => time.toString())
+    ).toEqual(
+      ["2026-05-29", "2026-05-30"].flatMap((date) =>
+        [
+          "00:00:00",
+          "00:15:00",
+          "00:30:00",
+          "00:45:00",
+          "01:00:00",
+          "01:15:00",
+          "01:30:00",
+          "01:45:00",
+          "02:00:00",
+          "02:15:00",
+          "02:30:00",
+          "02:45:00",
+          "03:00:00",
+          "03:15:00",
+          "03:30:00",
+          "03:45:00",
+        ].map((time) => `${date}T${time}+00:00[UTC]`)
+      )
+    )
+  })
+
+  it("renders the saved specific-times window immediately after saving a new event selection", async () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {
+          return undefined
+        }
+
+        disconnect() {
+          return undefined
+        }
+      }
+    )
+    vi.stubGlobal("scrollTo", vi.fn())
+
+    const wrapper = mount(ScheduleOverlap, {
+      props: {
+        ...buildScheduleOverlapProps(),
+        fromEditEvent: true,
+        initialTimezone: utcTimezone,
+        event: {
+          ...buildScheduleOverlapProps().event,
+          name: "Immediate saved specific times",
+          dates: [
+            Temporal.PlainDate.from("2026-05-29"),
+            Temporal.PlainDate.from("2026-05-30"),
+          ],
+          timeSeed: zdt("2026-05-29T00:00:00Z"),
+          startTime: Temporal.PlainTime.from("00:00"),
+          duration: Temporal.Duration.from({ hours: 24 }),
+          hasSpecificTimes: true,
+          timeIncrement: Temporal.Duration.from({ minutes: 15 }),
+          times: [],
+        },
+      },
+      global: {
+        stubs: {
+          ...scheduleOverlapGlobalStubs,
+          ScheduleOverlapSidebar: true,
+          ScheduleOverlapMobileOverlay: true,
+        },
+      },
+    })
+
+    await nextTick()
+    await nextTick()
+
+    const startCell = wrapper.get('[data-row="0"][data-col="0"]')
+    const endCell = wrapper.get('[data-row="15"][data-col="1"]')
+
+    await startCell.trigger("mousedown", { clientX: 5, clientY: 5 })
+    await endCell.trigger("mousemove", { clientX: 10, clientY: 10 })
+    await endCell.trigger("mouseup", { clientX: 10, clientY: 10 })
+
+    const vm = wrapper.vm as unknown as {
+      saveTempTimes: () => void
+      days: { dateObject: Temporal.ZonedDateTime }[]
+      splitTimes: { text?: string; displayedMinutes?: number }[][]
+      eventRef: { times?: Temporal.ZonedDateTime[]; startTime?: Temporal.PlainTime; endTime?: Temporal.PlainTime }
+      renderedRows: { kind: "timeslot" | "collapsed" | "filler" | "split-gap"; startLabel?: string; endLabel?: string }[]
+    }
+
+    vm.saveTempTimes()
+    await Promise.resolve()
+    await nextTick()
+    await nextTick()
+
+    expect(putMock).toHaveBeenCalledTimes(1)
+    expect(putMock.mock.calls[0]?.[1]).toMatchObject({
+      dates: ["2026-05-29T00:00:00Z", "2026-05-30T00:00:00Z"],
+      duration: 4,
+      times: [
+        "2026-05-29T00:00:00Z",
+        "2026-05-29T00:15:00Z",
+        "2026-05-29T00:30:00Z",
+        "2026-05-29T00:45:00Z",
+        "2026-05-29T01:00:00Z",
+        "2026-05-29T01:15:00Z",
+        "2026-05-29T01:30:00Z",
+        "2026-05-29T01:45:00Z",
+        "2026-05-29T02:00:00Z",
+        "2026-05-29T02:15:00Z",
+        "2026-05-29T02:30:00Z",
+        "2026-05-29T02:45:00Z",
+        "2026-05-29T03:00:00Z",
+        "2026-05-29T03:15:00Z",
+        "2026-05-29T03:30:00Z",
+        "2026-05-29T03:45:00Z",
+        "2026-05-30T00:00:00Z",
+        "2026-05-30T00:15:00Z",
+        "2026-05-30T00:30:00Z",
+        "2026-05-30T00:45:00Z",
+        "2026-05-30T01:00:00Z",
+        "2026-05-30T01:15:00Z",
+        "2026-05-30T01:30:00Z",
+        "2026-05-30T01:45:00Z",
+        "2026-05-30T02:00:00Z",
+        "2026-05-30T02:15:00Z",
+        "2026-05-30T02:30:00Z",
+        "2026-05-30T02:45:00Z",
+        "2026-05-30T03:00:00Z",
+        "2026-05-30T03:15:00Z",
+        "2026-05-30T03:30:00Z",
+        "2026-05-30T03:45:00Z",
+      ],
+    })
+    expect(vm.eventRef.times?.map((time) => time.toString())).toEqual(
+      ["2026-05-29", "2026-05-30"].flatMap((date) =>
+        [
+          "00:00:00",
+          "00:15:00",
+          "00:30:00",
+          "00:45:00",
+          "01:00:00",
+          "01:15:00",
+          "01:30:00",
+          "01:45:00",
+          "02:00:00",
+          "02:15:00",
+          "02:30:00",
+          "02:45:00",
+          "03:00:00",
+          "03:15:00",
+          "03:30:00",
+          "03:45:00",
+        ].map((time) => `${date}T${time}+00:00[UTC]`)
+      )
+    )
+    expect(vm.eventRef.startTime?.toString()).toBe("00:00:00")
+    expect(vm.eventRef.endTime?.toString()).toBe("04:00:00")
+    expect(
+      vm.days.map((day) => day.dateObject.withTimeZone("UTC").toPlainDate().toString())
+    ).toEqual(["2026-05-29", "2026-05-30"])
+    expect(vm.splitTimes[0].map((time) => time.text).filter(Boolean)).toEqual([
+      "12 am",
+      "1 am",
+      "2 am",
+      "3 am",
+    ])
+    expect(vm.splitTimes[0].map((time) => time.displayedMinutes)).toEqual([
+      0,
+      15,
+      30,
+      45,
+      60,
+      75,
+      90,
+      105,
+      120,
+      135,
+      150,
+      165,
+      180,
+      195,
+      210,
+      225,
+    ])
+    expect(
+      vm.renderedRows.filter((row) => row.kind === "collapsed")
+    ).toEqual([])
   })
 
   it("uses the saved timezone when initialTimezone is missing", () => {
@@ -637,7 +900,7 @@ describe("ScheduleOverlap", () => {
     )
   })
 
-  it("collapses hidden hours by default and expands them on demand", async () => {
+  it("trims hidden edge hours by default and restores them when showing all hours", async () => {
     const wrapper = mountScheduleOverlap({
       props: {
         event: {
@@ -651,10 +914,34 @@ describe("ScheduleOverlap", () => {
           startTime: Temporal.PlainTime.from("09:00"),
           duration: Temporal.Duration.from({ hours: 11 }),
           times: [
-            zdt("2026-01-01T09:00:00Z"),
-            zdt("2026-01-01T12:00:00Z"),
-            zdt("2026-01-02T17:00:00Z"),
-            zdt("2026-01-02T20:00:00Z"),
+            ...buildUtcSpecificTimes("2026-01-01", [
+              "09:00:00",
+              "10:00:00",
+              "11:00:00",
+              "12:00:00",
+              "13:00:00",
+              "14:00:00",
+              "15:00:00",
+              "16:00:00",
+              "17:00:00",
+              "18:00:00",
+              "19:00:00",
+              "20:00:00",
+            ]),
+            ...buildUtcSpecificTimes("2026-01-02", [
+              "09:00:00",
+              "10:00:00",
+              "11:00:00",
+              "12:00:00",
+              "13:00:00",
+              "14:00:00",
+              "15:00:00",
+              "16:00:00",
+              "17:00:00",
+              "18:00:00",
+              "19:00:00",
+              "20:00:00",
+            ]),
           ],
         },
         alwaysShowCalendarEvents: false,
@@ -669,33 +956,32 @@ describe("ScheduleOverlap", () => {
     })
 
     const vm = wrapper.vm as unknown as {
-      renderedRows: { id: string; kind: "timeslot" | "collapsed" | "filler" }[]
+      renderedRows: {
+        id: string
+        kind: "timeslot" | "collapsed" | "filler" | "split-gap"
+        timeText?: string
+      }[]
       splitTimes: { absoluteMinutes?: number; text?: string }[][]
       showAllHours: boolean
-      toggleCollapsedSpan: (id: string) => void
       updateShowAllHours: (value: boolean) => void
     }
 
     expect(vm.showAllHours).toBe(false)
 
-    const initialCollapsedRows = vm.renderedRows.filter((row) => row.kind === "collapsed")
-    const initialTimeslotCount = vm.renderedRows.filter((row) => row.kind === "timeslot").length
-
-    expect(initialCollapsedRows.length).toBeGreaterThan(0)
-
-    vm.toggleCollapsedSpan(initialCollapsedRows[0].id)
-    await nextTick()
-
-    expect(vm.renderedRows.some((row) => row.id === initialCollapsedRows[0].id)).toBe(false)
-    expect(vm.renderedRows.filter((row) => row.kind === "timeslot").length).toBeGreaterThan(
-      initialTimeslotCount
-    )
+    const initialTimeslotRows = vm.renderedRows.filter((row) => row.kind === "timeslot")
+    expect(vm.renderedRows.some((row) => row.kind === "collapsed")).toBe(false)
+    expect(initialTimeslotRows.length).toBeLessThan(vm.splitTimes.flat().length)
+    expect(initialTimeslotRows[0]?.timeText).toBe("9 am")
+    expect(initialTimeslotRows.at(-1)?.timeText).toBe("8 pm")
 
     vm.updateShowAllHours(true)
     await nextTick()
 
     expect(vm.showAllHours).toBe(true)
     expect(vm.renderedRows.some((row) => row.kind === "collapsed")).toBe(false)
+    const expandedTimeslotRows = vm.renderedRows.filter((row) => row.kind === "timeslot")
+    expect(expandedTimeslotRows).toHaveLength(vm.splitTimes.flat().length)
+    expect(expandedTimeslotRows.length).toBeGreaterThan(initialTimeslotRows.length)
   })
 
   it("animates loaded availability when editing an existing respondent", async () => {
@@ -810,7 +1096,7 @@ describe("ScheduleOverlap", () => {
     })
 
     const vm = wrapper.vm as unknown as {
-      renderedRows: { kind: "timeslot" | "collapsed" | "filler"; startLabel?: string; endLabel?: string }[]
+      renderedRows: { kind: "timeslot" | "collapsed" | "filler" | "split-gap"; startLabel?: string; endLabel?: string }[]
     }
 
     expect(vm.renderedRows.filter((row) => row.kind === "collapsed")).toEqual([])
@@ -852,7 +1138,7 @@ describe("ScheduleOverlap", () => {
     })
 
     const vm = wrapper.vm as unknown as {
-      renderedRows: { kind: "timeslot" | "collapsed" | "filler"; startLabel?: string; endLabel?: string }[]
+      renderedRows: { kind: "timeslot" | "collapsed" | "filler" | "split-gap"; startLabel?: string; endLabel?: string }[]
     }
 
     expect(vm.renderedRows.filter((row) => row.kind === "collapsed")).toEqual([
@@ -863,7 +1149,7 @@ describe("ScheduleOverlap", () => {
     ])
   })
 
-  it("collapses leading and trailing edge grey runs for discontiguous daily specific times", () => {
+  it("does not add leading or trailing collapsed bands outside the saved specific-times window", () => {
     const wrapper = mountScheduleOverlap({
       props: {
         event: {
@@ -899,19 +1185,18 @@ describe("ScheduleOverlap", () => {
     })
 
     const vm = wrapper.vm as unknown as {
-      renderedRows: { kind: "timeslot" | "collapsed" | "filler"; startLabel?: string; endLabel?: string }[]
+      renderedRows: {
+        kind: "timeslot" | "collapsed" | "filler" | "split-gap"
+        startLabel?: string
+        endLabel?: string
+        timeText?: string
+      }[]
     }
 
-    expect(vm.renderedRows.filter((row) => row.kind === "collapsed")).toEqual([
-      expect.objectContaining({
-        startLabel: "09:00",
-        endLabel: "14:00",
-      }),
-      expect.objectContaining({
-        startLabel: "18:00",
-        endLabel: "22:00",
-      }),
-    ])
+    expect(vm.renderedRows.filter((row) => row.kind === "collapsed")).toEqual([])
+    const timeslotRows = vm.renderedRows.filter((row) => row.kind === "timeslot")
+    expect(timeslotRows[0]?.timeText).toBe("2 pm")
+    expect(timeslotRows.at(-1)?.timeText).toBe("5 pm")
   })
 
   it("keeps a row expanded when any visible day allows that exact specific-time slot", () => {
@@ -951,7 +1236,7 @@ describe("ScheduleOverlap", () => {
     })
 
     const vm = wrapper.vm as unknown as {
-      renderedRows: { kind: "timeslot" | "collapsed" | "filler"; startLabel?: string; endLabel?: string }[]
+      renderedRows: { kind: "timeslot" | "collapsed" | "filler" | "split-gap"; startLabel?: string; endLabel?: string }[]
     }
 
     expect(vm.renderedRows.filter((row) => row.kind === "collapsed")).toEqual([])
@@ -984,7 +1269,7 @@ describe("ScheduleOverlap", () => {
     })
 
     const vm = wrapper.vm as unknown as {
-      renderedRows: { kind: "timeslot" | "collapsed" | "filler"; startLabel?: string; endLabel?: string }[]
+      renderedRows: { kind: "timeslot" | "collapsed" | "filler" | "split-gap"; startLabel?: string; endLabel?: string }[]
     }
 
     const collapsedRows = vm.renderedRows.filter((row) => row.kind === "collapsed")
@@ -995,5 +1280,167 @@ describe("ScheduleOverlap", () => {
         endLabel: "18:00",
       }),
     ])
+  })
+
+  it("inserts a structural split gap between wrapped UTC+3:30 midnight rows", () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        event: {
+          ...buildScheduleOverlapProps().event,
+          dates: [Temporal.PlainDate.from("2026-01-01"), Temporal.PlainDate.from("2026-01-02")],
+          timeSeed: zdt("2026-01-01T19:30:00Z"),
+          startTime: Temporal.PlainTime.from("19:30"),
+          duration: Temporal.Duration.from({ hours: 8 }),
+          timeIncrement: Temporal.Duration.from({ minutes: 30 }),
+          hasSpecificTimes: false,
+        },
+        alwaysShowCalendarEvents: false,
+        sampleCalendarEventsByDay: [],
+        initialTimezone: {
+          value: "+03:30",
+          offset: Temporal.Duration.from({ minutes: -210 }),
+          label: "UTC+3:30",
+          gmtString: "GMT+3:30",
+        },
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      renderedRows: {
+        kind: "timeslot" | "collapsed" | "filler" | "split-gap"
+        timeText?: string
+        height: number
+      }[]
+      splitTimes: { text?: string }[][]
+      days: { dateObject: Temporal.ZonedDateTime }[]
+      getDateFromRowCol: (row: number, col: number) => Temporal.ZonedDateTime | null
+    }
+
+    const splitGapIndex = vm.renderedRows.findIndex((row) => row.kind === "split-gap")
+    const hourLabels = vm.renderedRows
+      .map((row) => row.timeText)
+      .filter((label): label is string => Boolean(label))
+
+    expect(splitGapIndex).toBe(vm.splitTimes[0].length)
+    expect(vm.renderedRows[splitGapIndex - 1]?.timeText).toBeUndefined()
+    expect(vm.renderedRows[splitGapIndex + 1]?.timeText).toBe("11 pm")
+    expect(vm.renderedRows[0]?.timeText).toBe("12 am")
+    expect(vm.renderedRows[splitGapIndex]).toEqual(
+      expect.objectContaining({
+        kind: "split-gap",
+        height: 40,
+      })
+    )
+    expect(vm.renderedRows[splitGapIndex - 1]?.kind).toBe("timeslot")
+    expect(vm.renderedRows[splitGapIndex + 1]?.kind).toBe("timeslot")
+    expect(hourLabels.filter((label) => label === "2 am")).toHaveLength(1)
+
+    for (let col = 0; col < vm.days.length; col += 1) {
+      const headerDate = vm.days[col]?.dateObject.withTimeZone("+03:30").toPlainDate().toString()
+      for (let row = 0; row < vm.splitTimes[0].length + vm.splitTimes[1].length; row += 1) {
+        const slot = vm.getDateFromRowCol(row, col)
+        if (!slot) continue
+        expect(slot.withTimeZone("+03:30").toPlainDate().toString()).toBe(headerDate)
+      }
+    }
+  })
+
+  it("does not render a split gap when wrapped UTC+4:00 local-day ranges only touch", () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        event: {
+          ...buildScheduleOverlapProps().event,
+          dates: [Temporal.PlainDate.from("2026-01-01"), Temporal.PlainDate.from("2026-01-02")],
+          timeSeed: zdt("2026-01-01T21:00:00Z"),
+          startTime: Temporal.PlainTime.from("21:00"),
+          duration: Temporal.Duration.from({ hours: 24 }),
+          timeIncrement: Temporal.Duration.from({ hours: 1 }),
+          hasSpecificTimes: false,
+        },
+        alwaysShowCalendarEvents: false,
+        sampleCalendarEventsByDay: [],
+        initialTimezone: {
+          value: "+04:00",
+          offset: Temporal.Duration.from({ hours: -4 }),
+          label: "UTC+4:00",
+          gmtString: "GMT+4:00",
+        },
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      renderedRows: {
+        kind: "timeslot" | "collapsed" | "filler" | "split-gap"
+        timeText?: string
+      }[]
+      splitTimes: { text?: string; displayedMinutes?: number }[][]
+    }
+
+    const hourLabels = vm.renderedRows
+      .map((row) => row.timeText)
+      .filter((label): label is string => Boolean(label))
+
+    expect(vm.renderedRows.some((row) => row.kind === "split-gap")).toBe(false)
+    expect(vm.splitTimes[1]).toEqual([])
+    expect(hourLabels.slice(0, 4)).toEqual(["12 am", "1 am", "2 am", "3 am"])
+    expect(hourLabels.at(-1)).toBe("11 pm")
+    expect(hourLabels.filter((label) => label === "12 am")).toHaveLength(1)
+    expect(hourLabels.filter((label) => label === "1 am")).toHaveLength(1)
+    expect(
+      new Set(
+        vm.splitTimes[0]
+          .map((time) => time.displayedMinutes)
+          .filter((minutes): minutes is number => typeof minutes === "number")
+      ).size
+    ).toBe(vm.splitTimes[0].length)
+  })
+
+  it("does not render a split gap or duplicate hour labels when a wrapped Kathmandu window overlaps in displayed local time", () => {
+    const wrapper = mountScheduleOverlap({
+      props: {
+        event: {
+          ...buildScheduleOverlapProps().event,
+          dates: [Temporal.PlainDate.from("2026-01-01"), Temporal.PlainDate.from("2026-01-02")],
+          timeSeed: zdt("2025-12-31T18:30:00Z"),
+          startTime: Temporal.PlainTime.from("18:30"),
+          duration: Temporal.Duration.from({ hours: 25 }),
+          timeIncrement: Temporal.Duration.from({ minutes: 15 }),
+          hasSpecificTimes: false,
+        },
+        alwaysShowCalendarEvents: false,
+        sampleCalendarEventsByDay: [],
+        initialTimezone: {
+          value: "Asia/Kathmandu",
+          offset: Temporal.Duration.from({ minutes: -345 }),
+          label: "Asia/Kathmandu",
+          gmtString: "GMT+5:45",
+        },
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      renderedRows: {
+        kind: "timeslot" | "collapsed" | "filler" | "split-gap"
+        timeText?: string
+      }[]
+      splitTimes: { text?: string; displayedMinutes?: number }[][]
+    }
+
+    const hourLabels = vm.renderedRows
+      .map((row) => row.timeText)
+      .filter((label): label is string => Boolean(label))
+
+    expect(vm.renderedRows.some((row) => row.kind === "split-gap")).toBe(false)
+    expect(vm.splitTimes[1]).toEqual([])
+    expect(hourLabels.filter((label) => label === "12 am")).toHaveLength(1)
+    expect(hourLabels.filter((label) => label === "1 am")).toHaveLength(1)
+    expect(hourLabels.filter((label) => label === "2 am")).toHaveLength(1)
+    expect(
+      new Set(
+        vm.splitTimes[0]
+          .map((time) => time.displayedMinutes)
+          .filter((minutes): minutes is number => typeof minutes === "number")
+      ).size
+    ).toBe(vm.splitTimes[0].length)
   })
 })

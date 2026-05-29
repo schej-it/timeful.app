@@ -2,8 +2,8 @@ import { computed, ref, type ComputedRef, type Ref } from "vue"
 import { Temporal } from "temporal-polyfill"
 import {
   dateToDowDate,
-  getDateInTimezone,
   getEventDateSeeds,
+  getSpecificTimesDayStarts,
   processEvent,
   getRenderedWeekStart,
   put,
@@ -230,8 +230,11 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
     )
     const scheduleTimezoneId = opts.curTimezone.value.value
 
-    const eventDateInstants = getEventDateSeeds(opts.event.value).map((zdt) => {
-      const plainDate = getDateInTimezone(zdt, opts.curTimezone.value).toPlainDate()
+    const eventDateInstants = getSpecificTimesDayStarts(
+      eventValue.times,
+      opts.curTimezone.value
+    ).map((day) => {
+      const plainDate = day.dateObject.toPlainDate()
       const withTime = plainDate.toZonedDateTime({
         timeZone: scheduleTimezoneId,
         plainTime: minHours,
@@ -241,7 +244,9 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
     eventValue.dates = eventDateInstants.map((date) => date.toPlainDate())
     eventValue.timeSeed = eventDateInstants[0]
 
-    eventValue.duration = maxHours.since(minHours).add({ hours: 1 })
+    eventValue.duration = maxHours
+      .since(minHours)
+      .add(opts.timeslotDuration.value)
 
     const eventId = eventValue._id ?? ""
     void put(`/events/${eventId}`, toEventPatchPayload(eventValue))

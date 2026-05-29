@@ -376,25 +376,25 @@ describe("ScheduleOverlap grid drag bindings", () => {
     expect(ifNeededBlock.classes()).toContain("overlay-avail-shadow-yellow")
   })
 
-  it("renders one structural collapsed-hours row and forwards expansion clicks", async () => {
+  it("renders one structural interior collapsed-hours row and forwards expansion clicks", async () => {
     const { timedGrid, actions } = createNonConsecutiveTimeGridViewModel()
     timedGrid.state = states.HEATMAP
     timedGrid.renderedRows = [
       {
-        id: "collapsed-0-8",
+        id: "collapsed-660-900",
         kind: "collapsed",
         height: 44,
         rowTop: 0,
-        startLabel: "00:00",
-        endLabel: "04:00",
+        startLabel: "11:00",
+        endLabel: "15:00",
       },
       {
-        id: "time-8",
+        id: "time-24",
         kind: "timeslot",
         height: 60,
         rowTop: 44,
-        timeText: "04:00",
-        baseRowIndex: 0,
+        timeText: "3 pm",
+        baseRowIndex: 24,
         cells: [
           { class: "day-0", style: {}, von: {} },
           { class: "day-1", style: {}, von: {} },
@@ -416,11 +416,40 @@ describe("ScheduleOverlap grid drag bindings", () => {
     const collapsedRows = wrapper.findAll("button.schedule-overlap-collapsed-row")
 
     expect(collapsedRows).toHaveLength(1)
-    expect(collapsedRows[0].text()).toContain("00:00-04:00")
+    expect(collapsedRows[0].text()).toContain("11:00-15:00")
 
     await collapsedRows[0].trigger("click")
 
-    expect(actions.toggleCollapsedSpan).toHaveBeenCalledWith("collapsed-0-8")
+    expect(actions.toggleCollapsedSpan).toHaveBeenCalledWith("collapsed-660-900")
+  })
+
+  it("emits stable row and column dataset coordinates on timed-grid timeslot cells", () => {
+    const { timedGrid } = createNonConsecutiveTimeGridViewModel()
+    timedGrid.renderedRows = [
+      {
+        id: "time-4",
+        kind: "timeslot",
+        height: 60,
+        rowTop: 0,
+        timeText: "01:00",
+        baseRowIndex: 4,
+        cells: [
+          { class: "day-0", style: {}, von: {} },
+          { class: "day-1", style: {}, von: {} },
+        ],
+      },
+    ]
+
+    const wrapper = mount(ScheduleOverlapTimeGrid, {
+      props: { timedGrid },
+      global,
+    })
+
+    const firstCell = wrapper.get('[data-row="4"][data-col="0"]')
+    const secondCell = wrapper.get('[data-row="4"][data-col="1"]')
+
+    expect(firstCell.classes()).toContain("timeslot")
+    expect(secondCell.classes()).toContain("timeslot")
   })
 
   it("forwards days-only drag events through the rendered drag surface", async () => {

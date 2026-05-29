@@ -197,6 +197,91 @@ export function useDragPaint(opts: UseDragPaintOptions) {
     return { row: clampRow(row), col: clampCol(col) }
   }
 
+  const getRowColFromCellElement = (element: Element | null): RowCol | null => {
+    const timeslotCell = element?.closest("[data-row][data-col]")
+    if (!(timeslotCell instanceof HTMLElement)) {
+      return null
+    }
+
+    const row = Number.parseInt(timeslotCell.dataset.row ?? "", 10)
+    const col = Number.parseInt(timeslotCell.dataset.col ?? "", 10)
+    if (!Number.isFinite(row) || !Number.isFinite(col)) {
+      return null
+    }
+
+    return {
+      row: clampRow(row),
+      col: clampCol(col),
+    }
+  }
+
+  const getEventClientPoint = (
+    e: PointerEvent | MouseEvent | TouchEvent
+  ): { clientX: number; clientY: number } | null => {
+    if ("changedTouches" in e && e.changedTouches.length > 0) {
+      return {
+        clientX: e.changedTouches[0].clientX,
+        clientY: e.changedTouches[0].clientY,
+      }
+    }
+
+    if ("touches" in e && e.touches.length > 0) {
+      return {
+        clientX: e.touches[0].clientX,
+        clientY: e.touches[0].clientY,
+      }
+    }
+
+    if ("clientX" in e && "clientY" in e) {
+      return {
+        clientX: e.clientX,
+        clientY: e.clientY,
+      }
+    }
+
+    return null
+  }
+
+  const resolveTimedGridRowCol = (
+    e: PointerEvent | MouseEvent | TouchEvent
+  ): RowCol | null => {
+    if (
+      opts.event.value.daysOnly ||
+      opts.state.value !== states.SET_SPECIFIC_TIMES
+    ) {
+      return null
+    }
+
+    const targetRowCol = getRowColFromCellElement(
+      e.target instanceof Element ? e.target : null
+    )
+    if (targetRowCol) {
+      return targetRowCol
+    }
+
+    const point = getEventClientPoint(e)
+    const doc = getPointerTarget(e)?.ownerDocument ?? document
+    if (!point || typeof doc.elementFromPoint !== "function") {
+      return null
+    }
+
+    return getRowColFromCellElement(
+      doc.elementFromPoint(point.clientX, point.clientY)
+    )
+  }
+
+  const getPreferredRowCol = (
+    e: PointerEvent | MouseEvent | TouchEvent
+  ): RowCol => {
+    const resolved = resolveTimedGridRowCol(e)
+    if (resolved) {
+      return resolved
+    }
+
+    const { x, y } = normalizeXY(e)
+    return getRowColFromXY(x, y)
+  }
+
   const inDragRange = (row: number, col: number): boolean => {
     if (!dragging.value || !dragStart.value || !dragCur.value) return false
 
@@ -231,8 +316,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
   }
 
   const startDrag = (e: PointerEvent | MouseEvent | TouchEvent) => {
-    const { x, y } = normalizeXY(e)
-    const { row, col } = getRowColFromXY(x, y)
+    const { row, col } = getPreferredRowCol(e)
 
     if (opts.isSignUp.value) {
       const dayBlocks = opts.signUpBlocksByDay.value[col] ?? []
@@ -298,9 +382,9 @@ export function useDragPaint(opts: UseDragPaintOptions) {
     if (isPointerLikeEvent(e) && activePointerId.value !== e.pointerId) return
 
     e.preventDefault()
-    const { x, y } = normalizeXY(e)
-    const { col } = getRowColFromXY(x, y)
-    let { row } = getRowColFromXY(x, y)
+    const preferredRowCol = getPreferredRowCol(e)
+    const col = preferredRowCol.col
+    let row = preferredRowCol.row
 
     const maxRow = opts.maxSignUpBlockRowSize.value
     if (maxRow && row >= dragStart.value.row + maxRow) {
@@ -322,7 +406,14 @@ export function useDragPaint(opts: UseDragPaintOptions) {
     if (!dragStart.value || !dragCur.value) return
 
     const ds = dragStart.value
-    const dc = dragCur.value
+    let dc = dragCur.value
+    if (e) {
+      const resolved = resolveTimedGridRowCol(e)
+      if (resolved) {
+        dragCur.value = resolved
+        dc = resolved
+      }
+    }
     const eventValue = opts.event.value
     updateCurTimeslot(dc.row, dc.col)
 
