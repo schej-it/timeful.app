@@ -65,6 +65,7 @@ describe("useEventScheduling", () => {
       creatorPosthogId: "creator-1",
       remindees: [],
     })
+    const originalEvent = event.value
     const scheduling = useEventScheduling({
       event,
       weekOffset: ref(0),
@@ -123,6 +124,7 @@ describe("useEventScheduling", () => {
     expect(event.value.duration?.toString()).toBe("PT1H")
     expect(event.value.startTime?.toString()).toBe("00:00:00")
     expect(event.value.endTime?.toString()).toBe("01:00:00")
+    expect(event.value).not.toBe(originalEvent)
     expect(state.value).toBe(states.HEATMAP)
     expect(showErrorMock).not.toHaveBeenCalled()
   })

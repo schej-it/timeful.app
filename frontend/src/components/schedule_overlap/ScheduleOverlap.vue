@@ -45,6 +45,7 @@
 <script setup lang="ts">
 import {
   ref,
+  shallowRef,
   computed,
   nextTick,
   watch,
@@ -189,10 +190,27 @@ const isOwner = computed(() => isSignedInOwner(props.event, mainStore.authUser))
 const _isGuestEvent = computed(() => isAnonymousOwnerEvent(props.event))
 const authUser = computed(() => mainStore.authUser)
 
-const eventRef = computed(() => props.event)
+const cloneScheduleOverlapEvent = (
+  event: ScheduleOverlapEvent
+): ScheduleOverlapEvent => ({
+  ...event,
+  dates: event.dates ? [...event.dates] : event.dates,
+  times: event.times ? [...event.times] : event.times,
+})
+
+const eventRef = shallowRef<ScheduleOverlapEvent>(
+  cloneScheduleOverlapEvent(props.event)
+)
+const eventReadonly = computed(() => eventRef.value)
+watch(
+  () => props.event,
+  (event) => {
+    eventRef.value = cloneScheduleOverlapEvent(event)
+  }
+)
 const weekOffsetRef = computed(() => props.weekOffset)
 const scheduleTimezoneReferenceDate = computed(() =>
-  getTimezoneReferenceDateForEvent(props.event, props.weekOffset)
+  getTimezoneReferenceDateForEvent(eventRef.value, props.weekOffset)
 )
 const scheduleOverlapPreferences = useScheduleOverlapPreferences({
   eventId: computed(() => props.event._id ?? ""),
@@ -575,7 +593,7 @@ const {
 } = ui
 
 useScheduleOverlapController({
-  event: eventRef,
+  event: eventReadonly,
   fromEditEvent: computed(() => props.fromEditEvent),
   calendarOnly: computed(() => props.calendarOnly),
   weekOffset: weekOffsetRef,
@@ -1338,7 +1356,7 @@ const {
   daysOnlyGridViewModel,
   timedGridViewModel,
 } = useScheduleOverlapViewModels({
-  event: eventRef,
+  event: eventReadonly,
   state,
   states,
   isSignUp,

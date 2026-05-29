@@ -246,11 +246,15 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
     const eventId = eventValue._id ?? ""
     void put(`/events/${eventId}`, toEventPatchPayload(eventValue))
       .then(() => {
-        opts.event.value.dates = eventValue.dates
-        opts.event.value.timeSeed = eventValue.timeSeed
-        opts.event.value.times = eventValue.times
-        opts.event.value.duration = eventValue.duration
-        processEvent(opts.event.value)
+        const updatedEvent = {
+          ...opts.event.value,
+          dates: eventValue.dates,
+          timeSeed: eventValue.timeSeed,
+          times: eventValue.times,
+          duration: eventValue.duration,
+        }
+        processEvent(updatedEvent)
+        opts.event.value = updatedEvent
         opts.state.value = opts.defaultState.value
       })
       .catch((err: unknown) => {
