@@ -65,7 +65,11 @@ func signIn(c *gin.Context) {
 
 	tokens := auth.GetTokensFromAuthCode(payload.Code, payload.Scope, utils.GetOrigin(c), payload.CalendarType)
 
-	user := signInHelper(c, tokens, models.WEB, payload.CalendarType, *payload.TimezoneOffset)
+	user, err := signInHelper(c, tokens, models.WEB, payload.CalendarType, *payload.TimezoneOffset)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, responses.Error{Error: errs.InvalidIdToken})
+		return
+	}
 
 	// Link events to user
 	for _, eventIdString := range payload.EventsToLink {
@@ -101,7 +105,7 @@ func signInMobile(c *gin.Context) {
 		return
 	}
 
-	signInHelper(
+	_, err := signInHelper(
 		c,
 		auth.TokenResponse{
 			AccessToken:  payload.AccessToken,
@@ -114,12 +118,16 @@ func signInMobile(c *gin.Context) {
 		payload.CalendarType,
 		payload.TimezoneOffset,
 	)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, responses.Error{Error: errs.InvalidIdToken})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{})
 }
 
 // Helper function to sign user in with the given parameters from the google oauth route
-func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.TokenOriginType, calendarType models.CalendarType, timezoneOffset int) models.User {
+func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.TokenOriginType, calendarType models.CalendarType, timezoneOffset int) (models.User, error) {
 	// Get access token expire time
 	accessTokenExpireDate := utils.GetAccessTokenExpireDate(token.ExpiresIn)
 
@@ -133,12 +141,21 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 
 	var email, firstName, lastName, picture string
 	if calendarType == models.GoogleCalendarType {
-		// Get user info from JWT
-		claims := utils.ParseJWT(token.IdToken)
-		email, _ = claims.GetStr("email")
-		firstName, _ = claims.GetStr("given_name")
-		lastName, _ = claims.GetStr("family_name")
-		picture, _ = claims.GetStr("picture")
+		// Verify the ID token before trusting any of its claims. The id token
+		// can be supplied directly by the client (e.g. the mobile sign-in
+		// endpoint), so decoding it without verifying the signature, audience,
+		// and issuer would let an attacker forge an identity and sign in as
+		// any user.
+		expectedAud := utils.GetClientIdFromTokenOrigin(tokenOrigin)
+		info, err := auth.VerifyGoogleIdToken(token.IdToken, expectedAud)
+		if err != nil {
+			logger.StdErr.Printf("Failed to verify Google ID token: %v", err)
+			return models.User{}, err
+		}
+		email = info.Email
+		firstName = info.GivenName
+		lastName = info.FamilyName
+		picture = info.Picture
 	} else if calendarType == models.OutlookCalendarType {
 		// Get user info from microsoft graph
 		userInfo := microsoftgraph.GetUserInfo(nil, &calendarAuth)
@@ -270,7 +287,7 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 	session.Save()
 
 	userData.Id = userId
-	return userData
+	return userData, nil
 }
 
 // @Summary Signs user out

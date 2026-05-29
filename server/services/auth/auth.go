@@ -3,10 +3,12 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -16,6 +18,77 @@ import (
 	"schej.it/server/models"
 	"schej.it/server/utils"
 )
+
+// GoogleIdTokenInfo holds the claims returned by Google's tokeninfo endpoint
+// after it has validated an ID token's signature and expiry. Google returns
+// the numeric claims (aud, exp, ...) as strings.
+type GoogleIdTokenInfo struct {
+	// Aud is the OAuth client ID the token was issued for.
+	Aud string `json:"aud"`
+	// Iss is the token issuer (accounts.google.com).
+	Iss string `json:"iss"`
+	// Email is the verified email address on the account.
+	Email string `json:"email"`
+	// EmailVerified is "true" when Google has verified the email.
+	EmailVerified string `json:"email_verified"`
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
+	Picture       string `json:"picture"`
+	// Error is set by tokeninfo when the token is invalid.
+	Error string `json:"error"`
+}
+
+// VerifyGoogleIdToken validates a Google-issued ID token and returns its
+// verified claims.
+//
+// The ID token is validated by calling Google's tokeninfo endpoint, which
+// checks the RS256 signature against Google's public keys and rejects expired
+// tokens. We then verify that the token was issued for *our* OAuth client
+// (audience) and that Google is the issuer.
+//
+// This must be used for any ID token that can originate from a client (e.g.
+// the mobile sign-in endpoint). Decoding the JWT body without verifying its
+// signature would let an attacker forge arbitrary claims (such as another
+// user's email) and sign in as anyone.
+func VerifyGoogleIdToken(idToken string, expectedAud string) (GoogleIdTokenInfo, error) {
+	if strings.TrimSpace(idToken) == "" {
+		return GoogleIdTokenInfo{}, errors.New("id token is empty")
+	}
+	if strings.TrimSpace(expectedAud) == "" {
+		return GoogleIdTokenInfo{}, errors.New("expected audience is not configured")
+	}
+
+	endpoint := "https://oauth2.googleapis.com/tokeninfo?id_token=" + url.QueryEscape(idToken)
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		return GoogleIdTokenInfo{}, fmt.Errorf("failed to reach token verification endpoint: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var info GoogleIdTokenInfo
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return GoogleIdTokenInfo{}, fmt.Errorf("failed to decode token verification response: %w", err)
+	}
+
+	// Google returns a non-200 status (and/or an "error" field) for invalid or
+	// expired tokens.
+	if resp.StatusCode != http.StatusOK || info.Error != "" {
+		return GoogleIdTokenInfo{}, fmt.Errorf("id token rejected by Google (status %d): %s", resp.StatusCode, info.Error)
+	}
+
+	// Ensure the token was minted for our OAuth client. Without this an
+	// attacker could present a valid Google token issued for a different app.
+	if info.Aud != expectedAud {
+		return GoogleIdTokenInfo{}, fmt.Errorf("id token audience mismatch")
+	}
+
+	// Ensure the issuer is Google.
+	if info.Iss != "accounts.google.com" && info.Iss != "https://accounts.google.com" {
+		return GoogleIdTokenInfo{}, fmt.Errorf("unexpected id token issuer: %s", info.Iss)
+	}
+
+	return info, nil
+}
 
 // Returns access, refresh, and id tokens from the auth code
 func GetTokensFromAuthCode(code string, scope string, origin string, calendarType models.CalendarType) TokenResponse {
