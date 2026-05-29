@@ -46,7 +46,7 @@ const UNAVAILABLE_BG_TIME_GRID = "var(--timeful-unavailable-bg-time-grid)"
 const UNAVAILABLE_BG_DAY_GRID = "var(--timeful-unavailable-bg-day-grid)"
 const GRID_LINE_COLOR = "var(--timeful-grid-line-color)"
 const GRID_LINE_WIDTH = "var(--timeful-grid-line-width)"
-const SELECTION_STRONG = "var(--timeful-selection-strong)"
+const GRID_CURSOR_OUTLINE = "var(--timeful-grid-cursor-outline)"
 
 interface TimeslotBaseArgs {
   date: Temporal.ZonedDateTime | null
@@ -323,9 +323,9 @@ export const getTimeGridTimeslotClassStyle = ({
     cs.style.borderRightStyle = "solid"
     cs.style.borderRightWidth = GRID_LINE_WIDTH
     cs.style.borderRightColor = GRID_LINE_COLOR
-    cs.style.boxShadow = `inset 0 0 0 2px ${SELECTION_STRONG}`
+    cs.style.boxShadow = `inset 0 0 0 2px ${GRID_CURSOR_OUTLINE}`
     cs.style.backgroundImage =
-      `repeating-linear-gradient(135deg, transparent 0 5px, ${SELECTION_STRONG} 5px 7px, transparent 7px 11px)`
+      `repeating-linear-gradient(135deg, transparent 0 5px, ${GRID_CURSOR_OUTLINE} 5px 7px, transparent 7px 11px)`
   } else {
     const splitStartOffsetMinutes = splitStartHoursOffset?.total("minutes")
     const offsetMinutes = timeHoursOffset?.total("minutes")
@@ -495,7 +495,7 @@ export const getDayGridTimeslotClassStyle = ({
     zdtMapGet(monthDayIncluded, baseArgs.date)
   ) {
     cs.class += "tw-outline-2 tw-outline-solid tw-z-10 "
-    cs.style.outlineColor = SELECTION_STRONG
+    cs.style.outlineColor = GRID_CURSOR_OUTLINE
   } else {
     if (baseArgs.col === 0) {
       cs.class += "tw-border-l "

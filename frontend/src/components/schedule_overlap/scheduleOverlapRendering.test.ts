@@ -618,10 +618,10 @@ describe("scheduleOverlapRendering", () => {
     expect(classStyle.class).not.toContain("tw-border-black")
     expect(classStyle.style.borderRightStyle).toBe("solid")
     expect(classStyle.style.borderRightColor).toBe("var(--timeful-grid-line-color)")
-    expect(classStyle.style.boxShadow).toBe("inset 0 0 0 2px var(--timeful-selection-strong)")
+    expect(classStyle.style.boxShadow).toBe("inset 0 0 0 2px var(--timeful-grid-cursor-outline)")
     expect(classStyle.style.backgroundImage).toContain("repeating-linear-gradient")
     expect(classStyle.style.backgroundImage).toContain("5px 7px")
-    expect(classStyle.style.backgroundImage).toContain("var(--timeful-selection-strong)")
+    expect(classStyle.style.backgroundImage).toContain("var(--timeful-grid-cursor-outline)")
   })
 
   it("does not draw the selection border for disabled grey gap cells", () => {
@@ -707,7 +707,7 @@ describe("scheduleOverlapRendering", () => {
     expect(classStyle.class).toContain("tw-outline-solid")
     expect(classStyle.class).not.toContain("tw-outline-dashed")
     expect(classStyle.class).not.toContain("tw-outline-black")
-    expect(classStyle.style.outlineColor).toBe("var(--timeful-selection-strong)")
+    expect(classStyle.style.outlineColor).toBe("var(--timeful-grid-cursor-outline)")
   })
 
   it("uses the timed-grid unavailable token for zero-availability best-times slots", () => {

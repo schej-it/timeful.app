@@ -5,7 +5,7 @@
 :root {
   --timeful-selection-bg: #f2faf6;
   --timeful-selection-fg: #00994c;
-  --timeful-selection-strong: #1c7d45;
+  --timeful-grid-cursor-outline: #000000;
   --timeful-error-foreground: #dc2626;
   --timeful-unavailable-bg: #e523230d;
   --timeful-unavailable-bg-time-grid: #f9cccc;
