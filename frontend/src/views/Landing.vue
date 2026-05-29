@@ -31,13 +31,7 @@
             class="landing-github-badge tw-flex tw-select-none tw-items-center tw-rounded-full tw-border tw-border-light-gray-stroke tw-bg-white/70 tw-text-sm tw-text-dark-gray"
           >
             We're open source!
-            <a
-              class="github-button landing-github-button"
-              href="https://github.com/schej-it/timeful.app"
-              data-show-count="true"
-              aria-label="Star timeful.app on GitHub"
-              >Star</a
-            >
+            <GithubStarButton class="landing-github-button" />
           </div>
           <div
             id="header"
@@ -274,6 +268,7 @@ import FAQ from "@/components/FAQ.vue"
 import Header from "@/components/Header.vue"
 import NumberBullet from "@/components/NumberBullet.vue"
 import NewDialog from "@/components/NewDialog.vue"
+import GithubStarButton from "@/components/landing/GithubStarButton.vue"
 import LandingPageHeader from "@/components/landing/LandingPageHeader.vue"
 import Logo from "@/components/Logo.vue"
 import Player from "@vimeo/player"
@@ -567,11 +562,10 @@ watch(
 
 .landing-github-badge {
   margin-bottom: 1rem;
-  padding: 0.375rem 0.625rem 0.5rem;
+  padding: 0.375rem 0.625rem;
 }
 
 .landing-github-button {
-  margin-bottom: -0.25rem;
   margin-left: 0.5rem;
 }
 
