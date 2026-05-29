@@ -473,6 +473,54 @@ describe("useCalendarGrid", () => {
     ).toEqual(["2026-05-29", "2026-05-30"])
   })
 
+  it("supplements saved specific-time edit days with newly added membership dates", () => {
+    const event = ref<ScheduleOverlapEvent>({
+      _id: "evt-5d-added-date",
+      shortId: "grid-specific-edit-days-added-date",
+      name: "Edit specific times with added date",
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [
+        Temporal.PlainDate.from("2026-05-28"),
+        Temporal.PlainDate.from("2026-05-29"),
+        Temporal.PlainDate.from("2026-05-30"),
+      ],
+      timeSeed: zdt("2026-05-28T00:00:00Z"),
+      startTime: Temporal.PlainTime.from("09:00"),
+      duration: Temporal.Duration.from({ hours: 24 }),
+      hasSpecificTimes: true,
+      times: [
+        zdt("2026-05-28T09:00:00Z"),
+        zdt("2026-05-29T09:00:00Z"),
+      ],
+      notificationsEnabled: false,
+      blindAvailabilityEnabled: false,
+      daysOnly: false,
+      sendEmailAfterXResponses: -1,
+      collectEmails: false,
+      startOnMonday: true,
+      timeIncrement: durations.ONE_HOUR,
+      creatorPosthogId: "creator-5d-added-date",
+      remindees: [],
+    })
+
+    const grid = useCalendarGrid({
+      event,
+      weekOffset: ref(0),
+      curTimezone: ref({
+        value: UTC,
+        offset: Temporal.Duration.from({ hours: 0 }),
+        label: "UTC",
+        gmtString: "GMT+0",
+      }),
+      state: ref(states.SET_SPECIFIC_TIMES),
+      isPhone: ref(false),
+    })
+
+    expect(
+      grid.days.value.map((day) => day.dateObject.withTimeZone(UTC).toPlainDate().toString())
+    ).toEqual(["2026-05-28", "2026-05-29", "2026-05-30"])
+  })
+
   it("maps quarter-hour rows in specific-times edit mode from midnight instead of the event window start", () => {
     const event = ref<ScheduleOverlapEvent>({
       _id: "evt-5e",

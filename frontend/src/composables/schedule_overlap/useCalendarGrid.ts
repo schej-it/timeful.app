@@ -17,6 +17,7 @@ import {
   userPrefers12h,
   ZdtMap,
   ZdtSet,
+  zdtKey,
   zdtSetHas,
 } from "@/utils"
 import {
@@ -375,6 +376,64 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     const datesSoFar = new ZdtSet()
     const displayTimezoneId = curTimezone.value.value
 
+    const mergeSpecificTimeDayStarts = (
+      ...dayGroups: { dateObject: Temporal.ZonedDateTime; isConsecutive: boolean }[][]
+    ) => {
+      const merged = new Map<bigint, { dateObject: Temporal.ZonedDateTime }>()
+
+      for (const group of dayGroups) {
+        for (const day of group) {
+          merged.set(zdtKey(day.dateObject), { dateObject: day.dateObject })
+        }
+      }
+
+      const sortedDays = [...merged.values()].sort((left, right) =>
+        Temporal.ZonedDateTime.compare(left.dateObject, right.dateObject)
+      )
+
+      const mergedDays: { dateObject: Temporal.ZonedDateTime; isConsecutive: boolean }[] = []
+
+      for (const day of sortedDays) {
+        if (mergedDays.length === 0) {
+          mergedDays.push({
+            dateObject: day.dateObject,
+            isConsecutive: true,
+          })
+          continue
+        }
+
+        const previousDay = mergedDays[mergedDays.length - 1]
+        mergedDays.push({
+          dateObject: day.dateObject,
+          isConsecutive: previousDay.dateObject.add({ days: 1 }).equals(day.dateObject),
+        })
+      }
+
+      return mergedDays
+    }
+
+    const getSpecificTimesEditDays = (
+      eventDates: Temporal.ZonedDateTime[],
+      eventTimes: Temporal.ZonedDateTime[]
+    ) => {
+      if (eventTimes.length === 0) {
+        return getSpecificTimesDayStarts(eventDates, curTimezone.value)
+      }
+
+      const membershipTimezone = event.value.timeSeed?.timeZoneId ?? eventTimes[0].timeZoneId
+      const coveredMembershipDates = new Set(
+        eventTimes.map((time) => time.withTimeZone(membershipTimezone).toPlainDate().toString())
+      )
+      const uncoveredEventDates = eventDates.filter(
+        (date) => !coveredMembershipDates.has(date.toPlainDate().toString())
+      )
+
+      return mergeSpecificTimeDayStarts(
+        getSpecificTimesDayStarts(eventTimes, curTimezone.value),
+        getSpecificTimesDayStarts(uncoveredEventDates, curTimezone.value)
+      )
+    }
+
     const getDateString = (date: Temporal.ZonedDateTime) => {
       let dateString = ""
       let dayString = ""
@@ -414,12 +473,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       isSpecificTimes.value &&
       (state.value === states.SET_SPECIFIC_TIMES || eventTimes?.length === 0)
     ) {
-      const specificTimesDaySource =
-        eventTimes && eventTimes.length > 0 ? eventTimes : eventDates
-      for (const day of getSpecificTimesDayStarts(
-        specificTimesDaySource,
-        curTimezone.value
-      )) {
+      for (const day of getSpecificTimesEditDays(eventDates, eventTimes ?? [])) {
         const { dayString, dateString } = getDateString(day.dateObject)
         days.push({
           dayText: dayString,
