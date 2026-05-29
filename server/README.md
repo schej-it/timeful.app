@@ -12,7 +12,7 @@ API docs (available when the server is running): http://localhost:3002/swagger/i
 ## Make a backup of the mongodb database
 
 - Run `mongodump --host="localhost:27017" --db=schej-it` to make a backup
-- Run `mongorestore --uri mongodb://localhost:27017 ./dump --drop` to restore
+- Run `mongorestore --uri mongodb://localhost:27017 ./dump --drop` to restore only when you intend to replace the current local `schej-it` database. The `--drop` flag removes existing data before importing the dump.
 
 ## Tests
 
@@ -25,5 +25,8 @@ docker compose --env-file .env.development -f compose.yaml -f compose.test.yaml 
 docker compose --env-file .env.development -f compose.yaml -f compose.test.yaml run --rm server-test
 docker compose --env-file .env.development -f compose.yaml -f compose.test.yaml down -v
 ```
+
+The `down -v` cleanup is scoped to the isolated `timeful-test` Compose stack and
+its test-only Mongo volume.
 
 When running Mongo-backed tests directly on the host, set `MONGODB_URI` to a dedicated test database first. Those tests no longer default to `127.0.0.1:27017`.

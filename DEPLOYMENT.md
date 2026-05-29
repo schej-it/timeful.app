@@ -57,6 +57,11 @@ Edit `/etc/caddy/Caddyfile` with your domain before reloading.
 
 ## Commands
 
+> [!CAUTION]
+> Use `down -v` only when intentionally discarding the Docker-managed data volumes for the selected environment.
+>
+> For production, this deletes the MongoDB data volume unless a backup is restored afterward.
+
 ```bash
 docker compose --env-file .env.production up -d              # Start services
 docker compose --env-file .env.production logs -f            # View logs
@@ -77,6 +82,11 @@ docker compose --env-file .env.staging -f compose.yaml -f compose.staging.yaml d
 ## Data & Backup
 
 Data is persisted in Docker volumes: `mongo_data`, `frontend_dist`, `server_logs`.
+
+The restore command below uses `--drop`.
+
+> [!CAUTION]
+> Run it only when you intend to replace the current `schej-it` database with the backup archive.
 
 ```bash
 # Backup MongoDB

@@ -163,6 +163,11 @@ docker compose --env-file .env.development -f compose.yaml -f compose.test.yaml 
 docker compose --env-file .env.development -f compose.yaml -f compose.test.yaml down -v
 ```
 
+> [!CAUTION]
+> The `down -v` cleanup is intentional for this test-only stack.
+>
+> Do not use it against the development or production Compose project unless you mean to remove that environment's persisted volumes.
+
 The `server-test` service mounts `./server`, connects to `mongodb://mongo-test:27017`, and runs only the Mongo-backed route suite from `server/routes/events_read_filters_test.go`.
 
 Host-run Mongo-backed tests remain opt-in. When running them outside the Compose test stack, set `MONGODB_URI` explicitly to a dedicated test database. Do not rely on a local `127.0.0.1:27017` fallback.
