@@ -48,6 +48,7 @@ const GRID_SEPARATOR = "var(--timeful-grid-separator)"
 const GRID_HOUR_SEPARATOR = "var(--timeful-grid-hour-separator)"
 const GRID_SEPARATOR_STRONG = "var(--timeful-grid-separator-strong)"
 const GRID_SEPARATOR_SOFT = "var(--timeful-grid-separator-soft)"
+const SELECTION_STRONG = "var(--timeful-selection-strong)"
 
 interface TimeslotBaseArgs {
   date: Temporal.ZonedDateTime | null
@@ -320,7 +321,12 @@ export const getTimeGridTimeslotClassStyle = ({
     curTimeslot.col === baseArgs.col &&
     !isDisabled
   ) {
-    cs.class += "tw-border tw-border-dashed tw-border-black tw-z-10 "
+    cs.class += "tw-border-r tw-z-10 "
+    cs.style.borderRightStyle = "solid"
+    cs.style.borderRightColor = GRID_SEPARATOR_STRONG
+    cs.style.boxShadow = `inset 0 0 0 2px ${SELECTION_STRONG}`
+    cs.style.backgroundImage =
+      `repeating-linear-gradient(135deg, transparent 0 5px, ${SELECTION_STRONG} 5px 7px, transparent 7px 11px)`
   } else {
     const splitStartOffsetMinutes = splitStartHoursOffset?.total("minutes")
     const offsetMinutes = timeHoursOffset?.total("minutes")
@@ -499,7 +505,8 @@ export const getDayGridTimeslotClassStyle = ({
     curTimeslot.col === baseArgs.col &&
     zdtMapGet(monthDayIncluded, baseArgs.date)
   ) {
-    cs.class += "tw-outline-2 tw-outline-dashed tw-outline-black tw-z-10 "
+    cs.class += "tw-outline-2 tw-outline-solid tw-z-10 "
+    cs.style.outlineColor = SELECTION_STRONG
   } else {
     if (baseArgs.col === 0) {
       cs.class += "tw-border-l tw-border-l-gray "

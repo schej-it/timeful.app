@@ -7,6 +7,7 @@ import {
   buildTimeGridTimeslotClassStyles,
   buildOverlaidAvailability,
   formatTooltipContent,
+  getDayGridTimeslotClassStyle,
   getSignUpBlockStyle,
   getTimeGridTimeslotClassStyle,
   getTimeBlockStyle,
@@ -564,7 +565,7 @@ describe("scheduleOverlapRendering", () => {
     expect(classStyle.style.backgroundColor).toBe("var(--timeful-unavailable-bg-time-grid)")
   })
 
-  it("draws the dashed selection border for zero-response timed-grid slots in heatmap view", () => {
+  it("draws an inset solid selection stroke for zero-response timed-grid slots in heatmap view", () => {
     const slot = zdt("2026-01-01T09:00:00Z")
 
     const classStyle = getTimeGridTimeslotClassStyle({
@@ -607,12 +608,18 @@ describe("scheduleOverlapRendering", () => {
       inDragRange: () => false,
     })
 
-    expect(classStyle.class).toContain("tw-border")
-    expect(classStyle.class).toContain("tw-border-dashed")
-    expect(classStyle.class).toContain("tw-border-black")
+    expect(classStyle.class).toContain("tw-border-r")
+    expect(classStyle.class).not.toContain("tw-border-dashed")
+    expect(classStyle.class).not.toContain("tw-border-black")
+    expect(classStyle.style.borderRightStyle).toBe("solid")
+    expect(classStyle.style.borderRightColor).toBe("var(--timeful-grid-separator-strong)")
+    expect(classStyle.style.boxShadow).toBe("inset 0 0 0 2px var(--timeful-selection-strong)")
+    expect(classStyle.style.backgroundImage).toContain("repeating-linear-gradient")
+    expect(classStyle.style.backgroundImage).toContain("5px 7px")
+    expect(classStyle.style.backgroundImage).toContain("var(--timeful-selection-strong)")
   })
 
-  it("does not draw the dashed selection border for disabled grey gap cells", () => {
+  it("does not draw the selection border for disabled grey gap cells", () => {
     const classStyle = getTimeGridTimeslotClassStyle({
       date: null,
       row: 0,
@@ -655,6 +662,47 @@ describe("scheduleOverlapRendering", () => {
 
     expect(classStyle.class).not.toContain("tw-border-dashed")
     expect(classStyle.class).not.toContain("tw-border-black")
+  })
+
+  it("draws a solid selection outline for active day-grid slots", () => {
+    const slot = zdt("2026-01-01T09:00:00Z")
+    const monthDayIncluded = new ZdtMap<boolean>()
+    monthDayIncluded.set(slot, true)
+
+    const classStyle = getDayGridTimeslotClassStyle({
+      date: slot,
+      row: 0,
+      col: 0,
+      monthDayIncluded,
+      curTimeslot: { row: 0, col: 0 },
+      lastMonthRow: 0,
+      state: states.BEST_TIMES,
+      overlayAvailability: false,
+      dragType: DRAG_TYPES.ADD,
+      availabilityType: availabilityTypes.AVAILABLE,
+      availability: new ZdtSet(),
+      ifNeeded: new ZdtSet(),
+      tempTimes: new ZdtSet(),
+      responsesFormatted: new ZdtMap(),
+      parsedResponses: {},
+      curRespondent: "",
+      curRespondents: [],
+      curRespondentsSet: new Set<string>(),
+      respondents: [{ _id: "user-1" }],
+      curRespondentsMax: 0,
+      max: 1,
+      defaultState: states.BEST_TIMES,
+      userHasResponded: false,
+      curGuestId: "",
+      authUserId: undefined,
+      inDragRange: () => false,
+    })
+
+    expect(classStyle.class).toContain("tw-outline-2")
+    expect(classStyle.class).toContain("tw-outline-solid")
+    expect(classStyle.class).not.toContain("tw-outline-dashed")
+    expect(classStyle.class).not.toContain("tw-outline-black")
+    expect(classStyle.style.outlineColor).toBe("var(--timeful-selection-strong)")
   })
 
   it("uses the timed-grid unavailable token for zero-availability best-times slots", () => {
