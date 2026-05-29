@@ -43,19 +43,28 @@ type GoogleIdTokenInfo struct {
 //
 // The ID token is validated by calling Google's tokeninfo endpoint, which
 // checks the RS256 signature against Google's public keys and rejects expired
-// tokens. We then verify that the token was issued for *our* OAuth client
-// (audience) and that Google is the issuer.
+// tokens. We then verify that Google is the issuer and that the token's
+// audience matches one of *our* OAuth client IDs (web/iOS/Android), so a valid
+// Google token minted for some other app can't be replayed here.
 //
 // This must be used for any ID token that can originate from a client (e.g.
 // the mobile sign-in endpoint). Decoding the JWT body without verifying its
 // signature would let an attacker forge arbitrary claims (such as another
 // user's email) and sign in as anyone.
-func VerifyGoogleIdToken(idToken string, expectedAud string) (GoogleIdTokenInfo, error) {
+func VerifyGoogleIdToken(idToken string, allowedAuds []string) (GoogleIdTokenInfo, error) {
 	if strings.TrimSpace(idToken) == "" {
 		return GoogleIdTokenInfo{}, errors.New("id token is empty")
 	}
-	if strings.TrimSpace(expectedAud) == "" {
-		return GoogleIdTokenInfo{}, errors.New("expected audience is not configured")
+
+	// Collect the non-empty client IDs we accept as audiences.
+	accepted := make([]string, 0, len(allowedAuds))
+	for _, aud := range allowedAuds {
+		if strings.TrimSpace(aud) != "" {
+			accepted = append(accepted, aud)
+		}
+	}
+	if len(accepted) == 0 {
+		return GoogleIdTokenInfo{}, errors.New("no OAuth client IDs are configured to validate the token audience")
 	}
 
 	endpoint := "https://oauth2.googleapis.com/tokeninfo?id_token=" + url.QueryEscape(idToken)
@@ -76,9 +85,16 @@ func VerifyGoogleIdToken(idToken string, expectedAud string) (GoogleIdTokenInfo,
 		return GoogleIdTokenInfo{}, fmt.Errorf("id token rejected by Google (status %d): %s", resp.StatusCode, info.Error)
 	}
 
-	// Ensure the token was minted for our OAuth client. Without this an
+	// Ensure the token was minted for one of our OAuth clients. Without this an
 	// attacker could present a valid Google token issued for a different app.
-	if info.Aud != expectedAud {
+	audOk := false
+	for _, aud := range accepted {
+		if info.Aud == aud {
+			audOk = true
+			break
+		}
+	}
+	if !audOk {
 		return GoogleIdTokenInfo{}, fmt.Errorf("id token audience mismatch")
 	}
 

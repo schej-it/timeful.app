@@ -145,9 +145,14 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 		// can be supplied directly by the client (e.g. the mobile sign-in
 		// endpoint), so decoding it without verifying the signature, audience,
 		// and issuer would let an attacker forge an identity and sign in as
-		// any user.
-		expectedAud := utils.GetClientIdFromTokenOrigin(tokenOrigin)
-		info, err := auth.VerifyGoogleIdToken(token.IdToken, expectedAud)
+		// any user. We accept any of our configured client IDs (web/iOS/
+		// Android) as a valid audience.
+		allowedAuds := []string{
+			os.Getenv("CLIENT_ID"),
+			os.Getenv("IOS_CLIENT_ID"),
+			os.Getenv("ANDROID_CLIENT_ID"),
+		}
+		info, err := auth.VerifyGoogleIdToken(token.IdToken, allowedAuds)
 		if err != nil {
 			logger.StdErr.Printf("Failed to verify Google ID token: %v", err)
 			return models.User{}, err
