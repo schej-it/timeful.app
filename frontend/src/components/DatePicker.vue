@@ -1,7 +1,7 @@
 <template>
   <div
     ref="datePickerEl"
-    class="tw-w-full"
+    class="timeful-date-picker tw-w-full"
     @pointerdown.capture="onPointerDown"
     @pointerover.capture="onPointerOver"
     @click.capture="onClickCapture"
@@ -213,3 +213,10 @@ function removeDate(date: string) {
 }
 
 </script>
+
+<style>
+.timeful-date-picker .v-date-picker-month__weekday {
+  color: var(--timeful-date-picker-weekday-foreground);
+  font-weight: 700;
+}
+</style>

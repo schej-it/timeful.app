@@ -18,6 +18,7 @@
   --timeful-grid-separator-strong: var(--timeful-grid-line-color);
   --timeful-grid-separator-soft: var(--timeful-grid-line-color);
   --timeful-muted-foreground: rgba(0, 0, 0, 0.6);
+  --timeful-date-picker-weekday-foreground: #9e9e9e;
   --timeful-disabled-foreground: rgba(0, 0, 0, 0.38);
   --timeful-disabled-checkbox-icon: #aaaaaa;
   --timeful-emphasis-foreground: #4f4f4f;
