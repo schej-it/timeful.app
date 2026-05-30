@@ -298,29 +298,6 @@
         </div>
       </div>
       <template v-if="!isPhone">
-        <v-btn
-          v-if="
-            !isGroup &&
-            (authUser || guestAddedAvailability) &&
-            (!event.blindAvailabilityEnabled || isOwner)
-          "
-          variant="text"
-          color="primary"
-          class="-tw-ml-2 tw-mb-4 tw-w-min tw-px-2"
-          @click="
-            () => {
-              if (authUser) {
-                $emit('addAvailabilityAsGuest')
-              } else {
-                $emit('addAvailability')
-              }
-            }
-          "
-        >
-          {{
-            authUser ? "+ Add guest availability" : "+ Add availability"
-          }}</v-btn
-        >
         <EventOptions
           :event="event"
           :show-best-times="showBestTimes"
@@ -393,29 +370,6 @@
       </template>
     </v-switch>
 
-    <v-btn
-      v-if="
-        !maxHeight &&
-        isPhone &&
-        !isGroup &&
-        (authUser || guestAddedAvailability) &&
-        (!event.blindAvailabilityEnabled || isOwner)
-      "
-      variant="text"
-      color="primary"
-      class="-tw-ml-2 tw-mt-4 tw-w-min tw-px-2"
-      @click="
-        () => {
-          if (authUser) {
-            $emit('addAvailabilityAsGuest')
-          } else {
-            $emit('addAvailability')
-          }
-        }
-      "
-    >
-      {{ authUser ? "+ Add guest availability" : "+ Add availability" }}</v-btn
-    >
   </div>
 </template>
 

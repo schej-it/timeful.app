@@ -232,40 +232,21 @@
                 <div
                   v-if="!isPhone && (!isSignUp || canEditAvailability)"
                   ref="desktopGuestEditMenuRoot"
-                  class="tw-relative tw-flex tw-w-40"
+                  class="tw-relative tw-flex tw-items-center tw-gap-2"
                 >
                   <template v-if="!isEditing">
-                    <template v-if="showGuestActionButton">
-                      <v-btn
-                        min-width="10.25rem"
-                        class="timeful-elevated-button tw-bg-green tw-text-white tw-transition-opacity"
-                        :class="{
-                          'timeful-availability-button-attention':
-                            availabilityBtnAttentionActive,
-                        }"
-                        :style="{ opacity: availabilityBtnOpacity }"
-                        @click="editSelectedGuestAvailability"
-                      >
-                        {{ guestActionButtonText }}
-                      </v-btn>
-                      <div
-                        v-if="
-                          hasMultipleOwnedGuestResponses && showGuestEditMenu
-                        "
-                        class="tw-absolute tw-right-0 tw-top-[calc(100%+0.5rem)] tw-z-30 tw-min-w-[10.25rem] tw-rounded-lg tw-border tw-border-light-gray tw-bg-white tw-py-1 tw-shadow-lg"
-                      >
-                        <button
-                          v-for="option in ownedGuestEditOptions"
-                          :key="option.lookupKey"
-                          class="tw-block tw-w-full tw-px-3 tw-py-2 tw-text-left tw-text-sm hover:tw-bg-off-white"
-                          @click="editOwnedGuestAvailability(option.lookupKey)"
-                        >
-                          {{ option.name }}
-                        </button>
-                      </div>
-                    </template>
                     <v-btn
-                      v-else
+                      v-if="showSecondaryAddAvailabilityAction"
+                      id="desktop-secondary-availability-btn"
+                      variant="outlined"
+                      color="primary"
+                      class="tw-min-w-0 tw-whitespace-nowrap tw-rounded-md tw-px-3 tw-text-sm tw-text-green"
+                      @click="triggerSecondaryAddAvailability"
+                    >
+                      {{ secondaryAddAvailabilityButtonText }}
+                    </v-btn>
+                    <v-btn
+                      id="desktop-primary-availability-btn"
                       width="10.25rem"
                       class="timeful-elevated-button tw-text-white tw-transition-opacity"
                       :class="[
@@ -275,12 +256,29 @@
                             availabilityBtnAttentionActive,
                         },
                       ]"
-                      :disabled="loading && !userHasResponded"
+                      :disabled="loading && !showGuestActionButton && !userHasResponded"
                       :style="{ opacity: availabilityBtnOpacity }"
-                      @click="addAvailability"
+                      @click="handlePrimaryAvailabilityAction"
                     >
-                      {{ actionButtonText }}
+                      {{ primaryAvailabilityButtonText }}
                     </v-btn>
+                    <div
+                      v-if="
+                        showGuestActionButton &&
+                        hasMultipleOwnedGuestResponses &&
+                        showGuestEditMenu
+                      "
+                      class="tw-absolute tw-right-0 tw-top-[calc(100%+0.5rem)] tw-z-30 tw-min-w-[10.25rem] tw-rounded-lg tw-border tw-border-light-gray tw-bg-white tw-py-1 tw-shadow-lg"
+                    >
+                      <button
+                        v-for="option in ownedGuestEditOptions"
+                        :key="option.lookupKey"
+                        class="tw-block tw-w-full tw-px-3 tw-py-2 tw-text-left tw-text-sm hover:tw-bg-off-white"
+                        @click="editOwnedGuestAvailability(option.lookupKey)"
+                      >
+                        {{ option.name }}
+                      </button>
+                    </div>
                   </template>
                   <template v-else>
                     <v-btn
@@ -440,9 +438,9 @@
         class="tw-fixed tw-bottom-0 tw-z-20 tw-flex tw-w-full tw-flex-col"
         :style="showAds ? { bottom: '115px' } : {}"
       >
-        <div
-          v-if="
-            showGuestActionButton &&
+          <div
+            v-if="
+              showGuestActionButton &&
             hasMultipleOwnedGuestResponses &&
             showGuestEditMenu
           "
@@ -472,31 +470,30 @@
               >Schedule</v-btn
             >
             <v-spacer />
-            <v-btn
-              v-if="showGuestActionButton"
-              class="tw-bg-white tw-text-green tw-transition-opacity"
-              :class="{
-                'timeful-availability-button-attention':
-                  availabilityBtnAttentionActive,
-              }"
-              :style="{ opacity: availabilityBtnOpacity }"
-              @click="editSelectedGuestAvailability"
-            >
-              {{ guestActionButtonText }}
-            </v-btn>
-            <v-btn
-              v-else
-              class="tw-bg-white tw-text-green tw-transition-opacity"
-              :class="{
-                'timeful-availability-button-attention':
-                  availabilityBtnAttentionActive,
-              }"
-              :disabled="loading && !userHasResponded"
-              :style="{ opacity: availabilityBtnOpacity }"
-              @click="addAvailability"
-            >
-              {{ mobileActionButtonText }}
-            </v-btn>
+            <div class="tw-flex tw-min-w-0 tw-items-center tw-gap-2">
+              <v-btn
+                v-if="showSecondaryAddAvailabilityAction"
+                id="mobile-secondary-availability-btn"
+                variant="outlined"
+                class="tw-min-w-0 tw-whitespace-nowrap tw-border-white tw-px-2 tw-text-[13px] tw-text-white"
+                @click="triggerSecondaryAddAvailability"
+              >
+                {{ secondaryAddAvailabilityButtonText }}
+              </v-btn>
+              <v-btn
+                id="mobile-primary-availability-btn"
+                class="tw-min-w-0 tw-whitespace-nowrap tw-bg-white tw-px-2 tw-text-[13px] tw-text-green tw-transition-opacity"
+                :class="{
+                  'timeful-availability-button-attention':
+                    availabilityBtnAttentionActive,
+                }"
+                :disabled="loading && !showGuestActionButton && !userHasResponded"
+                :style="{ opacity: availabilityBtnOpacity }"
+                @click="handlePrimaryAvailabilityAction"
+              >
+                {{ mobilePrimaryAvailabilityButtonText }}
+              </v-btn>
+            </div>
           </template>
           <template v-else-if="isEditing">
             <v-btn variant="text" class="tw-text-white" @click="cancelEditing">
@@ -737,6 +734,9 @@ const eventType = computed(() => {
 const canEditAvailability = computed(() =>
   canEditAvailabilityAsCurrentViewer(loader.event.value, authUser.value)
 )
+const isOwner = computed(() =>
+  isSignedInOwner(loader.event.value, authUser.value)
+)
 const canEditMetadata = computed(() =>
   canEditEventMetadata(loader.event.value, authUser.value)
 )
@@ -758,6 +758,15 @@ const showAds = computed(
     !isSettingSpecificTimes.value
 )
 const showFeedbackBtn = computed(() => isPhone.value)
+const guestAddedAvailability = computed(() =>
+  ownedGuestResponses.value.some((ownedGuest) =>
+    Object.values(loader.event.value?.responses ?? {}).some((response) =>
+      response.guestOwnershipMode === "token"
+        ? response.guestId === ownedGuest.lookupKey
+        : response.user?._id === ownedGuest.lookupKey
+    )
+  )
+)
 const actionButtonText = computed(() => {
   if (isSignUp.value) return "Edit slots"
   else if (userHasResponded.value || isGroup.value) return "Edit availability"
@@ -809,6 +818,21 @@ const hasMultipleOwnedGuestResponses = computed(
   () => ownedGuestEditOptions.value.length > 1
 )
 const guestActionButtonText = computed(() => "Edit availability")
+const secondaryAddAvailabilityButtonText = computed(() => {
+  if (!authUser.value) return "Add availability"
+  return isPhone.value ? "Add guest" : "Add guest availability"
+})
+const showSecondaryAddAvailabilityAction = computed(() => {
+  if (isGroup.value || isSignUp.value || isEditing.value) return false
+  if (!(authUser.value || guestAddedAvailability.value)) return false
+  const event = loader.event.value
+  if (!event) return false
+  return !event.blindAvailabilityEnabled || isOwner.value
+})
+const primaryAvailabilityButtonText = computed(() => {
+  if (showGuestActionButton.value) return guestActionButtonText.value
+  return actionButtonText.value
+})
 const guestRespondentNames = computed(() =>
   Object.values(loader.event.value?.responses ?? {}).flatMap((response) => {
     if (
@@ -821,10 +845,9 @@ const guestRespondentNames = computed(() =>
     return displayName.length > 0 ? [displayName] : []
   })
 )
-const mobileActionButtonText = computed(() => {
-  if (isSignUp.value) return "Edit slots"
-  if (showGuestActionButton.value) return "Edit availability"
-  return userHasResponded.value ? "Edit availability" : "Add availability"
+const mobilePrimaryAvailabilityButtonText = computed(() => {
+  if (showGuestActionButton.value) return guestActionButtonText.value
+  return actionButtonText.value
 })
 const isIOS = computed(() => isIOSFn())
 
@@ -942,6 +965,23 @@ function editSelectedGuestAvailability() {
 function editOwnedGuestAvailability(lookupKey: string) {
   scheduleOverlap.value?.editOwnedGuestAvailability(lookupKey)
   closeGuestEditMenu()
+}
+
+function handlePrimaryAvailabilityAction() {
+  if (showGuestActionButton.value) {
+    editSelectedGuestAvailability()
+    return
+  }
+  addAvailability()
+}
+
+function triggerSecondaryAddAvailability() {
+  closeGuestEditMenu()
+  if (authUser.value) {
+    addAvailabilityAsGuest()
+    return
+  }
+  addAvailability()
 }
 
 watch(

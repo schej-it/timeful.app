@@ -427,6 +427,11 @@ describe("RespondentsList", () => {
     expect(respondentsListSource).not.toContain('item-text="text"')
   })
 
+  it("does not render an inline add-availability CTA in the respondents panel", () => {
+    expect(respondentsListSource).not.toContain("+ Add availability")
+    expect(respondentsListSource).not.toContain("+ Add guest availability")
+  })
+
   it("keeps row clicks separate from the guest pencil edit action", async () => {
     isPhoneValue.value = false
 

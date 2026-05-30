@@ -68,6 +68,7 @@ const {
   routerPushMock,
   routerReplaceMock,
   showErrorMock,
+  addAvailabilityAsGuestMock,
   copyLinkMock,
   editEventMock,
 } = vi.hoisted(() => ({
@@ -86,6 +87,7 @@ const {
   routerPushMock: vi.fn(),
   routerReplaceMock: vi.fn(),
   showErrorMock: vi.fn(),
+  addAvailabilityAsGuestMock: vi.fn(),
   copyLinkMock: vi.fn(),
   editEventMock: vi.fn(),
 }))
@@ -168,7 +170,7 @@ vi.mock("@/composables/event/useEventEditing", () => ({
     availabilityBtnOpacity: ref(1),
     availabilityBtnAttentionActive: ref(false),
     addAvailability: vi.fn(),
-    addAvailabilityAsGuest: vi.fn(),
+    addAvailabilityAsGuest: addAvailabilityAsGuestMock,
     cancelEditing: vi.fn(),
     copyLink: copyLinkMock,
     deleteAvailability: vi.fn(),
@@ -417,7 +419,7 @@ describe("Event guest edit action", () => {
           "v-card-actions": true,
           "v-dialog": true,
           "v-spacer": true,
-          "v-btn": buttonClickStub,
+          "v-btn": buttonSemanticStub,
         },
       },
     })
@@ -489,8 +491,105 @@ describe("Event guest edit action", () => {
 
     await flushDeferredMount()
 
-    expect(wrapper.text()).toContain("Edit availability")
-    expect(wrapper.text()).not.toContain("Add availability")
+    expect(wrapper.get("#desktop-primary-availability-btn").text()).toContain(
+      "Edit availability"
+    )
+    expect(wrapper.get("#desktop-secondary-availability-btn").text()).toContain(
+      "Add availability"
+    )
+  })
+
+  it("shows add-guest availability beside edit availability for signed-in respondents", async () => {
+    authUserState.value = {
+      _id: "000000000000000000000000",
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonClickStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.get("#desktop-primary-availability-btn").text()).toContain(
+      "Edit availability"
+    )
+    expect(wrapper.get("#desktop-secondary-availability-btn").text()).toContain(
+      "Add guest availability"
+    )
+  })
+
+  it("triggers add guest availability from the new secondary desktop action", async () => {
+    authUserState.value = {
+      _id: "000000000000000000000000",
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+    const initialCallCount = addAvailabilityAsGuestMock.mock.calls.length
+    await wrapper.get("#desktop-secondary-availability-btn").trigger("click")
+
+    expect(addAvailabilityAsGuestMock).toHaveBeenCalledTimes(initialCallCount + 1)
   })
 
   it("opens direct guest editing when exactly one owned guest response exists", async () => {
@@ -1135,6 +1234,99 @@ describe("Event guest edit action", () => {
     expect(copyLinkButton.text()).toContain("Copy link")
     expect(copyLinkButton.text()).toContain("mdi-content-copy")
     expect(copyLinkButton.text()).not.toContain("mdi-share")
+  })
+
+  it("moves mobile add availability into the sticky footer action cluster", async () => {
+    isPhoneState.value = true
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": iconTextStub,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.get("#mobile-primary-availability-btn").text()).toContain(
+      "Edit availability"
+    )
+    expect(wrapper.get("#mobile-secondary-availability-btn").text()).toContain(
+      "Add availability"
+    )
+    expect(wrapper.text()).not.toContain("+ Add availability")
+  })
+
+  it("uses a compact add-guest label in the mobile footer for signed-in respondents", async () => {
+    isPhoneState.value = true
+    authUserState.value = {
+      _id: "000000000000000000000000",
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": iconTextStub,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.get("#mobile-secondary-availability-btn").text()).toContain(
+      "Add guest"
+    )
   })
 
   it("does not render the relocated copy link action for group events", async () => {
