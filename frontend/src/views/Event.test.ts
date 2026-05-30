@@ -58,6 +58,7 @@ const {
   editGuestAvailabilityMock,
   editOwnedGuestAvailabilityMock,
   authUserState,
+  isPhoneState,
   curGuestIdState,
   loaderEventState,
   refreshEventMock,
@@ -67,10 +68,13 @@ const {
   routerPushMock,
   routerReplaceMock,
   showErrorMock,
+  copyLinkMock,
+  editEventMock,
 } = vi.hoisted(() => ({
   editGuestAvailabilityMock: vi.fn(),
   editOwnedGuestAvailabilityMock: vi.fn(),
   authUserState: { value: null as null | { _id: string } },
+  isPhoneState: { value: false },
   curGuestIdState: { value: "" },
   refreshEventMock: vi.fn().mockResolvedValue(undefined),
   checkOwnerPremiumMock: vi.fn().mockResolvedValue(undefined),
@@ -82,6 +86,8 @@ const {
   routerPushMock: vi.fn(),
   routerReplaceMock: vi.fn(),
   showErrorMock: vi.fn(),
+  copyLinkMock: vi.fn(),
+  editEventMock: vi.fn(),
 }))
 
 const scheduleOverlapMethodMocks = {
@@ -119,7 +125,7 @@ vi.mock("@/stores/main", () => ({
 
 vi.mock("@/utils/useDisplayHelpers", () => ({
   useDisplayHelpers: () => ({
-    isPhone: ref(false),
+    isPhone: computed(() => isPhoneState.value),
   }),
 }))
 
@@ -164,9 +170,9 @@ vi.mock("@/composables/event/useEventEditing", () => ({
     addAvailability: vi.fn(),
     addAvailabilityAsGuest: vi.fn(),
     cancelEditing: vi.fn(),
-    copyLink: vi.fn(),
+    copyLink: copyLinkMock,
     deleteAvailability: vi.fn(),
-    editEvent: vi.fn(),
+    editEvent: editEventMock,
     saveChanges: vi.fn(),
     saveChangesAsGuest: vi.fn(),
     setAvailabilityAutomatically: vi.fn(),
@@ -306,11 +312,16 @@ const buttonSemanticStub = {
   `,
 }
 
+const iconTextStub = {
+  template: "<i><slot /></i>",
+}
+
 describe("Event guest edit action", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
     authUserState.value = null
+    isPhoneState.value = false
     curGuestIdState.value = ""
     loaderEventState.value = {
       ...createDefaultEventState(),
@@ -994,6 +1005,180 @@ describe("Event guest edit action", () => {
     expect(ownerEditButton.text()).toContain("Edit event")
     expect(ownerEditButton.attributes("data-variant")).toBe("text")
     expect(ownerEditButton.attributes("data-color")).toBe("primary")
+  })
+
+  it("renders copy link beside the event metadata as an outlined secondary action", async () => {
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": iconTextStub,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    const metaRow = wrapper.get("#event-header-meta-row")
+    const copyLinkButton = wrapper.get("#copy-link-btn")
+
+    expect(metaRow.text()).toContain("Copy link")
+    expect(copyLinkButton.attributes("data-variant")).toBe("outlined")
+    expect(copyLinkButton.attributes("data-color")).toBe("primary")
+    expect(copyLinkButton.text()).toContain("mdi-content-copy")
+  })
+
+  it("invokes copy link from the metadata action row", async () => {
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonClickStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    await wrapper.get("#copy-link-btn").trigger("click")
+
+    expect(copyLinkMock).toHaveBeenCalled()
+  })
+
+  it("keeps copy link explicit on phones instead of switching to a share icon", async () => {
+    isPhoneState.value = true
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": iconTextStub,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    const copyLinkButton = wrapper.get("#copy-link-btn")
+    expect(copyLinkButton.text()).toContain("Copy link")
+    expect(copyLinkButton.text()).toContain("mdi-content-copy")
+    expect(copyLinkButton.text()).not.toContain("mdi-share")
+  })
+
+  it("does not render the relocated copy link action for group events", async () => {
+    loaderEventState.value = {
+      ...loaderEventState.value,
+      type: eventTypes.GROUP,
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.find("#copy-link-btn").exists()).toBe(false)
   })
 
   it("keeps metadata editing available for events created while not signed in", async () => {

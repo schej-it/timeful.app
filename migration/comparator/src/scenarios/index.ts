@@ -5,6 +5,7 @@ import { eventOptionsStyleScenario } from "./event-options-style.js"
 import { eventOptionsStyleOnScenario } from "./event-options-style-on.js"
 import { eventDescriptionStyleScenario } from "./event-description-style.js"
 import { eventDescriptionRealScenario } from "./event-description-real.js"
+import { eventHeaderActionsScenario } from "./event-header-actions.js"
 import { eventTimezoneMenuScenario } from "./event-timezone-menu.js"
 import { eventRespondentsPanelScenario } from "./event-respondents-panel.js"
 import { eventRespondentsPanelGuestEditScenario } from "./event-respondents-panel-guest-edit.js"
@@ -33,6 +34,7 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
   "event-options-style-on": eventOptionsStyleOnScenario,
   "event-description-style": eventDescriptionStyleScenario,
   "event-description-real": eventDescriptionRealScenario,
+  "event-header-actions": eventHeaderActionsScenario,
   "event-respondents-panel": eventRespondentsPanelScenario,
   "event-respondents-panel-guest-edit": eventRespondentsPanelGuestEditScenario,
   "event-respondents-panel-hover": eventRespondentsPanelHoverScenario,

@@ -121,8 +121,11 @@
         <div class="tw-mx-auto tw-max-w-5xl tw-flex-1">
           <div v-if="!isSettingSpecificTimes" class="tw-mx-4">
             <!-- Title and copy link -->
-            <div class="tw-flex tw-items-center tw-text-black">
-              <div>
+            <div
+              id="event-header"
+              class="tw-flex tw-flex-col tw-gap-3 tw-text-black sm:tw-flex-row sm:tw-items-start sm:tw-gap-4"
+            >
+              <div class="tw-min-w-0 tw-flex-1">
                 <div
                   class="sm:mb-2 tw-flex tw-flex-wrap tw-items-center tw-gap-x-4 tw-gap-y-2"
                 >
@@ -162,7 +165,10 @@
                     </HelpDialog>
                   </template>
                 </div>
-                <div class="tw-flex tw-items-baseline tw-gap-1">
+                <div
+                  id="event-header-meta-row"
+                  class="tw-flex tw-flex-wrap tw-items-center tw-gap-x-1 tw-gap-y-2"
+                >
                   <div
                     class="tw-text-sm tw-font-normal tw-text-very-dark-gray sm:tw-text-base"
                   >
@@ -179,10 +185,25 @@
                       Edit {{ isGroup ? "group" : "event" }}
                     </v-btn>
                   </template>
+                  <v-btn
+                    v-if="!isGroup"
+                    id="copy-link-btn"
+                    variant="outlined"
+                    color="primary"
+                    class="event-copy-link-button tw-h-8 tw-min-w-0 tw-rounded-md tw-px-3 tw-text-sm tw-text-green"
+                    @click="copyLink"
+                  >
+                    <v-icon start class="tw-text-green"
+                      >mdi-content-copy</v-icon
+                    >
+                    <span class="tw-text-green">Copy link</span>
+                  </v-btn>
                 </div>
               </div>
-              <v-spacer />
-              <div class="tw-flex tw-flex-row tw-items-center tw-gap-2.5">
+              <div
+                v-if="isGroup || (!isPhone && (!isSignUp || canEditAvailability))"
+                class="tw-flex tw-flex-row tw-items-center tw-gap-2.5"
+              >
                 <div v-if="isGroup">
                   <v-btn
                     v-if="
@@ -206,22 +227,6 @@
                     <v-icon v-if="!isPhone" class="tw-mr-1">mdi-refresh</v-icon>
                     <span v-if="!isPhone" class="tw-mr-2">Refresh</span>
                     <v-icon v-else class="tw-text-green">mdi-refresh</v-icon>
-                  </v-btn>
-                </div>
-                <div v-else>
-                  <v-btn
-                    :icon="isPhone"
-                    :variant="isPhone ? undefined : 'outlined'"
-                    class="tw-text-green"
-                    @click="copyLink"
-                  >
-                    <span v-if="!isPhone" class="tw-mr-2 tw-text-green"
-                      >Copy link</span
-                    >
-                    <v-icon v-if="!isPhone" class="tw-text-green"
-                      >mdi-content-copy</v-icon
-                    >
-                    <v-icon v-else class="tw-text-green">mdi-share</v-icon>
                   </v-btn>
                 </div>
                 <div
