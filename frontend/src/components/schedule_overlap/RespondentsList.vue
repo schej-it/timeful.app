@@ -180,12 +180,58 @@
                     </span>
                   </button>
                 </div>
-                <div class="tw-flex tw-flex-col tw-justify-center">
-                  <div
-                    class="tw-mr-1 tw-text-sm tw-leading-5 tw-transition-all"
-                    :class="respondentClass(user._id ?? '')"
-                  >
-                    {{ formatRespondentName(user) + (respondentIfNeeded(user._id ?? '') ? "*" : "") }}
+                <div class="tw-flex tw-min-w-0 tw-flex-1 tw-flex-col tw-justify-center">
+                  <div class="tw-flex tw-items-center tw-justify-between tw-gap-2">
+                    <div
+                      class="respondent-name-line tw-mr-1 tw-min-w-0 tw-text-sm tw-leading-5 tw-transition-all"
+                      :class="respondentClass(user._id ?? '')"
+                    >
+                      {{ formatRespondentName(user) + (respondentIfNeeded(user._id ?? '') ? "*" : "") }}
+                    </div>
+                    <div
+                      class="respondent-row-actions tw-flex tw-shrink-0 tw-items-center tw-gap-1 tw-transition-none group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
+                      :class="isPhone ? 'tw-opacity-100' : 'tw-opacity-0'"
+                    >
+                      <component
+                        :is="respondentEditActionState(user) === 'editable' ? 'button' : 'div'"
+                        v-if="respondentEditActionState(user) !== 'none'"
+                        type="button"
+                        class="respondent-edit-status tw-flex tw-h-5 tw-w-5 tw-items-center tw-justify-center tw-rounded-full tw-bg-white tw-p-0 tw-text-sm tw-leading-5"
+                        :class="
+                          respondentEditActionState(user) === 'editable'
+                            ? 'tw-cursor-pointer'
+                            : 'tw-cursor-default'
+                        "
+                        :aria-label="
+                          respondentEditActionState(user) === 'editable'
+                            ? `Edit ${formatRespondentName(user)}`
+                            : `${formatRespondentName(user)} cannot be edited`
+                        "
+                        :aria-disabled="respondentEditActionState(user) === 'locked'"
+                        @click.stop="
+                          respondentEditActionState(user) === 'editable' &&
+                          $emit('editGuestAvailability', user._id ?? '')
+                        "
+                      >
+                        <v-icon size="16" color="#4F4F4F">
+                          {{
+                            respondentEditActionState(user) === "editable"
+                              ? "mdi-pencil"
+                              : "mdi-lock"
+                          }}
+                        </v-icon>
+                      </component>
+                      <v-btn
+                        v-if="!isPhone && isOwner && !isGroup"
+                        icon
+                        size="small"
+                        class="tw-bg-white"
+                        @click="() => showDeleteAvailabilityDialog(user)"
+                        ><v-icon small class="hover:tw-text-red" color="#4F4F4F"
+                          >mdi-delete</v-icon
+                        ></v-btn
+                      >
+                    </div>
                   </div>
                   <div
                     v-if="isOwner && event.collectEmails"
@@ -197,66 +243,6 @@
                     {{ user.email }}
                     <v-icon class="tw-ml-1 tw-text-xs">mdi-content-copy</v-icon>
                   </div>
-                </div>
-                <div
-                  class="tw-absolute tw-right-0 tw-transition-none group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
-                  :class="isPhone ? 'tw-opacity-100' : 'tw-opacity-0'"
-                >
-                  <template
-                    v-if="isPhone && (isGuest(user) || (isOwner && !isGroup))"
-                  >
-                    <v-menu right offset-x>
-                      <template #activator="{ props: activatorProps }">
-                        <v-btn icon v-bind="activatorProps">
-                          <v-icon small color="#4F4F4F">mdi-dots-vertical</v-icon>
-                        </v-btn>
-                      </template>
-                      <v-list class="tw-py-1" density="compact">
-                        <v-list-item
-                          v-if="canEditGuestAvailability(user)"
-                          @click="$emit('editGuestAvailability', user._id ?? '')"
-                        >
-                          <v-list-item-title class="tw-flex tw-items-center">
-                            <v-icon small class="tw-mr-2" color="#4F4F4F"
-                              >mdi-pencil</v-icon
-                            >
-                            Edit
-                          </v-list-item-title>
-                        </v-list-item>
-                        <v-list-item
-                          v-if="isOwner && !isGroup"
-                          @click="() => showDeleteAvailabilityDialog(user)"
-                        >
-                          <v-list-item-title class="tw-flex tw-items-center">
-                            <v-icon small class="tw-mr-2" color="#4F4F4F"
-                              >mdi-delete</v-icon
-                            >
-                            Delete
-                          </v-list-item-title>
-                        </v-list-item>
-                      </v-list>
-                    </v-menu>
-                  </template>
-                  <template v-else>
-                    <v-btn
-                      v-if="canEditGuestAvailability(user)"
-                      icon
-                      size="small"
-                      class="tw-bg-white"
-                      @click="$emit('editGuestAvailability', user._id ?? '')"
-                      ><v-icon small color="#4F4F4F">mdi-pencil</v-icon></v-btn
-                    >
-                    <v-btn
-                      v-if="isOwner && !isGroup"
-                      icon
-                      size="small"
-                      class="tw-bg-white"
-                      @click="() => showDeleteAvailabilityDialog(user)"
-                      ><v-icon small class="hover:tw-text-red" color="#4F4F4F"
-                        >mdi-delete</v-icon
-                      ></v-btn
-                    >
-                  </template>
                 </div>
               </div>
             </transition-group>
@@ -477,6 +463,13 @@ function canEditGuestAvailability(user: User) {
     props.parsedResponses[user._id],
     new Set(props.ownedGuestResponseLookupKeys)
   )
+}
+
+function respondentEditActionState(user: User): "editable" | "locked" | "none" {
+  if (user._id == null) {
+    return "none"
+  }
+  return canEditGuestAvailability(user) ? "editable" : "locked"
 }
 
 async function deleteAvailability(user: User | null) {

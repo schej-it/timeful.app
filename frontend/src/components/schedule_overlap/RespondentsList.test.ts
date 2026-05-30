@@ -159,6 +159,18 @@ describe("RespondentsList", () => {
     )
   })
 
+  it("keeps the respondent action in the same inline row as the respondent name", () => {
+    const wrapper = mountRespondentsList({
+      curDate: zdt("2026-01-01T09:00:00Z"),
+      setEntry: zdt("2026-01-01T09:00:00Z"),
+    })
+
+    const nameActionRow = wrapper.find(".tw-flex.tw-items-center.tw-justify-between.tw-gap-2")
+    expect(nameActionRow.exists()).toBe(true)
+    expect(nameActionRow.find(".respondent-name-line").exists()).toBe(true)
+    expect(nameActionRow.find(".respondent-row-actions").exists()).toBe(true)
+  })
+
   it("treats equal ZonedDateTime values as matching respondent if-needed slots", () => {
     const matchingDate = zdt("2026-01-01T09:00:00Z")
     const setEntry = zdt("2026-01-01T09:00:00Z")
@@ -499,8 +511,12 @@ describe("RespondentsList", () => {
     isPhoneValue.value = true
   })
 
-  it("hides the guest pencil for protected guest responses owned by someone else", () => {
+  it("renders a lock for protected guest responses owned by someone else", () => {
     isPhoneValue.value = false
+
+    const VIconStub = {
+      template: "<span><slot /></span>",
+    }
 
     const wrapper = shallowMount(RespondentsList, {
       props: {
@@ -562,11 +578,20 @@ describe("RespondentsList", () => {
         addingAvailabilityAsGuest: false,
       },
       global: {
-        stubs: sharedRespondentsListStubs,
+        stubs: {
+          ...sharedRespondentsListStubs,
+          "v-icon": VIconStub,
+        },
       },
     })
 
-    expect(wrapper.text()).not.toContain("mdi-pencil")
+    const lockStatus = wrapper.get(".respondent-edit-status")
+    expect(lockStatus.attributes("aria-disabled")).toBe("true")
+    expect(lockStatus.attributes("aria-label")).toContain("cannot be edited")
+    expect(lockStatus.classes()).toContain("tw-h-5")
+    expect(lockStatus.classes()).toContain("tw-w-5")
+    expect(lockStatus.classes()).toContain("tw-text-sm")
+    expect(lockStatus.text()).toContain("mdi-lock")
     isPhoneValue.value = true
   })
 
@@ -736,5 +761,224 @@ describe("RespondentsList", () => {
 
     expect(wrapper.text()).toContain("mdi-pencil")
     isPhoneValue.value = true
+  })
+
+  it("shows a direct pencil on mobile without an overflow menu for editable guests", () => {
+    isPhoneValue.value = true
+
+    const VIconStub = {
+      template: "<span><slot /></span>",
+    }
+
+    const wrapper = shallowMount(RespondentsList, {
+      props: {
+        eventId: "evt-1",
+        event: {
+          blindAvailabilityEnabled: false,
+          collectEmails: false,
+          dates: [Temporal.PlainDate.from("2026-01-01")],
+          timeSeed: zdt("2026-01-01T09:00:00Z"),
+          duration: durations.ONE_HOUR,
+          daysOnly: false,
+        },
+        curGuestId: "",
+        ownedGuestResponseLookupKeys: ["guest"],
+        guestResponseLookupKey: "guest",
+        days: [],
+        times: [],
+        curDate: zdt("2026-01-01T09:00:00Z"),
+        curRespondent: "",
+        curRespondents: [],
+        curTimeslot: { dayIndex: -1, timeIndex: -1 },
+        curTimeslotAvailability: { guest: true },
+        respondents: [{ _id: "guest", firstName: "guest", lastName: "" }],
+        parsedResponses: {
+          guest: {
+            user: {
+              _id: "guest",
+              firstName: "guest",
+              lastName: "",
+            },
+            availability: new ZdtSet(),
+            ifNeeded: new ZdtSet(),
+            guest: true,
+          },
+        },
+        isOwner: false,
+        isGroup: false,
+        showCalendarEvents: false,
+        responsesFormatted: new ZdtMap<Set<string>>(),
+        timezone: {
+          value: UTC,
+          offset: durations.ZERO,
+          label: UTC,
+          gmtString: "GMT",
+        },
+        hideIfNeeded: false,
+        guestAddedAvailability: false,
+        addingAvailabilityAsGuest: false,
+      },
+      global: {
+        stubs: {
+          ...sharedRespondentsListStubs,
+          "v-icon": VIconStub,
+        },
+      },
+    })
+
+    const pencilStatus = wrapper.get(".respondent-edit-status")
+    expect(pencilStatus.element.tagName).toBe("BUTTON")
+    expect(pencilStatus.attributes("aria-disabled")).toBe("false")
+    expect(pencilStatus.attributes("aria-label")).toContain("Edit guest")
+    expect(pencilStatus.classes()).toContain("tw-h-5")
+    expect(pencilStatus.classes()).toContain("tw-w-5")
+    expect(pencilStatus.classes()).toContain("tw-text-sm")
+    expect(pencilStatus.text()).toContain("mdi-pencil")
+    expect(wrapper.text()).not.toContain("mdi-dots-vertical")
+  })
+
+  it("shows a direct lock on mobile without an overflow menu for non-editable responses", () => {
+    isPhoneValue.value = true
+
+    const VIconStub = {
+      template: "<span><slot /></span>",
+    }
+
+    const wrapper = shallowMount(RespondentsList, {
+      props: {
+        eventId: "evt-1",
+        event: {
+          blindAvailabilityEnabled: false,
+          collectEmails: false,
+          dates: [Temporal.PlainDate.from("2026-01-01")],
+          timeSeed: zdt("2026-01-01T09:00:00Z"),
+          duration: durations.ONE_HOUR,
+          daysOnly: false,
+        },
+        curGuestId: "",
+        ownedGuestResponseLookupKeys: [],
+        guestResponseLookupKey: "",
+        days: [],
+        times: [],
+        curDate: zdt("2026-01-01T09:00:00Z"),
+        curRespondent: "",
+        curRespondents: [],
+        curTimeslot: { dayIndex: -1, timeIndex: -1 },
+        curTimeslotAvailability: { "user-1": true },
+        respondents: [
+          {
+            _id: "user-1",
+            firstName: "Ada",
+            lastName: "Lovelace",
+          } as never,
+        ],
+        parsedResponses: {
+          "user-1": {
+            user: {
+              _id: "user-1",
+              firstName: "Ada",
+              lastName: "Lovelace",
+            } as never,
+            availability: new ZdtSet(),
+            ifNeeded: new ZdtSet(),
+            guest: false,
+          },
+        },
+        isOwner: false,
+        isGroup: false,
+        showCalendarEvents: false,
+        responsesFormatted: new ZdtMap<Set<string>>(),
+        timezone: {
+          value: UTC,
+          offset: durations.ZERO,
+          label: UTC,
+          gmtString: "GMT",
+        },
+        hideIfNeeded: false,
+        guestAddedAvailability: false,
+        addingAvailabilityAsGuest: false,
+      },
+      global: {
+        stubs: {
+          ...sharedRespondentsListStubs,
+          "v-icon": VIconStub,
+        },
+      },
+    })
+
+    const lockStatus = wrapper.get(".respondent-edit-status")
+    expect(lockStatus.element.tagName).toBe("DIV")
+    expect(lockStatus.attributes("aria-disabled")).toBe("true")
+    expect(lockStatus.attributes("aria-label")).toContain("cannot be edited")
+    expect(lockStatus.classes()).toContain("tw-h-5")
+    expect(lockStatus.classes()).toContain("tw-w-5")
+    expect(lockStatus.classes()).toContain("tw-text-sm")
+    expect(lockStatus.text()).toContain("mdi-lock")
+    expect(wrapper.text()).not.toContain("mdi-dots-vertical")
+  })
+
+  it("does not render mobile row-level delete for owners", () => {
+    isPhoneValue.value = true
+
+    const wrapper = shallowMount(RespondentsList, {
+      props: {
+        eventId: "evt-1",
+        event: {
+          blindAvailabilityEnabled: false,
+          collectEmails: false,
+          dates: [Temporal.PlainDate.from("2026-01-01")],
+          timeSeed: zdt("2026-01-01T09:00:00Z"),
+          duration: durations.ONE_HOUR,
+          daysOnly: false,
+        },
+        curGuestId: "",
+        ownedGuestResponseLookupKeys: [],
+        guestResponseLookupKey: "",
+        days: [],
+        times: [],
+        curDate: zdt("2026-01-01T09:00:00Z"),
+        curRespondent: "",
+        curRespondents: [],
+        curTimeslot: { dayIndex: -1, timeIndex: -1 },
+        curTimeslotAvailability: { "user-1": true },
+        respondents: [
+          {
+            _id: "user-1",
+            firstName: "Ada",
+            lastName: "Lovelace",
+          } as never,
+        ],
+        parsedResponses: {
+          "user-1": {
+            user: {
+              _id: "user-1",
+              firstName: "Ada",
+              lastName: "Lovelace",
+            } as never,
+            availability: new ZdtSet(),
+            ifNeeded: new ZdtSet(),
+            guest: false,
+          },
+        },
+        isOwner: true,
+        isGroup: false,
+        showCalendarEvents: false,
+        responsesFormatted: new ZdtMap<Set<string>>(),
+        timezone: {
+          value: UTC,
+          offset: durations.ZERO,
+          label: UTC,
+          gmtString: "GMT",
+        },
+        hideIfNeeded: false,
+        guestAddedAvailability: false,
+        addingAvailabilityAsGuest: false,
+      },
+      global: {
+        stubs: sharedRespondentsListStubs,
+      },
+    })
+
+    expect(wrapper.text()).not.toContain("mdi-delete")
   })
 })
