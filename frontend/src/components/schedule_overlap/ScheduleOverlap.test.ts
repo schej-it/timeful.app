@@ -13,6 +13,7 @@ import {
   scheduleOverlapGlobalStubs,
 } from "./scheduleOverlapTestUtils"
 import { formatTooltipContent } from "./scheduleOverlapRendering"
+import { ZdtMap } from "@/utils"
 import ScheduleOverlap from "./ScheduleOverlap.vue"
 
 const smAndDown = { value: false }
@@ -366,6 +367,128 @@ describe("ScheduleOverlap", () => {
     expect(wrapper.findComponent({ name: "ScheduleOverlapTimeGrid" }).exists()).toBe(true)
     expect(wrapper.findComponent({ name: "ScheduleOverlapDaysOnlyGrid" }).exists()).toBe(false)
     expect(wrapper.findComponent({ name: "ScheduleOverlapSidebar" }).exists()).toBe(true)
+  })
+
+  it("uses the lighter legacy heatmap tint in the normal post-submit grid after a guest adds a second response", async () => {
+    localStorage.setItem("showBestTimes", "false")
+    localStorage.setItem(
+      "evt-1.guestOwnershipCollection",
+      JSON.stringify({
+        version: 1,
+        selectedLookupKey: "guest-2-token",
+        records: [
+          {
+            lookupKey: "guest-1-token",
+            name: "guest-1",
+            guestId: "guest-1-token",
+            guestEditToken: "token-1",
+            guestEditPolicy: "protected",
+            guestOwnershipMode: "token",
+            lastUsedAt: 2,
+          },
+          {
+            lookupKey: "guest-2-token",
+            name: "guest-2",
+            guestId: "guest-2-token",
+            guestEditToken: "token-2",
+            guestEditPolicy: "protected",
+            guestOwnershipMode: "token",
+            lastUsedAt: 1,
+          },
+        ],
+      })
+    )
+
+    const wrapper = mountScheduleOverlap({
+      props: {
+        curGuestId: "guest-2",
+        initialTimezone: utcTimezone,
+        event: {
+          ...buildScheduleOverlapProps().event,
+          name: "Two guest responses",
+          dates: [Temporal.PlainDate.from("2026-01-01")],
+          timeSeed: zdt("2026-01-01T09:00:00Z"),
+          startTime: Temporal.PlainTime.from("09:00"),
+          duration: Temporal.Duration.from({ hours: 2 }),
+          timeIncrement: Temporal.Duration.from({ hours: 1 }),
+          responses: {
+            "guest-1": {
+              name: "guest-1",
+              guest: true,
+              guestId: "guest-1-token",
+              guestEditPolicy: "protected",
+              guestOwnershipMode: "token",
+              user: {
+                _id: "guest-1",
+                firstName: "guest-1",
+                lastName: "",
+                email: "",
+              },
+              availability: [zdt("2026-01-01T09:00:00Z")],
+              ifNeeded: [],
+              manualAvailability: {},
+            },
+            "guest-2": {
+              name: "guest-2",
+              guest: true,
+              guestId: "guest-2-token",
+              guestEditPolicy: "protected",
+              guestOwnershipMode: "token",
+              user: {
+                _id: "guest-2",
+                firstName: "guest-2",
+                lastName: "",
+                email: "",
+              },
+              availability: [zdt("2026-01-01T10:00:00Z")],
+              ifNeeded: [],
+              manualAvailability: {},
+            },
+          },
+        },
+      },
+      global: {
+        stubs: {
+          ScheduleOverlapTimeGrid: {
+            name: "ScheduleOverlapTimeGrid",
+            props: {
+              timedGrid: {
+                type: Object,
+                required: true,
+              },
+            },
+            template: "<div />",
+          },
+        },
+      },
+    })
+    const vm = wrapper.vm as unknown as {
+      responsesFormatted: ZdtMap<Set<string>>
+    }
+    vm.responsesFormatted = new ZdtMap([
+      [zdt("2026-01-01T09:00:00Z"), new Set(["guest-1"])],
+      [zdt("2026-01-01T10:00:00Z"), new Set(["guest-2"])],
+    ])
+    await nextTick()
+    await nextTick()
+
+    const timedGrid = wrapper.findComponent({ name: "ScheduleOverlapTimeGrid" }).props(
+      "timedGrid"
+    ) as {
+      overlayAvailability: boolean
+      timeslotClassStyle: { style: Record<string, string> }[]
+      toolRow: { showBestTimes: boolean }
+    }
+    const renderedColors = timedGrid.timeslotClassStyle
+      .map((classStyle) => classStyle.style.backgroundColor)
+      .filter((backgroundColor): backgroundColor is string =>
+        typeof backgroundColor === "string"
+      )
+
+    expect(timedGrid.toolRow.showBestTimes).toBe(false)
+    expect(timedGrid.overlayAvailability).toBe(false)
+    expect(renderedColors).toContain("#00994C70")
+    expect(renderedColors).not.toContain("#00994CE1")
   })
 
   it("passes cohesive sidebar and mobile overlay view models to extracted children", () => {
