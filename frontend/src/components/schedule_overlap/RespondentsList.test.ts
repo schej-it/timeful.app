@@ -350,6 +350,72 @@ describe("RespondentsList", () => {
     isPhoneValue.value = true
   })
 
+  it("keeps desktop timed options visible with zero responses when the full-grid toggle is available", () => {
+    isPhoneValue.value = false
+
+    const VSwitchStub = {
+      props: ["id"],
+      template:
+        '<div :id="id" class="event-options-switch"><slot name="label" /></div>',
+    }
+    const baseDate = zdt("2026-01-01T09:00:00Z")
+
+    const wrapper = shallowMount(RespondentsList, {
+      props: {
+        eventId: "evt-1",
+        event: {
+          blindAvailabilityEnabled: false,
+          collectEmails: false,
+          dates: [baseDate.toPlainDate()],
+          timeSeed: baseDate,
+          duration: durations.ONE_HOUR,
+          daysOnly: false,
+        },
+        curGuestId: "",
+        ownedGuestResponseLookupKeys: [],
+        guestResponseLookupKey: "",
+        days: [],
+        times: [],
+        curDate: baseDate,
+        curRespondent: "",
+        curRespondents: [],
+        curTimeslot: { dayIndex: -1, timeIndex: -1 },
+        curTimeslotAvailability: {},
+        respondents: [],
+        parsedResponses: {},
+        isOwner: false,
+        isGroup: false,
+        showCalendarEvents: false,
+        responsesFormatted: new ZdtMap<Set<string>>(),
+        timezone: {
+          value: UTC,
+          offset: durations.ZERO,
+          label: UTC,
+          gmtString: "GMT",
+        },
+        showBestTimes: false,
+        hideIfNeeded: false,
+        showAllHours: false,
+        guestAddedAvailability: false,
+        addingAvailabilityAsGuest: false,
+      },
+      global: {
+        stubs: {
+          ...sharedRespondentsListStubs,
+          EventOptions: false,
+          "v-switch": VSwitchStub,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain("Options")
+    expect(wrapper.text()).toContain("Show all hours")
+    expect(wrapper.text()).not.toContain("Show best times")
+    expect(wrapper.text()).not.toContain("Hide if needed times")
+
+    isPhoneValue.value = true
+  })
+
   it("uses explicit Vuetify 3 select and list props for export actions", () => {
     expect(respondentsListSource).toContain('<v-list class="tw-py-1" density="compact">')
     expect(respondentsListSource).toContain('class="timeful-solo-field"')

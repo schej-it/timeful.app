@@ -21,9 +21,11 @@ vi.mock("@/stores/main", () => ({
   }),
 }))
 
+const isPhoneValue = ref(false)
+
 vi.mock("@/utils/useDisplayHelpers", () => ({
   useDisplayHelpers: () => ({
-    isPhone: false,
+    isPhone: isPhoneValue,
   }),
 }))
 
@@ -154,5 +156,49 @@ describe("ToolRow", () => {
     expect(toolRowSource).toContain('<v-list density="compact">')
     expect(toolRowSource).not.toContain("<v-list dense>")
     expect(toolRowSource).toContain(".tool-row-inline-select__item--active {\n  background-color: var(--timeful-selection-bg);\n  color: var(--timeful-selection-fg);\n}")
+  })
+
+  it("keeps the mobile timed options visible with zero responses", () => {
+    isPhoneValue.value = true
+
+    const VSwitchStub = {
+      props: ["id"],
+      template:
+        '<div :id="id" class="event-options-switch"><slot name="label" /></div>',
+    }
+
+    const wrapper = shallowMount(ToolRow, {
+      props: {
+        toolRow: {
+          ...baseToolRow,
+          numResponses: 0,
+        },
+      },
+      global: {
+        stubs: {
+          "v-btn": VBtnStub,
+          "v-icon": true,
+          "v-img": true,
+          "v-list": passThroughStub,
+          "v-list-item": passThroughStub,
+          "v-list-item-content": passThroughStub,
+          "v-list-item-title": passThroughStub,
+          "v-menu": passThroughStub,
+          "v-select": true,
+          "v-spacer": true,
+          EventOptions: false,
+          GCalWeekSelector: true,
+          TimezoneSelector: true,
+          "v-switch": VSwitchStub,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain("Options")
+    expect(wrapper.text()).toContain("Show all hours")
+    expect(wrapper.text()).not.toContain("Show best times")
+    expect(wrapper.text()).not.toContain("Hide if needed times")
+
+    isPhoneValue.value = false
   })
 })

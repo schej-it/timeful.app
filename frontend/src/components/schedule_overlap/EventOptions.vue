@@ -1,5 +1,8 @@
 <template>
-  <section v-if="event.daysOnly || numResponses >= 1" class="tw-flex tw-flex-col">
+  <section
+    v-if="event.daysOnly || numResponses >= 1 || showAllHours !== undefined"
+    class="tw-flex tw-flex-col"
+  >
     <div class="tw-text-base tw-font-medium tw-text-black">Options</div>
     <div class="tw-flex tw-flex-col tw-gap-4 tw-pt-2">
       <v-switch
@@ -92,21 +95,36 @@ import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { eventTypes } from "@/constants"
 import type { ScheduleOverlapEvent } from "@/composables/schedule_overlap/types"
 
-const props = withDefaults(
-  defineProps<{
-    event: ScheduleOverlapEvent
-    showBestTimes: boolean
-    hideIfNeeded: boolean
-    numResponses: number
-    showAllHours?: boolean
-    showCalendarEvents?: boolean
-    startCalendarOnMonday?: boolean
-  }>(),
-  {
-    showCalendarEvents: false,
-    startCalendarOnMonday: false,
-  }
-)
+const props = defineProps({
+  event: {
+    type: Object as () => ScheduleOverlapEvent,
+    required: true,
+  },
+  showBestTimes: {
+    type: Boolean,
+    required: true,
+  },
+  hideIfNeeded: {
+    type: Boolean,
+    required: true,
+  },
+  numResponses: {
+    type: Number,
+    required: true,
+  },
+  showAllHours: {
+    type: Boolean,
+    default: undefined,
+  },
+  showCalendarEvents: {
+    type: Boolean,
+    default: false,
+  },
+  startCalendarOnMonday: {
+    type: Boolean,
+    default: false,
+  },
+})
 
 defineEmits<{
   "update:showBestTimes": [value: boolean]

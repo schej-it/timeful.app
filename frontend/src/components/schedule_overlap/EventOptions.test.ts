@@ -27,13 +27,13 @@ const baseEvent = {
 }
 
 describe("EventOptions", () => {
-  it("shows always-visible desktop options without a collapse control", () => {
-    const VSwitchStub = {
-      props: ["id"],
-      template:
-        '<div :id="id" class="event-options-switch"><slot name="label" /></div>',
-    }
+  const VSwitchLabelStub = {
+    props: ["id"],
+    template:
+      '<div :id="id" class="event-options-switch"><slot name="label" /></div>',
+  }
 
+  it("shows always-visible desktop options without a collapse control", () => {
     const wrapper = shallowMount(EventOptions, {
       props: {
         event: baseEvent,
@@ -44,7 +44,7 @@ describe("EventOptions", () => {
       },
       global: {
         stubs: {
-          "v-switch": VSwitchStub,
+          "v-switch": VSwitchLabelStub,
         },
       },
     })
@@ -80,5 +80,74 @@ describe("EventOptions", () => {
     await wrapper.get(".event-options-best-times").trigger("click")
 
     expect(wrapper.emitted("update:showBestTimes")).toEqual([[false]])
+  })
+
+  it("shows timed-event grid options with zero responses when show-all-hours is available", () => {
+    const wrapper = shallowMount(EventOptions, {
+      props: {
+        event: baseEvent,
+        showBestTimes: false,
+        hideIfNeeded: false,
+        numResponses: 0,
+        showAllHours: false,
+      },
+      global: {
+        stubs: {
+          "v-switch": VSwitchLabelStub,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain("Options")
+    expect(wrapper.text()).toContain("Show all hours")
+    expect(wrapper.text()).not.toContain("Show best times")
+    expect(wrapper.text()).not.toContain("Hide if needed times")
+  })
+
+  it("hides timed-event options with zero responses when the full-grid toggle is unavailable", () => {
+    const wrapper = shallowMount(EventOptions, {
+      props: {
+        event: baseEvent,
+        showBestTimes: false,
+        hideIfNeeded: false,
+        numResponses: 0,
+      },
+      global: {
+        stubs: {
+          "v-switch": VSwitchLabelStub,
+        },
+      },
+    })
+
+    expect(wrapper.text()).not.toContain("Options")
+    expect(wrapper.find("#show-all-hours-toggle").exists()).toBe(false)
+  })
+
+  it("keeps emitting full-grid updates from the visible timed toggle", async () => {
+    const VSwitchEmitStub = {
+      props: ["id"],
+      emits: ["update:modelValue"],
+      template:
+        '<button :id="id" class="event-options-show-all-hours" @click="$emit(\'update:modelValue\', true)" />',
+    }
+
+    const wrapper = shallowMount(EventOptions, {
+      props: {
+        event: baseEvent,
+        showBestTimes: false,
+        hideIfNeeded: false,
+        numResponses: 0,
+        showAllHours: false,
+      },
+      global: {
+        stubs: {
+          "v-switch": VSwitchEmitStub,
+        },
+      },
+    })
+
+    await wrapper.get(".event-options-show-all-hours").trigger("click")
+
+    expect(wrapper.emitted("update:showAllHours")).toEqual([[true]])
   })
 })
