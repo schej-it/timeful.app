@@ -32,8 +32,18 @@ describe("EventOptions", () => {
     template:
       '<div :id="id" class="event-options-switch"><slot name="label" /></div>',
   }
+  const VMenuStub = {
+    template:
+      "<div><slot name=\"activator\" :props=\"{}\" /><slot /></div>",
+  }
+  const VBtnStub = {
+    template: "<button id=\"event-options-menu-activator\"><slot /></button>",
+  }
+  const passThroughStub = {
+    template: "<div><slot /></div>",
+  }
 
-  it("shows always-visible desktop options without a collapse control", () => {
+  it("shows the section variant with an inline heading", () => {
     const wrapper = shallowMount(EventOptions, {
       props: {
         event: baseEvent,
@@ -51,7 +61,7 @@ describe("EventOptions", () => {
 
     expect(wrapper.text()).toContain("Options")
     expect(wrapper.text()).toContain("Show best times")
-    expect(wrapper.html()).not.toContain("mdi-chevron")
+    expect(wrapper.find("#event-options-menu-activator").exists()).toBe(false)
     expect(wrapper.find("#show-best-times-toggle").exists()).toBe(true)
   })
 
@@ -80,6 +90,64 @@ describe("EventOptions", () => {
     await wrapper.get(".event-options-best-times").trigger("click")
 
     expect(wrapper.emitted("update:showBestTimes")).toEqual([[false]])
+  })
+
+  it("renders the compact menu variant without duplicating show-best-times", () => {
+    const wrapper = shallowMount(EventOptions, {
+      props: {
+        event: baseEvent,
+        showBestTimes: true,
+        hideIfNeeded: false,
+        numResponses: 2,
+        showAllHours: false,
+        variant: "menu",
+        includeShowBestTimes: false,
+      },
+      global: {
+        stubs: {
+          "v-btn": VBtnStub,
+          "v-card": passThroughStub,
+          "v-card-text": passThroughStub,
+          "v-icon": true,
+          "v-menu": VMenuStub,
+          "v-switch": VSwitchLabelStub,
+        },
+      },
+    })
+
+    expect(wrapper.find("#event-options-menu-activator").exists()).toBe(true)
+    expect(wrapper.text()).toContain("Options")
+    expect(wrapper.text()).toContain("Hide if needed times")
+    expect(wrapper.text()).toContain("Show all hours")
+    expect(wrapper.text()).not.toContain("Show best times")
+  })
+
+  it("uses a custom label for the compact menu activator when provided", () => {
+    const wrapper = shallowMount(EventOptions, {
+      props: {
+        event: baseEvent,
+        showBestTimes: true,
+        hideIfNeeded: false,
+        numResponses: 2,
+        showAllHours: false,
+        variant: "menu",
+        menuButtonLabel: "More options",
+      },
+      global: {
+        stubs: {
+          "v-btn": VBtnStub,
+          "v-card": passThroughStub,
+          "v-card-text": passThroughStub,
+          "v-icon": true,
+          "v-menu": VMenuStub,
+          "v-switch": VSwitchLabelStub,
+        },
+      },
+    })
+
+    expect(wrapper.get("#event-options-menu-activator").text()).toContain(
+      "More options"
+    )
   })
 
   it("shows timed-event grid options with zero responses when show-all-hours is available", () => {
@@ -148,6 +216,43 @@ describe("EventOptions", () => {
 
     await wrapper.get(".event-options-show-all-hours").trigger("click")
 
+    expect(wrapper.emitted("update:showAllHours")).toEqual([[true]])
+  })
+
+  it("emits remaining toggle updates from the menu variant", async () => {
+    const VSwitchEmitStub = {
+      props: ["id"],
+      emits: ["update:modelValue"],
+      template:
+        '<button :id="id" @click="$emit(\'update:modelValue\', true)" />',
+    }
+
+    const wrapper = shallowMount(EventOptions, {
+      props: {
+        event: baseEvent,
+        showBestTimes: true,
+        hideIfNeeded: false,
+        numResponses: 2,
+        showAllHours: false,
+        variant: "menu",
+        includeShowBestTimes: false,
+      },
+      global: {
+        stubs: {
+          "v-btn": VBtnStub,
+          "v-card": passThroughStub,
+          "v-card-text": passThroughStub,
+          "v-icon": true,
+          "v-menu": VMenuStub,
+          "v-switch": VSwitchEmitStub,
+        },
+      },
+    })
+
+    await wrapper.get("#hide-if-needed-toggle").trigger("click")
+    await wrapper.get("#show-all-hours-toggle").trigger("click")
+
+    expect(wrapper.emitted("update:hideIfNeeded")).toEqual([[true]])
     expect(wrapper.emitted("update:showAllHours")).toEqual([[true]])
   })
 })

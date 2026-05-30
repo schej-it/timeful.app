@@ -297,26 +297,6 @@
           </div>
         </div>
       </div>
-      <template v-if="!isPhone">
-        <EventOptions
-          :event="event"
-          :show-best-times="showBestTimes"
-          :hide-if-needed="hideIfNeeded"
-          :show-all-hours="showAllHours"
-          :show-calendar-events="showCalendarEvents"
-          :start-calendar-on-monday="startCalendarOnMonday"
-          :num-responses="respondents.length"
-          @update:show-best-times="(val) => $emit('update:showBestTimes', val)"
-          @update:hide-if-needed="(val) => $emit('update:hideIfNeeded', val)"
-          @update:show-all-hours="(val) => $emit('update:showAllHours', val)"
-          @update:show-calendar-events="
-            (val) => $emit('update:showCalendarEvents', val)
-          "
-          @update:start-calendar-on-monday="
-            (val) => $emit('update:startCalendarOnMonday', val)
-          "
-        />
-      </template>
     </div>
 
     <div
@@ -382,7 +362,6 @@ import { _delete } from "@/utils"
 import { getResponseDisplayName } from "@/utils/guestName"
 import { posthog } from "@/plugins/posthog"
 import UserAvatarContent from "../UserAvatarContent.vue"
-import EventOptions from "./EventOptions.vue"
 import OverflowGradient from "@/components/OverflowGradient.vue"
 import type { ZdtMap } from "@/utils"
 import type { Temporal } from "temporal-polyfill"
@@ -419,10 +398,7 @@ const props = defineProps<{
   showCalendarEvents: boolean
   responsesFormatted: ZdtMap<Set<string>>
   timezone: Timezone
-  showBestTimes: boolean
   hideIfNeeded: boolean
-  showAllHours: boolean
-  startCalendarOnMonday?: boolean
   guestAddedAvailability: boolean
   addingAvailabilityAsGuest: boolean
 }>()
@@ -436,11 +412,7 @@ const emit = defineEmits<{
   addAvailabilityAsGuest: []
   addAvailability: []
   refreshEvent: []
-  "update:showBestTimes": [value: boolean]
   "update:showCalendarEvents": [value: boolean]
-  "update:hideIfNeeded": [value: boolean]
-  "update:showAllHours": [value: boolean]
-  "update:startCalendarOnMonday": [value: boolean]
 }>()
 
 const mainStore = useMainStore()

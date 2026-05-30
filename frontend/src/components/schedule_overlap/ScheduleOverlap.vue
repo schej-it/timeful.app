@@ -1242,6 +1242,10 @@ function updateHideIfNeeded(value: boolean) {
   hideIfNeeded.value = value
 }
 
+function updateStartCalendarOnMonday(value: boolean) {
+  startCalendarOnMonday.value = value
+}
+
 function emitAddAvailability() {
   emit("addAvailability")
 }
@@ -1266,9 +1270,7 @@ const toolRowActions = computed<ScheduleOverlapToolRowActions>(() => ({
     hideIfNeeded.value = value
   },
   updateShowAllHours,
-  updateStartCalendarOnMonday: (value) => {
-    startCalendarOnMonday.value = value
-  },
+  updateStartCalendarOnMonday,
   updateWeekOffset: emitWeekOffsetUpdate,
   scheduleEvent,
   cancelScheduleEvent,
@@ -1706,8 +1708,18 @@ defineExpose({
   hasPages: _hasPages,
   respondents,
   state,
+  showBestTimes,
+  hideIfNeeded,
+  showAllHours,
+  showCalendarEvents,
+  startCalendarOnMonday,
   startEditing,
   stopEditing: _stopEditing,
+  updateShowBestTimes,
+  updateHideIfNeeded,
+  updateShowAllHours,
+  updateShowCalendarEvents,
+  updateStartCalendarOnMonday,
   clearSelectedGuestOwnership,
   selectGuestOwnership,
   editOwnedGuestAvailability: (lookupKey: string) => {

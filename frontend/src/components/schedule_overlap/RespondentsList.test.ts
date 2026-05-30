@@ -252,15 +252,10 @@ describe("RespondentsList", () => {
     expect(wrapper.text()).not.toContain("undefined")
   })
 
-  it("renders desktop best-times inside the options section", async () => {
+  it("does not render desktop event options beneath the respondents list", () => {
     isPhoneValue.value = false
 
     const baseDate = zdt("2026-01-01T09:00:00Z")
-    const EventOptionsStub = {
-      emits: ["update:showBestTimes"],
-      template:
-        '<div><div class="event-options-heading">Options</div><button class="desktop-best-times-toggle" @click="$emit(\'update:showBestTimes\', false)" /></div>',
-    }
 
     const wrapper = shallowMount(RespondentsList, {
       props: {
@@ -327,37 +322,22 @@ describe("RespondentsList", () => {
           label: UTC,
           gmtString: "GMT",
         },
-        showBestTimes: true,
         hideIfNeeded: false,
-        showAllHours: false,
         guestAddedAvailability: false,
         addingAvailabilityAsGuest: false,
       },
-      global: {
-        stubs: {
-          ...sharedRespondentsListStubs,
-          EventOptions: EventOptionsStub,
-        },
-      },
+      global: { stubs: sharedRespondentsListStubs },
     })
 
-    expect(wrapper.find("#show-best-times-toggle").exists()).toBe(false)
-    expect(wrapper.find(".event-options-heading").text()).toBe("Options")
-
-    await wrapper.get(".desktop-best-times-toggle").trigger("click")
-
-    expect(wrapper.emitted("update:showBestTimes")).toEqual([[false]])
+    expect(wrapper.text()).not.toContain("Options")
+    expect(wrapper.text()).not.toContain("Show best times")
+    expect(wrapper.text()).not.toContain("Show all hours")
     isPhoneValue.value = true
   })
 
-  it("keeps desktop timed options visible with zero responses when the full-grid toggle is available", () => {
+  it("keeps desktop timed respondents content-only when there are zero responses", () => {
     isPhoneValue.value = false
 
-    const VSwitchStub = {
-      props: ["id"],
-      template:
-        '<div :id="id" class="event-options-switch"><slot name="label" /></div>',
-    }
     const baseDate = zdt("2026-01-01T09:00:00Z")
 
     const wrapper = shallowMount(RespondentsList, {
@@ -393,24 +373,15 @@ describe("RespondentsList", () => {
           label: UTC,
           gmtString: "GMT",
         },
-        showBestTimes: false,
         hideIfNeeded: false,
-        showAllHours: false,
         guestAddedAvailability: false,
         addingAvailabilityAsGuest: false,
       },
-      global: {
-        stubs: {
-          ...sharedRespondentsListStubs,
-          EventOptions: false,
-          "v-switch": VSwitchStub,
-        },
-      },
+      global: { stubs: sharedRespondentsListStubs },
     })
 
-    expect(wrapper.text()).toContain("Options")
-    expect(wrapper.text()).toContain("Show all hours")
-    expect(wrapper.text()).not.toContain("Show best times")
+    expect(wrapper.text()).not.toContain("Options")
+    expect(wrapper.text()).not.toContain("Show all hours")
     expect(wrapper.text()).not.toContain("Hide if needed times")
 
     isPhoneValue.value = true

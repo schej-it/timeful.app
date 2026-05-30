@@ -2,9 +2,7 @@
   <div ref="panelEl">
     <RespondentsList
       :show-calendar-events="panel.showCalendarEvents"
-      :show-best-times="panel.showBestTimes"
       :hide-if-needed="panel.hideIfNeeded"
-      :show-all-hours="panel.showAllHours"
       :max-height="maxHeight"
       :event="panel.event"
       :event-id="panel.eventId"
@@ -28,10 +26,6 @@
       :guest-added-availability="panel.guestAddedAvailability"
       :adding-availability-as-guest="panel.addingAvailabilityAsGuest"
       @update:show-calendar-events="emit('update:showCalendarEvents', $event)"
-      @update:show-best-times="emit('update:showBestTimes', $event)"
-      @update:hide-if-needed="emit('update:hideIfNeeded', $event)"
-      @update:show-all-hours="emit('update:showAllHours', $event)"
-      @update:start-calendar-on-monday="emit('update:startCalendarOnMonday', $event)"
       @add-availability="emit('addAvailability')"
       @add-availability-as-guest="emit('addAvailabilityAsGuest')"
       @mouse-over-respondent="(e, userId) => emit('mouseOverRespondent', e, userId)"
@@ -56,10 +50,6 @@ defineProps<{
 
 const emit = defineEmits<{
   "update:showCalendarEvents": [value: boolean]
-  "update:showBestTimes": [value: boolean]
-  "update:hideIfNeeded": [value: boolean]
-  "update:showAllHours": [value: boolean]
-  "update:startCalendarOnMonday": [value: boolean]
   addAvailabilityAsGuest: []
   addAvailability: []
   mouseOverRespondent: [e: MouseEvent, userId: string]

@@ -92,7 +92,7 @@ const {
   editEventMock: vi.fn(),
 }))
 
-const scheduleOverlapMethodMocks = {
+const scheduleOverlapMethodMocks: Record<string, ReturnType<typeof vi.fn>> = {
   scheduleEvent: vi.fn(),
   cancelScheduleEvent: vi.fn(),
   confirmScheduleEvent: vi.fn(),
@@ -215,6 +215,11 @@ const ScheduleOverlapStub = {
       scheduling: false,
       allowScheduleEvent: false,
       unsavedChanges: false,
+      showBestTimes: true,
+      hideIfNeeded: false,
+      showAllHours: false,
+      showCalendarEvents: false,
+      startCalendarOnMonday: false,
       states: {
         SET_SPECIFIC_TIMES: "set_specific_times",
       },
@@ -226,6 +231,21 @@ const ScheduleOverlapStub = {
     cancelScheduleEvent: scheduleOverlapMethodMocks.cancelScheduleEvent,
     confirmScheduleEvent: scheduleOverlapMethodMocks.confirmScheduleEvent,
     editOwnedGuestAvailability: scheduleOverlapMethodMocks.editOwnedGuestAvailability,
+    updateShowBestTimes(this: Record<string, boolean>, value: boolean) {
+      this.showBestTimes = value
+    },
+    updateHideIfNeeded(this: Record<string, boolean>, value: boolean) {
+      this.hideIfNeeded = value
+    },
+    updateShowAllHours(this: Record<string, boolean>, value: boolean) {
+      this.showAllHours = value
+    },
+    updateShowCalendarEvents(this: Record<string, boolean>, value: boolean) {
+      this.showCalendarEvents = value
+    },
+    updateStartCalendarOnMonday(this: Record<string, boolean>, value: boolean) {
+      this.startCalendarOnMonday = value
+    },
     getAllValidTimeRanges() {
       return []
     },
@@ -297,6 +317,7 @@ const buttonClickStub = {
 
 const buttonSemanticStub = {
   inheritAttrs: false,
+  emits: ["click"],
   props: {
     id: { type: String, default: "" },
     variant: { type: String, default: "" },
@@ -308,10 +329,22 @@ const buttonSemanticStub = {
       :id="id"
       :data-variant="variant"
       :data-color="color"
+      @click="$emit('click', $event)"
     >
       <slot />
     </button>
   `,
+}
+
+const menuStub = {
+  name: "VMenu",
+  props: {
+    modelValue: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  template: '<div v-if="modelValue"><slot /></div>',
 }
 
 const iconTextStub = {
@@ -483,6 +516,7 @@ describe("Event guest edit action", () => {
           "v-card-text": true,
           "v-card-actions": true,
           "v-dialog": true,
+          "v-menu": menuStub,
           "v-spacer": true,
           "v-btn": buttonClickStub,
         },
@@ -531,6 +565,7 @@ describe("Event guest edit action", () => {
           "v-card-text": true,
           "v-card-actions": true,
           "v-dialog": true,
+          "v-menu": menuStub,
           "v-spacer": true,
           "v-btn": buttonClickStub,
         },
@@ -545,6 +580,78 @@ describe("Event guest edit action", () => {
     expect(wrapper.get("#desktop-secondary-availability-btn").text()).toContain(
       "Add guest availability"
     )
+  })
+
+  it("renders desktop display options in the header action cluster", async () => {
+    loaderEventState.value = {
+      ...loaderEventState.value,
+      responses: {
+        ...loaderEventState.value.responses,
+        ada: {
+          name: "ada",
+          user: {
+            _id: "111111111111111111111111",
+            firstName: "ada",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+        },
+      },
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          DesktopEventHeaderOptions: {
+            props: ["showBestTimes"],
+            template:
+              "<div>Best times {{ String(showBestTimes) }} More options</div>",
+          },
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-btn": buttonSemanticStub,
+          "v-card": true,
+          "v-card-actions": true,
+          "v-card-text": true,
+          "v-card-title": true,
+          "v-chip": true,
+          "v-dialog": true,
+          "v-icon": true,
+          "v-spacer": true,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.get("#event-header-actions").classes()).toContain(
+      "desktop-event-header-actions"
+    )
+    expect(wrapper.get("#desktop-primary-availability-btn").classes()).toContain(
+      "desktop-event-header-control"
+    )
+    expect(
+      wrapper.get("#desktop-secondary-availability-btn").classes()
+    ).toContain("desktop-event-header-control")
+    expect(wrapper.get("#event-header-actions").text()).toContain("Best times")
+    expect(wrapper.get("#event-header-actions").text()).toContain("More options")
+    expect(wrapper.get("#event-header-actions").text()).not.toContain("Options")
   })
 
   it("triggers add guest availability from the new secondary desktop action", async () => {
@@ -579,6 +686,7 @@ describe("Event guest edit action", () => {
           "v-card-text": true,
           "v-card-actions": true,
           "v-dialog": true,
+          "v-menu": menuStub,
           "v-spacer": true,
           "v-btn": buttonSemanticStub,
         },
@@ -620,6 +728,7 @@ describe("Event guest edit action", () => {
           "v-card-text": true,
           "v-card-actions": true,
           "v-dialog": true,
+          "v-menu": menuStub,
           "v-spacer": true,
           "v-btn": buttonClickStub,
         },
@@ -677,6 +786,7 @@ describe("Event guest edit action", () => {
           "v-card-text": true,
           "v-card-actions": true,
           "v-dialog": true,
+          "v-menu": menuStub,
           "v-spacer": true,
           "v-btn": buttonClickStub,
         },
@@ -764,6 +874,165 @@ describe("Event guest edit action", () => {
     expect(editOwnedGuestAvailabilityMock).not.toHaveBeenCalled()
   })
 
+  it("renders the desktop owned guest chooser from the primary availability anchor", async () => {
+    loaderEventState.value = {
+      ...loaderEventState.value,
+      responses: {
+        khh: {
+          name: "khh",
+          user: {
+            _id: "000000000000000000000000",
+            firstName: "khh",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+        },
+        ada: {
+          name: "ada",
+          user: {
+            _id: "111111111111111111111111",
+            firstName: "ada",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+        },
+      },
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapNoGuestSelectionStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-menu": menuStub,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+    await wrapper.get("#desktop-primary-availability-btn").trigger("click")
+    await nextTick()
+
+    expect(
+      (wrapper.vm as unknown as { showGuestEditMenu: boolean }).showGuestEditMenu
+    ).toBe(true)
+
+    const primaryAnchor = wrapper.get(".desktop-primary-availability-anchor")
+    expect(primaryAnchor.find("#desktop-primary-availability-btn").exists()).toBe(
+      true
+    )
+    expect(primaryAnchor.findComponent({ name: "VMenu" }).exists()).toBe(true)
+
+    const headerActionButtons = Array.from(
+      wrapper.get("#event-header-actions").element.children
+    )
+      .filter((child) => child.tagName === "BUTTON")
+      .map((child) => child.textContent.trim())
+    expect(headerActionButtons).not.toContain("khh")
+    expect(headerActionButtons).not.toContain("ada")
+  })
+
+  it("renders the mobile owned guest chooser from the sticky primary availability action", async () => {
+    isPhoneState.value = true
+    loaderEventState.value = {
+      ...loaderEventState.value,
+      responses: {
+        khh: {
+          name: "khh",
+          user: {
+            _id: "000000000000000000000000",
+            firstName: "khh",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+        },
+        ada: {
+          name: "ada",
+          user: {
+            _id: "111111111111111111111111",
+            firstName: "ada",
+            lastName: "",
+            email: "",
+          },
+          availability: [],
+        },
+      },
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapNoGuestSelectionStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-menu": menuStub,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+    await wrapper.get("#mobile-primary-availability-btn").trigger("click")
+    await nextTick()
+
+    expect(
+      (wrapper.vm as unknown as { showGuestEditMenu: boolean }).showGuestEditMenu
+    ).toBe(true)
+    expect(wrapper.get("#mobile-primary-availability-btn").text()).toContain(
+      "Edit availability"
+    )
+    expect(wrapper.findComponent({ name: "VMenu" }).exists()).toBe(true)
+  })
+
   it("closes the owned guest edit menu when clicking outside it", async () => {
     loaderEventState.value = {
       ...loaderEventState.value,
@@ -818,6 +1087,7 @@ describe("Event guest edit action", () => {
           "v-card-text": true,
           "v-card-actions": true,
           "v-dialog": true,
+          "v-menu": menuStub,
           "v-spacer": true,
           "v-btn": buttonClickStub,
         },
@@ -900,6 +1170,7 @@ describe("Event guest edit action", () => {
           "v-card-text": true,
           "v-card-actions": true,
           "v-dialog": true,
+          "v-menu": menuStub,
           "v-spacer": true,
           "v-btn": buttonClickStub,
         },
@@ -989,6 +1260,7 @@ describe("Event guest edit action", () => {
           "v-card-text": true,
           "v-card-actions": true,
           "v-dialog": true,
+          "v-menu": menuStub,
           "v-spacer": true,
           "v-btn": buttonClickStub,
         },
@@ -1003,12 +1275,20 @@ describe("Event guest edit action", () => {
       .editSelectedGuestAvailability()
     await nextTick()
 
-    const tokenOption = wrapper.findAll("button").at(-1)
-    if (tokenOption == null) {
-      throw new Error("Expected token guest menu option to be rendered")
+    const vm = wrapper.vm as unknown as {
+      ownedGuestEditOptions: { lookupKey: string; name: string }[]
+      editOwnedGuestAvailability: (lookupKey: string) => void
     }
+    const tokenEntry = vm.ownedGuestEditOptions.find(
+      (option) => option.lookupKey === "guest-token-id"
+    )
+    if (tokenEntry == null) {
+      throw new Error("Expected token guest menu option metadata to be available")
+    }
+    expect(tokenEntry.name).toContain("token")
 
-    await tokenOption.trigger("click")
+    vm.editOwnedGuestAvailability("guest-token-id")
+    await nextTick()
 
     expect(editOwnedGuestAvailabilityMock).toHaveBeenCalledWith("guest-token-id")
   })
@@ -1149,6 +1429,9 @@ describe("Event guest edit action", () => {
     expect(copyLinkButton.attributes("data-variant")).toBe("outlined")
     expect(copyLinkButton.attributes("data-color")).toBe("primary")
     expect(copyLinkButton.text()).toContain("mdi-content-copy")
+    expect(copyLinkButton.text().indexOf("Copy link")).toBeLessThan(
+      copyLinkButton.text().indexOf("mdi-content-copy")
+    )
   })
 
   it("invokes copy link from the metadata action row", async () => {
@@ -1234,6 +1517,9 @@ describe("Event guest edit action", () => {
     expect(copyLinkButton.text()).toContain("Copy link")
     expect(copyLinkButton.text()).toContain("mdi-content-copy")
     expect(copyLinkButton.text()).not.toContain("mdi-share")
+    expect(copyLinkButton.text().indexOf("Copy link")).toBeLessThan(
+      copyLinkButton.text().indexOf("mdi-content-copy")
+    )
   })
 
   it("moves mobile add availability into the sticky footer action cluster", async () => {

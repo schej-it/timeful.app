@@ -16,8 +16,18 @@ export interface ScheduleOverlapInstance {
   hasPages: boolean
   respondents: { _id?: string; name?: string }[]
   state: string
+  showBestTimes: boolean
+  hideIfNeeded: boolean
+  showAllHours: boolean
+  showCalendarEvents: boolean
+  startCalendarOnMonday: boolean
   startEditing(): void
   stopEditing(): void
+  updateShowBestTimes(value: boolean): void
+  updateHideIfNeeded(value: boolean): void
+  updateShowAllHours(value: boolean): void
+  updateShowCalendarEvents(value: boolean): void
+  updateStartCalendarOnMonday(value: boolean): void
   clearSelectedGuestOwnership(): void
   selectGuestOwnership(lookupKey?: string): void
   editOwnedGuestAvailability(lookupKey: string): void

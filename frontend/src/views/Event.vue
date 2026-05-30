@@ -193,10 +193,8 @@
                     class="event-copy-link-button tw-h-8 tw-min-w-0 tw-rounded-md tw-px-3 tw-text-sm tw-text-green"
                     @click="copyLink"
                   >
-                    <v-icon start class="tw-text-green"
-                      >mdi-content-copy</v-icon
-                    >
                     <span class="tw-text-green">Copy link</span>
+                    <v-icon end class="tw-text-green">mdi-content-copy</v-icon>
                   </v-btn>
                 </div>
               </div>
@@ -231,8 +229,9 @@
                 </div>
                 <div
                   v-if="!isPhone && (!isSignUp || canEditAvailability)"
+                  id="event-header-actions"
                   ref="desktopGuestEditMenuRoot"
-                  class="tw-relative tw-flex tw-items-center tw-gap-2"
+                  class="desktop-event-header-actions tw-relative tw-grid tw-justify-end tw-gap-2"
                 >
                   <template v-if="!isEditing">
                     <v-btn
@@ -240,45 +239,77 @@
                       id="desktop-secondary-availability-btn"
                       variant="outlined"
                       color="primary"
-                      class="tw-min-w-0 tw-whitespace-nowrap tw-rounded-md tw-px-3 tw-text-sm tw-text-green"
+                      class="desktop-event-header-control tw-whitespace-nowrap tw-px-3 tw-text-sm tw-text-green"
                       @click="triggerSecondaryAddAvailability"
                     >
                       {{ secondaryAddAvailabilityButtonText }}
                     </v-btn>
-                    <v-btn
-                      id="desktop-primary-availability-btn"
-                      width="10.25rem"
-                      class="timeful-elevated-button tw-text-white tw-transition-opacity"
-                      :class="[
-                        'tw-bg-green',
-                        {
-                          'timeful-availability-button-attention':
-                            availabilityBtnAttentionActive,
-                        },
-                      ]"
-                      :disabled="loading && !showGuestActionButton && !userHasResponded"
-                      :style="{ opacity: availabilityBtnOpacity }"
-                      @click="handlePrimaryAvailabilityAction"
-                    >
-                      {{ primaryAvailabilityButtonText }}
-                    </v-btn>
                     <div
-                      v-if="
-                        showGuestActionButton &&
-                        hasMultipleOwnedGuestResponses &&
-                        showGuestEditMenu
-                      "
-                      class="tw-absolute tw-right-0 tw-top-[calc(100%+0.5rem)] tw-z-30 tw-min-w-[10.25rem] tw-rounded-lg tw-border tw-border-light-gray tw-bg-white tw-py-1 tw-shadow-lg"
+                      class="desktop-primary-availability-anchor tw-relative tw-min-w-0"
+                      :class="{
+                        'tw-col-span-2': !showSecondaryAddAvailabilityAction,
+                      }"
                     >
-                      <button
-                        v-for="option in ownedGuestEditOptions"
-                        :key="option.lookupKey"
-                        class="tw-block tw-w-full tw-px-3 tw-py-2 tw-text-left tw-text-sm hover:tw-bg-off-white"
-                        @click="editOwnedGuestAvailability(option.lookupKey)"
+                      <v-btn
+                        id="desktop-primary-availability-btn"
+                        class="desktop-event-header-control timeful-elevated-button tw-text-white tw-transition-opacity"
+                        :class="[
+                          'tw-bg-green',
+                          {
+                            'timeful-availability-button-attention':
+                              availabilityBtnAttentionActive,
+                          },
+                        ]"
+                        :disabled="
+                          loading && !showGuestActionButton && !userHasResponded
+                        "
+                        :style="{ opacity: availabilityBtnOpacity }"
+                        @click="handlePrimaryAvailabilityAction"
                       >
-                        {{ option.name }}
-                      </button>
+                        {{ primaryAvailabilityButtonText }}
+                      </v-btn>
+                      <v-menu
+                        v-if="
+                          showGuestActionButton &&
+                          hasMultipleOwnedGuestResponses
+                        "
+                        v-model="showGuestEditMenu"
+                        activator="#desktop-primary-availability-btn"
+                        :open-on-click="false"
+                        location="bottom end"
+                        offset="8"
+                      >
+                        <v-card min-width="164">
+                          <div class="tw-py-1">
+                            <button
+                              v-for="option in ownedGuestEditOptions"
+                              :key="option.lookupKey"
+                              class="tw-block tw-w-full tw-px-3 tw-py-2 tw-text-left tw-text-sm hover:tw-bg-off-white"
+                              @click="editOwnedGuestAvailability(option.lookupKey)"
+                            >
+                              {{ option.name }}
+                            </button>
+                          </div>
+                        </v-card>
+                      </v-menu>
                     </div>
+                    <DesktopEventHeaderOptions
+                      v-if="desktopHeaderOptionsVisible"
+                      :event="scheduleOverlapEvent"
+                      :num-responses="numResponses"
+                      :show-best-times="desktopShowBestTimes"
+                      :hide-if-needed="desktopHideIfNeeded"
+                      :show-all-hours="desktopShowAllHours"
+                      :show-calendar-events="desktopShowCalendarEvents"
+                      :start-calendar-on-monday="desktopStartCalendarOnMonday"
+                      @update:show-best-times="updateDesktopShowBestTimes"
+                      @update:hide-if-needed="updateDesktopHideIfNeeded"
+                      @update:show-all-hours="updateDesktopShowAllHours"
+                      @update:show-calendar-events="updateDesktopShowCalendarEvents"
+                      @update:start-calendar-on-monday="
+                        updateDesktopStartCalendarOnMonday
+                      "
+                    />
                   </template>
                   <template v-else>
                     <v-btn
@@ -438,23 +469,27 @@
         class="tw-fixed tw-bottom-0 tw-z-20 tw-flex tw-w-full tw-flex-col"
         :style="showAds ? { bottom: '115px' } : {}"
       >
-          <div
-            v-if="
-              showGuestActionButton &&
-            hasMultipleOwnedGuestResponses &&
-            showGuestEditMenu
-          "
-          class="tw-mx-4 tw-mb-2 tw-rounded-lg tw-border tw-border-light-gray tw-bg-white tw-py-1 tw-shadow-lg"
+        <v-menu
+          v-if="showGuestActionButton && hasMultipleOwnedGuestResponses"
+          v-model="showGuestEditMenu"
+          activator="#mobile-primary-availability-btn"
+          :open-on-click="false"
+          location="top end"
+          offset="8"
         >
-          <button
-            v-for="option in ownedGuestEditOptions"
-            :key="option.lookupKey"
-            class="tw-block tw-w-full tw-px-3 tw-py-2 tw-text-left tw-text-sm hover:tw-bg-off-white"
-            @click="editOwnedGuestAvailability(option.lookupKey)"
-          >
-            {{ option.name }}
-          </button>
-        </div>
+          <v-card min-width="164">
+            <div class="tw-py-1">
+              <button
+                v-for="option in ownedGuestEditOptions"
+                :key="option.lookupKey"
+                class="tw-block tw-w-full tw-px-3 tw-py-2 tw-text-left tw-text-sm hover:tw-bg-off-white"
+                @click="editOwnedGuestAvailability(option.lookupKey)"
+              >
+                {{ option.name }}
+              </button>
+            </div>
+          </v-card>
+        </v-menu>
         <div
           class="tw-flex tw-h-[4rem] tw-w-full tw-items-center tw-px-4"
           :class="`${isIOS ? 'tw-pb-2' : ''} ${
@@ -612,6 +647,7 @@ import InvitationDialog from "@/components/groups/InvitationDialog.vue"
 import HelpDialog from "@/components/HelpDialog.vue"
 import EventDescription from "@/components/event/EventDescription.vue"
 import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
+import DesktopEventHeaderOptions from "@/components/schedule_overlap/DesktopEventHeaderOptions.vue"
 import { AsyncPubliftAd } from "@/components/event/asyncPubliftAd"
 import { freemiumEnabled } from "@/utils/freemium"
 
@@ -850,9 +886,47 @@ const mobilePrimaryAvailabilityButtonText = computed(() => {
   return actionButtonText.value
 })
 const isIOS = computed(() => isIOSFn())
+const desktopShowBestTimes = computed(
+  () => scheduleOverlap.value?.showBestTimes ?? false
+)
+const desktopHideIfNeeded = computed(
+  () => scheduleOverlap.value?.hideIfNeeded ?? false
+)
+const desktopShowAllHours = computed(
+  () => scheduleOverlap.value?.showAllHours ?? false
+)
+const desktopShowCalendarEvents = computed(
+  () => scheduleOverlap.value?.showCalendarEvents ?? false
+)
+const desktopStartCalendarOnMonday = computed(
+  () => scheduleOverlap.value?.startCalendarOnMonday ?? false
+)
+const desktopHeaderOptionsVisible = computed(
+  () => scheduleOverlapReady.value && scheduleOverlap.value != null && !isSignUp.value
+)
 
 function closeGuestEditMenu() {
   showGuestEditMenu.value = false
+}
+
+function updateDesktopShowBestTimes(value: boolean) {
+  scheduleOverlap.value?.updateShowBestTimes(value)
+}
+
+function updateDesktopHideIfNeeded(value: boolean) {
+  scheduleOverlap.value?.updateHideIfNeeded(value)
+}
+
+function updateDesktopShowAllHours(value: boolean) {
+  scheduleOverlap.value?.updateShowAllHours(value)
+}
+
+function updateDesktopShowCalendarEvents(value: boolean) {
+  scheduleOverlap.value?.updateShowCalendarEvents(value)
+}
+
+function updateDesktopStartCalendarOnMonday(value: boolean) {
+  scheduleOverlap.value?.updateStartCalendarOnMonday(value)
 }
 
 function isGuestEditMenuTargetInside(target: EventTarget | null) {
@@ -1751,6 +1825,24 @@ watch(
 )
 </script>
 
+<style>
+.desktop-event-header-actions {
+  --desktop-event-header-control-height: 2.5rem;
+  --desktop-event-header-control-radius: 0.375rem;
+  --desktop-event-header-control-width: 10.25rem;
+}
+
+.desktop-event-header-control {
+  --v-btn-height: var(--desktop-event-header-control-height);
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-inline-size: 0;
+  block-size: var(--desktop-event-header-control-height);
+  min-block-size: var(--desktop-event-header-control-height);
+  border-radius: var(--desktop-event-header-control-radius);
+}
+</style>
+
 <style scoped>
 @keyframes timeful-availability-button-attention {
   0% {
@@ -1771,5 +1863,12 @@ watch(
 
 .timeful-availability-button-attention {
   animation: timeful-availability-button-attention 0.45s ease-in-out 0s 2;
+}
+
+.desktop-event-header-actions {
+  grid-template-columns: repeat(
+    2,
+    minmax(0, var(--desktop-event-header-control-width))
+  );
 }
 </style>
