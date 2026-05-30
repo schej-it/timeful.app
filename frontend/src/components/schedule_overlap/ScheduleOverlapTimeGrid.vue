@@ -34,14 +34,14 @@
       </div>
   </div>
 
-  <div class="tw-grow">
+  <div class="schedule-overlap-time-grid__content tw-grow">
       <div
-        class="tw-relative tw-flex tw-flex-col"
+        class="schedule-overlap-time-grid__scroller tw-relative tw-flex tw-flex-col"
         @scroll="timedGrid.actions.calendarScroll"
       >
         <div
           :class="timedGrid.sampleCalendarEventsByDay ? undefined : 'tw-sticky tw-top-14'"
-          class="tw-z-10 tw-flex tw-h-14 tw-items-center tw-bg-white sm:tw-top-16"
+          class="schedule-overlap-time-grid__header tw-z-10 tw-flex tw-h-14 tw-items-center tw-bg-white sm:tw-top-16"
         >
           <template v-for="(day, i) in timedGrid.days" :key="i">
             <div
@@ -49,7 +49,7 @@
               :key="`${i}-gap`"
               :style="{ width: `${SPLIT_GAP_WIDTH}px` }"
             ></div>
-            <div class="tw-flex-1 tw-bg-white">
+            <div class="schedule-overlap-time-grid__day-column tw-flex-1 tw-bg-white">
               <div class="tw-text-center">
                 <div
                   v-if="timedGrid.isSpecificDates || timedGrid.isGroup"
@@ -93,7 +93,7 @@
                 <div
                   v-for="row in timedGrid.renderedRows"
                   :key="row.id"
-                  class="tw-flex"
+                  class="schedule-overlap-time-grid__body-row tw-flex"
                   :style="{ height: `${row.height}px` }"
                 >
                   <button
@@ -117,7 +117,7 @@
                         :style="{ width: `${SPLIT_GAP_WIDTH}px` }"
                       ></div>
                       <div
-                        class="tw-flex-1"
+                        class="schedule-overlap-time-grid__day-column tw-flex-1"
                         :class="
                           ((timedGrid.isGroup && timedGrid.loadingCalendarEvents) || timedGrid.loadingResponsesLoading) &&
                           'tw-opacity-50'
@@ -144,7 +144,7 @@
                       :style="{ width: `${SPLIT_GAP_WIDTH}px` }"
                     ></div>
                     <div
-                      class="tw-relative tw-flex-1"
+                      class="schedule-overlap-time-grid__day-column tw-relative tw-flex-1"
                       :class="
                         ((timedGrid.isGroup && timedGrid.loadingCalendarEvents) || timedGrid.loadingResponsesLoading) &&
                         'tw-opacity-50'
@@ -373,5 +373,26 @@ defineProps<{
 
 .schedule-overlap-collapsed-row .v-icon {
   color: rgba(0, 0, 0, 0.7);
+}
+
+.schedule-overlap-time-grid__content,
+.schedule-overlap-time-grid__scroller,
+.schedule-overlap-time-grid__header,
+.schedule-overlap-time-grid__body-row,
+.schedule-overlap-time-grid__day-column {
+  min-width: 0;
+}
+
+@media (min-width: 640px) and (max-width: 767px) {
+  .schedule-overlap-time-grid__content,
+  .schedule-overlap-time-grid__scroller,
+  .schedule-overlap-time-grid__header,
+  .schedule-overlap-time-grid__body-row {
+    width: 100%;
+  }
+
+  .schedule-overlap-time-grid__day-column {
+    flex: 1 1 0%;
+  }
 }
 </style>

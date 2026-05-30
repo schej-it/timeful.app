@@ -149,4 +149,29 @@ describe("ScheduleOverlapSidebar", () => {
 
     expect(wrapper.find(".async-publift-ad-stub").exists()).toBe(false)
   })
+
+  it("keeps the desktop sidebar sticky at 640px+ while mobile ads stay phone-only", () => {
+    const wrapper = mount(ScheduleOverlapSidebar, {
+      props: {
+        sidebar: {
+          ...buildScheduleOverlapSidebarViewModel(),
+          state: states.HEATMAP,
+          isPhone: false,
+          showAds: true,
+          rightSideWidth: "clamp(10rem, 25vw, 13rem)",
+        },
+      },
+      global: {
+        stubs: {
+          ...scheduleOverlapGlobalStubs,
+          AsyncPubliftAd: {
+            template: "<div class='async-publift-ad-stub'><slot /></div>",
+          },
+        },
+      },
+    })
+
+    expect(wrapper.classes()).toContain("tw-sticky")
+    expect(wrapper.find(".async-publift-ad-stub").exists()).toBe(false)
+  })
 })

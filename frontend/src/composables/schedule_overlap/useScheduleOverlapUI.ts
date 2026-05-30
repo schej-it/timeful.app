@@ -43,6 +43,9 @@ export interface UseScheduleOverlapUIOptions {
   respondentsListRef?: Ref<HTMLElement | null>
 }
 
+const COMPACT_RESPONDENTS_PANEL_WIDTH = "clamp(10rem, 25vw, 13rem)"
+const SIGN_UP_RESPONDENTS_PANEL_WIDTH = "18rem"
+
 export function canGuestEditResponse(
   response: ParsedResponse | undefined,
   ownedGuestResponseLookupKeys: Set<string>
@@ -120,7 +123,9 @@ export function useScheduleOverlapUI(opts: UseScheduleOverlapUIOptions) {
 
   const rightSideWidth = computed(() => {
     if (opts.isPhone.value) return "100%"
-    return opts.isSignUp.value ? "18rem" : "13rem"
+    return opts.isSignUp.value
+      ? SIGN_UP_RESPONDENTS_PANEL_WIDTH
+      : COMPACT_RESPONDENTS_PANEL_WIDTH
   })
 
   const showStickyRespondents = computed(

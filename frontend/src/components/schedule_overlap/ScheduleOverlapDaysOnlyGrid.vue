@@ -1,5 +1,5 @@
 <template>
-  <div class="tw-grow">
+  <div class="schedule-overlap-days-only-grid tw-grow">
     <div class="tw-flex tw-items-center tw-justify-between">
       <v-btn
         :class="daysOnlyGrid.hasPrevPage ? 'tw-visible' : 'tw-invisible'"
@@ -21,11 +21,11 @@
         ><v-icon>mdi-chevron-right</v-icon></v-btn
       >
     </div>
-    <div class="tw-flex tw-w-full">
+    <div class="schedule-overlap-days-only-grid__weekdays tw-flex tw-w-full">
       <div
         v-for="day in daysOnlyGrid.daysOfWeek"
         :key="day"
-        class="tw-flex-1 tw-p-2 tw-text-center tw-text-base tw-capitalize tw-text-dark-gray"
+        class="schedule-overlap-days-only-grid__weekday tw-flex-1 tw-p-2 tw-text-center tw-text-base tw-capitalize tw-text-dark-gray"
       >
         {{ day }}
       </div>
@@ -33,7 +33,7 @@
     <div class="tw-relative">
       <div
         id="drag-section"
-        class="tw-grid tw-grid-cols-7"
+        class="schedule-overlap-days-only-grid__month tw-grid tw-grid-cols-7"
         style="touch-action: none"
         @pointerdown="daysOnlyGrid.actions.startDrag"
         @pointermove="daysOnlyGrid.actions.moveDrag"
@@ -106,3 +106,24 @@ defineProps<{
   daysOnlyGrid: ScheduleOverlapDaysOnlyGridViewModel
 }>()
 </script>
+
+<style>
+.schedule-overlap-days-only-grid,
+.schedule-overlap-days-only-grid__weekdays,
+.schedule-overlap-days-only-grid__weekday,
+.schedule-overlap-days-only-grid__month {
+  min-width: 0;
+}
+
+@media (min-width: 640px) and (max-width: 767px) {
+  .schedule-overlap-days-only-grid,
+  .schedule-overlap-days-only-grid__weekdays,
+  .schedule-overlap-days-only-grid__month {
+    width: 100%;
+  }
+
+  .schedule-overlap-days-only-grid__weekday {
+    min-width: 0;
+  }
+}
+</style>

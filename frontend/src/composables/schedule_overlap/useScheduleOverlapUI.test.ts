@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest"
 import { availabilityTypes } from "@/constants"
 import { states } from "./types"
 import { useScheduleOverlapUI } from "./useScheduleOverlapUI"
+import { SCHEDULE_OVERLAP_COMPACT_DESKTOP_BREAKPOINT } from "@/components/schedule_overlap/scheduleOverlapBreakpoints"
 
 vi.mock("@/stores/main", () => ({
   useMainStore: () => ({
@@ -19,14 +20,16 @@ vi.mock("@/plugins/posthog", () => ({
 }))
 
 function createUi() {
+  const isPhone = ref(false)
+  const isSignUp = ref(false)
   const curTimeslot = ref({ row: 2, col: 3 })
   const curTimeslotAvailability = ref<Record<string, boolean>>({ "user-1": true })
   const timeslotSelected = ref(false)
   const endDrag = vi.fn()
 
   const ui = useScheduleOverlapUI({
-    isPhone: ref(false),
-    isSignUp: computed(() => false),
+    isPhone,
+    isSignUp: computed(() => isSignUp.value),
     isGroup: computed(() => false),
     showHintText: ref(false),
     state: ref(states.EDIT_AVAILABILITY),
@@ -49,6 +52,8 @@ function createUi() {
 
   return {
     ui,
+    isPhone,
+    isSignUp,
     curTimeslot,
     endDrag,
   }
@@ -74,5 +79,26 @@ describe("useScheduleOverlapUI deselectRespondents", () => {
     expect(endDrag).not.toHaveBeenCalled()
 
     dragSection.remove()
+  })
+
+  it("uses a responsive respondents panel width on compact desktop", () => {
+    const { ui } = createUi()
+
+    expect(ui.rightSideWidth.value).toBe("clamp(10rem, 25vw, 13rem)")
+  })
+
+  it("keeps full-width mobile and fixed sign-up respondents widths", () => {
+    const { ui, isPhone, isSignUp } = createUi()
+
+    isPhone.value = true
+    expect(ui.rightSideWidth.value).toBe("100%")
+
+    isPhone.value = false
+    isSignUp.value = true
+    expect(ui.rightSideWidth.value).toBe("18rem")
+  })
+
+  it("uses the shared 640px breakpoint contract for compact desktop layout decisions", () => {
+    expect(SCHEDULE_OVERLAP_COMPACT_DESKTOP_BREAKPOINT).toBe(640)
   })
 })

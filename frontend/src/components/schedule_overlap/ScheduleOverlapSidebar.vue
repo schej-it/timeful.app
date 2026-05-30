@@ -1,6 +1,11 @@
 <template>
   <div
-    class="tw-px-4 tw-py-4 sm:tw-sticky sm:tw-top-16 sm:tw-flex-none sm:tw-self-start sm:tw-py-0 sm:tw-pl-0 sm:tw-pr-0 sm:tw-pt-14"
+    class="tw-px-4 tw-py-4"
+    :class="
+      sidebar.isPhone
+        ? ''
+        : 'tw-sticky tw-top-16 tw-flex-none tw-self-start tw-py-0 tw-pl-0 tw-pr-0 tw-pt-14'
+    "
     :style="{ width: sidebar.rightSideWidth }"
   >
     <template v-if="sidebar.isSignUp">
@@ -248,10 +253,10 @@
 
       <template v-else>
         <AsyncPubliftAd
-          v-if="sidebar.showAds"
+          v-if="sidebar.showAds && sidebar.isPhone"
           :show-ad="sidebar.showAds"
           fuse-id="meet_incontent"
-          class="-tw-mx-4 tw-my-4 tw-block !tw-rounded-none sm:tw-hidden"
+          class="-tw-mx-4 tw-my-4 tw-block !tw-rounded-none"
         >
           <div class="tw-h-[375px] publift-m:tw-h-[90px]">
             <div

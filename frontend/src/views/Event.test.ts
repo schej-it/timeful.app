@@ -5,6 +5,7 @@ import { computed, nextTick, ref } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { eventTypes, guestUserId } from "@/constants"
 import EventView from "./Event.vue"
+import eventViewSource from "./Event.vue?raw"
 
 interface EventTestResponse {
   name: string
@@ -352,6 +353,13 @@ const iconTextStub = {
 }
 
 describe("Event guest edit action", () => {
+  it("switches the compact desktop header to the standard sm breakpoint", () => {
+    expect(eventViewSource).toContain("sm:tw-flex-row sm:tw-items-start sm:tw-gap-4")
+    expect(eventViewSource).not.toContain(
+      "md:tw-flex-row md:tw-items-start md:tw-gap-4"
+    )
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()

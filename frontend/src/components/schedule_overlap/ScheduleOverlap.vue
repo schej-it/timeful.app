@@ -2,9 +2,12 @@
   <span>
     <Tooltip :content="tooltipContent">
       <div class="tw-select-none tw-py-4" style="-webkit-touch-callout: none">
-        <div class="tw-flex tw-flex-col sm:tw-flex-row">
+        <div
+          class="schedule-overlap-layout tw-flex"
+          :class="isPhone ? 'tw-flex-col' : 'tw-flex-row'"
+        >
           <div
-            class="tw-flex tw-grow tw-pl-4"
+            class="schedule-overlap-layout__grid-pane tw-flex tw-grow tw-pl-4"
             :class="isSignUp ? '' : 'tw-pr-4'"
           >
             <ScheduleOverlapDaysOnlyGrid
@@ -121,6 +124,7 @@ import {
   readShowAllHoursPreference,
   writeShowAllHoursPreference,
 } from "@/composables/schedule_overlap/scheduleOverlapStorage"
+import { SCHEDULE_OVERLAP_COMPACT_DESKTOP_BREAKPOINT } from "./scheduleOverlapBreakpoints"
 
 // ── Props / Emits ──────────────────────────────────────────────────────
 const props = withDefaults(
@@ -183,8 +187,10 @@ const emit = defineEmits<{
 
 // ── Store / Vuetify ────────────────────────────────────────────────────
 const mainStore = useMainStore()
-const { smAndDown } = useDisplay()
-const isPhone = computed(() => smAndDown.value)
+const { width } = useDisplay()
+const isPhone = computed(
+  () => width.value < SCHEDULE_OVERLAP_COMPACT_DESKTOP_BREAKPOINT
+)
 const isSignUp = computed(() => Boolean(props.event.isSignUpForm))
 const isGroup = computed(() => props.event.type === eventTypes.GROUP)
 const isOwner = computed(() => isSignedInOwner(props.event, mainStore.authUser))
@@ -1773,5 +1779,15 @@ defineExpose({
 /* Make timezone select element the same width as content */
 #timezone-select {
   width: 5px;
+}
+
+.schedule-overlap-layout__grid-pane {
+  min-width: 0;
+}
+
+@media (min-width: 640px) and (max-width: 767px) {
+  .schedule-overlap-layout__grid-pane {
+    flex: 1 1 0%;
+  }
 }
 </style>

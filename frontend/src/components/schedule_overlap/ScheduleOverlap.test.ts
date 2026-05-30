@@ -10,13 +10,19 @@ import {
   buildScheduleOverlapProps,
   installScheduleOverlapTestGlobals,
   mountScheduleOverlap,
+  type ScheduleOverlapWrapper,
   scheduleOverlapGlobalStubs,
 } from "./scheduleOverlapTestUtils"
 import { formatTooltipContent } from "./scheduleOverlapRendering"
 import { ZdtMap } from "@/utils"
 import ScheduleOverlap from "./ScheduleOverlap.vue"
+import scheduleOverlapSource from "./ScheduleOverlap.vue?raw"
+import scheduleOverlapSidebarSource from "./ScheduleOverlapSidebar.vue?raw"
+import scheduleOverlapTimeGridSource from "./ScheduleOverlapTimeGrid.vue?raw"
+import scheduleOverlapDaysOnlyGridSource from "./ScheduleOverlapDaysOnlyGrid.vue?raw"
+import { SCHEDULE_OVERLAP_COMPACT_DESKTOP_BREAKPOINT } from "./scheduleOverlapBreakpoints"
 
-const smAndDown = { value: false }
+const viewportWidth = { value: 1024 }
 const zdt = (iso: string) => Temporal.Instant.from(iso).toZonedDateTimeISO("UTC")
 const { putMock, refreshAuthUserMock, showInfoMock, showErrorMock } = vi.hoisted(() => ({
   putMock: vi.fn(),
@@ -35,7 +41,7 @@ const buildUtcSpecificTimes = (date: string, times: string[]) =>
 
 vi.mock("vuetify", () => ({
   useDisplay: () => ({
-    smAndDown,
+    width: viewportWidth,
   }),
 }))
 
@@ -63,8 +69,61 @@ vi.mock("@/plugins/posthog", () => ({
 }))
 
 describe("ScheduleOverlap", () => {
+  it("switches the sidebar layout to the standard sm breakpoint", () => {
+    expect(scheduleOverlapSource).toContain(
+      'class="schedule-overlap-layout tw-flex"'
+    )
+    expect(scheduleOverlapSource).toContain(
+      `:class="isPhone ? 'tw-flex-col' : 'tw-flex-row'"`
+    )
+    expect(scheduleOverlapSidebarSource).toContain(
+      "sidebar.isPhone"
+    )
+  })
+
+  it("keeps the stacked-to-side-by-side breakpoint at sm while forcing the compact desktop grid pane to fill the row", () => {
+    expect(scheduleOverlapSource).toContain(
+      "SCHEDULE_OVERLAP_COMPACT_DESKTOP_BREAKPOINT"
+    )
+    expect(scheduleOverlapSource).toContain(
+      'class="schedule-overlap-layout__grid-pane tw-flex tw-grow tw-pl-4"'
+    )
+    expect(scheduleOverlapSource).toContain(
+      "@media (min-width: 640px) and (max-width: 767px)"
+    )
+    expect(scheduleOverlapSource).toContain("flex: 1 1 0%;")
+  })
+
+  it("keeps the compact-desktop breakpoint constant at 640", () => {
+    expect(SCHEDULE_OVERLAP_COMPACT_DESKTOP_BREAKPOINT).toBe(640)
+  })
+
+  it("stretches timed and days-only grid columns across the compact desktop width helper", () => {
+    expect(scheduleOverlapTimeGridSource).toContain(
+      'class="schedule-overlap-time-grid__content tw-grow"'
+    )
+    expect(scheduleOverlapTimeGridSource).toContain(
+      "schedule-overlap-time-grid__day-column"
+    )
+    expect(scheduleOverlapTimeGridSource).toContain(
+      "@media (min-width: 640px) and (max-width: 767px)"
+    )
+    expect(scheduleOverlapTimeGridSource).toContain("width: 100%;")
+    expect(scheduleOverlapTimeGridSource).toContain("flex: 1 1 0%;")
+    expect(scheduleOverlapDaysOnlyGridSource).toContain(
+      'class="schedule-overlap-days-only-grid tw-grow"'
+    )
+    expect(scheduleOverlapDaysOnlyGridSource).toContain(
+      'class="schedule-overlap-days-only-grid__month tw-grid tw-grid-cols-7"'
+    )
+    expect(scheduleOverlapDaysOnlyGridSource).toContain(
+      "@media (min-width: 640px) and (max-width: 767px)"
+    )
+    expect(scheduleOverlapDaysOnlyGridSource).toContain("width: 100%;")
+  })
+
   beforeEach(() => {
-    smAndDown.value = false
+    viewportWidth.value = 1024
     putMock.mockReset()
     putMock.mockResolvedValue(undefined)
     refreshAuthUserMock.mockReset()
@@ -492,7 +551,7 @@ describe("ScheduleOverlap", () => {
   })
 
   it("passes cohesive sidebar and mobile overlay view models to extracted children", () => {
-    smAndDown.value = true
+    viewportWidth.value = 639
 
     const wrapper = mountScheduleOverlap({
       global: {
@@ -540,6 +599,75 @@ describe("ScheduleOverlap", () => {
     expect(sidebarViewModel.respondentsPanel.eventId).toBe("evt-1")
     expect(overlayViewModel.event._id).toBe("evt-1")
     expect(overlayViewModel.respondentsPanel.eventId).toBe("evt-1")
+  })
+
+  it("keeps mobile-only boundaries active below 640px and removes them at 640px", async () => {
+    viewportWidth.value = 639
+
+    const buildWrapper = () =>
+      mountScheduleOverlap({
+        global: {
+          stubs: {
+            ScheduleOverlapSidebar: {
+              name: "ScheduleOverlapSidebar",
+              props: {
+                sidebar: {
+                  type: Object,
+                  required: true,
+                },
+              },
+              template: "<div class='sidebar-stub' />",
+            },
+            ScheduleOverlapMobileOverlay: {
+              name: "ScheduleOverlapMobileOverlay",
+              props: {
+                overlay: {
+                  type: Object,
+                  required: true,
+                },
+              },
+              template: "<div class='overlay-stub' />",
+            },
+            ToolRow: {
+              name: "ToolRow",
+              props: {
+                toolRow: {
+                  type: Object,
+                  required: true,
+                },
+              },
+              template: "<div class='tool-row-stub' />",
+            },
+          },
+        },
+      })
+
+    const mobileWrapper = buildWrapper()
+    await nextTick()
+
+    const getSidebarViewModel = (wrapper: ScheduleOverlapWrapper) =>
+      wrapper.findComponent({ name: "ScheduleOverlapSidebar" }).props("sidebar") as {
+        isPhone: boolean
+        rightSideWidth: string
+      }
+
+    expect(mobileWrapper.find(".tool-row-stub").exists()).toBe(true)
+    expect(mobileWrapper.find(".overlay-stub").exists()).toBe(true)
+    expect(mobileWrapper.find(".schedule-overlap-layout").classes()).toContain("tw-flex-col")
+    expect(getSidebarViewModel(mobileWrapper).isPhone).toBe(true)
+    expect(getSidebarViewModel(mobileWrapper).rightSideWidth).toBe("100%")
+
+    mobileWrapper.unmount()
+    viewportWidth.value = 640
+
+    const desktopWrapper = buildWrapper()
+    await nextTick()
+
+    expect(desktopWrapper.find(".tool-row-stub").exists()).toBe(false)
+    expect(desktopWrapper.find(".overlay-stub").exists()).toBe(false)
+    expect(desktopWrapper.find(".schedule-overlap-layout").classes()).toContain("tw-flex-row")
+    expect(getSidebarViewModel(desktopWrapper).isPhone).toBe(false)
+    expect(getSidebarViewModel(desktopWrapper).rightSideWidth).toBe("clamp(10rem, 25vw, 13rem)")
   })
 
   it("keeps the explicit guest edit target in the respondents panel view model", () => {
@@ -869,7 +997,7 @@ describe("ScheduleOverlap", () => {
   })
 
   it("keeps grouped sidebar and mobile overlay listeners wired to local state and parent emits", async () => {
-    smAndDown.value = true
+    viewportWidth.value = 639
 
     const wrapper = mountScheduleOverlap({
       global: {
