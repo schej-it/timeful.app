@@ -133,7 +133,10 @@ export function useDragPaint(opts: UseDragPaintOptions) {
   }
 
   const updateCurTimeslot = (row: number, col: number) => {
-    if (opts.state.value !== states.EDIT_AVAILABILITY) {
+    if (
+      opts.state.value !== states.EDIT_AVAILABILITY &&
+      opts.state.value !== states.SET_SPECIFIC_TIMES
+    ) {
       return
     }
     if (!opts.curTimeslot) {

@@ -142,6 +142,7 @@ function createSpecificTimesDragPaint() {
   const dragStart = ref<{ row: number; col: number } | null>(null)
   const dragCur = ref<{ row: number; col: number } | null>(null)
   const tempTimes = shallowRef(new ZdtSet())
+  const curTimeslot = ref({ row: -1, col: -1 })
 
   return {
     dragPaint: useDragPaint({
@@ -152,7 +153,7 @@ function createSpecificTimesDragPaint() {
       dragging,
       dragStart,
       dragCur,
-      curTimeslot: ref({ row: -1, col: -1 }),
+      curTimeslot,
       splitTimes: computed(() => [
         Array.from({ length: 24 }, (_, hour) => ({
           hoursOffset: Temporal.Duration.from({ hours: hour }),
@@ -200,6 +201,7 @@ function createSpecificTimesDragPaint() {
     dragStart,
     dragCur,
     tempTimes,
+    curTimeslot,
   }
 }
 
@@ -331,5 +333,33 @@ describe("useDragPaint pointer capture", () => {
       "2026-05-29T03:00:00+00:00[UTC]",
       "2026-05-30T03:00:00+00:00[UTC]",
     ])
+  })
+
+  it("keeps the current timeslot aligned with the drag pointer while setting specific times", () => {
+    const { dragPaint, curTimeslot } = createSpecificTimesDragPaint()
+    const target = document.createElement("div")
+
+    Object.defineProperty(target, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({
+        left: 0,
+        top: 0,
+        width: 10,
+        height: 10,
+      }),
+    })
+
+    target.setPointerCapture = vi.fn()
+    target.releasePointerCapture = vi.fn()
+    target.hasPointerCapture = vi.fn(() => true)
+
+    dragPaint.startDrag(createPointerEvent("pointerdown", target, 7, 5))
+    expect(curTimeslot.value).toEqual({ row: 0, col: 0 })
+
+    dragPaint.moveDrag(createPointerEvent("pointermove", target, 7, 35))
+    expect(curTimeslot.value).toEqual({ row: 3, col: 0 })
+
+    dragPaint.endDrag(createPointerEvent("pointerup", target, 7, 35))
+    expect(curTimeslot.value).toEqual({ row: 3, col: 0 })
   })
 })
