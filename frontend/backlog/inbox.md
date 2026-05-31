@@ -49,3 +49,83 @@ Semi-structured TODO list
 - [ ] introduce staging environment
 - [ ] make more functions for business logic pure
 - [ ] use full "development" instead of "dev" and "production" instead of "prod"
+- [ ] Get rid of eslint-disable-*
+  - [ ] `eslint-disable vue/one-component-per-file`
+- [ ] Can't save time for the first time
+- [ ] When editing the event, shouldn't be able to edit personal time (the button shouldn't be visible)
+- [ ] In create event -> advanced options, "Timezone" should be black
+- [ ] Show full grid by default
+- [ ] add option to collapse unused hours (not hide)
+- [ ] make each collapsed hours uncollapsible
+- [ ] mobile version - switching between 3 days and 7 days doesn't work
+- [ ] event creator can edit other's availabilities (less probability that both guest event creator and guest clear both cookies and localstorage)
+- [x] Add availability only over the responses section so that it can scroll
+  - Moved to the header
+- [x] When viewing an event, when clicking, dragging the box pointer in the red area, then unclicking, the box disappears
+- [ ] When the guest adds availability several times, there should be several records in localstorage
+- [ ] optional password for restoring. edit own responses and open for editing, can click the lock button to enter password and edit others' responses
+- [ ] edit button always visible
+- [ ] add description if initial event description is empty
+- [ ] when user clicks edit availability, they should see a drop-down list of all respondents whose availability they can change. own availabilities first, open for editing next, people with password last
+- [ ] Enforce that the user name is always non-empty
+
+      The core of this is a functional requirement:
+
+      - which guest names are accepted or rejected
+      - how respondent names are normalized
+      - what data the API returns
+      - how duplicates and legacy rows are handled
+
+      It has some non-functional aspects:
+
+      - data quality and consistency
+      - robustness against malformed input
+      - maintainability of one canonical contract
+- [x] in a collapsed section, upper line overlaps the original line but the lower line doesn't
+  
+- [x] use the same colors for all grid lines
+- [x] the selection box is almost invisible
+  - Now it's hatched
+- [ ] the selection box overlaps vertical lines on the left at the border of a grid of subsequent dates
+- [x] use the same frequency of dashes for the selection box and the grid separator at half an hour
+  - we use solid selection box
+- [x] when I click somewhere, the drop-down list in edit availability doesn't disappear
+- [ ] when I click somewhere in the red zone, the edit availability doesn't blink
+- [x] let's collapse hours when they're at the start or at the end too. These hours are useless anyway
+- [ ] the grid lines should be black, not grey
+- [x] Check +3:30 and +5:45
+- [ ] 404 isn't centered vertically on a non-existing event page
+- [ ] do we need split-gap
+- [ ] add instructions for the agent to write scripts for the browser and edit it instead of inline scripts
+- [x] common grey zones at the start of the day and at the end of the day must be invisible, not collapsed
+- [ ] which replaced tests should be restored and adjusted?
+- [ ] added days in edit event but they're not available for editing specific times
+- [x] when editing event, the week day every letter looks the same as the day of month
+- [x] create event with specific availability in +2, 0-4 (day 1), 0-4 (day 2). When opened in 0:00, should see the previous date
+- [x] box cursor doesn't follow the mouse in the specific times grid
+- [x] no Options when there are no responses
+  - now there's an option to show all hours
+- [ ] get rid of the comparator, leave just inspect and update docs
+- [x] disallow editing past dates
+  - Not disallowing because it's a feature
+- [ ] after scrolling the grid, the circle inside the toggle is misaligned vertically, the No responses yet also changes the position
+- [ ] options should be over responses
+- [x] after adding availability, the selected segments are dark green
+- [ ] specify how the color at overlapping slots is calculated
+- [x] Move "Copy link" closer to the event title
+- [ ] there's no time when all 8 respondents are available should be over responses
+- [ ] when I move the mouse cursor out of the grid, the responses still show who's available and unavailable at specific time
+- [x] too drastic width change at page width breakpoints (1/3 of the screen)
+- [ ] Make edit event a button with a pencil icon
+- [ ] When no responses, show only add availability and show all hours
+- [ ] event Dates, edit event at the same height as best times, more options
+- [x] show pencils
+- [ ] When scrolled, then clicked edit event, the header moves higher (timeful, create an event, etc.)
+- [ ] Add concurrency control (two people edit the event simultaneously)
+- [ ] Disallow saving empty availability set
+- [ ] When one response, doesn't show best times
+- [ ] Create an event with specific times for dates May 30, 31, mark hours 0-4 for both dates, edit event, set dates for 28, 29, click next. See May 28, 30, 31 in specific times page, and May 30, 31 on the event page.
+- [ ] Mark dates for only one day in specific times, save, edit again and see only one day
+- [ ] Create an event for may 28 with availability from 0 to 4 and timezone +02:00. If you open the date picker in +0:00, should you see two days marked in the date picker?
+- [x] There's no source of truth for dates for specific times and event
+  - Added ADR-012
