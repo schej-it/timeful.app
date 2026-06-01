@@ -6,6 +6,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
@@ -16,7 +17,6 @@
     "vite.config.ts",
     "vitest.config.mjs",
     "eslint.config.ts",
-    "playwright.config.ts",
     "eslint/**/*.ts"
   ]
 }

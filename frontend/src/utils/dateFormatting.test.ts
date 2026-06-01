@@ -38,6 +38,47 @@ describe("dateFormatting", () => {
     ).toBe("5/1 - 5/2")
   })
 
+  it("derives timed specific-date summaries from projected enabled-slot days", () => {
+    expect(
+      getDateRangeStringForEvent({
+        type: eventTypes.SPECIFIC_DATES,
+        dates: [Temporal.PlainDate.from("2026-05-28")],
+        timeSeed: zdt("2026-05-28T00:00:00Z"),
+        enabledSlots: [
+          zdt("2026-05-28T00:00:00Z"),
+          zdt("2026-05-28T01:00:00Z"),
+          zdt("2026-05-29T00:00:00Z"),
+        ],
+        eventTimezone: UTC,
+        slotGeneration: {
+          startTimeLocal: Temporal.PlainTime.from("00:00:00"),
+          endTimeLocal: Temporal.PlainTime.from("02:00:00"),
+          timeIncrement: Temporal.Duration.from({ minutes: 60 }),
+        },
+      })
+    ).toBe("5/28 - 5/29")
+  })
+
+  it("projects timed specific-date summaries in the persisted event timezone", () => {
+    expect(
+      getDateRangeStringForEvent({
+        type: eventTypes.SPECIFIC_DATES,
+        dates: [Temporal.PlainDate.from("2026-01-05")],
+        enabledSlots: [
+          zdt("2026-01-05T07:30:00Z"),
+          zdt("2026-01-05T08:00:00Z"),
+          zdt("2026-01-06T07:30:00Z"),
+        ],
+        eventTimezone: "America/Los_Angeles",
+        slotGeneration: {
+          startTimeLocal: Temporal.PlainTime.from("23:30:00"),
+          endTimeLocal: Temporal.PlainTime.from("01:30:00"),
+          timeIncrement: Temporal.Duration.from({ minutes: 30 }),
+        },
+      })
+    ).toBe("1/4 - 1/5")
+  })
+
   it("formats time numbers for display and transport", () => {
     expect(timeNumToTimeText(0)).toBe("12 am")
     expect(timeNumToTimeText(13.5)).toBe("1:30 pm")

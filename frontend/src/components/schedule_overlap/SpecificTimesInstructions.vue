@@ -19,9 +19,14 @@
         <span class="tw-text-sm">Potential meeting times</span>
       </div>
     </div>
-    <v-btn color="primary" :disabled="numTempTimes === 0" @click="emit('saveTempTimes')"
-      >Next</v-btn
+    <v-btn
+      data-testid="specific-times-grid-next"
+      color="primary"
+      :disabled="numTempTimes === 0"
+      @click="emit('saveTempTimes')"
     >
+      Next
+    </v-btn>
   </div>
 </template>
 

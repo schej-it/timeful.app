@@ -202,6 +202,12 @@ describe("TimezoneSelector", () => {
     expect(String(matchingTimezoneItem?.title)).toContain("Eastern Time")
   })
 
+  it("exposes stable test hooks for the timezone trigger and canonical option values", () => {
+    expect(timezoneSelectorSource).toContain('data-testid="timezone-select-trigger"')
+    expect(timezoneSelectorSource).toContain('data-testid="timezone-select-option"')
+    expect(timezoneSelectorSource).toContain(':data-timezone-value="getTimezoneFromSelectItem(item.raw).value"')
+  })
+
   it(
     "renders a readable timezone label even when the selected value is an offset-only timezone",
     () => {

@@ -120,7 +120,10 @@
                   </div>
                 </div>
               </v-expand-transition>
-              <div class="tw-mb-2">
+              <div
+                class="tw-mb-2"
+                data-testid="specific-times-toggle"
+              >
                 <v-checkbox
                   v-model="specificTimesEnabled"
                   color="primary"
@@ -561,6 +564,11 @@ import type { EventDraft } from "@/composables/event/types"
 import { toTransportDateTimeStrings } from "@/types/transport"
 import { buildEventEditorSchedule } from "@/composables/event/eventEditorSchedule"
 import {
+  buildSpecificTimesCreateDraft,
+  buildSpecificTimesEditDraft,
+} from "@/composables/event/specificTimesEditDraft"
+import { withSpecificTimesEntryState } from "@/composables/event/specificTimesEntryState"
+import {
   useEventEditorState,
   type EventEditorFormRef,
 } from "@/composables/event/useEventEditorState"
@@ -602,7 +610,12 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   "update:modelValue": [value: boolean]
-  "refresh-event": [payload?: { fromEditEvent?: boolean }]
+  "refresh-event": [
+    payload?: {
+      fromEditEvent?: boolean
+      specificTimesEditDraft?: ReturnType<typeof buildSpecificTimesEditDraft>
+    },
+  ]
   signIn: []
 }>()
 
@@ -839,6 +852,7 @@ const submit = async () => {
     startTime: startTime.value,
     endTime: endTime.value,
     timezoneValue: resolveTimezoneValue(timezone.value.value),
+    timeIncrementMinutes: timeIncrement.value,
   })
 
   selectedDays.value = schedule.normalizedSelectedDays
@@ -849,7 +863,66 @@ const submit = async () => {
 
   loading.value = true
 
+  const specificTimesEditDraft =
+    props.edit && props.event
+      ? buildSpecificTimesEditDraft({
+          event: props.event,
+          schedule,
+          timeIncrementMinutes: timeIncrement.value,
+          specificTimesEnabled: specificTimesEnabled.value,
+        })
+      : specificTimesEnabled.value
+        ? buildSpecificTimesCreateDraft({
+            schedule,
+            timeIncrementMinutes: timeIncrement.value,
+          })
+      : undefined
+  const canonicalEnabledSlots =
+    specificTimesEditDraft?.enabledSlots ?? schedule.enabledSlots
+  const canonicalActiveSlots =
+    specificTimesEditDraft?.activeSlots ?? schedule.activeSlots
+  const canonicalEventTimezone =
+    specificTimesEditDraft?.eventTimezone ?? schedule.eventTimezone
+  const canonicalSlotGeneration: typeof schedule.slotGeneration =
+    specificTimesEditDraft?.slotGeneration?.startTimeLocal &&
+    specificTimesEditDraft.slotGeneration.endTimeLocal &&
+    specificTimesEditDraft.slotGeneration.timeIncrement
+      ? {
+          startTimeLocal: specificTimesEditDraft.slotGeneration.startTimeLocal,
+          endTimeLocal: specificTimesEditDraft.slotGeneration.endTimeLocal,
+          timeIncrement: specificTimesEditDraft.slotGeneration.timeIncrement,
+        }
+      : schedule.slotGeneration
+  const canonicalTimedRecurrence: typeof schedule.timedRecurrence =
+    specificTimesEditDraft?.timedRecurrence?.kind &&
+    specificTimesEditDraft.timedRecurrence.selectedDays &&
+    specificTimesEditDraft.timedRecurrence.selectedDaysOfWeek
+      ? {
+          kind: specificTimesEditDraft.timedRecurrence.kind,
+          selectedDays: specificTimesEditDraft.timedRecurrence.selectedDays,
+          selectedDaysOfWeek:
+            specificTimesEditDraft.timedRecurrence.selectedDaysOfWeek,
+          startOnMonday:
+            specificTimesEditDraft.timedRecurrence.startOnMonday ?? false,
+        }
+      : schedule.timedRecurrence
+
   const payload = {
+    enabledSlots: toTransportDateTimeStrings(canonicalEnabledSlots),
+    activeSlots: toTransportDateTimeStrings(canonicalActiveSlots),
+    times: toTransportDateTimeStrings(canonicalActiveSlots),
+    eventTimezone: canonicalEventTimezone,
+    slotGeneration: {
+      startTimeLocal: canonicalSlotGeneration.startTimeLocal.toString(),
+      endTimeLocal: canonicalSlotGeneration.endTimeLocal.toString(),
+      timeIncrementMinutes: canonicalSlotGeneration.timeIncrement.total("minutes"),
+    },
+    timedRecurrence: {
+      kind: canonicalTimedRecurrence.kind,
+      selectedDays: canonicalTimedRecurrence.selectedDays.map((day) => day.toString()),
+      selectedDaysOfWeek: canonicalTimedRecurrence.selectedDaysOfWeek,
+      startOnMonday: canonicalTimedRecurrence.startOnMonday,
+    },
     name: name.value,
     duration: schedule.duration.total("hours"),
     dates: toTransportDateTimeStrings(schedule.dates),
@@ -886,6 +959,7 @@ const submit = async () => {
     eventCollectEmails: collectEmails.value,
     eventStartOnMonday: startOnMonday.value,
     eventTimeIncrement: timeIncrement.value,
+    eventTimezone: canonicalEventTimezone,
   }
 
   if (!props.edit) {
@@ -897,6 +971,11 @@ const submit = async () => {
         await router.push({
           name: "event",
           params: { eventId: shortId ?? eventId },
+          state: specificTimesEnabled.value && specificTimesEditDraft
+            ? withSpecificTimesEntryState({
+                draft: specificTimesEditDraft,
+              })
+            : undefined,
         })
 
         emit("update:modelValue", false)
@@ -926,6 +1005,7 @@ const submit = async () => {
 
         emit("refresh-event", {
           fromEditEvent: specificTimesEnabled.value,
+          specificTimesEditDraft,
         })
       })
       .catch((err: unknown) => {

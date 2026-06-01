@@ -213,7 +213,7 @@ describe("transport and timezone regression boundaries", () => {
     const event = fromRawEvent({
       dates: ["2026-05-18T07:15:00Z"],
       duration: 5.5,
-    } as unknown as Parameters<typeof fromRawEvent>[0])
+    })
 
     expect(event.duration?.toString()).toBe("PT5H30M")
   })
@@ -598,6 +598,20 @@ describe("transport and timezone regression boundaries", () => {
     })
 
     expect(payload).toEqual({
+      enabledSlots: ["2026-01-05T09:00:00Z"],
+      activeSlots: ["2026-01-05T09:00:00Z"],
+      eventTimezone: "UTC",
+      slotGeneration: {
+        startTimeLocal: "09:00:00",
+        endTimeLocal: "17:00:00",
+        timeIncrementMinutes: 15,
+      },
+      timedRecurrence: {
+        kind: "specific_dates",
+        selectedDays: ["2026-01-05"],
+        selectedDaysOfWeek: [],
+        startOnMonday: false,
+      },
       name: "Planning",
       duration: 2,
       dates: ["2026-01-05T09:00:00Z"],
@@ -623,6 +637,7 @@ describe("transport and timezone regression boundaries", () => {
       ],
       times: ["2026-01-05T09:00:00Z"],
       remindees: ["ada@example.com"],
+      attendees: undefined,
     })
   })
 

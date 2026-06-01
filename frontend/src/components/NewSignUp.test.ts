@@ -342,13 +342,7 @@ describe("NewSignUp", () => {
 
     expect(postMock).toHaveBeenCalledTimes(1)
     expect(postMock.mock.calls[0]?.[0]).toBe("/events")
-    expect(
-      (
-        postMock.mock.calls[0]?.[1] as {
-          duration: Temporal.Duration
-        }
-      ).duration.toString()
-    ).toBe("PT1H30M")
+    expect((postMock.mock.calls[0]?.[1] as { duration: number }).duration).toBe(1.5)
   })
 
   it("treats equal start and end times as a 24-hour sign-up duration", async () => {
@@ -385,12 +379,158 @@ describe("NewSignUp", () => {
 
     expect(postMock).toHaveBeenCalledTimes(1)
     expect(postMock.mock.calls[0]?.[0]).toBe("/events")
-    expect(
-      (
-        postMock.mock.calls[0]?.[1] as {
-          duration: Temporal.Duration
-        }
-      ).duration.toString()
-    ).toBe("PT24H")
+    expect((postMock.mock.calls[0]?.[1] as { duration: number }).duration).toBe(24)
+  })
+
+  it("submits canonical timed fields for new timed sign-up events", async () => {
+    const wrapper = shallowMount(NewSignUp, {
+      props: {
+        contactsPayload: {
+          name: "Canonical sign up",
+          startTime: Temporal.PlainTime.from("09:00"),
+          endTime: Temporal.PlainTime.from("10:00"),
+          daysOnly: false,
+          selectedDateOption: "Specific dates",
+          selectedDays: [Temporal.PlainDate.from("2026-05-28")],
+          notificationsEnabled: false,
+          timezone: {
+            value: "UTC",
+            label: "UTC",
+            gmtString: "GMT",
+            offset: durations.ZERO,
+          },
+        },
+      },
+      global: {
+        stubs: defaultStubs,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      submit?: () => Promise<void>
+      $: { setupState?: { submit?: () => Promise<void> } }
+    }
+
+    await (vm.submit ?? vm.$.setupState?.submit)?.()
+    await Promise.resolve()
+
+    expect(postMock).toHaveBeenCalledTimes(1)
+    expect(postMock.mock.calls[0]?.[1]).toMatchObject({
+      enabledSlots: [
+        "2026-05-28T09:00:00Z",
+        "2026-05-28T09:15:00Z",
+        "2026-05-28T09:30:00Z",
+        "2026-05-28T09:45:00Z",
+      ],
+      activeSlots: [
+        "2026-05-28T09:00:00Z",
+        "2026-05-28T09:15:00Z",
+        "2026-05-28T09:30:00Z",
+        "2026-05-28T09:45:00Z",
+      ],
+      times: [
+        "2026-05-28T09:00:00Z",
+        "2026-05-28T09:15:00Z",
+        "2026-05-28T09:30:00Z",
+        "2026-05-28T09:45:00Z",
+      ],
+      eventTimezone: "UTC",
+      slotGeneration: {
+        startTimeLocal: "09:00:00",
+        endTimeLocal: "10:00:00",
+        timeIncrementMinutes: 15,
+      },
+      timedRecurrence: {
+        kind: "specific_dates",
+        selectedDays: ["2026-05-28"],
+        selectedDaysOfWeek: [],
+        startOnMonday: false,
+      },
+      duration: 1,
+      dates: ["2026-05-28T09:00:00Z"],
+      type: "specific_dates",
+      isSignUpForm: true,
+    })
+  })
+
+  it("preserves canonical timed fields when editing timed sign-up metadata", async () => {
+    const wrapper = shallowMount(NewSignUp, {
+      props: {
+        edit: true,
+        event: {
+          _id: "evt-timed",
+          name: "Timed sign up",
+          type: "specific_dates",
+          dates: [Temporal.PlainDate.from("2026-05-28")],
+          timeSeed: Temporal.ZonedDateTime.from("2026-05-28T09:00:00+00:00[UTC]"),
+          duration: durations.ONE_HOUR,
+          enabledSlots: [
+            Temporal.ZonedDateTime.from("2026-05-28T09:00:00+00:00[UTC]"),
+            Temporal.ZonedDateTime.from("2026-05-28T09:15:00+00:00[UTC]"),
+            Temporal.ZonedDateTime.from("2026-05-28T09:30:00+00:00[UTC]"),
+            Temporal.ZonedDateTime.from("2026-05-28T09:45:00+00:00[UTC]"),
+          ],
+          activeSlots: [
+            Temporal.ZonedDateTime.from("2026-05-28T09:00:00+00:00[UTC]"),
+            Temporal.ZonedDateTime.from("2026-05-28T09:30:00+00:00[UTC]"),
+          ],
+          eventTimezone: "UTC",
+          startOnMonday: true,
+          slotGeneration: {
+            startTimeLocal: Temporal.PlainTime.from("09:00"),
+            endTimeLocal: Temporal.PlainTime.from("10:00"),
+            timeIncrement: Temporal.Duration.from({ minutes: 15 }),
+          },
+          timedRecurrence: {
+            kind: "specific_dates",
+            selectedDays: [Temporal.PlainDate.from("2026-05-28")],
+            selectedDaysOfWeek: [],
+            startOnMonday: true,
+          },
+        },
+      },
+      global: {
+        stubs: defaultStubs,
+      },
+    })
+
+    await wrapper.findAll("button").find((button) => button.text().includes("Save edits"))?.trigger("click")
+    await flushPromises()
+
+    expect(putMock).toHaveBeenCalledTimes(1)
+    expect(putMock.mock.calls[0]?.[1]).toMatchObject({
+      enabledSlots: [
+        "2026-05-28T09:00:00Z",
+        "2026-05-28T09:15:00Z",
+        "2026-05-28T09:30:00Z",
+        "2026-05-28T09:45:00Z",
+      ],
+      activeSlots: [
+        "2026-05-28T09:00:00Z",
+        "2026-05-28T09:15:00Z",
+        "2026-05-28T09:30:00Z",
+        "2026-05-28T09:45:00Z",
+      ],
+      times: [
+        "2026-05-28T09:00:00Z",
+        "2026-05-28T09:15:00Z",
+        "2026-05-28T09:30:00Z",
+        "2026-05-28T09:45:00Z",
+      ],
+      eventTimezone: "UTC",
+      slotGeneration: {
+        startTimeLocal: "09:00:00",
+        endTimeLocal: "10:00:00",
+        timeIncrementMinutes: 15,
+      },
+      timedRecurrence: {
+        kind: "specific_dates",
+        selectedDays: ["2026-05-28"],
+        selectedDaysOfWeek: [],
+        startOnMonday: true,
+      },
+      type: "specific_dates",
+      isSignUpForm: true,
+    })
   })
 })

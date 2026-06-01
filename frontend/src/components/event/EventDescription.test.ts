@@ -44,16 +44,34 @@ describe("EventDescription", () => {
 
   it("saves the edited description and emits the updated event", async () => {
     putMock.mockResolvedValue({})
+    const timedEvent = {
+      ...baseEvent,
+      description: "Original description",
+      duration: Temporal.Duration.from({ minutes: 30 }),
+      dates: [Temporal.PlainDate.from("2026-05-28")],
+      timeSeed: Temporal.ZonedDateTime.from("2026-05-28T09:00:00+00:00[UTC]"),
+      enabledSlots: [
+        Temporal.ZonedDateTime.from("2026-05-28T09:00:00+00:00[UTC]"),
+        Temporal.ZonedDateTime.from("2026-05-28T09:15:00+00:00[UTC]"),
+      ],
+      activeSlots: [Temporal.ZonedDateTime.from("2026-05-28T09:15:00+00:00[UTC]")],
+      eventTimezone: "UTC",
+      slotGeneration: {
+        startTimeLocal: Temporal.PlainTime.from("09:00"),
+        endTimeLocal: Temporal.PlainTime.from("09:30"),
+        timeIncrement: Temporal.Duration.from({ minutes: 15 }),
+      },
+      timedRecurrence: {
+        kind: "specific_dates" as const,
+        selectedDays: [Temporal.PlainDate.from("2026-05-28")],
+        selectedDaysOfWeek: [],
+        startOnMonday: true,
+      },
+    }
 
     const wrapper = mount(EventDescription, {
       props: {
-        event: {
-          ...baseEvent,
-          description: "Original description",
-          duration: Temporal.Duration.from({ minutes: 30 }),
-          dates: [],
-          timeSeed: undefined,
-        },
+        event: timedEvent,
         canEdit: true,
       },
       attachTo: document.body,
@@ -73,14 +91,45 @@ describe("EventDescription", () => {
     await wrapper.get(".event-description-save-button").trigger("click")
 
     expect(putMock).toHaveBeenCalledTimes(1)
+    expect(putMock).toHaveBeenCalledWith(`/events/${timedEvent._id}`, {
+      enabledSlots: ["2026-05-28T09:00:00Z", "2026-05-28T09:15:00Z"],
+      activeSlots: ["2026-05-28T09:15:00Z"],
+      eventTimezone: "UTC",
+      slotGeneration: {
+        startTimeLocal: "09:00:00",
+        endTimeLocal: "09:30:00",
+        timeIncrementMinutes: 15,
+      },
+      timedRecurrence: {
+        kind: "specific_dates",
+        selectedDays: ["2026-05-28"],
+        selectedDaysOfWeek: [],
+        startOnMonday: true,
+      },
+      name: "Planning",
+      duration: 0.5,
+      dates: ["2026-05-28T09:00:00Z"],
+      hasSpecificTimes: undefined,
+      notificationsEnabled: undefined,
+      blindAvailabilityEnabled: undefined,
+      daysOnly: undefined,
+      type: eventTypes.SPECIFIC_DATES,
+      sendEmailAfterXResponses: undefined,
+      collectEmails: undefined,
+      startOnMonday: undefined,
+      timeIncrement: undefined,
+      creatorPosthogId: undefined,
+      description: "Updated description",
+      signUpBlocks: undefined,
+      times: undefined,
+      remindees: undefined,
+      attendees: undefined,
+    })
     expect(wrapper.emitted("update:event")).toEqual([
       [
         {
-          ...baseEvent,
+          ...timedEvent,
           description: "Updated description",
-          duration: Temporal.Duration.from({ minutes: 30 }),
-          dates: [],
-          timeSeed: undefined,
         },
       ],
     ])

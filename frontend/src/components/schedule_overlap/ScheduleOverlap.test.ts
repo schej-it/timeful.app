@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { nextTick } from "vue"
+import { nextTick, ref } from "vue"
 import { mount } from "@vue/test-utils"
 import { Temporal } from "temporal-polyfill"
 import type { timeTypes } from "@/constants"
@@ -13,6 +13,8 @@ import {
   type ScheduleOverlapWrapper,
   scheduleOverlapGlobalStubs,
 } from "./scheduleOverlapTestUtils"
+import { useCalendarGrid } from "@/composables/schedule_overlap/useCalendarGrid"
+import { states, type ScheduleOverlapEvent } from "@/composables/schedule_overlap/types"
 import { formatTooltipContent } from "./scheduleOverlapRendering"
 import { ZdtMap } from "@/utils"
 import ScheduleOverlap from "./ScheduleOverlap.vue"
@@ -382,6 +384,101 @@ describe("ScheduleOverlap", () => {
     expect(
       vm.renderedRows.filter((row) => row.kind === "collapsed")
     ).toEqual([])
+  })
+
+  it("keeps unselected membership dates editable after saving specific times on only one day", async () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {
+          return undefined
+        }
+
+        disconnect() {
+          return undefined
+        }
+      }
+    )
+    vi.stubGlobal("scrollTo", vi.fn())
+
+    const wrapper = mount(ScheduleOverlap, {
+      props: {
+        ...buildScheduleOverlapProps(),
+        fromEditEvent: true,
+        initialTimezone: utcTimezone,
+        event: {
+          ...buildScheduleOverlapProps().event,
+          name: "Specific times preserve membership",
+          dates: [
+            Temporal.PlainDate.from("2026-05-28"),
+            Temporal.PlainDate.from("2026-05-29"),
+          ],
+          timeSeed: zdt("2026-05-28T00:00:00Z"),
+          startTime: Temporal.PlainTime.from("00:00"),
+          duration: Temporal.Duration.from({ hours: 24 }),
+          hasSpecificTimes: true,
+          timeIncrement: Temporal.Duration.from({ minutes: 15 }),
+          times: [],
+        },
+      },
+      global: {
+        stubs: {
+          ...scheduleOverlapGlobalStubs,
+          ScheduleOverlapSidebar: true,
+          ScheduleOverlapMobileOverlay: true,
+        },
+      },
+    })
+
+    await nextTick()
+    await nextTick()
+
+    const startCell = wrapper.get('[data-row="0"][data-col="1"]')
+    const endCell = wrapper.get('[data-row="3"][data-col="1"]')
+
+    await startCell.trigger("mousedown", { clientX: 5, clientY: 5 })
+    await endCell.trigger("mousemove", { clientX: 10, clientY: 10 })
+    await endCell.trigger("mouseup", { clientX: 10, clientY: 10 })
+
+    const vm = wrapper.vm as unknown as {
+      saveTempTimes: () => void
+      eventRef: ScheduleOverlapEvent
+    }
+
+    vm.saveTempTimes()
+    await Promise.resolve()
+    await nextTick()
+    await nextTick()
+
+    expect(putMock).toHaveBeenCalledTimes(1)
+    expect(putMock.mock.calls[0]?.[1]).toMatchObject({
+      dates: ["2026-05-28T00:00:00Z", "2026-05-29T00:00:00Z"],
+      times: [
+        "2026-05-29T00:00:00Z",
+        "2026-05-29T00:15:00Z",
+        "2026-05-29T00:30:00Z",
+        "2026-05-29T00:45:00Z",
+      ],
+    })
+    expect(vm.eventRef.dates?.map((date) => date.toString())).toEqual([
+      "2026-05-28",
+      "2026-05-29",
+    ])
+
+    const reopenedEvent = ref(vm.eventRef)
+    const reopenedGrid = useCalendarGrid({
+      event: reopenedEvent,
+      weekOffset: ref(0),
+      curTimezone: ref(utcTimezone),
+      state: ref(states.SET_SPECIFIC_TIMES),
+      isPhone: ref(false),
+    })
+
+    expect(
+      reopenedGrid.days.value.map((day) =>
+        day.dateObject.withTimeZone("UTC").toPlainDate().toString()
+      )
+    ).toEqual(["2026-05-28", "2026-05-29"])
   })
 
   it("uses the saved timezone when initialTimezone is missing", () => {

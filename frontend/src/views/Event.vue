@@ -349,6 +349,8 @@
             :owner-is-premium="ownerIsPremium"
             :owner-premium-checked="ownerPremiumChecked"
             :from-edit-event="fromEditEvent"
+            :from-create-specific-times-draft="fromCreateSpecificTimesDraft"
+            :specific-times-entry-draft="specificTimesEntryDraft"
             :loading-calendar-events="loading"
             :calendar-events-map="calendarEventsMap"
             :calendar-permission-granted="calendarPermissionGranted"
@@ -356,6 +358,7 @@
             :cur-guest-id="curGuestId"
             :initial-timezone="initialTimezone"
             :adding-availability-as-guest="addingAvailabilityAsGuest"
+            :refresh-event-fn="refreshEvent"
             @add-availability="addAvailability"
             @add-availability-as-guest="addAvailabilityAsGuest"
             @refresh-event="refreshEvent"
@@ -658,6 +661,14 @@ import { useEventEditing } from "@/composables/event/useEventEditing"
 import { useEventRespondent } from "@/composables/event/useEventRespondent"
 import type { EventDraft } from "@/composables/event/types"
 import type { ScheduleOverlapInstance } from "@/composables/event/types"
+import {
+  applySpecificTimesEditDraft,
+  type SpecificTimesEditDraft,
+} from "@/composables/event/specificTimesEditDraft"
+import {
+  consumeSpecificTimesEntryState,
+  hasSpecificTimesEntryState,
+} from "@/composables/event/specificTimesEntryState"
 import { hasEventDraftData } from "@/composables/event/draftBoundary"
 import { fetchEventResponses } from "@/composables/event/eventTransportBoundary"
 import {
@@ -720,6 +731,8 @@ const { isPhone } = useDisplayHelpers()
 
 const scheduleOverlap = ref<ScheduleOverlapInstance | null>(null)
 const scheduleOverlapRenderKey = ref(0)
+const specificTimesEntryDraft = ref<SpecificTimesEditDraft | undefined>()
+const fromCreateSpecificTimesDraft = ref(false)
 const videoAdContainer = ref<HTMLElement | null>(null)
 const desktopGuestEditMenuRoot = ref<HTMLElement | null>(null)
 const mobileGuestEditMenuRoot = ref<HTMLElement | null>(null)
@@ -1098,9 +1111,20 @@ function isEventNotFoundError(err: unknown) {
   return getErrorCode(err) === errors.EventNotFound
 }
 
-async function handleEditDialogRefresh(payload?: { fromEditEvent?: boolean }) {
+async function handleEditDialogRefresh(payload?: {
+  fromEditEvent?: boolean
+  specificTimesEditDraft?: SpecificTimesEditDraft
+}) {
+  fromCreateSpecificTimesDraft.value = false
+  specificTimesEntryDraft.value = undefined
   loader.fromEditEvent.value = payload?.fromEditEvent === true
   await loader.refreshEvent()
+  if (loader.event.value && payload?.specificTimesEditDraft) {
+    loader.event.value = applySpecificTimesEditDraft({
+      event: loader.event.value,
+      draft: payload.specificTimesEditDraft,
+    })
+  }
   scheduleOverlapRenderKey.value += 1
   await nextTick()
   loader.fromEditEvent.value = false
@@ -1706,6 +1730,16 @@ async function bootstrapEvent() {
 
   try {
     await loader.refreshEvent()
+    const specificTimesEntryState = consumeSpecificTimesEntryState()
+    fromCreateSpecificTimesDraft.value =
+      specificTimesEntryState?.mode === "create"
+    specificTimesEntryDraft.value = specificTimesEntryState?.draft
+    if (loader.event.value && specificTimesEntryState?.draft) {
+      loader.event.value = applySpecificTimesEditDraft({
+        event: loader.event.value,
+        draft: specificTimesEntryState.draft,
+      })
+    }
     await loader.checkOwnerPremium()
     logEventBoot("EventView", "bootstrap:event-ready", {
       eventId: loader.event.value?._id ?? null,
@@ -1735,6 +1769,7 @@ async function bootstrapEvent() {
       }
     }
     eventLoadStatus.value = "ready"
+    queueScheduleOverlapMount()
   } catch (err: unknown) {
     logEventBoot("EventView", "bootstrap:error", {
       error: err instanceof Error ? err.message : String(err),
@@ -1763,7 +1798,9 @@ onMounted(() => {
   // window.addEventListener("message", _interceptPluginResponses)
   editEventDialog.value = hasEventDraftData(props.contactsPayload)
   if (props.linkApple) choiceDialog.value = true
-  queueScheduleOverlapMount()
+  if (!hasSpecificTimesEntryState()) {
+    queueScheduleOverlapMount()
+  }
   queueSecondaryBootWork()
   void bootstrapEvent()
 })
@@ -1802,7 +1839,7 @@ watch(scheduleOverlap, (so) => {
       so.startEditing()
       logEventBoot("EventView", "watch:scheduleOverlap-startEditing")
     }
-    if (isGroup.value && !userHasResponded.value) {
+    if (isGroup.value && !userHasResponded.value && !canEditMetadata.value) {
       invitationDialog.value = true
       logEventBoot("EventView", "watch:scheduleOverlap-openInvitation")
     }

@@ -3,16 +3,21 @@ import { Temporal } from "temporal-polyfill"
 import {
   dateToDowDate,
   getEventDateSeeds,
-  getSpecificTimesDayStarts,
   processEvent,
   getRenderedWeekStart,
   put,
-  type ZdtSet,
 } from "@/utils"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import { toEventPatchPayload } from "@/composables/event/eventMutationBoundary"
 import type { Event, Location } from "@/types"
+import type { ZdtSet } from "@/utils"
+import {
+  getTimedEventTimezone,
+  normalizeActiveSlots,
+  projectSlotsToLocalDays,
+  sortAndUniqueSlots,
+} from "@/utils/timedEventSlots"
 import {
   HOUR_HEIGHT,
   SPLIT_GAP_HEIGHT,
@@ -25,7 +30,6 @@ import {
   type TimeItem,
   type Timezone,
 } from "./types"
-import { UTC } from "@/constants"
 
 export interface UseEventSchedulingOptions {
   event: Ref<ScheduleOverlapEvent>
@@ -57,6 +61,9 @@ export interface UseEventSchedulingOptions {
   // availability
   tempTimes: Ref<ZdtSet>
   respondents: ComputedRef<{ email?: string; firstName?: string }[]>
+
+  // refresh
+  refreshEvent?: () => Promise<void> | void
 }
 
 export function useEventScheduling(opts: UseEventSchedulingOptions) {
@@ -215,56 +222,105 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
     opts.state.value = opts.defaultState.value
   }
 
-  const saveTempTimes = () => {
+  const saveTempTimes = async () => {
     const eventValue: Pick<
       Event,
-      "_id" | "dates" | "timeSeed" | "times" | "duration" | "remindees"
+      | "_id"
+      | "dates"
+      | "timeSeed"
+      | "times"
+      | "duration"
+      | "remindees"
+      | "enabledSlots"
+      | "activeSlots"
+      | "eventTimezone"
+      | "slotGeneration"
+      | "timedRecurrence"
     > = { ...opts.event.value }
 
-    eventValue.times = [...opts.tempTimes.value].sort((a, b) =>
-      Temporal.ZonedDateTime.compare(a, b)
+    const selectedTimes = sortAndUniqueSlots([...opts.tempTimes.value])
+    const existingActiveSlots = sortAndUniqueSlots(
+      eventValue.activeSlots ?? eventValue.times
     )
+    const existingEnabledSlots = sortAndUniqueSlots(eventValue.enabledSlots)
+    const selectedDayKeys = projectSlotsToLocalDays(
+      selectedTimes,
+      getTimedEventTimezone(opts.event.value)
+    ).map((day) => day.toString())
+    const membershipDayKeys = (opts.event.value.dates ?? []).map((day) =>
+      day.toString()
+    )
+    const selectionCoversMembershipDays =
+      selectedDayKeys.length === membershipDayKeys.length &&
+      selectedDayKeys.every((day, index) => day === membershipDayKeys[index])
+    const enabledSlots =
+      existingEnabledSlots.length > 0
+        ? sortAndUniqueSlots([...existingEnabledSlots, ...selectedTimes])
+        : existingActiveSlots.length > 0
+          ? [...selectedTimes]
+          : selectionCoversMembershipDays
+            ? [...selectedTimes]
+          : (() => {
+              const duration = opts.event.value.duration
+              if (!duration) {
+                return [...selectedTimes]
+              }
+
+              const increment =
+                opts.event.value.timeIncrement ?? opts.timeslotDuration.value
+              const generatedEnabledSlots: Temporal.ZonedDateTime[] = []
+              for (const seed of getEventDateSeeds(opts.event.value)) {
+                let current = seed
+                const end = seed.add(duration)
+                while (Temporal.ZonedDateTime.compare(current, end) < 0) {
+                  generatedEnabledSlots.push(current)
+                  current = current.add(increment)
+                }
+              }
+
+              return sortAndUniqueSlots(generatedEnabledSlots)
+            })()
+    const normalizedSlots = normalizeActiveSlots({
+      enabledSlots,
+      activeSlots: selectedTimes,
+    })
+
+    eventValue.enabledSlots = normalizedSlots.enabledSlots
+    eventValue.activeSlots = normalizedSlots.activeSlots
+    eventValue.times = [...normalizedSlots.activeSlots]
+
+    if (eventValue.times.length === 0) {
+      mainStore.showError("Select at least one time before saving.")
+      return
+    }
 
     const { minHours, maxHours } = opts.getMinMaxHoursFromTimes(
       eventValue.times
     )
-    const scheduleTimezoneId = opts.curTimezone.value.value
-
-    const eventDateInstants = getSpecificTimesDayStarts(
-      eventValue.times,
-      opts.curTimezone.value
-    ).map((day) => {
-      const plainDate = day.dateObject.toPlainDate()
-      const withTime = plainDate.toZonedDateTime({
-        timeZone: scheduleTimezoneId,
-        plainTime: minHours,
-      })
-      return withTime.withTimeZone(UTC)
-    })
-    eventValue.dates = eventDateInstants.map((date) => date.toPlainDate())
-    eventValue.timeSeed = eventDateInstants[0]
 
     eventValue.duration = maxHours
       .since(minHours)
       .add(opts.timeslotDuration.value)
 
     const eventId = eventValue._id ?? ""
-    void put(`/events/${eventId}`, toEventPatchPayload(eventValue))
-      .then(() => {
-        const updatedEvent = {
-          ...opts.event.value,
-          dates: eventValue.dates,
-          timeSeed: eventValue.timeSeed,
-          times: eventValue.times,
-          duration: eventValue.duration,
-        }
-        processEvent(updatedEvent)
-        opts.event.value = updatedEvent
-        opts.state.value = opts.defaultState.value
-      })
-      .catch((err: unknown) => {
-        mainStore.showError(typeof err === "string" ? err : String(err))
-      })
+    try {
+      await put(`/events/${eventId}`, toEventPatchPayload(eventValue))
+      const updatedEvent = {
+        ...opts.event.value,
+        dates: eventValue.dates,
+        timeSeed: eventValue.timeSeed,
+        times: eventValue.times,
+        activeSlots: eventValue.activeSlots,
+        enabledSlots: eventValue.enabledSlots,
+        duration: eventValue.duration,
+      }
+      processEvent(updatedEvent)
+      opts.event.value = updatedEvent
+      await opts.refreshEvent?.()
+      opts.state.value = opts.defaultState.value
+    } catch (err: unknown) {
+      mainStore.showError(typeof err === "string" ? err : String(err))
+    }
   }
 
   return {

@@ -2,6 +2,10 @@ import { eventTypes, UTC } from "@/constants"
 import type { Event } from "@/types"
 import { Temporal } from "temporal-polyfill"
 import type { PlainDate, ZonedDateTime } from "./temporalPrimitives"
+import {
+  buildTimedDateSeeds,
+  hasCanonicalTimedSlots,
+} from "./timedEventSlots"
 
 /**
  * Event date membership should stay stable across viewers and saved timezone
@@ -25,13 +29,26 @@ export const getEventTimeSeed = (event: {
  * viewer timezone, which could otherwise shift the selected day.
  */
 export const getEventMembershipDayOfWeekValues = (
-  dates?: PlainDate[]
-): number[] => (dates ?? []).map((date) => date.dayOfWeek)
+  dates?: PlainDate[],
+  timedRecurrence?: Event["timedRecurrence"]
+): number[] =>
+  timedRecurrence?.selectedDaysOfWeek && timedRecurrence.selectedDaysOfWeek.length > 0
+    ? timedRecurrence.selectedDaysOfWeek
+    : (dates ?? []).map((date) => date.dayOfWeek)
 
 export const getEventDateSeeds = (event: {
   dates?: PlainDate[]
   timeSeed?: ZonedDateTime
+  daysOnly?: boolean
+  enabledSlots?: ZonedDateTime[]
+  eventTimezone?: string
+  slotGeneration?: Event["slotGeneration"]
+  timeIncrement?: Event["timeIncrement"]
 }): ZonedDateTime[] => {
+  if (hasCanonicalTimedSlots(event)) {
+    return buildTimedDateSeeds(event)
+  }
+
   const membershipDates = event.dates ?? []
   if (membershipDates.length === 0) {
     return []
@@ -53,7 +70,17 @@ export const getEventDateSeeds = (event: {
 }
 
 export const getTimezoneReferenceDateForEvent = (
-  event: Pick<Event, "dates" | "timeSeed" | "type">,
+  event: Pick<
+    Event,
+    | "dates"
+    | "timeSeed"
+    | "type"
+    | "daysOnly"
+    | "enabledSlots"
+    | "eventTimezone"
+    | "slotGeneration"
+    | "timeIncrement"
+  >,
   weekOffset = 0
 ): Temporal.ZonedDateTime => {
   if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {

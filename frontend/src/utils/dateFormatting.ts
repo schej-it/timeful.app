@@ -3,6 +3,11 @@ import type { Event } from "@/types"
 import { Temporal } from "temporal-polyfill"
 import type { PlainDate, ZonedDateTime } from "./temporalPrimitives"
 import { getEventDateSeeds } from "./eventDateRules"
+import {
+  getTimedEventTimezone,
+  getTimedSlotGeneration,
+  projectSlotsToLocalDays,
+} from "./timedEventSlots"
 import { toZDT } from "./timezoneDateRules"
 
 /** Returns a string representation of the given date, i.e. May 14th is "5/14". */
@@ -61,13 +66,31 @@ export const getDateRangeString = (
 }
 
 /** Returns a string representing the date range for the provided event. */
-export const getDateRangeStringForEvent = (event: Pick<Event, "dates" | "daysOnly" | "timeSeed" | "type">): string => {
+export const getDateRangeStringForEvent = (
+  event: Pick<
+    Event,
+    | "dates"
+    | "daysOnly"
+    | "timeSeed"
+    | "type"
+    | "enabledSlots"
+    | "activeSlots"
+    | "eventTimezone"
+    | "slotGeneration"
+    | "timeIncrement"
+    | "timedRecurrence"
+  >
+): string => {
   if (!event.dates || event.dates.length === 0) return ""
 
   if (event.type === eventTypes.DOW || event.type === eventTypes.GROUP) {
     const dayAbbreviations = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-    return event.dates
-      .map((date) => dayAbbreviations[date.dayOfWeek % 7])
+    const weeklyDays =
+      event.timedRecurrence?.selectedDaysOfWeek?.length
+        ? event.timedRecurrence.selectedDaysOfWeek
+        : event.dates.map((date) => date.dayOfWeek)
+    return weeklyDays
+      .map((dayOfWeek) => dayAbbreviations[dayOfWeek % 7])
       .join(", ")
   }
 
@@ -79,6 +102,18 @@ export const getDateRangeStringForEvent = (event: Pick<Event, "dates" | "daysOnl
   }
 
   if (event.type === eventTypes.SPECIFIC_DATES) {
+    const enabledDays = projectSlotsToLocalDays(
+      event.enabledSlots ?? event.activeSlots,
+      getTimedEventTimezone(event),
+      getTimedSlotGeneration(event)
+    )
+    if (enabledDays.length > 0) {
+      return (
+        `${getPlainDateString(enabledDays[0])} - ` +
+        getPlainDateString(enabledDays[enabledDays.length - 1])
+      )
+    }
+
     const eventDateSeeds = getEventDateSeeds(event)
     return getDateRangeString(
       eventDateSeeds[0],

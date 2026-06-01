@@ -4,6 +4,7 @@ import { shallowMount } from "@vue/test-utils"
 import { computed, nextTick, ref } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { eventTypes, guestUserId } from "@/constants"
+import { Temporal } from "temporal-polyfill"
 import EventView from "./Event.vue"
 import eventViewSource from "./Event.vue?raw"
 
@@ -26,8 +27,25 @@ interface EventTestState {
   ownerId: string
   name: string
   type: string
+  dates?: Temporal.PlainDate[]
   responses: Record<string, EventTestResponse>
   blindAvailabilityEnabled: boolean
+  hasSpecificTimes?: boolean
+  times?: Temporal.ZonedDateTime[]
+  enabledSlots?: Temporal.ZonedDateTime[]
+  activeSlots?: Temporal.ZonedDateTime[]
+  eventTimezone?: string
+  slotGeneration?: {
+    startTimeLocal: Temporal.PlainTime
+    endTimeLocal: Temporal.PlainTime
+    timeIncrement: Temporal.Duration
+  }
+  timedRecurrence?: {
+    kind: "specific_dates" | "weekly"
+    selectedDays: Temporal.PlainDate[]
+    selectedDaysOfWeek: number[]
+    startOnMonday: boolean
+  }
 }
 
 function createDefaultEventState(): EventTestState {
@@ -61,6 +79,7 @@ const {
   authUserState,
   isPhoneState,
   curGuestIdState,
+  routeState,
   loaderEventState,
   refreshEventMock,
   checkOwnerPremiumMock,
@@ -78,6 +97,7 @@ const {
   authUserState: { value: null as null | { _id: string } },
   isPhoneState: { value: false },
   curGuestIdState: { value: "" },
+  routeState: { value: { name: "event", query: {} } },
   refreshEventMock: vi.fn().mockResolvedValue(undefined),
   checkOwnerPremiumMock: vi.fn().mockResolvedValue(undefined),
   fetchCalendarAvailabilitiesMock: vi.fn().mockResolvedValue(undefined),
@@ -105,10 +125,7 @@ vi.mock("vue-router", () => ({
     push: routerPushMock,
     replace: routerReplaceMock,
   }),
-  useRoute: () => ({
-    name: "event",
-    query: {},
-  }),
+  useRoute: () => routeState.value,
 }))
 
 vi.mock("pinia", () => ({
@@ -200,6 +217,16 @@ const ScheduleOverlapStub = {
       type: Object,
       required: false,
       default: null,
+    },
+    fromCreateSpecificTimesDraft: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
+    specificTimesEntryDraft: {
+      type: Object,
+      required: false,
+      default: undefined,
     },
   },
   data() {
@@ -312,6 +339,14 @@ const eventDescriptionCanEditStub = {
   template: "<div :data-can-edit=\"String(canEdit)\" />",
 }
 
+const invitationDialogStub = {
+  name: "InvitationDialogStub",
+  props: {
+    modelValue: { type: Boolean, required: true },
+  },
+  template: "<div :data-invitation-open=\"String(modelValue)\" />",
+}
+
 const buttonClickStub = {
   template: "<button @click=\"$emit('click', $event)\"><slot /></button>",
 }
@@ -363,9 +398,15 @@ describe("Event guest edit action", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
+      window.setTimeout(() => {
+        callback(0)
+      }, 0)
+    )
     authUserState.value = null
     isPhoneState.value = false
     curGuestIdState.value = ""
+    routeState.value = { name: "event", query: {} }
     loaderEventState.value = {
       ...createDefaultEventState(),
       type: eventTypes.SPECIFIC_DATES,
@@ -374,6 +415,8 @@ describe("Event guest edit action", () => {
 
   async function flushDeferredMount() {
     await nextTick()
+    vi.runAllTimers()
+    await Promise.resolve()
     vi.runAllTimers()
     await nextTick()
   }
@@ -468,6 +511,104 @@ describe("Event guest edit action", () => {
     await flushDeferredMount()
 
     expect(wrapper.text()).toContain("Edit availability")
+  })
+
+  it("applies a create-flow specific-times draft from history state before rendering the calendar", async () => {
+    window.history.replaceState(
+      {
+        timefulSpecificTimesEntry: {
+          mode: "create",
+          draft: {
+            enabledSlots: ["2026-05-28T09:00:00Z"],
+            activeSlots: [],
+            eventTimezone: "UTC",
+            slotGeneration: {
+              startTimeLocal: "09:00:00",
+              endTimeLocal: "10:00:00",
+              timeIncrementMinutes: 60,
+            },
+            timedRecurrence: {
+              kind: "specific_dates",
+              selectedDays: ["2026-05-28"],
+              selectedDaysOfWeek: [],
+              startOnMonday: true,
+            },
+            timeIncrementMinutes: 60,
+            resetExistingTimes: true,
+          },
+        },
+      },
+      "",
+      "http://localhost:3000/e/dEeaF"
+    )
+    loaderEventState.value = {
+      ...createDefaultEventState(),
+      hasSpecificTimes: true,
+      times: [
+        Temporal.Instant.from("2026-05-28T09:00:00Z").toZonedDateTimeISO("UTC"),
+      ],
+      enabledSlots: [
+        Temporal.Instant.from("2026-05-28T09:00:00Z").toZonedDateTimeISO("UTC"),
+      ],
+      activeSlots: [
+        Temporal.Instant.from("2026-05-28T09:00:00Z").toZonedDateTimeISO("UTC"),
+      ],
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": true,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+    await Promise.resolve()
+    await nextTick()
+
+    const scheduleOverlap = wrapper.findComponent(ScheduleOverlapStub)
+    expect(scheduleOverlap.exists()).toBe(true)
+    expect(scheduleOverlap.props("fromCreateSpecificTimesDraft")).toBe(true)
+    expect(
+      (
+        scheduleOverlap.props("specificTimesEntryDraft") as {
+          activeSlots?: unknown[]
+          resetExistingTimes?: boolean
+        }
+      ).activeSlots
+    ).toEqual([])
+    expect(
+      (window.history.state as { timefulSpecificTimesEntry?: unknown })
+        .timefulSpecificTimesEntry
+    ).toBeUndefined()
+
+    wrapper.unmount()
   })
 
   it("keeps the top button label generic when multiple owned guest responses exist", async () => {
@@ -1442,6 +1583,71 @@ describe("Event guest edit action", () => {
     )
   })
 
+  it("renders timed specific-date metadata from projected enabled-slot days", async () => {
+    loaderEventState.value = {
+      ...createDefaultEventState(),
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [Temporal.PlainDate.from("2026-05-28")],
+      hasSpecificTimes: true,
+      enabledSlots: [
+        Temporal.Instant.from("2026-05-28T00:00:00Z").toZonedDateTimeISO("UTC"),
+        Temporal.Instant.from("2026-05-29T00:00:00Z").toZonedDateTimeISO("UTC"),
+      ],
+      activeSlots: [
+        Temporal.Instant.from("2026-05-29T00:00:00Z").toZonedDateTimeISO("UTC"),
+      ],
+      eventTimezone: "UTC",
+      slotGeneration: {
+        startTimeLocal: Temporal.PlainTime.from("00:00:00"),
+        endTimeLocal: Temporal.PlainTime.from("01:00:00"),
+        timeIncrement: Temporal.Duration.from({ minutes: 60 }),
+      },
+      timedRecurrence: {
+        kind: "specific_dates",
+        selectedDays: [Temporal.PlainDate.from("2026-05-28")],
+        selectedDaysOfWeek: [],
+        startOnMonday: true,
+      },
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.get("#event-header-meta-row").text()).toContain("5/28 - 5/29")
+  })
+
   it("invokes copy link from the metadata action row", async () => {
     const wrapper = shallowMount(EventView, {
       props: {
@@ -1755,6 +1961,103 @@ describe("Event guest edit action", () => {
 
     expect(wrapper.find("#edit-event-btn").exists()).toBe(true)
     expect(wrapper.find('[data-can-edit="true"]').exists()).toBe(true)
+  })
+
+  it("does not auto-open the group invitation dialog for anonymous editable groups", async () => {
+    routeState.value = { name: "group", query: {} }
+    loaderEventState.value = {
+      ...createDefaultEventState(),
+      type: eventTypes.GROUP,
+      ownerId: guestUserId,
+      responses: {},
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: invitationDialogStub,
+          HelpDialog: true,
+          EventDescription: eventDescriptionCanEditStub,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": true,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.find("#edit-event-btn").exists()).toBe(true)
+    expect(wrapper.find('[data-can-edit="true"]').exists()).toBe(true)
+    expect(wrapper.find('[data-invitation-open="true"]').exists()).toBe(false)
+  })
+
+  it("auto-opens the group invitation dialog for non-editable group viewers without a response", async () => {
+    routeState.value = { name: "group", query: {} }
+    loaderEventState.value = {
+      ...createDefaultEventState(),
+      type: eventTypes.GROUP,
+      ownerId: "owner-1",
+      responses: {},
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: invitationDialogStub,
+          HelpDialog: true,
+          EventDescription: eventDescriptionCanEditStub,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": true,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.find('[data-can-edit="true"]').exists()).toBe(false)
+    expect(wrapper.find('[data-invitation-open="true"]').exists()).toBe(true)
   })
 
   it("owns global listeners from mount through unmount and runs bootstrap on mount", async () => {

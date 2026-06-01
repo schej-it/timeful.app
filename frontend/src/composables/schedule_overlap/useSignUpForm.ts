@@ -174,6 +174,11 @@ export function useSignUpForm(opts: UseSignUpFormOptions) {
       type: opts.event.value.type,
       dates: opts.event.value.dates,
       timeSeed: opts.event.value.timeSeed,
+      enabledSlots: opts.event.value.enabledSlots,
+      activeSlots: opts.event.value.activeSlots,
+      eventTimezone: opts.event.value.eventTimezone,
+      slotGeneration: opts.event.value.slotGeneration,
+      timedRecurrence: opts.event.value.timedRecurrence,
       signUpBlocks: signUpBlocksByDay.value.flat().map((block) => ({
         _id: block._id,
         name: block.name,

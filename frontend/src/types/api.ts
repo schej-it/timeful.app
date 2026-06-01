@@ -3,7 +3,43 @@
  * Do not make direct changes to the file.
  */
 
+/* eslint-disable @typescript-eslint/consistent-indexed-object-style */
+
 export interface paths {
+    "/analytics/downgrade-user": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Downgrades the specified user to Schej Free */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["Payload"];
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/analytics/monthly-active-event-creators": {
         parameters: {
             query?: never;
@@ -30,7 +66,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": {
                             count?: number;
@@ -40,7 +78,9 @@ export interface paths {
                 };
                 /** @description Invalid date format, range, or timezone offset */
                 400: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": {
                             error?: string;
@@ -49,7 +89,9 @@ export interface paths {
                 };
                 /** @description Internal server error */
                 500: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": {
                             error?: string;
@@ -92,7 +134,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": {
                             count?: number;
@@ -102,7 +146,9 @@ export interface paths {
                 };
                 /** @description Invalid date format, range, or timezone offset */
                 400: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": {
                             error?: string;
@@ -111,7 +157,9 @@ export interface paths {
                 };
                 /** @description Internal server error */
                 500: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": {
                             error?: string;
@@ -157,7 +205,84 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analytics/upgrade-dialog-viewed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Notifies us when user has viewed the upgrade dialog */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            /** @description Object containing the user id */
+            requestBody: {
+                content: {
+                    "application/json": {
+                        userId?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analytics/upgrade-user": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upgrades the specified user to Schej Premium */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: components["requestBodies"]["Payload"];
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -190,7 +315,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": components["schemas"]["models.User"];
                     };
@@ -233,7 +360,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -272,7 +401,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -313,7 +444,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -358,7 +491,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -407,7 +542,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -442,7 +579,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -475,12 +614,16 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
                 /** @description Error object */
                 401: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "*/*": components["schemas"]["responses.Error"];
                     };
@@ -516,18 +659,23 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        activeSlots?: string[];
                         attendees?: string[];
                         blindAvailabilityEnabled?: boolean;
                         dates?: string[];
                         daysOnly?: boolean;
                         duration?: number;
+                        enabledSlots?: string[];
+                        eventTimezone?: string;
                         isSignUpForm?: boolean;
                         name?: string;
                         notificationsEnabled?: boolean;
                         remindees?: string[];
                         sendEmailAfterXResponses?: number;
                         signUpBlocks?: components["schemas"]["models.SignUpBlock"][];
+                        slotGeneration?: components["schemas"]["models.SlotGeneration"];
                         timeIncrement?: number;
+                        timedRecurrence?: components["schemas"]["models.TimedRecurrence"];
                         type?: components["schemas"]["models.EventType"];
                         when2meetHref?: string;
                     };
@@ -536,7 +684,9 @@ export interface paths {
             responses: {
                 /** @description Created */
                 201: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": {
                             eventId?: string;
@@ -573,7 +723,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": components["schemas"]["models.Event"];
                     };
@@ -595,17 +747,23 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        activeSlots?: string[];
                         attendees?: string[];
                         blindAvailabilityEnabled?: boolean;
                         dates?: string[];
                         daysOnly?: boolean;
                         description?: string;
                         duration?: number;
+                        enabledSlots?: string[];
+                        eventTimezone?: string;
                         name?: string;
                         notificationsEnabled?: boolean;
                         remindees?: string[];
                         sendEmailAfterXResponses?: number;
                         signUpBlocks?: components["schemas"]["models.SignUpBlock"][];
+                        slotGeneration?: components["schemas"]["models.SlotGeneration"];
+                        timeIncrement?: number;
+                        timedRecurrence?: components["schemas"]["models.TimedRecurrence"];
                         type?: components["schemas"]["models.EventType"];
                     };
                 };
@@ -613,7 +771,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -634,7 +794,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -675,7 +837,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -713,9 +877,15 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
-                        "application/json": Record<string, Record<string, components["schemas"]["calendar.CalendarEventsWithError"]>>;
+                        "application/json": {
+                            [key: string]: {
+                                [key: string]: components["schemas"]["calendar.CalendarEventsWithError"];
+                            };
+                        };
                     };
                 };
             };
@@ -752,7 +922,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -795,7 +967,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -828,7 +1002,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": {
                             longId?: string;
@@ -838,7 +1014,9 @@ export interface paths {
                 };
                 /** @description Not Found */
                 404: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": components["schemas"]["responses.Error"];
                     };
@@ -885,12 +1063,16 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
                 /** @description Guest name already exists */
                 400: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": components["schemas"]["responses.Error"];
                     };
@@ -934,7 +1116,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -971,10 +1155,14 @@ export interface paths {
                     "application/json": {
                         availability?: string[];
                         calendarOptions?: components["schemas"]["models.CalendarOptions"];
-                        enabledCalendars?: Record<string, string[]>;
+                        enabledCalendars?: {
+                            [key: string]: string[];
+                        };
                         guest?: boolean;
                         ifNeeded?: string[];
-                        manualAvailability?: Record<string, string[]>;
+                        manualAvailability?: {
+                            [key: string]: string[];
+                        };
                         name?: string;
                         signUpBlockIds?: string[];
                         useCalendarAvailability?: boolean;
@@ -984,7 +1172,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -1013,7 +1203,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -1050,9 +1242,13 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
-                        "application/json": Record<string, components["schemas"]["models.Response"]>;
+                        "application/json": {
+                            [key: string]: components["schemas"]["models.Response"];
+                        };
                     };
                 };
             };
@@ -1093,7 +1289,9 @@ export interface paths {
             responses: {
                 /** @description Created */
                 201: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": {
                             eventId?: string;
@@ -1130,7 +1328,9 @@ export interface paths {
             responses: {
                 /** @description Text response */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": components["schemas"]["commands.Response"];
                     };
@@ -1165,7 +1365,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -1204,7 +1406,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -1244,7 +1448,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -1284,7 +1490,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -1324,7 +1532,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -1368,7 +1578,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -1404,9 +1616,13 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
-                        "application/json": Record<string, components["schemas"]["calendar.CalendarEventsWithError"]>;
+                        "application/json": {
+                            [key: string]: components["schemas"]["calendar.CalendarEventsWithError"];
+                        };
                     };
                 };
             };
@@ -1441,7 +1657,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": components["schemas"]["models.Event"][];
                     };
@@ -1487,7 +1705,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -1517,23 +1737,33 @@ export interface paths {
             responses: {
                 /** @description A list of all folders for the user */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": components["schemas"]["models.Folder"][];
                     };
                 };
                 /** @description Invalid user ID */
                 400: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
-                        "application/json": Record<string, string>;
+                        "application/json": {
+                            [key: string]: string;
+                        };
                     };
                 };
                 /** @description Failed to get folders */
                 500: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
-                        "application/json": Record<string, string>;
+                        "application/json": {
+                            [key: string]: string;
+                        };
                     };
                 };
             };
@@ -1559,23 +1789,33 @@ export interface paths {
             responses: {
                 /** @description The ID of the created folder */
                 201: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": components["schemas"]["routes.CreateFolderResponse"];
                     };
                 };
                 /** @description Invalid user ID or request body */
                 400: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
-                        "application/json": Record<string, string>;
+                        "application/json": {
+                            [key: string]: string;
+                        };
                     };
                 };
                 /** @description Failed to create folder */
                 500: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
-                        "application/json": Record<string, string>;
+                        "application/json": {
+                            [key: string]: string;
+                        };
                     };
                 };
             };
@@ -1608,30 +1848,44 @@ export interface paths {
             responses: {
                 /** @description The folder object with events */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": components["schemas"]["models.Folder"];
                     };
                 };
                 /** @description Invalid user ID or folder ID */
                 400: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
-                        "application/json": Record<string, string>;
+                        "application/json": {
+                            [key: string]: string;
+                        };
                     };
                 };
                 /** @description Folder not found */
                 404: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
-                        "application/json": Record<string, string>;
+                        "application/json": {
+                            [key: string]: string;
+                        };
                     };
                 };
                 /** @description Failed to get events in folder */
                 500: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
-                        "application/json": Record<string, string>;
+                        "application/json": {
+                            [key: string]: string;
+                        };
                     };
                 };
             };
@@ -1653,21 +1907,31 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
                 /** @description Invalid user ID or folder ID */
                 400: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
-                        "application/json": Record<string, string>;
+                        "application/json": {
+                            [key: string]: string;
+                        };
                     };
                 };
                 /** @description Failed to delete folder */
                 500: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
-                        "application/json": Record<string, string>;
+                        "application/json": {
+                            [key: string]: string;
+                        };
                     };
                 };
             };
@@ -1697,21 +1961,31 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
                 /** @description Invalid user ID or folder ID */
                 400: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
-                        "application/json": Record<string, string>;
+                        "application/json": {
+                            [key: string]: string;
+                        };
                     };
                 };
                 /** @description Failed to update folder */
                 500: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
-                        "application/json": Record<string, string>;
+                        "application/json": {
+                            [key: string]: string;
+                        };
                     };
                 };
             };
@@ -1751,7 +2025,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -1777,7 +2053,9 @@ export interface paths {
             responses: {
                 /** @description A user profile object */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": components["schemas"]["models.User"];
                     };
@@ -1822,7 +2100,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -1854,7 +2134,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content: {
                         "application/json": components["schemas"]["models.User"][];
                     };
@@ -1898,7 +2180,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -1939,7 +2223,9 @@ export interface paths {
             responses: {
                 /** @description OK */
                 200: {
-                    headers: Record<string, unknown>;
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
@@ -1950,11 +2236,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Returns a minimal public user profile (safe for unauthenticated clients) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description User ID */
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["models.User"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}/is-premium": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Returns whether the given user is a premium user */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description User ID */
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            isPremium?: boolean;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        "bson.M": Record<string, unknown>;
+        "bson.M": {
+            [key: string]: unknown;
+        };
         "calendar.CalendarEventsWithError": {
             calendarEvents?: components["schemas"]["models.CalendarEvent"][];
             error?: unknown;
@@ -1985,7 +2353,9 @@ export interface components {
             icsCalendarAuth?: components["schemas"]["models.ICSCalendarAuth"];
             oAuth2CalendarAuth?: components["schemas"]["models.OAuth2CalendarAuth"];
             picture?: string;
-            subCalendars?: Record<string, components["schemas"]["models.SubCalendar"]>;
+            subCalendars?: {
+                [key: string]: components["schemas"]["models.SubCalendar"];
+            };
         };
         "models.CalendarEvent": {
             /** @description Whether the event is an all day event */
@@ -2006,6 +2376,7 @@ export interface components {
         "models.CalendarType": "apple" | "google" | "outlook" | "ics";
         "models.Event": {
             _id?: string;
+            activeSlots?: number[];
             /** @description Attendees for an availability group (fetched from Attendees collection) */
             attendees?: components["schemas"]["models.Attendee"][];
             /** @description Whether to enable blind availability */
@@ -2019,6 +2390,8 @@ export interface components {
             daysOnly?: boolean;
             description?: string;
             duration?: number;
+            enabledSlots?: number[];
+            eventTimezone?: string;
             /** @description Whether the user has responded to the availability group (fetched based on whether user is in Attendees) */
             hasResponded?: boolean;
             /** @description Used for specific times for specific dates feature */
@@ -2035,16 +2408,22 @@ export interface components {
             /** @description Remindees */
             remindees?: components["schemas"]["models.Remindee"][];
             /** @description Availability responses - old format for backward compatibility (fetched from eventResponses collection) */
-            responses?: Record<string, components["schemas"]["models.Response"]>;
+            responses?: {
+                [key: string]: components["schemas"]["models.Response"];
+            };
             /** @description Scheduled event */
             scheduledEvent?: components["schemas"]["models.CalendarEvent"];
             sendEmailAfterXResponses?: number;
             shortId?: string;
             signUpBlocks?: components["schemas"]["models.SignUpBlock"][];
-            signUpResponses?: Record<string, components["schemas"]["models.SignUpResponse"]>;
+            signUpResponses?: {
+                [key: string]: components["schemas"]["models.SignUpResponse"];
+            };
+            slotGeneration?: components["schemas"]["models.SlotGeneration"];
             /** @description Whether to start the event on Monday (as opposed to Sunday, used for DOW events) */
             startOnMonday?: boolean;
             timeIncrement?: number;
+            timedRecurrence?: components["schemas"]["models.TimedRecurrence"];
             times?: number[];
             type?: components["schemas"]["models.EventType"];
             when2meetHref?: string;
@@ -2082,10 +2461,17 @@ export interface components {
             calendarOptions?: components["schemas"]["models.CalendarOptions"];
             email?: string;
             /** @description Maps email to an array of sub calendar ids */
-            enabledCalendars?: Record<string, string[]>;
+            enabledCalendars?: {
+                [key: string]: string[];
+            };
+            guestEditPolicy?: string;
+            guestId?: string;
+            guestOwnershipMode?: string;
             ifNeeded?: number[];
             /** @description Mapping from the start date of a day to the available times for that day */
-            manualAvailability?: Record<string, number[]>;
+            manualAvailability?: {
+                [key: string]: number[];
+            };
             /** @description Guest information */
             name?: string;
             /** @description Calendar availability variables for Availability Groups feature */
@@ -2111,9 +2497,20 @@ export interface components {
             /** @description User information */
             userId?: string;
         };
+        "models.SlotGeneration": {
+            endTimeLocal?: string;
+            startTimeLocal?: string;
+            timeIncrementMinutes?: number;
+        };
         "models.SubCalendar": {
             enabled?: boolean;
             name?: string;
+        };
+        "models.TimedRecurrence": {
+            kind?: string;
+            selectedDays?: string[];
+            selectedDaysOfWeek?: number[];
+            startOnMonday?: boolean;
         };
         "models.User": {
             /** @description Profile info */
@@ -2122,18 +2519,23 @@ export interface components {
              * @description CalendarAccounts is a mapping from {`email_CALENDARTYPE` => CalendarAccount} that contains all the
              *     additional accounts the user wants to see google calendar events for
              */
-            calendarAccounts?: Record<string, components["schemas"]["models.CalendarAccount"]>;
+            calendarAccounts?: {
+                [key: string]: components["schemas"]["models.CalendarAccount"];
+            };
             /** @description Calendar options */
             calendarOptions?: components["schemas"]["models.CalendarOptions"];
             email?: string;
             firstName?: string;
             /** @description Whether the user has set a custom name for themselves, i.e. don't change their name when they sign in */
             hasCustomName?: boolean;
+            isPremium?: boolean;
             lastName?: string;
             numEventsCreated?: number;
             picture?: string;
             /** @description The calendarAccountKey of the account the user first signed in with */
             primaryAccountKey?: string;
+            /** @description Stripe customer ID */
+            stripeCustomerId?: string;
             timezoneOffset?: number;
         };
         "models.WorkingHoursOptions": {
@@ -2150,7 +2552,16 @@ export interface components {
     };
     responses: never;
     parameters: never;
-    requestBodies: never;
+    requestBodies: {
+        /** @description Object containing the user email */
+        Payload: {
+            content: {
+                "application/json": {
+                    email?: string;
+                };
+            };
+        };
+    };
     headers: never;
     pathItems: never;
 }

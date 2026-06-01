@@ -25,6 +25,10 @@ export type Event = Omit<
   | "times"
   | "duration"
   | "timeIncrement"
+  | "enabledSlots"
+  | "activeSlots"
+  | "slotGeneration"
+  | "timedRecurrence"
   | "scheduledEvent"
   | "responses"
   | "signUpBlocks"
@@ -37,6 +41,20 @@ export type Event = Omit<
   endTime?: Temporal.PlainTime
   duration?: Temporal.Duration
   timeIncrement?: Temporal.Duration
+  enabledSlots?: Temporal.ZonedDateTime[]
+  activeSlots?: Temporal.ZonedDateTime[]
+  eventTimezone?: string
+  slotGeneration?: {
+    startTimeLocal?: Temporal.PlainTime
+    endTimeLocal?: Temporal.PlainTime
+    timeIncrement?: Temporal.Duration
+  }
+  timedRecurrence?: {
+    kind?: "specific_dates" | "weekly"
+    selectedDays?: Temporal.PlainDate[]
+    selectedDaysOfWeek?: number[]
+    startOnMonday?: boolean
+  }
   scheduledEvent?: CalendarEvent
   responses?: Record<string, Response>
   signUpBlocks?: SignUpBlock[]

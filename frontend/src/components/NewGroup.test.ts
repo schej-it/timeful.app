@@ -280,13 +280,7 @@ describe("NewGroup", () => {
 
     expect(postMock).toHaveBeenCalledTimes(1)
     expect(postMock.mock.calls[0]?.[0]).toBe("/events")
-    expect(
-      (
-        postMock.mock.calls[0]?.[1] as {
-          duration: Temporal.Duration
-        }
-      ).duration.toString()
-    ).toBe("PT1H30M")
+    expect((postMock.mock.calls[0]?.[1] as { duration: number }).duration).toBe(1.5)
   })
 
   it("initializes parent-owned timezone state from the saved selection", async () => {
@@ -332,11 +326,7 @@ describe("NewGroup", () => {
 
     expect(postMock).toHaveBeenCalledTimes(1)
     expect(
-      (
-        postMock.mock.calls[0]?.[1] as {
-          dates: Temporal.ZonedDateTime[]
-        }
-      ).dates[0]?.timeZoneId
+      (postMock.mock.calls[0]?.[1] as { eventTimezone: string }).eventTimezone
     ).toBe("America/Los_Angeles")
   })
 
@@ -378,12 +368,152 @@ describe("NewGroup", () => {
     await Promise.resolve()
 
     expect(postMock).toHaveBeenCalledTimes(1)
-    expect(
-      (
-        postMock.mock.calls[0]?.[1] as {
-          duration: Temporal.Duration
-        }
-      ).duration.toString()
-    ).toBe("PT24H")
+    expect((postMock.mock.calls[0]?.[1] as { duration: number }).duration).toBe(24)
+  })
+
+  it("submits canonical timed fields for new groups", async () => {
+    const wrapper = shallowMount(NewGroup, {
+      props: {
+        contactsPayload: {
+          name: "Canonical group",
+          startTime: Temporal.PlainTime.from("09:00"),
+          endTime: Temporal.PlainTime.from("10:00"),
+          selectedDaysOfWeek: [1],
+          startOnMonday: true,
+        },
+      },
+      global: {
+        stubs: globalStubs,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      submit?: () => Promise<void>
+      timezone: {
+        value: string
+        label: string
+        gmtString: string
+        offset: Temporal.Duration
+      }
+      $: { setupState?: { submit?: () => Promise<void> } }
+    }
+
+    vm.timezone = {
+      value: "UTC",
+      label: "UTC",
+      gmtString: "GMT",
+      offset: durations.ZERO,
+    }
+
+    await (vm.submit ?? vm.$.setupState?.submit)?.()
+    await Promise.resolve()
+
+    expect(postMock).toHaveBeenCalledTimes(1)
+    expect(postMock.mock.calls[0]?.[1]).toMatchObject({
+      enabledSlots: [
+        expect.stringMatching(/^.+T09:00:00Z$/),
+        expect.stringMatching(/^.+T09:15:00Z$/),
+        expect.stringMatching(/^.+T09:30:00Z$/),
+        expect.stringMatching(/^.+T09:45:00Z$/),
+      ],
+      activeSlots: [
+        expect.stringMatching(/^.+T09:00:00Z$/),
+        expect.stringMatching(/^.+T09:15:00Z$/),
+        expect.stringMatching(/^.+T09:30:00Z$/),
+        expect.stringMatching(/^.+T09:45:00Z$/),
+      ],
+      times: [
+        expect.stringMatching(/^.+T09:00:00Z$/),
+        expect.stringMatching(/^.+T09:15:00Z$/),
+        expect.stringMatching(/^.+T09:30:00Z$/),
+        expect.stringMatching(/^.+T09:45:00Z$/),
+      ],
+      eventTimezone: "UTC",
+      slotGeneration: {
+        startTimeLocal: "09:00:00",
+        endTimeLocal: "10:00:00",
+        timeIncrementMinutes: 15,
+      },
+      timedRecurrence: {
+        kind: "weekly",
+        selectedDays: [],
+        selectedDaysOfWeek: [1],
+        startOnMonday: true,
+      },
+      duration: 1,
+      type: "group",
+      attendees: [],
+    })
+  })
+
+  it("submits canonical timed fields when editing groups", async () => {
+    const wrapper = shallowMount(NewGroup, {
+      props: {
+        edit: true,
+        event: {
+          _id: "group-timed",
+          name: "Weekly group",
+          type: "group",
+          dates: [Temporal.PlainDate.from("2026-05-25")],
+          timeSeed: Temporal.ZonedDateTime.from("2026-05-25T09:00:00+00:00[UTC]"),
+          duration: durations.ONE_HOUR,
+          enabledSlots: [
+            Temporal.ZonedDateTime.from("2026-05-25T09:00:00+00:00[UTC]"),
+            Temporal.ZonedDateTime.from("2026-05-25T09:30:00+00:00[UTC]"),
+          ],
+          activeSlots: [
+            Temporal.ZonedDateTime.from("2026-05-25T09:00:00+00:00[UTC]"),
+            Temporal.ZonedDateTime.from("2026-05-25T09:30:00+00:00[UTC]"),
+          ],
+          eventTimezone: "UTC",
+          slotGeneration: {
+            startTimeLocal: Temporal.PlainTime.from("09:00"),
+            endTimeLocal: Temporal.PlainTime.from("10:00"),
+            timeIncrement: Temporal.Duration.from({ minutes: 30 }),
+          },
+          timedRecurrence: {
+            kind: "weekly",
+            selectedDays: [],
+            selectedDaysOfWeek: [1],
+            startOnMonday: true,
+          },
+        },
+      },
+      global: {
+        stubs: globalStubs,
+      },
+    })
+
+    await wrapper.findAll("button").find((button) => button.text().includes("Save edits"))?.trigger("click")
+    await Promise.resolve()
+
+    expect(putMock).toHaveBeenCalledTimes(1)
+    expect(putMock.mock.calls[0]?.[1]).toMatchObject({
+      enabledSlots: [
+        expect.stringMatching(/^.+T09:00:00Z$/),
+        expect.stringMatching(/^.+T09:30:00Z$/),
+      ],
+      activeSlots: [
+        expect.stringMatching(/^.+T09:00:00Z$/),
+        expect.stringMatching(/^.+T09:30:00Z$/),
+      ],
+      times: [
+        expect.stringMatching(/^.+T09:00:00Z$/),
+        expect.stringMatching(/^.+T09:30:00Z$/),
+      ],
+      eventTimezone: "UTC",
+      slotGeneration: {
+        startTimeLocal: "09:00:00",
+        endTimeLocal: "10:00:00",
+        timeIncrementMinutes: 30,
+      },
+      timedRecurrence: {
+        kind: "weekly",
+        selectedDays: [],
+        selectedDaysOfWeek: [1],
+        startOnMonday: true,
+      },
+      type: "group",
+    })
   })
 })

@@ -17,9 +17,9 @@ import {
   userPrefers12h,
   ZdtMap,
   ZdtSet,
-  zdtKey,
   zdtSetHas,
 } from "@/utils"
+import { getTimedEventTimezone, getTimedSlotForMembershipDay } from "@/utils/timedEventSlots"
 import {
   eventTypes,
   timeTypes,
@@ -376,62 +376,55 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     const datesSoFar = new ZdtSet()
     const displayTimezoneId = curTimezone.value.value
 
-    const mergeSpecificTimeDayStarts = (
-      ...dayGroups: { dateObject: Temporal.ZonedDateTime; isConsecutive: boolean }[][]
-    ) => {
-      const merged = new Map<bigint, { dateObject: Temporal.ZonedDateTime }>()
-
-      for (const group of dayGroups) {
-        for (const day of group) {
-          merged.set(zdtKey(day.dateObject), { dateObject: day.dateObject })
-        }
-      }
-
-      const sortedDays = [...merged.values()].sort((left, right) =>
-        Temporal.ZonedDateTime.compare(left.dateObject, right.dateObject)
-      )
-
-      const mergedDays: { dateObject: Temporal.ZonedDateTime; isConsecutive: boolean }[] = []
-
-      for (const day of sortedDays) {
-        if (mergedDays.length === 0) {
-          mergedDays.push({
-            dateObject: day.dateObject,
-            isConsecutive: true,
-          })
-          continue
-        }
-
-        const previousDay = mergedDays[mergedDays.length - 1]
-        mergedDays.push({
-          dateObject: day.dateObject,
-          isConsecutive: previousDay.dateObject.add({ days: 1 }).equals(day.dateObject),
-        })
-      }
-
-      return mergedDays
-    }
-
     const getSpecificTimesEditDays = (
       eventDates: Temporal.ZonedDateTime[],
       eventTimes: Temporal.ZonedDateTime[]
     ) => {
-      if (eventTimes.length === 0) {
-        return getSpecificTimesDayStarts(eventDates, curTimezone.value)
+      const membershipTimezone =
+        eventDates.length > 0
+          ? eventDates[0].timeZoneId
+          : event.value.timeSeed !== undefined
+            ? event.value.timeSeed.timeZoneId
+            : eventTimes.length > 0
+              ? eventTimes[0].timeZoneId
+              : UTC
+      const timesByMembershipDate = new Map<string, Temporal.ZonedDateTime[]>()
+
+      for (const time of eventTimes) {
+        const membershipDateKey = time
+          .withTimeZone(membershipTimezone)
+          .toPlainDate()
+          .toString()
+        const timesForDate = timesByMembershipDate.get(membershipDateKey) ?? []
+        timesForDate.push(time)
+        timesByMembershipDate.set(membershipDateKey, timesForDate)
       }
 
-      const membershipTimezone = event.value.timeSeed?.timeZoneId ?? eventTimes[0].timeZoneId
-      const coveredMembershipDates = new Set(
-        eventTimes.map((time) => time.withTimeZone(membershipTimezone).toPlainDate().toString())
-      )
-      const uncoveredEventDates = eventDates.filter(
-        (date) => !coveredMembershipDates.has(date.toPlainDate().toString())
-      )
+      let previousDay: Temporal.ZonedDateTime | null = null
+      return eventDates.map((eventDate) => {
+        const membershipDateKey = eventDate.toPlainDate().toString()
+        const savedTimesForDate = [...(timesByMembershipDate.get(membershipDateKey) ?? [])]
+          .sort((left, right) => Temporal.ZonedDateTime.compare(left, right))
+        const displaySeed =
+          savedTimesForDate.length > 0 ? savedTimesForDate[0] : eventDate
+        const dateObject = getDateInTimezone(displaySeed, curTimezone.value).with({
+          hour: 0,
+          minute: 0,
+          second: 0,
+          millisecond: 0,
+          microsecond: 0,
+          nanosecond: 0,
+        })
+        const isConsecutive =
+          previousDay == null || previousDay.add({ days: 1 }).equals(dateObject)
 
-      return mergeSpecificTimeDayStarts(
-        getSpecificTimesDayStarts(eventTimes, curTimezone.value),
-        getSpecificTimesDayStarts(uncoveredEventDates, curTimezone.value)
-      )
+        previousDay = dateObject
+        return {
+          dateObject,
+          membershipDate: eventDate.toPlainDate(),
+          isConsecutive,
+        }
+      })
     }
 
     const getDateString = (date: Temporal.ZonedDateTime) => {
@@ -444,7 +437,10 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
         offsetZDT = date.add(dayOffset.value)
       }
       if (isSpecificDates.value) {
-        dateString = `${months[offsetZDT.month - 1]} ${String(offsetZDT.day)}`
+        dateString =
+          isSpecificTimes.value && event.value.timedRecurrence?.kind === "weekly"
+            ? `${String(offsetZDT.month)}/${String(offsetZDT.day)}`
+            : `${months[offsetZDT.month - 1]} ${String(offsetZDT.day)}`
         dayString = daysOfWeek.value[offsetZDT.dayOfWeek % 7] // Convert 1-7 (Mon-Sun) to 0-6 (Sun-Sat)
       } else if (isGroup.value || isWeekly.value) {
         const renderedWeekStart = getRenderedWeekStart(
@@ -479,6 +475,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
           dayText: dayString,
           dateString,
           dateObject: day.dateObject,
+          membershipDate: day.membershipDate,
           isConsecutive: day.isConsecutive,
         })
       }
@@ -776,6 +773,19 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     day: DayItem,
     absoluteMinutes: number
   ): Temporal.ZonedDateTime => {
+    if (
+      isSpecificTimes.value &&
+      state.value === states.SET_SPECIFIC_TIMES &&
+      ((event.value as { times?: Temporal.ZonedDateTime[] }).times?.length ?? 0) === 0 &&
+      day.membershipDate != null
+    ) {
+      return getTimedSlotForMembershipDay({
+        day: day.membershipDate,
+        timeZone: getTimedEventTimezone(event.value),
+        absoluteMinutes,
+      })
+    }
+
     const localPlainDate = getDateInTimezone(
       day.dateObject,
       curTimezone.value

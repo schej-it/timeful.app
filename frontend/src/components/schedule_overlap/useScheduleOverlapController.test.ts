@@ -5,6 +5,7 @@ import { mount } from "@vue/test-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { UTC, eventTypes } from "@/constants"
+import type { SpecificTimesEditDraft } from "@/composables/event/specificTimesEditDraft"
 import { ZdtSet } from "@/utils"
 import {
   states,
@@ -35,6 +36,8 @@ class ResizeObserverStub {
 interface ControllerHarnessOptions {
   event?: ScheduleOverlapEvent
   fromEditEvent?: boolean
+  fromCreateSpecificTimesDraft?: boolean
+  specificTimesEntryDraft?: SpecificTimesEditDraft
   showBestTimes?: boolean
   respondents?: { _id?: string }[]
 }
@@ -42,6 +45,10 @@ interface ControllerHarnessOptions {
 const mountControllerHarness = (options: ControllerHarnessOptions = {}) => {
   const event = ref<ScheduleOverlapEvent>(options.event ?? baseEvent())
   const fromEditEvent = ref(options.fromEditEvent ?? false)
+  const fromCreateSpecificTimesDraft = ref(
+    options.fromCreateSpecificTimesDraft ?? false
+  )
+  const specificTimesEntryDraft = ref(options.specificTimesEntryDraft)
   const showBestTimes = ref(options.showBestTimes ?? false)
   const state = ref<ScheduleOverlapState>(states.BEST_TIMES)
   const availability = shallowRef(new ZdtSet())
@@ -88,6 +95,10 @@ const mountControllerHarness = (options: ControllerHarnessOptions = {}) => {
       useScheduleOverlapController({
         event: computed(() => event.value),
         fromEditEvent: computed(() => fromEditEvent.value),
+        fromCreateSpecificTimesDraft: computed(
+          () => fromCreateSpecificTimesDraft.value
+        ),
+        specificTimesEntryDraft: computed(() => specificTimesEntryDraft.value),
         calendarOnly: computed(() => false),
         weekOffset: computed(() => 0),
         isGroup: computed(() => event.value.type === eventTypes.GROUP),
@@ -130,6 +141,7 @@ const mountControllerHarness = (options: ControllerHarnessOptions = {}) => {
       return {
         state,
         fromEditEvent,
+        fromCreateSpecificTimesDraft,
         tempTimes,
         curScheduledEvent,
         curTimeslotAvailability,
@@ -152,6 +164,7 @@ const mountControllerHarness = (options: ControllerHarnessOptions = {}) => {
     wrapper,
     state,
     fromEditEvent,
+    fromCreateSpecificTimesDraft,
     tempTimes,
     curScheduledEvent,
     curTimeslotAvailability,
@@ -249,6 +262,64 @@ describe("useScheduleOverlapController", () => {
 
     expect(state.value).toBe(states.SET_SPECIFIC_TIMES)
     expect([...tempTimes.value]).toEqual(event.times)
+
+    wrapper.unmount()
+  })
+
+  it("enters specific-time edit mode with an empty temporary selection when stale times were cleared upstream", () => {
+    const event = baseEvent()
+    event.hasSpecificTimes = true
+    event.times = []
+
+    const { wrapper, state, tempTimes } = mountControllerHarness({
+      event,
+      fromEditEvent: true,
+    })
+
+    expect(state.value).toBe(states.SET_SPECIFIC_TIMES)
+    expect([...tempTimes.value]).toEqual([])
+
+    wrapper.unmount()
+  })
+
+  it("falls back to activeSlots when edit-event specific-times reopen has no legacy times payload", () => {
+    const event = baseEvent()
+    event.hasSpecificTimes = true
+    event.times = []
+    event.activeSlots = [zdt("2026-01-01T09:00:00Z"), zdt("2026-01-01T10:00:00Z")]
+
+    const { wrapper, state, tempTimes } = mountControllerHarness({
+      event,
+      fromEditEvent: true,
+    })
+
+    expect(state.value).toBe(states.SET_SPECIFIC_TIMES)
+    expect([...tempTimes.value]).toEqual(event.activeSlots)
+
+    wrapper.unmount()
+  })
+
+  it("seeds create-flow specific-times from the handed-off draft instead of the fetched event times", () => {
+    const event = baseEvent()
+    event.hasSpecificTimes = true
+    event.times = [zdt("2026-01-01T09:00:00Z"), zdt("2026-01-01T10:00:00Z")]
+
+    const { wrapper, state, tempTimes } = mountControllerHarness({
+      event,
+      fromCreateSpecificTimesDraft: true,
+      specificTimesEntryDraft: {
+        enabledSlots: [
+          zdt("2026-01-01T09:00:00Z"),
+          zdt("2026-01-01T10:00:00Z"),
+        ],
+        activeSlots: [],
+        timeIncrementMinutes: 60,
+        resetExistingTimes: true,
+      },
+    })
+
+    expect(state.value).toBe(states.SET_SPECIFIC_TIMES)
+    expect([...tempTimes.value]).toEqual([])
 
     wrapper.unmount()
   })

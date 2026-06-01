@@ -9,12 +9,16 @@ import {
   dateToDowDate,
   getRenderedWeekStart,
 } from "./scheduleDateRules"
+import {
+  getTimedSlotCoverage,
+  hasCanonicalTimedSlots,
+  timedSlotsEqual,
+} from "./timedEventSlots"
 import type { ZonedDateTime } from "./temporalPrimitives"
 import { toZDT } from "./timezoneDateRules"
 import Color from "color"
 import type { useDisplay } from "vuetify"
 import { Temporal } from "temporal-polyfill"
-
 type Display = ReturnType<typeof useDisplay>
 
 let timeoutId: ReturnType<typeof setTimeout> | null = null
@@ -120,18 +124,36 @@ export const processEvent = (
   event: Event,
   renderedWeekStart?: ZonedDateTime
 ): void => {
-  if (event.hasSpecificTimes && event.times && event.times.length > 0) {
-    const sortedTimes = [...event.times].sort((a, b) =>
-      Temporal.ZonedDateTime.compare(a, b)
-    )
-    const slotDuration = event.timeIncrement ?? durations.ONE_HOUR
-    const startZDT = toZDT(sortedTimes[0], UTC)
-    const endZDT = toZDT(sortedTimes[sortedTimes.length - 1], UTC).add(
-      slotDuration
-    )
+  if (hasCanonicalTimedSlots(event)) {
+    const activeSlots: Temporal.ZonedDateTime[] =
+      event.activeSlots ?? event.times ?? []
+    const hasSpecificTimes =
+      Boolean(event.hasSpecificTimes) ||
+      !timedSlotsEqual(event.enabledSlots, activeSlots)
 
-    event.startTime = startZDT.toPlainTime()
-    event.endTime = endZDT.toPlainTime()
+    if (hasSpecificTimes && activeSlots.length > 0) {
+      const sortedTimes = [...activeSlots].sort((a, b) =>
+        Temporal.ZonedDateTime.compare(a, b)
+      )
+      const slotDuration =
+        event.slotGeneration?.timeIncrement ??
+        event.timeIncrement ??
+        durations.ONE_HOUR
+      const startZDT = toZDT(sortedTimes[0], UTC)
+      const endZDT = toZDT(sortedTimes[sortedTimes.length - 1], UTC).add(
+        slotDuration
+      )
+      event.startTime = startZDT.toPlainTime()
+      event.endTime = endZDT.toPlainTime()
+    } else {
+      const coverage = getTimedSlotCoverage(event)
+      if (coverage) {
+        event.startTime = coverage.minTime
+        event.endTime = coverage.maxTime
+      }
+    }
+    event.times = activeSlots
+    event.hasSpecificTimes = hasSpecificTimes
     return
   }
 

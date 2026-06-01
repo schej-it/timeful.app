@@ -129,4 +129,127 @@ describe("useEventEditorState", () => {
 
     expect(state.hasEventBeenEdited()).toBe(true)
   })
+
+  it("hydrates canonical timed fields with midnight start time (00:00-01:00)", async () => {
+    vi.stubGlobal("localStorage", createLocalStorageMock())
+
+    const event = ref<Event>({
+      _id: "evt-midnight",
+      name: "Midnight event",
+      type: "specific_dates",
+      dates: [Temporal.PlainDate.from("2026-06-03")],
+      timeSeed: Temporal.ZonedDateTime.from("2026-06-03T00:00:00+00:00[UTC]"),
+      duration: Temporal.Duration.from({ hours: 1 }),
+      enabledSlots: [
+        Temporal.ZonedDateTime.from("2026-06-03T00:00:00+00:00[UTC]"),
+        Temporal.ZonedDateTime.from("2026-06-03T00:15:00+00:00[UTC]"),
+        Temporal.ZonedDateTime.from("2026-06-03T00:30:00+00:00[UTC]"),
+        Temporal.ZonedDateTime.from("2026-06-03T00:45:00+00:00[UTC]"),
+      ],
+      activeSlots: [
+        Temporal.ZonedDateTime.from("2026-06-03T00:00:00+00:00[UTC]"),
+        Temporal.ZonedDateTime.from("2026-06-03T00:15:00+00:00[UTC]"),
+      ],
+      eventTimezone: "UTC",
+      slotGeneration: {
+        startTimeLocal: Temporal.PlainTime.from("00:00"),
+        endTimeLocal: Temporal.PlainTime.from("01:00"),
+        timeIncrement: Temporal.Duration.from({ minutes: 15 }),
+      },
+      timedRecurrence: {
+        kind: "specific_dates",
+        selectedDays: [Temporal.PlainDate.from("2026-06-03")],
+        selectedDaysOfWeek: [],
+        startOnMonday: true,
+      },
+    })
+    const edit = ref(true)
+    const contactsPayload = ref<EventDraft | undefined>(undefined)
+    const formRef = ref<{ resetValidation: () => void } | null>(null)
+    let state!: EventEditorState
+
+    mount({
+      setup() {
+        state = useEventEditorState({
+          event: computed(() => event.value),
+          edit: computed(() => edit.value),
+          contactsPayload: computed(() => contactsPayload.value),
+          formRef,
+        })
+        return () => null
+      },
+    })
+
+    await nextTick()
+
+    expect(state.startTime.value.toString()).toBe("00:00:00")
+    expect(state.endTime.value.toString()).toBe("01:00:00")
+    expect(state.selectedDateOption.value).toBe(dateOptions.SPECIFIC)
+    expect(state.selectedDays.value.map((day) => day.toString())).toEqual([
+      "2026-06-03",
+    ])
+    expect(state.timezone.value.value).toBe("UTC")
+  })
+
+  it("hydrates canonical timed fields ahead of stale legacy seeds", async () => {
+    vi.stubGlobal("localStorage", createLocalStorageMock())
+
+    const event = ref<Event>({
+      _id: "evt-2",
+      name: "Canonical timed event",
+      type: "specific_dates",
+      dates: [Temporal.PlainDate.from("2026-01-09")],
+      timeSeed: Temporal.ZonedDateTime.from("2026-01-09T09:00:00+00:00[UTC]"),
+      duration: durations.ONE_HOUR,
+      enabledSlots: [
+        Temporal.ZonedDateTime.from("2026-01-10T23:00:00+00:00[UTC]"),
+        Temporal.ZonedDateTime.from("2026-01-10T23:30:00+00:00[UTC]"),
+        Temporal.ZonedDateTime.from("2026-01-11T00:00:00+00:00[UTC]"),
+        Temporal.ZonedDateTime.from("2026-01-11T00:30:00+00:00[UTC]"),
+      ],
+      activeSlots: [
+        Temporal.ZonedDateTime.from("2026-01-10T23:30:00+00:00[UTC]"),
+        Temporal.ZonedDateTime.from("2026-01-11T00:00:00+00:00[UTC]"),
+      ],
+      eventTimezone: "UTC",
+      slotGeneration: {
+        startTimeLocal: Temporal.PlainTime.from("23:00"),
+        endTimeLocal: Temporal.PlainTime.from("01:00"),
+        timeIncrement: Temporal.Duration.from({ minutes: 30 }),
+      },
+      timedRecurrence: {
+        kind: "specific_dates",
+        selectedDays: [Temporal.PlainDate.from("2026-01-10")],
+        selectedDaysOfWeek: [],
+        startOnMonday: true,
+      },
+    })
+    const edit = ref(true)
+    const contactsPayload = ref<EventDraft | undefined>(undefined)
+    const formRef = ref<{ resetValidation: () => void } | null>(null)
+    let state!: EventEditorState
+
+    mount({
+      setup() {
+        state = useEventEditorState({
+          event: computed(() => event.value),
+          edit: computed(() => edit.value),
+          contactsPayload: computed(() => contactsPayload.value),
+          formRef,
+        })
+
+        return () => null
+      },
+    })
+
+    await nextTick()
+
+    expect(state.startTime.value.toString()).toBe("23:00:00")
+    expect(state.endTime.value.toString()).toBe("01:00:00")
+    expect(state.selectedDateOption.value).toBe(dateOptions.SPECIFIC)
+    expect(state.selectedDays.value.map((day) => day.toString())).toEqual([
+      "2026-01-10",
+    ])
+    expect(state.timezone.value.value).toBe("UTC")
+  })
 })

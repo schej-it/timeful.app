@@ -99,6 +99,7 @@ import {
   useScheduleOverlapUI,
 } from "@/composables/schedule_overlap/useScheduleOverlapUI"
 import { useOwnedTimezone } from "@/composables/timezone/useOwnedTimezone"
+import type { SpecificTimesEditDraft } from "@/composables/event/specificTimesEditDraft"
 import { useScheduleOverlapController } from "./useScheduleOverlapController"
 import { useScheduleOverlapPreferences } from "./useScheduleOverlapPreferences"
 import { useScheduleOverlapViewModels } from "./useScheduleOverlapViewModels"
@@ -133,6 +134,8 @@ const props = withDefaults(
     ownerIsPremium?: boolean
     ownerPremiumChecked?: boolean
     fromEditEvent?: boolean
+    fromCreateSpecificTimesDraft?: boolean
+    specificTimesEntryDraft?: SpecificTimesEditDraft
     loadingCalendarEvents?: boolean
     calendarEventsMap?: CalendarEventsMap
     sampleCalendarEventsByDay?: CalendarEventsByDay
@@ -149,11 +152,14 @@ const props = withDefaults(
     addingAvailabilityAsGuest?: boolean
     initialTimezone?: Timezone
     calendarAvailabilities?: Record<string, NormalizedCalendarEvent[]>
+    refreshEventFn?: () => Promise<void>
   }>(),
   {
     ownerIsPremium: false,
     ownerPremiumChecked: false,
     fromEditEvent: false,
+    fromCreateSpecificTimesDraft: false,
+    specificTimesEntryDraft: undefined,
     loadingCalendarEvents: false,
     calendarEventsMap: () => ({}),
     calendarPermissionGranted: false,
@@ -170,6 +176,7 @@ const props = withDefaults(
     addingAvailabilityAsGuest: false,
     initialTimezone: undefined,
     calendarAvailabilities: () => ({}),
+    refreshEventFn: undefined,
   }
 )
 
@@ -440,6 +447,7 @@ const eventSched = useEventScheduling({
   dragCur,
   tempTimes: avail.tempTimes,
   respondents: avail.respondents,
+  refreshEvent: props.refreshEventFn,
 })
 
 // ── 5. useSignUpForm ───────────────────────────────────────────────────
@@ -602,6 +610,8 @@ const {
 useScheduleOverlapController({
   event: eventReadonly,
   fromEditEvent: computed(() => props.fromEditEvent),
+  fromCreateSpecificTimesDraft: computed(() => props.fromCreateSpecificTimesDraft),
+  specificTimesEntryDraft: computed(() => props.specificTimesEntryDraft),
   calendarOnly: computed(() => props.calendarOnly),
   weekOffset: weekOffsetRef,
   isGroup,

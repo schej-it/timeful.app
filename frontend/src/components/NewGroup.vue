@@ -162,15 +162,15 @@ import { storeToRefs } from "pinia"
 import {
   post,
   put,
-  getWrappedTimeRangeDuration,
   getEventMembershipDayOfWeekValues,
   getEventTimeSeed,
+  normalizeTimezone,
   resolveTimezoneValue,
   signInGoogle,
   getDateWithTimezone,
 } from "@/utils"
 import { useMainStore } from "@/stores/main"
-import { eventTypes, authTypes, durations, hoursPlainTime } from "@/constants"
+import { dateOptions, eventTypes, authTypes, durations, hoursPlainTime } from "@/constants"
 import { posthog } from "@/plugins/posthog"
 import EditorDialogHeader from "./EditorDialogHeader.vue"
 import TimezoneSelector from "./schedule_overlap/TimezoneSelector.vue"
@@ -178,6 +178,14 @@ import EmailInput from "./event/EmailInput.vue"
 import type { Event } from "@/types"
 import { Temporal } from "temporal-polyfill"
 import type { EventDraft } from "@/composables/event/types"
+import { buildEventEditorSchedule } from "@/composables/event/eventEditorSchedule"
+import { toEventPatchPayload } from "@/composables/event/eventMutationBoundary"
+import {
+  getTimedEventTimezone,
+  getTimedRecurrence,
+  getTimedSlotGeneration,
+  hasCanonicalTimedSlots,
+} from "@/utils/timedEventSlots"
 import {
   getDraftEndTime,
   getDraftStartTime,
@@ -306,6 +314,18 @@ const addedEmails = computed(() => {
   return otherEventAttendees.value
 })
 
+function hasCanonicalTimedConfig(event: Event): boolean {
+  return (
+    !event.daysOnly &&
+    (
+      hasCanonicalTimedSlots(event) ||
+      event.eventTimezone != null ||
+      event.slotGeneration != null ||
+      event.timedRecurrence != null
+    )
+  )
+}
+
 onMounted(() => {
   if (hasEventDraftData(props.contactsPayload)) {
     name.value = props.contactsPayload.name ?? ""
@@ -336,33 +356,24 @@ const submit = async () => {
   const valid = typeof result === "boolean" ? result : result?.valid
   if (!valid) return
   const timezoneValue = resolveTimezoneValue(timezone.value.value)
-
-  const duration = getWrappedTimeRangeDuration(startTime.value, endTime.value)
-
-  const dates: Temporal.ZonedDateTime[] = []
-  selectedDaysOfWeek.value.sort((a, b) => a - b)
-  selectedDaysOfWeek.value = selectedDaysOfWeek.value.filter((dayIndex) => {
-    return startOnMonday.value ? dayIndex !== 0 : dayIndex !== 7
+  const existingTimeIncrementMinutes =
+    props.edit && props.event
+      ? Math.round(getTimedSlotGeneration(props.event).timeIncrement.total("minutes"))
+      : undefined
+  const schedule = buildEventEditorSchedule({
+    daysOnly: false,
+    daysOnlyType: eventTypes.GROUP,
+    selectedDateOption: dateOptions.DOW,
+    selectedDays: [],
+    selectedDaysOfWeek: selectedDaysOfWeek.value,
+    startOnMonday: startOnMonday.value,
+    startTime: startTime.value,
+    endTime: endTime.value,
+    timezoneValue,
+    timeIncrementMinutes: existingTimeIncrementMinutes,
   })
-  for (const dayIndex of selectedDaysOfWeek.value) {
-    // For group events, we need to find the next occurrence of this day
-    
-    // Get current date in the specified timezone
-    const now = Temporal.Now.zonedDateTimeISO(timezoneValue)
-    const currentDayOfWeek = now.dayOfWeek // 1-7 (Mon-Sun)
-    const targetDayOfWeek = dayIndex === 7 ? 7 : dayIndex // Convert from Sunday-based to Monday-based
-    
-    // Calculate days until next occurrence
-    let daysUntil = targetDayOfWeek - currentDayOfWeek
-    if (daysUntil < 0) daysUntil += 7
-    
-    const targetDate = now.add({ days: daysUntil }).toPlainDate()
-    const targetZDT = targetDate.toZonedDateTime({ 
-      timeZone: timezoneValue,
-      plainTime: startTime.value
-    })
-    dates.push(targetZDT)
-  }
+
+  selectedDaysOfWeek.value = schedule.normalizedSelectedDaysOfWeek
 
   loading.value = true
 
@@ -370,17 +381,71 @@ const submit = async () => {
   const type = eventTypes.GROUP
   const attendees = emails.value
   const startMon = startOnMonday.value
+  const originalTimedSlotGeneration =
+    props.edit && props.event && hasCanonicalTimedConfig(props.event)
+      ? getTimedSlotGeneration(props.event)
+      : null
+  const originalTimedRecurrence =
+    props.edit && props.event && hasCanonicalTimedConfig(props.event)
+      ? getTimedRecurrence(props.event)
+      : null
+  const preserveExistingTimedSchedule =
+    props.edit &&
+    props.event != null &&
+    hasCanonicalTimedConfig(props.event) &&
+    originalTimedSlotGeneration != null &&
+    originalTimedRecurrence != null &&
+    timezoneValue === getTimedEventTimezone(props.event) &&
+    Temporal.PlainTime.compare(
+      startTime.value,
+      originalTimedSlotGeneration.startTimeLocal
+    ) === 0 &&
+    Temporal.PlainTime.compare(
+      endTime.value,
+      originalTimedSlotGeneration.endTimeLocal
+    ) === 0 &&
+    startOnMonday.value === originalTimedRecurrence.startOnMonday &&
+    JSON.stringify(schedule.normalizedSelectedDaysOfWeek) ===
+      JSON.stringify(originalTimedRecurrence.selectedDaysOfWeek)
+  const membershipDates = preserveExistingTimedSchedule
+    ? props.event.dates
+    : schedule.dates.map((date) => date.toPlainDate())
+  const membershipTimeSeed = preserveExistingTimedSchedule
+    ? props.event.timeSeed ?? schedule.dates[0]
+    : schedule.dates[0]
+  const payload = toEventPatchPayload({
+    name: groupName,
+    duration: preserveExistingTimedSchedule
+      ? props.event.duration ?? schedule.duration
+      : schedule.duration,
+    type,
+    dates: membershipDates,
+    timeSeed: membershipTimeSeed,
+    enabledSlots: preserveExistingTimedSchedule
+      ? props.event.enabledSlots ?? schedule.enabledSlots
+      : schedule.enabledSlots,
+    activeSlots: preserveExistingTimedSchedule
+      ? props.event.activeSlots ?? props.event.enabledSlots ?? schedule.activeSlots
+      : schedule.activeSlots,
+    times: preserveExistingTimedSchedule
+      ? props.event.activeSlots ?? props.event.enabledSlots ?? schedule.activeSlots
+      : schedule.activeSlots,
+    eventTimezone: preserveExistingTimedSchedule
+      ? getTimedEventTimezone(props.event)
+      : schedule.eventTimezone,
+    slotGeneration: preserveExistingTimedSchedule
+      ? originalTimedSlotGeneration
+      : schedule.slotGeneration,
+    timedRecurrence: preserveExistingTimedSchedule
+      ? originalTimedRecurrence
+      : schedule.timedRecurrence,
+    attendees,
+    startOnMonday: startMon,
+    creatorPosthogId: posthog.get_distinct_id(),
+  })
 
   if (!props.edit) {
-    post<{ eventId: string; shortId?: string }>("/events", {
-      name: groupName,
-      duration,
-      dates,
-      attendees,
-      type,
-      startOnMonday: startMon,
-      creatorPosthogId: posthog.get_distinct_id(),
-    })
+    post<{ eventId: string; shortId?: string }>("/events", payload)
       .then(async ({ eventId, shortId }) => {
         if (authUser.value) {
           await mainStore.setEventFolder({ eventId, folderId: props.folderId })
@@ -394,8 +459,8 @@ const submit = async () => {
         posthog.capture("Availability group created", {
           eventId,
           eventName: groupName,
-          eventDuration: duration,
-          eventDates: JSON.stringify(dates),
+          eventDuration: schedule.duration,
+          eventDates: JSON.stringify(schedule.dates),
           eventAttendees: attendees,
           eventType: type,
           eventStartOnMonday: startMon,
@@ -411,20 +476,13 @@ const submit = async () => {
         loading.value = false
       })
   } else if (props.event) {
-    put(`/events/${props.event._id ?? ""}`, {
-      name: groupName,
-      duration,
-      dates,
-      attendees,
-      type,
-      startOnMonday: startMon,
-    })
+    put(`/events/${props.event._id ?? ""}`, payload)
       .then(() => {
         posthog.capture("Availability group edited", {
           eventId: props.event?._id,
           eventName: groupName,
-          eventDuration: duration,
-          eventDates: JSON.stringify(dates),
+          eventDuration: schedule.duration,
+          eventDates: JSON.stringify(schedule.dates),
           eventAttendees: attendees,
           eventType: type,
           eventStartOnMonday: startMon,
@@ -469,19 +527,39 @@ const requestContactsAccess = ({ emails: requestEmails }: { emails: string[] }) 
 const updateFieldsFromEvent = () => {
   if (props.event) {
     name.value = props.event.name ?? ""
+    if (hasCanonicalTimedConfig(props.event)) {
+      const canonicalTimezone = getTimedEventTimezone(props.event)
+      timezone.value = normalizeTimezone({
+        value: canonicalTimezone,
+        label: canonicalTimezone,
+        offset: Temporal.Duration.from({
+          nanoseconds: Temporal.Now.zonedDateTimeISO(canonicalTimezone).offsetNanoseconds,
+        }),
+      })
 
-    const eventDate = getEventTimeSeed(props.event)
-    if (eventDate != null) {
-      startTime.value = getDateWithTimezone(eventDate).toPlainTime()
+      const timedSlotGeneration = getTimedSlotGeneration(props.event)
+      startTime.value = timedSlotGeneration.startTimeLocal
+      endTime.value = timedSlotGeneration.endTimeLocal
 
-      const durationHours = props.event.duration ?? durations.ZERO
-      endTime.value = startTime.value.add(durationHours)
+      const timedRecurrence = getTimedRecurrence(props.event)
+      startOnMonday.value = timedRecurrence.startOnMonday
+      selectedDaysOfWeek.value =
+        timedRecurrence.selectedDaysOfWeek.length > 0
+          ? timedRecurrence.selectedDaysOfWeek
+          : getEventMembershipDayOfWeekValues(props.event.dates)
+    } else {
+      const eventDate = getEventTimeSeed(props.event)
+      if (eventDate != null) {
+        startTime.value = getDateWithTimezone(eventDate).toPlainTime()
+
+        const durationHours = props.event.duration ?? durations.ZERO
+        endTime.value = startTime.value.add(durationHours)
+      }
+      startOnMonday.value = props.event.startOnMonday ?? false
+      selectedDaysOfWeek.value = getEventMembershipDayOfWeekValues(
+        props.event.dates
+      )
     }
-    startOnMonday.value = props.event.startOnMonday ?? false
-
-    selectedDaysOfWeek.value = getEventMembershipDayOfWeekValues(
-      props.event.dates
-    )
 
     emails.value = otherEventAttendees.value
   }

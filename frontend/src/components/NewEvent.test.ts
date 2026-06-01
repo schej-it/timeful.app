@@ -21,6 +21,11 @@ const { postMock, putMock } = vi.hoisted(() => ({
   putMock: vi.fn(),
 }))
 
+const { routerPushMock, routerReplaceMock } = vi.hoisted(() => ({
+  routerPushMock: vi.fn(),
+  routerReplaceMock: vi.fn(),
+}))
+
 const mockAuthUser = ref<unknown>(null)
 const mockDaysOnlyEnabled = ref(true)
 
@@ -36,8 +41,8 @@ vi.mock("@/utils", async () => {
 
 vi.mock("vue-router", () => ({
   useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
+    push: routerPushMock,
+    replace: routerReplaceMock,
   }),
 }))
 
@@ -151,6 +156,8 @@ describe("NewEvent", () => {
     putMock.mockReset()
     postMock.mockResolvedValue({ eventId: "evt-created" })
     putMock.mockResolvedValue(undefined)
+    routerPushMock.mockReset()
+    routerReplaceMock.mockReset()
     formRefMethods.validate.mockClear()
     formRefMethods.resetValidation.mockClear()
   })
@@ -195,7 +202,132 @@ describe("NewEvent", () => {
     await flushPromises()
 
     expect(putMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.emitted("refresh-event")).toEqual([[{ fromEditEvent: false }]])
+    expect(wrapper.emitted("refresh-event")).toEqual([
+      [expect.objectContaining({ fromEditEvent: false })],
+    ])
+  })
+
+  it("emits a specific-times edit draft that clears stale saved times when dates change", async () => {
+    const wrapper = shallowMount(NewEvent, {
+      props: {
+        edit: true,
+        event: {
+          _id: "evt-2",
+          name: "Edited event",
+          type: "specific_dates",
+          dates: [
+            Temporal.PlainDate.from("2026-05-30"),
+            Temporal.PlainDate.from("2026-05-31"),
+          ],
+          timeSeed: Temporal.Instant.from("2026-05-30T09:00:00Z").toZonedDateTimeISO("UTC"),
+          duration: durations.ONE_HOUR,
+          hasSpecificTimes: true,
+          timeIncrement: durations.FIFTEEN_MINUTES,
+        },
+      },
+      global: {
+        stubs: {
+          ...defaultStubs,
+          DatePicker: DatePickerModelStub,
+        },
+      },
+    })
+
+    const datePicker = wrapper.getComponent(DatePickerModelStub)
+    ;(
+      datePicker.vm as {
+        $emit: (event: "update:modelValue", value: string[]) => void
+      }
+    ).$emit("update:modelValue", ["2026-05-28", "2026-05-29"])
+    await nextTick()
+
+    const nextButton = wrapper
+      .findAll("button")
+      .find((button) => button.text().includes("Next"))
+
+    if (!nextButton) {
+      throw new Error("Expected specific-times flow to render a Next button")
+    }
+
+    await nextButton.trigger("click")
+    await flushPromises()
+
+    expect(putMock).toHaveBeenCalledTimes(1)
+    const refreshEvents = wrapper.emitted("refresh-event")
+
+    expect(refreshEvents).toHaveLength(1)
+    if (!refreshEvents) {
+      throw new Error("Expected refresh-event emission after saving specific times")
+    }
+
+    expect(refreshEvents[0]?.[0]).toMatchObject({
+      fromEditEvent: true,
+      specificTimesEditDraft: {
+        resetExistingTimes: true,
+        timeIncrementMinutes: 15,
+      },
+    })
+  })
+
+  it("creates specific-times events with an empty canonical active subset and routes into the handoff flow", async () => {
+    const wrapper = shallowMount(NewEvent, {
+      global: {
+        stubs: defaultStubs,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as {
+      name: string
+      selectedDays: Temporal.PlainDate[]
+      specificTimesEnabled: boolean
+    }
+    vm.name = "Created timed event"
+    vm.selectedDays = [
+      Temporal.PlainDate.from("2026-05-28"),
+      Temporal.PlainDate.from("2026-05-29"),
+    ]
+    vm.specificTimesEnabled = true
+    await nextTick()
+
+    await wrapper
+      .findAll("button")
+      .find((button) => button.text().includes("Next"))
+      ?.trigger("click")
+    await flushPromises()
+
+    expect(postMock).toHaveBeenCalledTimes(1)
+    expect(postMock).toHaveBeenCalledWith(
+      "/events",
+      expect.objectContaining({
+        hasSpecificTimes: true,
+        activeSlots: [],
+        enabledSlots: expect.any(Array) as string[],
+      })
+    )
+    expect(
+      (postMock.mock.calls[0]?.[1] as { enabledSlots?: string[] }).enabledSlots?.length
+    ).toBeGreaterThan(0)
+    const pushedState = (routerPushMock.mock.calls[0]?.[0] as {
+      state?: {
+        timefulSpecificTimesEntry?: {
+          mode?: string
+          draft?: {
+            activeSlots?: string[]
+            resetExistingTimes?: boolean
+          }
+        }
+      }
+    }).state
+    expect(routerPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "event",
+      })
+    )
+    expect(pushedState?.timefulSpecificTimesEntry?.mode).toBe("create")
+    expect(pushedState?.timefulSpecificTimesEntry?.draft?.activeSlots).toEqual([])
+    expect(pushedState?.timefulSpecificTimesEntry?.draft?.resetExistingTimes).toBe(
+      true
+    )
   })
 
   it("passes explicit Vuetify 3 item mappings to event time and increment selects", () => {
@@ -303,6 +435,7 @@ describe("NewEvent", () => {
   })
 
   it("uses explicit primary checkbox semantics for the specific-times toggle", () => {
+    expect(newEventSource).toContain('data-testid="specific-times-toggle"')
     expect(newEventSource).toContain('v-model="specificTimesEnabled"')
     expect(newEventSource).toContain('color="primary"')
     expect(newEventSource).toContain('messages="Specify the times in the next step"')

@@ -21,7 +21,7 @@ export const isPremiumUser = (authUser: User | null | undefined): boolean => {
   if (!authUser) return false
 
   if (authUser.stripeCustomerId) {
-    if (authUser.isPremium !== null && authUser.isPremium !== undefined) {
+    if (typeof authUser.isPremium === "boolean") {
       return authUser.isPremium
     }
     return true

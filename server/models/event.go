@@ -40,6 +40,19 @@ type SignUpResponse struct {
 	User   *User              `json:"user" bson:",omitempty"`
 }
 
+type SlotGeneration struct {
+	StartTimeLocal       string `json:"startTimeLocal" bson:"startTimeLocal,omitempty"`
+	EndTimeLocal         string `json:"endTimeLocal" bson:"endTimeLocal,omitempty"`
+	TimeIncrementMinutes int    `json:"timeIncrementMinutes" bson:"timeIncrementMinutes,omitempty"`
+}
+
+type TimedRecurrence struct {
+	Kind               string   `json:"kind" bson:"kind,omitempty"`
+	SelectedDays       []string `json:"selectedDays" bson:"selectedDays,omitempty"`
+	SelectedDaysOfWeek []int    `json:"selectedDaysOfWeek" bson:"selectedDaysOfWeek,omitempty"`
+	StartOnMonday      *bool    `json:"startOnMonday" bson:"startOnMonday,omitempty"`
+}
+
 // Representation of an Event in the mongoDB database
 type Event struct {
 	Id          primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
@@ -57,6 +70,11 @@ type Event struct {
 	When2meetHref            *string              `json:"when2meetHref" bson:"when2meetHref,omitempty"`
 	CollectEmails            *bool                `json:"collectEmails" bson:"collectEmails,omitempty"`
 	TimeIncrement            *int                 `json:"timeIncrement" bson:"timeIncrement,omitempty"`
+	EnabledSlots             []primitive.DateTime `json:"enabledSlots" bson:"enabledSlots,omitempty"`
+	ActiveSlots              []primitive.DateTime `json:"activeSlots" bson:"activeSlots,omitempty"`
+	EventTimezone            *string              `json:"eventTimezone" bson:"eventTimezone,omitempty"`
+	SlotGeneration           *SlotGeneration      `json:"slotGeneration" bson:"slotGeneration,omitempty"`
+	TimedRecurrence          *TimedRecurrence     `json:"timedRecurrence" bson:"timedRecurrence,omitempty"`
 
 	// Used for specific times for specific dates feature
 	HasSpecificTimes *bool                `json:"hasSpecificTimes" bson:"hasSpecificTimes,omitempty"`

@@ -7,6 +7,7 @@ import {
   type Ref,
 } from "vue"
 import { eventTypes } from "@/constants"
+import type { SpecificTimesEditDraft } from "@/composables/event/specificTimesEditDraft"
 import { ZdtSet } from "@/utils"
 import {
   normalizeCalendarOptions,
@@ -28,6 +29,8 @@ interface AuthUserLike {
 export interface UseScheduleOverlapControllerOptions {
   event: ComputedRef<ScheduleOverlapEvent>
   fromEditEvent: ComputedRef<boolean>
+  fromCreateSpecificTimesDraft: ComputedRef<boolean>
+  specificTimesEntryDraft: ComputedRef<SpecificTimesEditDraft | undefined>
   calendarOnly: ComputedRef<boolean>
   weekOffset: ComputedRef<number>
   isGroup: ComputedRef<boolean>
@@ -82,17 +85,24 @@ const updateCurTimeslotAvailability = (
 const getInitialState = ({
   event,
   fromEditEvent,
+  fromCreateSpecificTimesDraft,
   scheduledEventFromUrl,
   showBestTimes,
 }: {
   event: ScheduleOverlapEvent
   fromEditEvent: boolean
+  fromCreateSpecificTimesDraft: boolean
   scheduledEventFromUrl: ScheduledEvent | null
   showBestTimes: boolean
 }): ScheduleOverlapState => {
   if (
     event.hasSpecificTimes &&
-    (fromEditEvent || !event.times || event.times.length === 0)
+    (
+      fromEditEvent ||
+      fromCreateSpecificTimesDraft ||
+      !event.times ||
+      event.times.length === 0
+    )
   ) {
     return states.SET_SPECIFIC_TIMES
   }
@@ -149,6 +159,7 @@ export function useScheduleOverlapController(
   opts: UseScheduleOverlapControllerOptions
 ) {
   let seededSpecificTimesFromEditEvent = false
+  let seededSpecificTimesFromCreateDraft = false
 
   opts.resetCurUserAvailability(opts.initSharedCalendarAccounts)
 
@@ -279,9 +290,35 @@ export function useScheduleOverlapController(
         return
       }
 
-      opts.tempTimes.value = new ZdtSet(opts.event.value.times ?? [])
+      opts.tempTimes.value = new ZdtSet(
+        opts.event.value.activeSlots ?? opts.event.value.times ?? []
+      )
       opts.state.value = states.SET_SPECIFIC_TIMES
       seededSpecificTimesFromEditEvent = true
+    },
+    { immediate: true }
+  )
+
+  watch(
+    [
+      opts.fromCreateSpecificTimesDraft,
+      opts.isSpecificTimes,
+      opts.specificTimesEntryDraft,
+    ],
+    () => {
+      if (
+        seededSpecificTimesFromCreateDraft ||
+        !opts.fromCreateSpecificTimesDraft.value ||
+        !opts.isSpecificTimes.value
+      ) {
+        return
+      }
+
+      opts.tempTimes.value = new ZdtSet(
+        opts.specificTimesEntryDraft.value?.activeSlots ?? []
+      )
+      opts.state.value = states.SET_SPECIFIC_TIMES
+      seededSpecificTimesFromCreateDraft = true
     },
     { immediate: true }
   )
@@ -305,6 +342,7 @@ export function useScheduleOverlapController(
     opts.state.value = getInitialState({
       event: opts.event.value,
       fromEditEvent: opts.fromEditEvent.value,
+      fromCreateSpecificTimesDraft: opts.fromCreateSpecificTimesDraft.value,
       scheduledEventFromUrl,
       showBestTimes: opts.showBestTimes.value,
     })

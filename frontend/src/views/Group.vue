@@ -1,6 +1,10 @@
 <template>
   <div v-if="event" class="tw-h-full">
-    <NotSignedIn v-if="!authUser && ownerLoaded" :event="event" :owner="owner" />
+    <NotSignedIn
+      v-if="showSignedOutInviteGate"
+      :event="event"
+      :owner="owner"
+    />
     <AccessDenied v-else-if="authUser && accessDenied" />
     <Event
       v-else
@@ -22,7 +26,11 @@ import { useMainStore } from "@/stores/main"
 import AccessDenied from "@/components/groups/AccessDenied.vue"
 import NotSignedIn from "@/components/groups/NotSignedIn.vue"
 import type { EventDraft } from "@/composables/event/types"
-import { getRealOwnerId, isSignedInOwner } from "@/composables/event/eventOwnership"
+import {
+  getRealOwnerId,
+  isAnonymousOwnerEvent,
+  isSignedInOwner,
+} from "@/composables/event/eventOwnership"
 import { fetchEventById } from "@/composables/event/eventTransportBoundary"
 import { serializeRouteContactsPayload, serializeRouteTimezone } from "@/router/routeProps"
 import type { Event as EventType, User } from "@/types"
@@ -45,6 +53,10 @@ const { authUser } = storeToRefs(mainStore)
 const event = ref<EventType | null>(null)
 const owner = ref<User | null>(null)
 const ownerLoaded = ref(false)
+
+const showSignedOutInviteGate = computed(() => {
+  return Boolean(event.value && !authUser.value && ownerLoaded.value && !isAnonymousOwnerEvent(event.value))
+})
 
 const accessDenied = computed(() => {
   if (!event.value) return false
@@ -97,8 +109,11 @@ async function loadEvent() {
       return
     }
 
-    if (!authUser.value) {
+    if (!authUser.value && !isAnonymousOwnerEvent(event.value)) {
       await loadOwner(event.value)
+    } else {
+      ownerLoaded.value = true
+      owner.value = null
     }
   } catch (err: unknown) {
     switch ((err as { error?: string }).error) {

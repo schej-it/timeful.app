@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { epochMs } from "@/test/regressionHarness"
 import type * as UtilsModule from "@/utils"
-import { eventTypes } from "@/constants"
+import { eventTypes, guestUserId } from "@/constants"
 import Group from "./Group.vue"
 
 const {
@@ -159,5 +159,36 @@ describe("Group route normalization", () => {
     expect(inviteView.props("owner")).toEqual(
       expect.objectContaining({ firstName: "Ada", email: "ada@example.com" })
     )
+  })
+
+  it("renders anonymous-owner group routes directly into the editable event shell", async () => {
+    authUserState.value = null
+    getMock.mockResolvedValue({
+      _id: "group-guest",
+      type: eventTypes.GROUP,
+      ownerId: guestUserId,
+      name: "Guest-owned group",
+      attendees: [],
+      dates: [epochMs("2026-05-01T09:00:00Z")],
+    })
+
+    const wrapper = shallowMount(Group, {
+      props: {
+        groupId: "group-guest",
+      },
+      global: {
+        stubs: {
+          Event: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(fetchUserByIdMock).not.toHaveBeenCalled()
+    expect(wrapper.findComponent({ name: "NotSignedIn" }).exists()).toBe(false)
+    expect(wrapper.findComponent({ name: "Event" }).exists()).toBe(true)
   })
 })

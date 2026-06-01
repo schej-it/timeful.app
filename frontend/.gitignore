@@ -1,6 +1,9 @@
 .DS_Store
 node_modules
 /dist
+tmp/
+playwright-report/
+test-results/
 
 # local env files
 .env
@@ -23,5 +26,4 @@ pnpm-debug.log*
 *.sln
 *.sw?
 
-# Playwright run artifacts
-playwright
+e2e/__screenshots__

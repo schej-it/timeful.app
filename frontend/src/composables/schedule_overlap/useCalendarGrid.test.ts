@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { Temporal } from "temporal-polyfill"
 import { durations, eventTypes, UTC } from "@/constants"
 import { createLocalStorageMock } from "@/test/localStorage"
+import { buildSpecificTimesCreateDraft } from "@/composables/event/specificTimesEditDraft"
+import { buildEventEditorSchedule } from "@/composables/event/eventEditorSchedule"
+import { normalizeActiveSlots } from "@/utils/timedEventSlots"
 import { states, type ScheduleOverlapEvent } from "./types"
 import { useCalendarGrid } from "./useCalendarGrid"
 
@@ -521,6 +524,118 @@ describe("useCalendarGrid", () => {
     ).toEqual(["2026-05-28", "2026-05-29", "2026-05-30"])
   })
 
+  it("keeps one specific-times edit column per membership date when local labels collide", () => {
+    const event = ref<ScheduleOverlapEvent>({
+      _id: "evt-5d-colliding-local-days",
+      shortId: "grid-specific-edit-colliding-days",
+      name: "Edit specific times with colliding local days",
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [
+        Temporal.PlainDate.from("2026-05-30"),
+        Temporal.PlainDate.from("2026-05-31"),
+      ],
+      timeSeed: zdt("2026-05-30T00:00:00Z"),
+      startTime: Temporal.PlainTime.from("00:00"),
+      duration: Temporal.Duration.from({ hours: 24 }),
+      hasSpecificTimes: true,
+      times: [zdt("2026-05-30T21:15:00Z")],
+      notificationsEnabled: false,
+      blindAvailabilityEnabled: false,
+      daysOnly: false,
+      sendEmailAfterXResponses: -1,
+      collectEmails: false,
+      startOnMonday: true,
+      timeIncrement: durations.FIFTEEN_MINUTES,
+      creatorPosthogId: "creator-5d-colliding-local-days",
+      remindees: [],
+    })
+
+    const grid = useCalendarGrid({
+      event,
+      weekOffset: ref(0),
+      curTimezone: ref({
+        value: "Europe/Moscow",
+        offset: Temporal.Duration.from({ hours: -3 }),
+        label: "Europe/Moscow",
+        gmtString: "GMT+3",
+      }),
+      state: ref(states.SET_SPECIFIC_TIMES),
+      isPhone: ref(false),
+    })
+
+    expect(grid.days.value).toHaveLength(2)
+    expect(grid.days.value.map((day) => day.dateString)).toEqual(["may 31", "may 31"])
+    expect(
+      grid.days.value.map((day) =>
+        day.dateObject.withTimeZone("Europe/Moscow").toPlainDate().toString()
+      )
+    ).toEqual(["2026-05-31", "2026-05-31"])
+    expect(grid.getDateFromRowCol(1, 0)?.toInstant().toString()).toBe(
+      "2026-05-30T21:15:00Z"
+    )
+  })
+
+  it("preserves reopened 5fa3A-shaped edit columns with non-midnight membership seeds", () => {
+    const event = ref<ScheduleOverlapEvent>({
+      _id: "evt-5fa3a-shape",
+      shortId: "5fa3A",
+      name: "Reopened specific times",
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [
+        Temporal.PlainDate.from("2026-05-30"),
+        Temporal.PlainDate.from("2026-05-31"),
+      ],
+      timeSeed: zdt("2026-05-30T00:30:00Z"),
+      startTime: Temporal.PlainTime.from("00:30"),
+      duration: Temporal.Duration.from({ hours: 24 }),
+      hasSpecificTimes: true,
+      times: [
+        zdt("2026-05-30T21:15:00Z"),
+        zdt("2026-05-30T21:30:00Z"),
+      ],
+      notificationsEnabled: false,
+      blindAvailabilityEnabled: false,
+      daysOnly: false,
+      sendEmailAfterXResponses: -1,
+      collectEmails: false,
+      startOnMonday: true,
+      timeIncrement: durations.FIFTEEN_MINUTES,
+      creatorPosthogId: "creator-5fa3a-shape",
+      remindees: [],
+    })
+
+    const grid = useCalendarGrid({
+      event,
+      weekOffset: ref(0),
+      curTimezone: ref({
+        value: "Europe/Moscow",
+        offset: Temporal.Duration.from({ hours: -3 }),
+        label: "Europe/Moscow",
+        gmtString: "GMT+3",
+      }),
+      state: ref(states.SET_SPECIFIC_TIMES),
+      isPhone: ref(false),
+    })
+
+    expect((event.value.dates ?? []).map((date) => date.toString())).toEqual([
+      "2026-05-30",
+      "2026-05-31",
+    ])
+    expect(grid.days.value).toHaveLength(2)
+    expect(grid.days.value.map((day) => day.dateString)).toEqual(["may 31", "may 31"])
+    expect(
+      grid.allDays.value.map((day) =>
+        day.dateObject.withTimeZone("Europe/Moscow").toPlainDate().toString()
+      )
+    ).toEqual(["2026-05-31", "2026-05-31"])
+    expect(grid.getDateFromRowCol(1, 0)?.toInstant().toString()).toBe(
+      "2026-05-30T21:15:00Z"
+    )
+    expect(grid.getDateFromRowCol(2, 0)?.toInstant().toString()).toBe(
+      "2026-05-30T21:30:00Z"
+    )
+  })
+
   it("maps quarter-hour rows in specific-times edit mode from midnight instead of the event window start", () => {
     const event = ref<ScheduleOverlapEvent>({
       _id: "evt-5e",
@@ -746,5 +861,91 @@ describe("useCalendarGrid", () => {
     expect(grid.splitTimes.value[0][grid.splitTimes.value[0].length - 1]?.displayedMinutes).toBe(
       23 * 60 + 45
     )
+  })
+
+  it("maps create-flow specific-time cells into the seeded enabled-slot domain even when the viewer timezone differs", () => {
+    const schedule = buildEventEditorSchedule({
+      daysOnly: false,
+      daysOnlyType: eventTypes.SPECIFIC_DATES,
+      selectedDateOption: "Specific dates",
+      selectedDays: [
+        Temporal.PlainDate.from("2026-05-28"),
+        Temporal.PlainDate.from("2026-05-29"),
+      ],
+      selectedDaysOfWeek: [],
+      startOnMonday: true,
+      startTime: Temporal.PlainTime.from("09:00"),
+      endTime: Temporal.PlainTime.from("11:00"),
+      timezoneValue: UTC,
+      timeIncrementMinutes: 15,
+    })
+    const draft = buildSpecificTimesCreateDraft({
+      schedule,
+      timeIncrementMinutes: 15,
+    })
+    const event = ref<ScheduleOverlapEvent>({
+      _id: "evt-8",
+      shortId: "grid-create-domain",
+      name: "Create flow canonical domain",
+      type: eventTypes.SPECIFIC_DATES,
+      dates: draft.dates,
+      timeSeed: draft.timeSeed,
+      duration: draft.duration,
+      hasSpecificTimes: true,
+      notificationsEnabled: false,
+      blindAvailabilityEnabled: false,
+      daysOnly: false,
+      sendEmailAfterXResponses: -1,
+      collectEmails: false,
+      startOnMonday: true,
+      timeIncrement: Temporal.Duration.from({ minutes: draft.timeIncrementMinutes }),
+      creatorPosthogId: "creator-8",
+      remindees: [],
+      enabledSlots: draft.enabledSlots,
+      activeSlots: draft.activeSlots,
+      eventTimezone: draft.eventTimezone,
+      slotGeneration: draft.slotGeneration,
+      timedRecurrence: draft.timedRecurrence,
+      times: [],
+    })
+
+    const grid = useCalendarGrid({
+      event,
+      weekOffset: ref(0),
+      curTimezone: ref({
+        value: "Europe/Belgrade",
+        offset: Temporal.Duration.from({ hours: -2 }),
+        label: "Europe/Belgrade",
+        gmtString: "GMT+2",
+      }),
+      state: ref(states.SET_SPECIFIC_TIMES),
+      isPhone: ref(false),
+    })
+
+    const selectedSlots = [
+      grid.getDateFromRowCol(36, 0),
+      grid.getDateFromRowCol(37, 0),
+      grid.getDateFromRowCol(36, 1),
+    ]
+
+    expect(selectedSlots.every((slot) => slot != null)).toBe(true)
+    expect(selectedSlots.map((slot) => slot?.toInstant().toString())).toEqual([
+      "2026-05-28T09:00:00Z",
+      "2026-05-28T09:15:00Z",
+      "2026-05-29T09:00:00Z",
+    ])
+
+    const normalized = normalizeActiveSlots({
+      enabledSlots: draft.enabledSlots,
+      activeSlots: selectedSlots.filter(
+        (slot): slot is Temporal.ZonedDateTime => slot != null
+      ),
+    })
+
+    expect(normalized.activeSlots.map((slot) => slot.toInstant().toString())).toEqual([
+      "2026-05-28T09:00:00Z",
+      "2026-05-28T09:15:00Z",
+      "2026-05-29T09:00:00Z",
+    ])
   })
 })

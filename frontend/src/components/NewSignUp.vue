@@ -267,6 +267,7 @@ import type { EventDraft } from "@/composables/event/types"
 import {
   buildEventEditorSchedule,
 } from "@/composables/event/eventEditorSchedule"
+import { toEventPatchPayload } from "@/composables/event/eventMutationBoundary"
 import {
   useEventEditorState,
   type EventEditorFormRef,
@@ -391,25 +392,41 @@ const submit = async () => {
 
   selectedDays.value = schedule.normalizedSelectedDays
   selectedDaysOfWeek.value = schedule.normalizedSelectedDaysOfWeek
+  const membershipDates = schedule.dates.map((date) => date.toPlainDate())
+  const membershipTimeSeed = schedule.dates[0]
 
   loading.value = true
 
   const payload = {
+    ...toEventPatchPayload({
+      name: name.value,
+      duration: schedule.duration,
+      type: schedule.type as Event["type"],
+      dates: membershipDates,
+      timeSeed: membershipTimeSeed,
+      enabledSlots: schedule.enabledSlots,
+      activeSlots: schedule.activeSlots,
+      times: schedule.activeSlots,
+      eventTimezone: schedule.eventTimezone,
+      slotGeneration: schedule.slotGeneration,
+      timedRecurrence: schedule.timedRecurrence,
+      notificationsEnabled: notificationsEnabled.value,
+      blindAvailabilityEnabled: blindAvailabilityEnabled.value,
+      daysOnly: daysOnly.value,
+      remindees: emails.value,
+      sendEmailAfterXResponses: sendEmailAfterXResponsesEnabled.value
+        ? sendEmailAfterXResponses.value
+        : -1,
+      collectEmails: collectEmails.value,
+      startOnMonday: startOnMonday.value,
+      creatorPosthogId: posthog.get_distinct_id(),
+    }),
     name: name.value,
-    duration: schedule.duration,
-    dates: schedule.dates,
     notificationsEnabled: notificationsEnabled.value,
     blindAvailabilityEnabled: blindAvailabilityEnabled.value,
     daysOnly: daysOnly.value,
-    remindees: emails.value,
-    type: schedule.type,
     isSignUpForm: true,
-    sendEmailAfterXResponses: sendEmailAfterXResponsesEnabled.value
-      ? sendEmailAfterXResponses.value
-      : -1,
     collectEmails: collectEmails.value,
-    startOnMonday: startOnMonday.value,
-    creatorPosthogId: posthog.get_distinct_id(),
   }
 
   const posthogPayload: Record<string, unknown> = {

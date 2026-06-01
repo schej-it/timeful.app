@@ -51,6 +51,7 @@ Do not treat "read every ADR in the folder" as the default requirement.
 - use `../migration/comparator` for browser verification
 - prefer `inspect` for migrated-only investigation
 - use `compare` when you specifically need old-vs-new parity evidence
+- keep repo-tracked Playwright specs, helpers, and repro entrypoints under `./e2e`
 - do not run direct Playwright probes against the legacy app
 - if a direct Playwright probe is needed outside the shared comparator flow, run it only against the migrated app
 - follow `../migration/comparator/AGENTS.md` for command details, startup order, URL overrides, and scenario rules

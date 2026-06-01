@@ -40,6 +40,7 @@ interface FrontendPlaywrightConfig {
   baseURL: string
   webServerCommand: string
   webServerPort: number
+  useExistingServer: boolean
 }
 
 interface FrontendPreviewServerConfig {
@@ -91,6 +92,11 @@ function parseOptionalPort(rawValue: string | undefined, envName: string): numbe
   }
 
   return port
+}
+
+function parseBooleanFlag(rawValue: string | undefined): boolean {
+  const value = rawValue?.trim()
+  return value === "1" || value?.toLowerCase() === "true"
 }
 
 function normalizeRootEnvMode(mode: ToolingMode): RootEnvMode {
@@ -207,6 +213,7 @@ export function createFrontendPlaywrightConfig(mode: ToolingMode): FrontendPlayw
     baseURL: baseURL.toString().replace(/\/$/, ""),
     webServerCommand: `npm run dev -- --host ${devHost} --port ${devPort}`,
     webServerPort: Number(devPort),
+    useExistingServer: parseBooleanFlag(process.env.PLAYWRIGHT_USE_EXISTING_SERVER),
   }
 }
 

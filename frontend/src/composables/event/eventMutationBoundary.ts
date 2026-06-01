@@ -4,8 +4,23 @@ import {
   toRawSignUpBlock,
   toTransportDateTimeStrings,
 } from "@/types/transport"
+import {
+  getTimedEventTimezone,
+  getTimedRecurrence,
+  getTimedSlotGeneration,
+  sortAndUniqueSlots,
+} from "@/utils/timedEventSlots"
 
-type EventPatchInput = Pick<Event, "dates" | "timeSeed"> & {
+type EventPatchInput = Pick<
+  Event,
+  | "dates"
+  | "timeSeed"
+  | "enabledSlots"
+  | "activeSlots"
+  | "eventTimezone"
+  | "slotGeneration"
+  | "timedRecurrence"
+> & {
   name?: Event["name"]
   duration?: Event["duration"]
   type?: Event["type"]
@@ -13,6 +28,7 @@ type EventPatchInput = Pick<Event, "dates" | "timeSeed"> & {
   signUpBlocks?: SignUpBlock[]
   times?: Event["times"]
   remindees?: Event["remindees"] | string[]
+  attendees?: string[]
   hasSpecificTimes?: Event["hasSpecificTimes"]
   notificationsEnabled?: Event["notificationsEnabled"]
   blindAvailabilityEnabled?: Event["blindAvailabilityEnabled"]
@@ -40,6 +56,32 @@ const toRemindeeEmails = (
 }
 
 export const toEventPatchPayload = (input: EventPatchInput) => ({
+  enabledSlots: (() => {
+    const activeSlots = sortAndUniqueSlots(input.activeSlots ?? input.times)
+    const enabledSlots = sortAndUniqueSlots(input.enabledSlots)
+    return toTransportDateTimeStrings(
+      enabledSlots.length > 0 ? enabledSlots : activeSlots
+    )
+  })(),
+  activeSlots: toTransportDateTimeStrings(sortAndUniqueSlots(input.activeSlots ?? input.times)),
+  eventTimezone: getTimedEventTimezone(input),
+  slotGeneration: (() => {
+    const slotGeneration = getTimedSlotGeneration(input)
+    return {
+      startTimeLocal: slotGeneration.startTimeLocal.toString(),
+      endTimeLocal: slotGeneration.endTimeLocal.toString(),
+      timeIncrementMinutes: slotGeneration.timeIncrement.total("minutes"),
+    }
+  })(),
+  timedRecurrence: (() => {
+    const timedRecurrence = getTimedRecurrence(input)
+    return {
+      kind: timedRecurrence.kind,
+      selectedDays: timedRecurrence.selectedDays.map((day) => day.toString()),
+      selectedDaysOfWeek: timedRecurrence.selectedDaysOfWeek,
+      startOnMonday: timedRecurrence.startOnMonday,
+    }
+  })(),
   name: input.name,
   duration: input.duration?.total("hours"),
   dates: toEventDateStrings(input),
@@ -57,4 +99,5 @@ export const toEventPatchPayload = (input: EventPatchInput) => ({
   signUpBlocks: input.signUpBlocks?.map((block) => toRawSignUpBlock(block)),
   times: toTransportDateTimeStrings(input.times),
   remindees: toRemindeeEmails(input.remindees),
+  attendees: input.attendees,
 })

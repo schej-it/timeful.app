@@ -14,6 +14,7 @@ Unless the user explicitly asks for server changes:
 - treat `frontend/` as the primary working directory
 - use clean layout-based fixes, not hacks
 - prefer adding regression tests before fixing migration bugs
+- keep repo-tracked frontend browser checks under `frontend/e2e`
 - newly added regression tests may fail when they are meant to expose an existing bug
 - first confirm that the finding you plan to work on still reproduces
 - update the relevant findings handoff file when adding or refining reproductions
@@ -102,6 +103,16 @@ Useful local entry points:
 
 The Vite dev server proxies `/api` and `/swagger` to `VITE_API_PROXY_TARGET`, so frontend requests stay same-origin and avoid browser CORS issues.
 The canonical env-file contract lives in `docs/environments.md`.
+
+## Local Firefox E2E Verification
+
+For local Firefox timed-event verification against the real runtime stack:
+
+- start `mongo` and `server` with `docker compose --env-file .env.development -f compose.yaml -f compose.development.yaml up --build mongo server`
+- start the migrated frontend from `frontend/` with `npm run dev -- --host 127.0.0.1 --port 4173`
+- run Playwright from `frontend/` with `PLAYWRIGHT_USE_EXISTING_SERVER=1 npm run test:e2e -- --project=firefox-desktop`
+
+When `PLAYWRIGHT_USE_EXISTING_SERVER=1` is set, Playwright keeps the configured `baseURL` but skips launching its own frontend `webServer`. Use this local-only mode when you intentionally want Playwright to target an already running migrated app; keep the default mode for CI and for runs where Playwright should own the dev server lifecycle.
 
 ## Rewrite Safety
 

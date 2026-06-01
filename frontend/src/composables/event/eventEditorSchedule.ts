@@ -6,6 +6,7 @@ import {
   type DateOptionType,
 } from "@/constants"
 import { getWrappedTimeRangeDuration } from "@/utils"
+import { generateTimedSlotsForDay } from "@/utils/timedEventSlots"
 import { Temporal } from "temporal-polyfill"
 
 interface EventEditorScheduleInput {
@@ -18,6 +19,7 @@ interface EventEditorScheduleInput {
   startTime: Temporal.PlainTime
   endTime: Temporal.PlainTime
   timezoneValue: string
+  timeIncrementMinutes?: number
 }
 
 export interface EventEditorScheduleResult {
@@ -26,6 +28,20 @@ export interface EventEditorScheduleResult {
   type: string
   normalizedSelectedDays: Temporal.PlainDate[]
   normalizedSelectedDaysOfWeek: number[]
+  enabledSlots: Temporal.ZonedDateTime[]
+  activeSlots: Temporal.ZonedDateTime[]
+  eventTimezone: string
+  slotGeneration: {
+    startTimeLocal: Temporal.PlainTime
+    endTimeLocal: Temporal.PlainTime
+    timeIncrement: Temporal.Duration
+  }
+  timedRecurrence: {
+    kind: "specific_dates" | "weekly"
+    selectedDays: Temporal.PlainDate[]
+    selectedDaysOfWeek: number[]
+    startOnMonday: boolean
+  }
 }
 
 export function buildEventEditorSchedule(
@@ -46,10 +62,42 @@ export function buildEventEditorSchedule(
       ),
       normalizedSelectedDays,
       normalizedSelectedDaysOfWeek: [],
+      enabledSlots: [],
+      activeSlots: [],
+      eventTimezone: UTC,
+      slotGeneration: {
+        startTimeLocal: input.startTime,
+        endTimeLocal: input.endTime,
+        timeIncrement: durations.FIFTEEN_MINUTES,
+      },
+      timedRecurrence: {
+        kind: "specific_dates",
+        selectedDays: normalizedSelectedDays,
+        selectedDaysOfWeek: [],
+        startOnMonday: input.startOnMonday,
+      },
     }
   }
 
+  const slotGeneration = {
+    startTimeLocal: input.startTime,
+    endTimeLocal: input.endTime,
+    timeIncrement: Temporal.Duration.from({
+      minutes: input.timeIncrementMinutes ?? 15,
+    }),
+  }
+
+  const generateSlotsForDay = (day: Temporal.PlainDate) =>
+    generateTimedSlotsForDay({
+      day,
+      timeZone: input.timezoneValue,
+      slotGeneration,
+    })
+
   if (input.selectedDateOption === dateOptions.SPECIFIC) {
+    const enabledSlots = normalizedSelectedDays.flatMap((day) =>
+      generateSlotsForDay(day)
+    )
     return {
       duration,
       type: eventTypes.SPECIFIC_DATES,
@@ -61,6 +109,16 @@ export function buildEventEditorSchedule(
       ),
       normalizedSelectedDays,
       normalizedSelectedDaysOfWeek: [],
+      enabledSlots,
+      activeSlots: [...enabledSlots],
+      eventTimezone: input.timezoneValue,
+      slotGeneration,
+      timedRecurrence: {
+        kind: "specific_dates",
+        selectedDays: normalizedSelectedDays,
+        selectedDaysOfWeek: [],
+        startOnMonday: input.startOnMonday,
+      },
     }
   }
 
@@ -90,5 +148,15 @@ export function buildEventEditorSchedule(
     type: eventTypes.DOW,
     normalizedSelectedDays,
     normalizedSelectedDaysOfWeek,
+    enabledSlots: dates.flatMap((date) => generateSlotsForDay(date.toPlainDate())),
+    activeSlots: dates.flatMap((date) => generateSlotsForDay(date.toPlainDate())),
+    eventTimezone: input.timezoneValue,
+    slotGeneration,
+    timedRecurrence: {
+      kind: "weekly",
+      selectedDays: [],
+      selectedDaysOfWeek: normalizedSelectedDaysOfWeek,
+      startOnMonday: input.startOnMonday,
+    },
   }
 }

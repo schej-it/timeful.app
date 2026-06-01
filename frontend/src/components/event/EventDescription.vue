@@ -143,6 +143,11 @@ const saveDescription = () => {
     description: draftDescription.value,
     dates: props.event.dates,
     timeSeed: props.event.timeSeed,
+    enabledSlots: props.event.enabledSlots,
+    activeSlots: props.event.activeSlots,
+    eventTimezone: props.event.eventTimezone,
+    slotGeneration: props.event.slotGeneration,
+    timedRecurrence: props.event.timedRecurrence,
   })
 
   emit("update:event", newEvent)

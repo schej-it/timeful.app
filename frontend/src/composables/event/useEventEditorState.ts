@@ -1,7 +1,6 @@
 import { computed, nextTick, onMounted, ref, watch, type ComputedRef, type Ref } from "vue"
 import {
   dateOptions,
-  eventTypes,
   hoursPlainTime,
   type DateOptionType,
 } from "@/constants"
@@ -15,8 +14,15 @@ import {
   getEventMembershipPlainDates,
   getEventTimeSeed,
   getTimeOptions,
-  resolveInitialTimezoneSelection,
+  normalizeTimezone,
 } from "@/utils"
+import {
+  getTimedEventTimezone,
+  getTimedRecurrence,
+  getTimedSlotGeneration,
+  hasCanonicalTimedSlots,
+  projectSlotsToLocalDays,
+} from "@/utils/timedEventSlots"
 import {
   getDraftEndTime,
   getDraftSelectedDays,
@@ -253,7 +259,12 @@ export function useEventEditorState(
       draft.notificationsEnabled ?? initialNotificationsEnabled
     timezone.value =
       getDraftTimezone(draft) ??
-      resolveInitialTimezoneSelection(Temporal.Now.zonedDateTimeISO())
+      normalizeTimezone({
+        value: Temporal.Now.timeZoneId(),
+        offset: Temporal.Duration.from({
+          nanoseconds: Temporal.Now.zonedDateTimeISO().offsetNanoseconds,
+        }),
+      })
 
     options.onDraftHydrate?.(state)
     options.formRef.value?.resetValidation()
@@ -264,12 +275,49 @@ export function useEventEditorState(
     if (!currentEvent) return
 
     name.value = currentEvent.name ?? ""
+    const hasCanonicalTimedConfig =
+      !currentEvent.daysOnly &&
+      (
+        hasCanonicalTimedSlots(currentEvent) ||
+        currentEvent.eventTimezone != null ||
+        currentEvent.slotGeneration != null ||
+        currentEvent.timedRecurrence != null
+      )
+    const timedSlotGeneration = hasCanonicalTimedConfig
+      ? getTimedSlotGeneration(currentEvent)
+      : null
+    const timedRecurrence = hasCanonicalTimedConfig
+      ? getTimedRecurrence(currentEvent)
+      : null
+    const projectedCanonicalDays =
+      hasCanonicalTimedConfig && timedSlotGeneration
+        ? projectSlotsToLocalDays(
+            currentEvent.enabledSlots ?? currentEvent.activeSlots,
+            getTimedEventTimezone(currentEvent),
+            timedSlotGeneration
+          )
+        : []
+    const canonicalTimezone = getTimedEventTimezone(currentEvent)
+    timezone.value = normalizeTimezone({
+      value: canonicalTimezone,
+      label: canonicalTimezone,
+      offset: Temporal.Duration.from({
+        nanoseconds: Temporal.Now.zonedDateTimeISO(canonicalTimezone).offsetNanoseconds,
+      }),
+    })
 
-    const eventDate = getEventTimeSeed(currentEvent)
-    if (eventDate != null) {
-      const zonedDateTime = getDateWithTimezone(eventDate)
-      startTime.value = zonedDateTime.toPlainTime()
-      endTime.value = startTime.value.add(currentEvent.duration ?? Temporal.Duration.from({}))
+    if (timedSlotGeneration) {
+      startTime.value = timedSlotGeneration.startTimeLocal
+      endTime.value = timedSlotGeneration.endTimeLocal
+    } else {
+      const eventDate = getEventTimeSeed(currentEvent)
+      if (eventDate != null) {
+        const zonedDateTime = getDateWithTimezone(eventDate)
+        startTime.value = zonedDateTime.toPlainTime()
+        endTime.value = startTime.value.add(
+          currentEvent.duration ?? Temporal.Duration.from({})
+        )
+      }
     }
 
     notificationsEnabled.value = currentEvent.notificationsEnabled ?? false
@@ -291,14 +339,33 @@ export function useEventEditorState(
       selectedDateOption.value = dateOptions.SPECIFIC
       selectedDays.value = getEventMembershipPlainDates(currentEvent.dates)
       selectedDaysOfWeek.value = []
-    } else if (currentEvent.type === eventTypes.SPECIFIC_DATES) {
+    } else if (timedRecurrence?.kind === "specific_dates") {
       selectedDateOption.value = dateOptions.SPECIFIC
-      selectedDays.value = getEventMembershipPlainDates(currentEvent.dates)
+      selectedDays.value =
+        timedRecurrence.selectedDays.length > 0
+          ? timedRecurrence.selectedDays
+          : projectedCanonicalDays
       selectedDaysOfWeek.value = []
-    } else {
+    } else if (timedRecurrence?.kind === "weekly") {
       selectedDateOption.value = dateOptions.DOW
-      selectedDaysOfWeek.value = getEventMembershipDayOfWeekValues(currentEvent.dates)
+      selectedDaysOfWeek.value =
+        timedRecurrence.selectedDaysOfWeek.length > 0
+          ? timedRecurrence.selectedDaysOfWeek
+          : getEventMembershipDayOfWeekValues(projectedCanonicalDays)
       selectedDays.value = []
+    } else {
+      if (
+        currentEvent.type === "dow" ||
+        currentEvent.type === "group"
+      ) {
+        selectedDateOption.value = dateOptions.DOW
+        selectedDaysOfWeek.value = getEventMembershipDayOfWeekValues(currentEvent.dates)
+        selectedDays.value = []
+      } else {
+        selectedDateOption.value = dateOptions.SPECIFIC
+        selectedDays.value = getEventMembershipPlainDates(currentEvent.dates)
+        selectedDaysOfWeek.value = []
+      }
     }
 
     options.onEventHydrate?.(state, currentEvent)

@@ -30,7 +30,6 @@ describe("freemium", () => {
     }
     const implicitPremiumCustomer: PremiumProbeUser = {
       stripeCustomerId: "cus_123",
-      isPremium: null,
     }
     const explicitNonPremiumCustomer: PremiumProbeUser = {
       stripeCustomerId: "cus_123",

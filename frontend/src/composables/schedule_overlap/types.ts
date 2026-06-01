@@ -45,6 +45,7 @@ export interface DayItem {
   dayText: string
   dateString: string
   dateObject: Temporal.ZonedDateTime
+  membershipDate?: Temporal.PlainDate
   isConsecutive?: boolean
   excludeTimes?: boolean
 }

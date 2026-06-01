@@ -3,6 +3,7 @@
     ref="datePickerEl"
     class="timeful-date-picker tw-w-full"
     @pointerdown.capture="onPointerDown"
+    @mousedown.capture="onMouseDownCapture"
     @pointerover.capture="onPointerOver"
     @click.capture="onClickCapture"
     @pointerup.capture="endDrag"
@@ -54,7 +55,10 @@ const dragStates = { ADD: "add", REMOVE: "remove" } as const
 type DragState = (typeof dragStates)[keyof typeof dragStates]
 
 const dragging = ref(false)
+const dragSelectionActive = ref(false)
+const dragStartPoint = ref<{ x: number; y: number } | null>(null)
 const dragState = ref<DragState>(dragStates.ADD)
+const DRAG_ACTIVATION_DISTANCE_PX = 4
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0")
@@ -109,6 +113,7 @@ function onYearChange(year: number) {
 
 function startDrag(date: string) {
   dragging.value = true
+  dragSelectionActive.value = false
   setDragState(date)
   addRemoveDate(date)
 }
@@ -150,18 +155,66 @@ function onPointerDown(e: PointerEvent) {
   if (!date) return
 
   e.preventDefault()
+  e.stopPropagation()
+  dragStartPoint.value = {
+    x: e.clientX,
+    y: e.clientY,
+  }
   startDrag(date)
 }
 
+function onMouseDownCapture(e: MouseEvent) {
+  if (stopAdjacentMonthNavigation(e)) {
+    return
+  }
+
+  if (getSelectableDateFromNode(e.target)) {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+}
+
 function onPointerOver(e: PointerEvent) {
+  if (!dragging.value || e.buttons === 0) {
+    if (e.buttons === 0) {
+      dragSelectionActive.value = false
+      dragStartPoint.value = null
+      dragging.value = false
+    }
+    return
+  }
+
   const date = getSelectableDateFromNode(e.target)
   if (!date) return
 
+  if (!dragSelectionActive.value) {
+    const startPoint = dragStartPoint.value
+    const movedEnough = startPoint != null && Math.hypot(
+      e.clientX - startPoint.x,
+      e.clientY - startPoint.y
+    ) >= DRAG_ACTIVATION_DISTANCE_PX
+
+    if (!movedEnough) {
+      return
+    }
+
+    dragSelectionActive.value = true
+  }
+
+  e.preventDefault()
+  e.stopPropagation()
   continueDrag(date)
 }
 
 function onClickCapture(e: MouseEvent) {
-  stopAdjacentMonthNavigation(e)
+  if (stopAdjacentMonthNavigation(e)) {
+    return
+  }
+
+  if (getSelectableDateFromNode(e.target)) {
+    e.preventDefault()
+    e.stopPropagation()
+  }
 }
 
 function touchmove(e: TouchEvent) {
@@ -174,6 +227,7 @@ function touchmove(e: TouchEvent) {
   const date = getSelectableDateFromNode(target)
 
   if (date && datePickerEl.value?.contains(getDateCell(target))) {
+    dragSelectionActive.value = true
     continueDrag(date)
   }
 }
@@ -185,6 +239,8 @@ function endDrag(e: Event) {
   e.stopPropagation()
 
   dragging.value = false
+  dragSelectionActive.value = false
+  dragStartPoint.value = null
 }
 
 function setDragState(date: string) {

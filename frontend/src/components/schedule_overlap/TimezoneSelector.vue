@@ -9,6 +9,7 @@
         id="timezone-select"
         :model-value="selectedTimezoneValue"
         :items="visibleTimezoneItems"
+        data-testid="timezone-select-trigger"
         class="compact-inline-select tw-z-20 -tw-mt-px tw-w-64 tw-min-w-0 tw-text-sm tw-text-black"
         color="#219653"
         density="compact"
@@ -24,6 +25,8 @@
           <v-list-item
             v-bind="stripGeneratedTitle(itemProps)"
             class="timezone-select__item"
+            data-testid="timezone-select-option"
+            :data-timezone-value="getTimezoneFromSelectItem(item.raw).value"
             :class="{
               'timezone-select__item--active': getTimezoneFromSelectItem(item.raw).value === selectedTimezoneValue,
             }"
