@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"schej.it/server/db"
 	"schej.it/server/models"
+	"schej.it/server/utils"
 )
 
 func main() {
@@ -28,17 +29,21 @@ func main() {
 		if user.CalendarAccounts == nil {
 			user.CalendarAccounts = make(map[string]models.CalendarAccount)
 		}
-		if _, ok := user.CalendarAccounts[user.Email]; !ok {
-			user.CalendarAccounts[user.Email] = models.CalendarAccount{
-				Email:   user.Email,
-				Picture: user.Picture,
-				Enabled: &[]bool{true}[0], // Workaround to pass a boolean pointer
 
-				AccessToken:           user.AccessToken,
-				AccessTokenExpireDate: user.AccessTokenExpireDate,
-				RefreshToken:          user.RefreshToken,
+		accountKey := utils.GetCalendarAccountKey(user.Email, models.GoogleCalendarType)
+		if _, ok := user.CalendarAccounts[accountKey]; !ok {
+			user.CalendarAccounts[accountKey] = models.CalendarAccount{
+				CalendarType: models.GoogleCalendarType,
+				Email:        user.Email,
+				Picture:      user.Picture,
+				Enabled:      utils.TruePtr(),
+				OAuth2CalendarAuth: &models.OAuth2CalendarAuth{
+					AccessToken:           user.AccessToken,
+					AccessTokenExpireDate: user.AccessTokenExpireDate,
+					RefreshToken:          user.RefreshToken,
+				},
 			}
-			_, err := db.UsersCollection.UpdateByID(context.Background(), user.Id, bson.M{
+			updates := bson.M{
 				"$set": bson.M{
 					"calendarAccounts": user.CalendarAccounts,
 				},
@@ -47,8 +52,12 @@ func main() {
 					"accessTokenExpireDate": "",
 					"refreshToken":          "",
 				},
-			})
-			if err != nil {
+			}
+			if user.PrimaryAccountKey == nil {
+				updates["$set"].(bson.M)["primaryAccountKey"] = accountKey
+			}
+
+			if _, err := db.UsersCollection.UpdateByID(context.Background(), user.Id, updates); err != nil {
 				log.Fatal(err)
 			}
 		}
@@ -68,6 +77,9 @@ type OldUser struct {
 	// CalendarAccounts is a mapping from {email => CalendarAccount} that contains all the
 	// additional accounts the user wants to see google calendar events for
 	CalendarAccounts map[string]models.CalendarAccount `json:"calendarAccounts" bson:"calendarAccounts,omitempty"`
+
+	// Primary account key (may be missing in old data)
+	PrimaryAccountKey *string `json:"primaryAccountKey" bson:"primaryAccountKey,omitempty"`
 
 	// Google OAuth stuff
 	TokenOrigin           models.TokenOriginType `json:"-" bson:"tokenOrigin,omitempty"`
