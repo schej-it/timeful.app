@@ -305,7 +305,7 @@ describe("TimezoneSelector", () => {
   })
 
   it("allows the timezone select and its selection text to shrink for ellipsis", () => {
-    expect(timezoneSelectorSource).toContain('class="tw-flex tw-min-w-0 tw-items-center tw-justify-center')
+    expect(timezoneSelectorSource).toContain('class="tw-flex tw-min-w-0 tw-items-center tw-text-[rgba(0,0,0,0.6)]"')
     expect(timezoneSelectorSource).toContain('class="compact-inline-select tw-z-20 -tw-mt-px tw-w-64 tw-min-w-0')
     expect(timezoneSelectorSource).toContain(
       ".compact-inline-select :deep(.v-field__input) {\n  flex-wrap: nowrap !important;\n  min-width: 0 !important;"
