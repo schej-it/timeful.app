@@ -419,6 +419,7 @@ describe("Event guest edit action", () => {
     await Promise.resolve()
     vi.runAllTimers()
     await nextTick()
+    await nextTick()
   }
 
   it("renders a durable inline not-found state for missing event fetches", async () => {
@@ -756,11 +757,7 @@ describe("Event guest edit action", () => {
       global: {
         stubs: {
           ScheduleOverlap: ScheduleOverlapStub,
-          DesktopEventHeaderOptions: {
-            props: ["showBestTimes"],
-            template:
-              "<div>Best times {{ String(showBestTimes) }} More options</div>",
-          },
+          EventOptions: true,
           NewDialog: true,
           GuestDialog: true,
           SignUpForSlotDialog: true,
@@ -788,6 +785,8 @@ describe("Event guest edit action", () => {
     })
 
     await flushDeferredMount()
+    await nextTick()
+    await nextTick()
 
     expect(wrapper.get("#event-header-actions").classes()).toContain(
       "desktop-event-header-actions"
@@ -798,9 +797,9 @@ describe("Event guest edit action", () => {
     expect(
       wrapper.get("#desktop-secondary-availability-btn").classes()
     ).toContain("desktop-event-header-control")
-    expect(wrapper.get("#event-header-actions").text()).toContain("Best times")
-    expect(wrapper.get("#event-header-actions").text()).toContain("More options")
-    expect(wrapper.get("#event-header-actions").text()).not.toContain("Options")
+    expect(wrapper.find("#show-best-times-header-toggle").exists()).toBe(true)
+    expect(wrapper.find("#desktop-header-more-options").exists()).toBe(true)
+    expect(wrapper.find("#desktop-header-inline-options").exists()).toBe(false)
   })
 
   it("triggers add guest availability from the new secondary desktop action", async () => {

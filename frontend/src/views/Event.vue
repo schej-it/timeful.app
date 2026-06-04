@@ -231,84 +231,133 @@
                   v-if="!isPhone && (!isSignUp || canEditAvailability)"
                   id="event-header-actions"
                   ref="desktopGuestEditMenuRoot"
-                  class="desktop-event-header-actions tw-relative tw-flex tw-flex-col tw-items-end tw-gap-2"
+                  class="desktop-event-header-actions tw-relative tw-flex tw-flex-col tw-gap-2"
                 >
                   <template v-if="!isEditing">
-                    <div class="tw-flex tw-gap-2">
-                      <v-btn
-                        v-if="showSecondaryAddAvailabilityAction"
-                        id="desktop-secondary-availability-btn"
-                        variant="outlined"
-                        color="primary"
-                        class="desktop-event-header-control tw-whitespace-nowrap tw-px-3 tw-text-sm tw-text-green"
-                        @click="triggerSecondaryAddAvailability"
-                      >
-                        {{ secondaryAddAvailabilityButtonText }}
-                      </v-btn>
-                      <div
-                        class="desktop-primary-availability-anchor tw-relative tw-min-w-0"
-                      >
+                    <div class="tw-flex tw-gap-2 tw-items-start">
+                      <div class="tw-flex tw-flex-col tw-gap-2 tw-flex-1 tw-min-w-0">
                         <v-btn
-                          id="desktop-primary-availability-btn"
-                          class="desktop-event-header-control timeful-elevated-button tw-text-white tw-transition-opacity"
-                          :class="[
-                            'tw-bg-green',
-                            {
-                              'timeful-availability-button-attention':
-                                availabilityBtnAttentionActive,
-                            },
-                          ]"
-                          :disabled="
-                            loading && !showGuestActionButton && !userHasResponded
-                          "
-                          :style="{ opacity: availabilityBtnOpacity }"
-                          @click="handlePrimaryAvailabilityAction"
+                          v-if="showSecondaryAddAvailabilityAction"
+                          id="desktop-secondary-availability-btn"
+                          variant="outlined"
+                          color="primary"
+                          class="desktop-event-header-control tw-w-full tw-whitespace-nowrap tw-px-3 tw-text-sm tw-text-green"
+                          @click="triggerSecondaryAddAvailability"
                         >
-                          {{ primaryAvailabilityButtonText }}
+                          {{ secondaryAddAvailabilityButtonText }}
                         </v-btn>
-                        <v-menu
-                          v-if="
-                            showGuestActionButton &&
-                            hasMultipleOwnedGuestResponses
-                          "
-                          v-model="showGuestEditMenu"
-                          activator="#desktop-primary-availability-btn"
-                          :open-on-click="false"
-                          location="bottom end"
-                          offset="8"
+                        <div
+                          v-if="showBestTimesToggle"
+                          id="desktop-header-show-best-times"
+                          class="desktop-event-header-options__best-times-slot"
                         >
-                          <v-card min-width="164">
-                            <div class="tw-py-1">
-                              <button
-                                v-for="option in ownedGuestEditOptions"
-                                :key="option.lookupKey"
-                                class="tw-block tw-w-full tw-px-3 tw-py-2 tw-text-left tw-text-sm hover:tw-bg-off-white"
-                                @click="editOwnedGuestAvailability(option.lookupKey)"
-                              >
-                                {{ option.name }}
-                              </button>
-                            </div>
-                          </v-card>
-                        </v-menu>
+                          <v-switch
+                            id="show-best-times-header-toggle"
+                            class="desktop-event-header-control schedule-overlap-compact-switch desktop-event-header-options__best-times-switch"
+                            inset
+                            :model-value="desktopShowBestTimes"
+                            hide-details
+                            @update:model-value="updateDesktopShowBestTimes"
+                          >
+                            <template #label>
+                              <div class="tw-text-sm tw-text-black">
+                                Best {{ scheduleOverlapEvent.daysOnly ? "days" : "times" }}
+                              </div>
+                            </template>
+                          </v-switch>
+                        </div>
+                      </div>
+                      <div class="tw-flex tw-flex-col tw-gap-2 tw-flex-1 tw-min-w-0">
+                        <div
+                          class="desktop-primary-availability-anchor tw-relative tw-min-w-0"
+                        >
+                          <v-btn
+                            id="desktop-primary-availability-btn"
+                            class="desktop-event-header-control timeful-elevated-button tw-w-full tw-text-white tw-transition-opacity"
+                            :class="[
+                              'tw-bg-green',
+                              {
+                                'timeful-availability-button-attention':
+                                  availabilityBtnAttentionActive,
+                              },
+                            ]"
+                            :disabled="
+                              loading && !showGuestActionButton && !userHasResponded
+                            "
+                            :style="{ opacity: availabilityBtnOpacity }"
+                            @click="handlePrimaryAvailabilityAction"
+                          >
+                            {{ primaryAvailabilityButtonText }}
+                          </v-btn>
+                          <v-menu
+                            v-if="
+                              showGuestActionButton &&
+                              hasMultipleOwnedGuestResponses
+                            "
+                            v-model="showGuestEditMenu"
+                            activator="#desktop-primary-availability-btn"
+                            :open-on-click="false"
+                            location="bottom end"
+                            offset="8"
+                          >
+                            <v-card min-width="164">
+                              <div class="tw-py-1">
+                                <button
+                                  v-for="option in ownedGuestEditOptions"
+                                  :key="option.lookupKey"
+                                  class="tw-block tw-w-full tw-px-3 tw-py-2 tw-text-left tw-text-sm hover:tw-bg-off-white"
+                                  @click="editOwnedGuestAvailability(option.lookupKey)"
+                                >
+                                  {{ option.name }}
+                                </button>
+                              </div>
+                            </v-card>
+                          </v-menu>
+                        </div>
+                        <div
+                          v-if="desktopHasSecondaryOptions"
+                          id="desktop-header-more-options"
+                          class="desktop-event-header-options__menu"
+                        >
+                          <EventOptions
+                            variant="menu"
+                            :event="scheduleOverlapEvent"
+                            :show-best-times="desktopShowBestTimes"
+                            :hide-if-needed="desktopHideIfNeeded"
+                            :show-all-hours="desktopShowAllHours"
+                            :show-calendar-events="desktopShowCalendarEvents"
+                            :start-calendar-on-monday="desktopStartCalendarOnMonday"
+                            :num-responses="numResponses"
+                            :include-show-best-times="false"
+                            menu-button-label="More options"
+                            menu-activator-class="desktop-event-header-control desktop-event-header-options__menu-button tw-justify-between tw-w-full"
+                            @update:hide-if-needed="updateDesktopHideIfNeeded"
+                            @update:show-all-hours="updateDesktopShowAllHours"
+                            @update:show-calendar-events="updateDesktopShowCalendarEvents"
+                            @update:start-calendar-on-monday="
+                              updateDesktopStartCalendarOnMonday
+                            "
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div v-if="desktopHeaderOptionsVisible">
-                      <DesktopEventHeaderOptions
-                        :event="scheduleOverlapEvent"
-                        :num-responses="numResponses"
-                        :show-best-times="desktopShowBestTimes"
-                        :hide-if-needed="desktopHideIfNeeded"
-                        :show-all-hours="desktopShowAllHours"
-                        :show-calendar-events="desktopShowCalendarEvents"
-                        :start-calendar-on-monday="desktopStartCalendarOnMonday"
-                        @update:show-best-times="updateDesktopShowBestTimes"
-                        @update:hide-if-needed="updateDesktopHideIfNeeded"
-                        @update:show-all-hours="updateDesktopShowAllHours"
-                        @update:show-calendar-events="updateDesktopShowCalendarEvents"
-                        @update:start-calendar-on-monday="
-                          updateDesktopStartCalendarOnMonday
-                        "
-                      />
+                    <div
+                      v-if="desktopShowInlineOptions"
+                      id="desktop-header-inline-options"
+                      class="desktop-event-header-options__inline"
+                    >
+                      <v-switch
+                        id="show-all-hours-toggle"
+                        class="desktop-event-header-control schedule-overlap-compact-switch desktop-event-header-options__all-hours-switch"
+                        inset
+                        :model-value="desktopShowAllHours"
+                        hide-details
+                        @update:model-value="updateDesktopShowAllHours"
+                      >
+                        <template #label>
+                          <div class="tw-text-sm tw-text-black">Show all hours</div>
+                        </template>
+                      </v-switch>
                     </div>
                   </template>
                   <template v-else>
@@ -652,7 +701,7 @@ import InvitationDialog from "@/components/groups/InvitationDialog.vue"
 import HelpDialog from "@/components/HelpDialog.vue"
 import EventDescription from "@/components/event/EventDescription.vue"
 import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
-import DesktopEventHeaderOptions from "@/components/schedule_overlap/DesktopEventHeaderOptions.vue"
+import EventOptions from "@/components/schedule_overlap/EventOptions.vue"
 import { AsyncPubliftAd } from "@/components/event/asyncPubliftAd"
 import { freemiumEnabled } from "@/utils/freemium"
 
@@ -916,24 +965,36 @@ const desktopShowCalendarEvents = computed(
 const desktopStartCalendarOnMonday = computed(
   () => scheduleOverlap.value?.startCalendarOnMonday ?? false
 )
-const desktopHeaderOptionsVisible = computed(
-  () => scheduleOverlapReady.value && scheduleOverlap.value != null && !isSignUp.value
+const showBestTimesToggle = computed(
+  () => !isSignUp.value && numResponses.value >= 1
+)
+const desktopHasSecondaryOptions = computed(
+  () =>
+    !isSignUp.value &&
+    (numResponses.value >= 1 || isGroup.value || scheduleOverlapEvent.value.daysOnly)
+)
+const desktopShowInlineOptions = computed(
+  () =>
+    scheduleOverlapReady.value &&
+    !isSignUp.value &&
+    numResponses.value < 1 &&
+    !scheduleOverlapEvent.value.daysOnly
 )
 
 function closeGuestEditMenu() {
   showGuestEditMenu.value = false
 }
 
-function updateDesktopShowBestTimes(value: boolean) {
-  scheduleOverlap.value?.updateShowBestTimes(value)
+function updateDesktopShowBestTimes(value: boolean | null) {
+  scheduleOverlap.value?.updateShowBestTimes(!!value)
 }
 
 function updateDesktopHideIfNeeded(value: boolean) {
   scheduleOverlap.value?.updateHideIfNeeded(value)
 }
 
-function updateDesktopShowAllHours(value: boolean) {
-  scheduleOverlap.value?.updateShowAllHours(value)
+function updateDesktopShowAllHours(value: boolean | null) {
+  scheduleOverlap.value?.updateShowAllHours(!!value)
 }
 
 function updateDesktopShowCalendarEvents(value: boolean) {
@@ -1880,6 +1941,8 @@ watch(
 }
 </style>
 
+<style scoped src="@/components/schedule_overlap/ScheduleOverlapCompactSwitch.css"></style>
+
 <style scoped>
 @keyframes timeful-availability-button-attention {
   0% {
@@ -1902,4 +1965,84 @@ watch(
   animation: timeful-availability-button-attention 0.45s ease-in-out 0s 2;
 }
 
+.desktop-event-header-options__best-times-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.desktop-event-header-options__menu {
+  min-width: 0;
+}
+
+.desktop-event-header-options__best-times-switch {
+  --v-input-control-height: var(--desktop-event-header-control-height);
+  width: auto;
+  height: 100%;
+}
+
+.desktop-event-header-options__best-times-switch :deep(.v-input) {
+  height: 100%;
+}
+
+.desktop-event-header-options__best-times-switch :deep(.v-input__control),
+.desktop-event-header-options__best-times-switch :deep(.v-selection-control) {
+  height: 100%;
+  min-height: var(--desktop-event-header-control-height);
+}
+
+.desktop-event-header-options__best-times-switch :deep(.v-selection-control) {
+  align-items: center;
+  justify-content: center;
+}
+
+.desktop-event-header-options__best-times-switch :deep(.v-label) {
+  padding-inline-start: 0;
+  margin-inline-start: 0.35rem;
+}
+
+.desktop-event-header-options__best-times-switch :deep(.v-selection-control__wrapper) {
+  margin-top: 0;
+}
+
+.desktop-event-header-options__inline {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.desktop-event-header-options__all-hours-switch {
+  --v-input-control-height: var(--desktop-event-header-control-height);
+  width: auto;
+  height: 100%;
+}
+
+.desktop-event-header-options__all-hours-switch :deep(.v-input) {
+  height: 100%;
+}
+
+.desktop-event-header-options__all-hours-switch :deep(.v-input__control),
+.desktop-event-header-options__all-hours-switch :deep(.v-selection-control) {
+  height: 100%;
+  min-height: var(--desktop-event-header-control-height);
+}
+
+.desktop-event-header-options__all-hours-switch :deep(.v-selection-control) {
+  align-items: center;
+  justify-content: center;
+}
+
+.desktop-event-header-options__all-hours-switch :deep(.v-label) {
+  padding-inline-start: 0;
+  margin-inline-start: 0.35rem;
+}
+
+.desktop-event-header-options__all-hours-switch :deep(.v-selection-control__wrapper) {
+  margin-top: 0;
+}
+
+.desktop-event-header-options__menu-button {
+  border-color: #e0e0e0;
+}
 </style>
