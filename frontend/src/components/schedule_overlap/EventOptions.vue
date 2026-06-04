@@ -1,7 +1,7 @@
 <template>
   <section v-if="hasAnyOption" class="tw-flex tw-flex-col">
     <template v-if="variant === 'menu'">
-      <v-menu location="bottom end" offset="8">
+      <v-menu location="bottom end" offset="8" :close-on-content-click="false">
         <template #activator="{ props: activatorProps }">
           <v-btn
             id="event-options-menu-activator"
