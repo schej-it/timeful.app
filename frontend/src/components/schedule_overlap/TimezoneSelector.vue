@@ -1,9 +1,9 @@
 <template>
   <div
     id="timezone-select-container"
-    class="tw-flex tw-min-w-0 tw-items-center tw-justify-center tw-text-[rgba(0,0,0,0.6)]"
+    class="tw-flex tw-min-w-0 tw-items-center tw-text-[rgba(0,0,0,0.6)]"
   >
-    <div :class="`tw-mr-2 tw-mt-px ${labelColor}`">{{ label }}</div>
+    <div :class="`tw-mr-2 ${labelColor}`">{{ label }}</div>
     <div class="timezone-select__field-row tw-flex tw-min-w-0 tw-items-center">
       <v-select
         id="timezone-select"

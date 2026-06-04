@@ -475,6 +475,7 @@
                 :model-value="timezone"
                 :modified="timezoneModified"
                 label="Timezone"
+                label-color="tw-text-sm tw-text-black"
                 @update:model-value="
                   (val) => {
                     setTimezone(val)
