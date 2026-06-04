@@ -233,7 +233,7 @@ const { isPhone } = useDisplayHelpers()
 
 const isGroup = computed(() => props.event.type === eventTypes.GROUP)
 const showBestTimesToggle = computed(
-  () => props.includeShowBestTimes && props.numResponses > 1
+  () => props.includeShowBestTimes && props.numResponses >= 1
 )
 const showHideIfNeededToggle = computed(
   () => props.numResponses >= 1 && !isGroup.value
