@@ -2,7 +2,6 @@ import { firefox, type Page } from "@playwright/test"
 import { Temporal } from "temporal-polyfill"
 import {
   HOME_URL,
-  APP_BASE_URL,
   collectSpecificTimesPageEvidence,
   dismissConsent,
   dragSpecificTimesRange,
@@ -24,6 +23,12 @@ async function openEditDialog(page: Page) {
     await advancedOptionsButton.click({ force: true })
   }
   return card
+}
+
+interface VueParentComponentElement {
+  __vueParentComponent?: {
+    setupState?: Record<string, unknown>
+  }
 }
 
 async function main() {
@@ -95,7 +100,7 @@ async function main() {
       await page.waitForTimeout(1500)
     })
 
-    const screenshotPath = `/tmp/gap-bug-${shortId}.png`
+    const screenshotPath = `/tmp/gap-bug-${String(shortId)}.png`
     await page.screenshot({ path: screenshotPath, fullPage: true })
 
     const evidence = await collectSpecificTimesPageEvidence(page)
@@ -119,51 +124,39 @@ async function main() {
     })
 
     // Debug: dump internal state
-    const debugState = await page.evaluate(() => {
-      const vueApp = document.querySelector("#app")?.__vue_app__
-      if (!vueApp) return { error: "no vue app" }
-
-      // Try to find the grid state through the component tree
-      const scheduleOverlap = document.querySelector(".schedule-overlap-layout")
-      if (!scheduleOverlap) return { error: "no schedule overlap layout" }
-
-      // Access the Vue component instance
-      const vm = scheduleOverlap.__vueParentComponent
-      return { found: !!vm }
-    })
-    console.log("Debug state:", JSON.stringify(debugState))
+    const vueApp = (document.querySelector("#app") as { __vue_app__?: unknown } | null)?.__vue_app__
+    console.log("HasVueApp:", !!vueApp)
 
     // Try accessing component data via the window
     const allDaysDebug = await page.evaluate(() => {
-      // Access through Vue devtools hook
+      // Access through element internals
       const allScheduleOverlaps = document.querySelectorAll(".schedule-overlap-layout")
       if (allScheduleOverlaps.length === 0) return { error: "no schedule overlap" }
 
-      // Access the Vue component instance
-      const el = allScheduleOverlaps[0]
-      const vnode = el.__vueParentComponent
+      // Access the Vue component instance through internal property
+      const scheduleOverlapEl = allScheduleOverlaps[0] as VueParentComponentElement
+      const vnode = scheduleOverlapEl.__vueParentComponent
       if (!vnode) return { error: "no vnode" }
 
-      // Try to access setupState
-      const setupState = vnode.setupState
-      if (!setupState) return { error: "no setupState" }
+      const ss = vnode.setupState
+      if (!ss) return { error: "no setupState" }
 
-      const allDaysVal = setupState.allDays?.value
-      const daysVal = setupState.days?.value
+      const allDaysArr = ss.allDays as { value: Record<string, unknown>[] } | undefined
+      const daysArr = ss.days as { value: Record<string, unknown>[] } | undefined
 
       return {
-        allDays: allDaysVal?.map((d: Record<string, unknown>) => ({
-          dayText: d.dayText,
-          dateString: d.dateString,
-          isConsecutive: d.isConsecutive,
-          dateObjectISO: d.dateObject?.toString(),
+        allDays: allDaysArr?.value.map((d) => ({
+          dayText: d.dayText as string,
+          dateString: d.dateString as string,
+          isConsecutive: d.isConsecutive as boolean,
+          dateObjectISO: (d.dateObject as { toString: () => string }).toString(),
         })),
-        days: daysVal?.map((d: Record<string, unknown>) => ({
-          dayText: d.dayText,
-          dateString: d.dateString,
-          isConsecutive: d.isConsecutive,
+        days: daysArr?.value.map((d) => ({
+          dayText: d.dayText as string,
+          dateString: d.dateString as string,
+          isConsecutive: d.isConsecutive as boolean,
         })),
-        state: setupState.state?.value,
+        state: (ss.state as { value: unknown }).value,
       }
     })
     console.log("AllDays debug:", JSON.stringify(allDaysDebug, null, 2))
@@ -185,9 +178,9 @@ async function main() {
       screenshotPath,
       verdict:
         headerInfo.columns.length !== 3
-          ? `ISSUE: Expected 3 header columns, got ${headerInfo.columns.length}: ${JSON.stringify(headerInfo.columns)}`
+          ? `ISSUE: Expected 3 header columns, got ${String(headerInfo.columns.length)}: ${JSON.stringify(headerInfo.columns)}`
           : headerInfo.gaps > 1
-            ? `ISSUE: ${headerInfo.gaps} gaps (more than 1 expected)`
+            ? `ISSUE: ${String(headerInfo.gaps)} gaps (more than 1 expected)`
             : "OK",
     }, null, 2))
   } catch (error) {
