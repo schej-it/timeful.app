@@ -86,7 +86,7 @@ const props = withDefaults(
   {
     modified: false,
     label: "Shown in",
-    labelColor: "",
+    labelColor: "tw-text-sm tw-text-black",
     referenceDate: null,
   }
 )
@@ -217,6 +217,11 @@ function onChangeValue(val: string | null) {
   background: transparent;
   border: 0;
   border-radius: 0;
+  font-size: 0.875rem;
+}
+
+.compact-inline-select :deep(.v-field--variant-underlined .v-field__outline::before) {
+  border-bottom-color: var(--timeful-grid-line-color);
 }
 
 .compact-inline-select :deep(.v-field__input) {

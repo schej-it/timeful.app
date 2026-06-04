@@ -265,6 +265,10 @@ function stripGeneratedTitle(
   padding-bottom: 0 !important;
 }
 
+.tool-row-inline-select :deep(.v-field--variant-underlined .v-field__outline::before) {
+  border-bottom-color: var(--timeful-grid-line-color);
+}
+
 .tool-row-inline-select--compact :deep(.v-field__append-inner) {
   padding-inline-start: 4px !important;
 }
