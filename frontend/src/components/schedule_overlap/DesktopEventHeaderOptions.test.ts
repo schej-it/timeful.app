@@ -108,8 +108,8 @@ describe("DesktopEventHeaderOptions", () => {
   it("shows only the More options control when best-times is not available", () => {
     const wrapper = shallowMount(DesktopEventHeaderOptions, {
       props: {
-        event: baseEvent,
-        numResponses: 1,
+        event: { ...baseEvent, daysOnly: true },
+        numResponses: 0,
         showBestTimes: false,
         hideIfNeeded: false,
         showAllHours: false,

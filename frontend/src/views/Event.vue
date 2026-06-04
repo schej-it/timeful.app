@@ -231,102 +231,104 @@
                   v-if="!isPhone && (!isSignUp || canEditAvailability)"
                   id="event-header-actions"
                   ref="desktopGuestEditMenuRoot"
-                  class="desktop-event-header-actions tw-relative tw-grid tw-justify-end tw-gap-2"
+                  class="desktop-event-header-actions tw-relative tw-flex tw-flex-col tw-items-end tw-gap-2"
                 >
                   <template v-if="!isEditing">
-                    <v-btn
-                      v-if="showSecondaryAddAvailabilityAction"
-                      id="desktop-secondary-availability-btn"
-                      variant="outlined"
-                      color="primary"
-                      class="desktop-event-header-control tw-whitespace-nowrap tw-px-3 tw-text-sm tw-text-green"
-                      @click="triggerSecondaryAddAvailability"
-                    >
-                      {{ secondaryAddAvailabilityButtonText }}
-                    </v-btn>
-                    <div
-                      class="desktop-primary-availability-anchor tw-relative tw-min-w-0"
-                      :class="{
-                        'tw-col-span-2': !showSecondaryAddAvailabilityAction,
-                      }"
-                    >
+                    <div class="tw-flex tw-gap-2">
                       <v-btn
-                        id="desktop-primary-availability-btn"
-                        class="desktop-event-header-control timeful-elevated-button tw-text-white tw-transition-opacity"
-                        :class="[
-                          'tw-bg-green',
-                          {
-                            'timeful-availability-button-attention':
-                              availabilityBtnAttentionActive,
-                          },
-                        ]"
-                        :disabled="
-                          loading && !showGuestActionButton && !userHasResponded
-                        "
-                        :style="{ opacity: availabilityBtnOpacity }"
-                        @click="handlePrimaryAvailabilityAction"
+                        v-if="showSecondaryAddAvailabilityAction"
+                        id="desktop-secondary-availability-btn"
+                        variant="outlined"
+                        color="primary"
+                        class="desktop-event-header-control tw-whitespace-nowrap tw-px-3 tw-text-sm tw-text-green"
+                        @click="triggerSecondaryAddAvailability"
                       >
-                        {{ primaryAvailabilityButtonText }}
+                        {{ secondaryAddAvailabilityButtonText }}
                       </v-btn>
-                      <v-menu
-                        v-if="
-                          showGuestActionButton &&
-                          hasMultipleOwnedGuestResponses
-                        "
-                        v-model="showGuestEditMenu"
-                        activator="#desktop-primary-availability-btn"
-                        :open-on-click="false"
-                        location="bottom end"
-                        offset="8"
+                      <div
+                        class="desktop-primary-availability-anchor tw-relative tw-min-w-0"
                       >
-                        <v-card min-width="164">
-                          <div class="tw-py-1">
-                            <button
-                              v-for="option in ownedGuestEditOptions"
-                              :key="option.lookupKey"
-                              class="tw-block tw-w-full tw-px-3 tw-py-2 tw-text-left tw-text-sm hover:tw-bg-off-white"
-                              @click="editOwnedGuestAvailability(option.lookupKey)"
-                            >
-                              {{ option.name }}
-                            </button>
-                          </div>
-                        </v-card>
-                      </v-menu>
+                        <v-btn
+                          id="desktop-primary-availability-btn"
+                          class="desktop-event-header-control timeful-elevated-button tw-text-white tw-transition-opacity"
+                          :class="[
+                            'tw-bg-green',
+                            {
+                              'timeful-availability-button-attention':
+                                availabilityBtnAttentionActive,
+                            },
+                          ]"
+                          :disabled="
+                            loading && !showGuestActionButton && !userHasResponded
+                          "
+                          :style="{ opacity: availabilityBtnOpacity }"
+                          @click="handlePrimaryAvailabilityAction"
+                        >
+                          {{ primaryAvailabilityButtonText }}
+                        </v-btn>
+                        <v-menu
+                          v-if="
+                            showGuestActionButton &&
+                            hasMultipleOwnedGuestResponses
+                          "
+                          v-model="showGuestEditMenu"
+                          activator="#desktop-primary-availability-btn"
+                          :open-on-click="false"
+                          location="bottom end"
+                          offset="8"
+                        >
+                          <v-card min-width="164">
+                            <div class="tw-py-1">
+                              <button
+                                v-for="option in ownedGuestEditOptions"
+                                :key="option.lookupKey"
+                                class="tw-block tw-w-full tw-px-3 tw-py-2 tw-text-left tw-text-sm hover:tw-bg-off-white"
+                                @click="editOwnedGuestAvailability(option.lookupKey)"
+                              >
+                                {{ option.name }}
+                              </button>
+                            </div>
+                          </v-card>
+                        </v-menu>
+                      </div>
                     </div>
-                    <DesktopEventHeaderOptions
-                      v-if="desktopHeaderOptionsVisible"
-                      :event="scheduleOverlapEvent"
-                      :num-responses="numResponses"
-                      :show-best-times="desktopShowBestTimes"
-                      :hide-if-needed="desktopHideIfNeeded"
-                      :show-all-hours="desktopShowAllHours"
-                      :show-calendar-events="desktopShowCalendarEvents"
-                      :start-calendar-on-monday="desktopStartCalendarOnMonday"
-                      @update:show-best-times="updateDesktopShowBestTimes"
-                      @update:hide-if-needed="updateDesktopHideIfNeeded"
-                      @update:show-all-hours="updateDesktopShowAllHours"
-                      @update:show-calendar-events="updateDesktopShowCalendarEvents"
-                      @update:start-calendar-on-monday="
-                        updateDesktopStartCalendarOnMonday
-                      "
-                    />
+                    <div v-if="desktopHeaderOptionsVisible">
+                      <DesktopEventHeaderOptions
+                        :event="scheduleOverlapEvent"
+                        :num-responses="numResponses"
+                        :show-best-times="desktopShowBestTimes"
+                        :hide-if-needed="desktopHideIfNeeded"
+                        :show-all-hours="desktopShowAllHours"
+                        :show-calendar-events="desktopShowCalendarEvents"
+                        :start-calendar-on-monday="desktopStartCalendarOnMonday"
+                        @update:show-best-times="updateDesktopShowBestTimes"
+                        @update:hide-if-needed="updateDesktopHideIfNeeded"
+                        @update:show-all-hours="updateDesktopShowAllHours"
+                        @update:show-calendar-events="updateDesktopShowCalendarEvents"
+                        @update:start-calendar-on-monday="
+                          updateDesktopStartCalendarOnMonday
+                        "
+                      />
+                    </div>
                   </template>
                   <template v-else>
-                    <v-btn
-                      variant="outlined"
-                      class="tw-mr-1 tw-w-20 tw-text-red"
-                      @click="cancelEditing"
-                    >
-                      Cancel
-                    </v-btn>
-                    <v-btn
-                      class="timeful-elevated-button tw-w-20 tw-text-white"
-                      :class="'tw-bg-green'"
-                      @click="saveChanges"
-                    >
-                      Save
-                    </v-btn></template
-                  >
+                    <div class="tw-flex tw-gap-2">
+                      <v-btn
+                        variant="outlined"
+                        class="tw-w-20 tw-text-red"
+                        @click="cancelEditing"
+                      >
+                        Cancel
+                      </v-btn>
+                      <v-btn
+                        class="timeful-elevated-button tw-w-20 tw-text-white"
+                        :class="'tw-bg-green'"
+                        @click="saveChanges"
+                      >
+                        Save
+                      </v-btn>
+                    </div>
+                  </template>
                 </div>
               </div>
             </div>
@@ -1872,8 +1874,6 @@ watch(
 .desktop-event-header-control {
   --v-btn-height: var(--desktop-event-header-control-height);
   box-sizing: border-box;
-  inline-size: 100%;
-  min-inline-size: 0;
   block-size: var(--desktop-event-header-control-height);
   min-block-size: var(--desktop-event-header-control-height);
   border-radius: var(--desktop-event-header-control-radius);
@@ -1902,10 +1902,4 @@ watch(
   animation: timeful-availability-button-attention 0.45s ease-in-out 0s 2;
 }
 
-.desktop-event-header-actions {
-  grid-template-columns: repeat(
-    2,
-    minmax(0, var(--desktop-event-header-control-width))
-  );
-}
 </style>
