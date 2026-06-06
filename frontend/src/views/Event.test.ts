@@ -799,7 +799,7 @@ describe("Event guest edit action", () => {
     ).toContain("desktop-event-header-control")
     expect(wrapper.find("#show-best-times-header-toggle").exists()).toBe(true)
     expect(wrapper.find("#desktop-header-more-options").exists()).toBe(true)
-    expect(wrapper.find("#desktop-header-inline-options").exists()).toBe(false)
+    expect(wrapper.find("#show-all-hours-toggle").exists()).toBe(false)
   })
 
   it("triggers add guest availability from the new secondary desktop action", async () => {

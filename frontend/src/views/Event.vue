@@ -234,8 +234,117 @@
                   class="desktop-event-header-actions tw-relative tw-flex tw-flex-col tw-gap-2"
                 >
                   <template v-if="!isEditing">
-                    <div class="tw-flex tw-gap-2 tw-items-start">
-                      <div class="tw-flex tw-flex-col tw-gap-2 tw-flex-1 tw-min-w-0">
+                    <template v-if="desktopHasSecondaryOptions || !desktopShowInlineOptions">
+                      <div class="tw-flex tw-gap-2 tw-items-start">
+                        <div class="tw-flex tw-flex-col tw-gap-2 tw-flex-1 tw-min-w-0">
+                          <v-btn
+                            v-if="showSecondaryAddAvailabilityAction"
+                            id="desktop-secondary-availability-btn"
+                            variant="outlined"
+                            color="primary"
+                            class="desktop-event-header-control tw-w-full tw-whitespace-nowrap tw-px-3 tw-text-sm tw-text-green"
+                            @click="triggerSecondaryAddAvailability"
+                          >
+                            {{ secondaryAddAvailabilityButtonText }}
+                          </v-btn>
+                          <div
+                            v-if="showBestTimesToggle"
+                            id="desktop-header-show-best-times"
+                            class="desktop-event-header-options__best-times-slot"
+                          >
+                            <v-switch
+                              id="show-best-times-header-toggle"
+                              class="desktop-event-header-control schedule-overlap-compact-switch desktop-event-header-options__best-times-switch"
+                              inset
+                              :model-value="desktopShowBestTimes"
+                              hide-details
+                              @update:model-value="updateDesktopShowBestTimes"
+                            >
+                              <template #label>
+                                <div class="tw-text-sm tw-text-black">
+                                  Best {{ scheduleOverlapEvent.daysOnly ? "days" : "times" }}
+                                </div>
+                              </template>
+                            </v-switch>
+                          </div>
+                        </div>
+                        <div class="tw-flex tw-flex-col tw-gap-2 tw-flex-1 tw-min-w-0">
+                          <div
+                            class="desktop-primary-availability-anchor tw-relative tw-min-w-0"
+                          >
+                            <v-btn
+                              id="desktop-primary-availability-btn"
+                              class="desktop-event-header-control timeful-elevated-button tw-w-full tw-text-white tw-transition-opacity"
+                              :class="[
+                                'tw-bg-green',
+                                {
+                                  'timeful-availability-button-attention':
+                                    availabilityBtnAttentionActive,
+                                },
+                              ]"
+                              :disabled="
+                                loading && !showGuestActionButton && !userHasResponded
+                              "
+                              :style="{ opacity: availabilityBtnOpacity }"
+                              @click="handlePrimaryAvailabilityAction"
+                            >
+                              {{ primaryAvailabilityButtonText }}
+                            </v-btn>
+                            <v-menu
+                              v-if="
+                                showGuestActionButton &&
+                                hasMultipleOwnedGuestResponses
+                              "
+                              v-model="showGuestEditMenu"
+                              activator="#desktop-primary-availability-btn"
+                              :open-on-click="false"
+                              location="bottom end"
+                              offset="8"
+                            >
+                              <v-card min-width="164">
+                                <div class="tw-py-1">
+                                  <button
+                                    v-for="option in ownedGuestEditOptions"
+                                    :key="option.lookupKey"
+                                    class="tw-block tw-w-full tw-px-3 tw-py-2 tw-text-left tw-text-sm hover:tw-bg-off-white"
+                                    @click="editOwnedGuestAvailability(option.lookupKey)"
+                                  >
+                                    {{ option.name }}
+                                  </button>
+                                </div>
+                              </v-card>
+                            </v-menu>
+                          </div>
+                          <div
+                            v-if="desktopHasSecondaryOptions"
+                            id="desktop-header-more-options"
+                            class="desktop-event-header-options__menu"
+                          >
+                            <EventOptions
+                              variant="menu"
+                              :event="scheduleOverlapEvent"
+                              :show-best-times="desktopShowBestTimes"
+                              :hide-if-needed="desktopHideIfNeeded"
+                              :show-all-hours="desktopShowAllHours"
+                              :show-calendar-events="desktopShowCalendarEvents"
+                              :start-calendar-on-monday="desktopStartCalendarOnMonday"
+                              :num-responses="numResponses"
+                              :include-show-best-times="false"
+                              menu-button-label="More options"
+                              menu-activator-class="desktop-event-header-control desktop-event-header-options__menu-button tw-justify-between tw-w-full"
+                              @update:hide-if-needed="updateDesktopHideIfNeeded"
+                              @update:show-all-hours="updateDesktopShowAllHours"
+                              @update:show-calendar-events="updateDesktopShowCalendarEvents"
+                              @update:start-calendar-on-monday="
+                                updateDesktopStartCalendarOnMonday
+                              "
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div class="tw-flex tw-flex-col tw-gap-2">
                         <v-btn
                           v-if="showSecondaryAddAvailabilityAction"
                           id="desktop-secondary-availability-btn"
@@ -246,28 +355,6 @@
                         >
                           {{ secondaryAddAvailabilityButtonText }}
                         </v-btn>
-                        <div
-                          v-if="showBestTimesToggle"
-                          id="desktop-header-show-best-times"
-                          class="desktop-event-header-options__best-times-slot"
-                        >
-                          <v-switch
-                            id="show-best-times-header-toggle"
-                            class="desktop-event-header-control schedule-overlap-compact-switch desktop-event-header-options__best-times-switch"
-                            inset
-                            :model-value="desktopShowBestTimes"
-                            hide-details
-                            @update:model-value="updateDesktopShowBestTimes"
-                          >
-                            <template #label>
-                              <div class="tw-text-sm tw-text-black">
-                                Best {{ scheduleOverlapEvent.daysOnly ? "days" : "times" }}
-                              </div>
-                            </template>
-                          </v-switch>
-                        </div>
-                      </div>
-                      <div class="tw-flex tw-flex-col tw-gap-2 tw-flex-1 tw-min-w-0">
                         <div
                           class="desktop-primary-availability-anchor tw-relative tw-min-w-0"
                         >
@@ -314,51 +401,20 @@
                             </v-card>
                           </v-menu>
                         </div>
-                        <div
-                          v-if="desktopHasSecondaryOptions"
-                          id="desktop-header-more-options"
-                          class="desktop-event-header-options__menu"
+                        <v-switch
+                          id="show-all-hours-toggle"
+                          class="desktop-event-header-control schedule-overlap-compact-switch desktop-event-header-options__all-hours-switch tw-w-full"
+                          inset
+                          :model-value="desktopShowAllHours"
+                          hide-details
+                          @update:model-value="updateDesktopShowAllHours"
                         >
-                          <EventOptions
-                            variant="menu"
-                            :event="scheduleOverlapEvent"
-                            :show-best-times="desktopShowBestTimes"
-                            :hide-if-needed="desktopHideIfNeeded"
-                            :show-all-hours="desktopShowAllHours"
-                            :show-calendar-events="desktopShowCalendarEvents"
-                            :start-calendar-on-monday="desktopStartCalendarOnMonday"
-                            :num-responses="numResponses"
-                            :include-show-best-times="false"
-                            menu-button-label="More options"
-                            menu-activator-class="desktop-event-header-control desktop-event-header-options__menu-button tw-justify-between tw-w-full"
-                            @update:hide-if-needed="updateDesktopHideIfNeeded"
-                            @update:show-all-hours="updateDesktopShowAllHours"
-                            @update:show-calendar-events="updateDesktopShowCalendarEvents"
-                            @update:start-calendar-on-monday="
-                              updateDesktopStartCalendarOnMonday
-                            "
-                          />
-                        </div>
+                          <template #label>
+                            <div class="tw-text-sm tw-text-black">Show all hours</div>
+                          </template>
+                        </v-switch>
                       </div>
-                    </div>
-                    <div
-                      v-if="desktopShowInlineOptions"
-                      id="desktop-header-inline-options"
-                      class="desktop-event-header-options__inline"
-                    >
-                      <v-switch
-                        id="show-all-hours-toggle"
-                        class="desktop-event-header-control schedule-overlap-compact-switch desktop-event-header-options__all-hours-switch"
-                        inset
-                        :model-value="desktopShowAllHours"
-                        hide-details
-                        @update:model-value="updateDesktopShowAllHours"
-                      >
-                        <template #label>
-                          <div class="tw-text-sm tw-text-black">Show all hours</div>
-                        </template>
-                      </v-switch>
-                    </div>
+                    </template>
                   </template>
                   <template v-else>
                     <div class="tw-flex tw-gap-2">
@@ -2004,12 +2060,6 @@ watch(
 
 .desktop-event-header-options__best-times-switch :deep(.v-selection-control__wrapper) {
   margin-top: 0;
-}
-
-.desktop-event-header-options__inline {
-  display: flex;
-  align-items: center;
-  min-width: 0;
 }
 
 .desktop-event-header-options__all-hours-switch {
