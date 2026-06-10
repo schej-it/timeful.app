@@ -336,7 +336,7 @@ const eventDescriptionCanEditStub = {
   props: {
     canEdit: { type: Boolean, required: true },
   },
-  template: "<div :data-can-edit=\"String(canEdit)\" />",
+  template: "<div id=\"event-description-stub\" :data-can-edit=\"String(canEdit)\" />",
 }
 
 const invitationDialogStub = {
@@ -392,6 +392,12 @@ describe("Event guest edit action", () => {
     expect(eventViewSource).toContain("sm:tw-flex-row sm:tw-items-start sm:tw-gap-4")
     expect(eventViewSource).not.toContain(
       "md:tw-flex-row md:tw-items-start md:tw-gap-4"
+    )
+  })
+
+  it("keeps the metadata actions stacked until the md breakpoint", () => {
+    expect(eventViewSource).toContain(
+      "tw-flex tw-flex-col tw-gap-2 md:tw-flex-row md:tw-flex-wrap md:tw-items-center md:tw-gap-x-1 md:tw-gap-y-2"
     )
   })
 
@@ -1490,7 +1496,7 @@ describe("Event guest edit action", () => {
     })
   })
 
-  it("renders the owner edit button with explicit primary text-button semantics", async () => {
+  it("renders the owner edit button as an outlined metadata action", async () => {
     authUserState.value = { _id: "owner-1" }
 
     const wrapper = shallowMount(EventView, {
@@ -1530,11 +1536,11 @@ describe("Event guest edit action", () => {
 
     const ownerEditButton = wrapper.get("#edit-event-btn")
     expect(ownerEditButton.text()).toContain("Edit event")
-    expect(ownerEditButton.attributes("data-variant")).toBe("text")
+    expect(ownerEditButton.attributes("data-variant")).toBe("outlined")
     expect(ownerEditButton.attributes("data-color")).toBe("primary")
   })
 
-  it("renders copy link beside the event metadata as an outlined secondary action", async () => {
+  it("renders copy link in the metadata action cluster with outlined secondary styling", async () => {
     const wrapper = shallowMount(EventView, {
       props: {
         eventId: "dEeaF",
@@ -1571,15 +1577,15 @@ describe("Event guest edit action", () => {
     await flushDeferredMount()
 
     const metaRow = wrapper.get("#event-header-meta-row")
+    const buttonRow = wrapper.get("#event-header-button-row")
     const copyLinkButton = wrapper.get("#copy-link-btn")
 
     expect(metaRow.text()).toContain("Copy link")
+    expect(buttonRow.text()).toContain("Copy link")
     expect(copyLinkButton.attributes("data-variant")).toBe("outlined")
     expect(copyLinkButton.attributes("data-color")).toBe("primary")
     expect(copyLinkButton.text()).toContain("mdi-content-copy")
-    expect(copyLinkButton.text().indexOf("Copy link")).toBeLessThan(
-      copyLinkButton.text().indexOf("mdi-content-copy")
-    )
+    expect(copyLinkButton.text()).toContain("Copy link")
   })
 
   it("renders timed specific-date metadata from projected enabled-slot days", async () => {
@@ -1688,6 +1694,53 @@ describe("Event guest edit action", () => {
     expect(copyLinkMock).toHaveBeenCalled()
   })
 
+  it("keeps the metadata action cluster inside the metadata row before the description", async () => {
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: eventDescriptionCanEditStub,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    const rendered = wrapper.html()
+
+    expect(rendered.indexOf("event-header-meta-row")).toBeGreaterThan(-1)
+    expect(rendered.indexOf("event-header-button-row")).toBeGreaterThan(
+      rendered.indexOf("event-header-meta-row")
+    )
+    expect(rendered.indexOf("event-description-stub")).toBeGreaterThan(
+      rendered.indexOf("event-header-meta-row")
+    )
+  })
+
   it("keeps copy link explicit on phones instead of switching to a share icon", async () => {
     isPhoneState.value = true
 
@@ -1730,9 +1783,6 @@ describe("Event guest edit action", () => {
     expect(copyLinkButton.text()).toContain("Copy link")
     expect(copyLinkButton.text()).toContain("mdi-content-copy")
     expect(copyLinkButton.text()).not.toContain("mdi-share")
-    expect(copyLinkButton.text().indexOf("Copy link")).toBeLessThan(
-      copyLinkButton.text().indexOf("mdi-content-copy")
-    )
   })
 
   it("moves mobile add availability into the sticky footer action cluster", async () => {

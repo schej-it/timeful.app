@@ -167,35 +167,43 @@
                 </div>
                 <div
                   id="event-header-meta-row"
-                  class="tw-flex tw-flex-wrap tw-items-center tw-gap-x-1 tw-gap-y-2"
+                  class="tw-flex tw-flex-col tw-gap-2 md:tw-flex-row md:tw-flex-wrap md:tw-items-center md:tw-gap-x-3 md:tw-gap-y-2"
                 >
                   <div
                     class="tw-text-sm tw-font-normal tw-text-very-dark-gray sm:tw-text-base"
                   >
                     {{ dateString }}
                   </div>
-                  <template v-if="canEditMetadata">
-                    <v-btn
-                      id="edit-event-btn"
-                      variant="text"
-                      color="primary"
-                      class="tw-px-2 tw-text-sm tw-text-green"
-                      @click="editEvent"
-                    >
-                      Edit {{ isGroup ? "group" : "event" }}
-                    </v-btn>
-                  </template>
-                  <v-btn
-                    v-if="!isGroup"
-                    id="copy-link-btn"
-                    variant="outlined"
-                    color="primary"
-                    class="event-copy-link-button tw-h-8 tw-min-w-0 tw-rounded-md tw-px-3 tw-text-sm tw-text-green"
-                    @click="copyLink"
+                  <div
+                    id="event-header-button-row"
+                    class="tw-flex tw-flex-wrap tw-items-center tw-gap-2"
                   >
-                    <span class="tw-text-green">Copy link</span>
-                    <v-icon end class="tw-text-green">mdi-content-copy</v-icon>
-                  </v-btn>
+                    <template v-if="canEditMetadata">
+                      <v-btn
+                        id="edit-event-btn"
+                        variant="outlined"
+                        color="primary"
+                        class="event-metadata-action-button"
+                        @click="editEvent"
+                      >
+                        <v-icon class="tw-text-green">mdi-pencil</v-icon>
+                        <span class="tw-ml-1 tw-text-green"
+                          >Edit {{ isGroup ? "group" : "event" }}</span
+                        >
+                      </v-btn>
+                    </template>
+                    <v-btn
+                      v-if="!isGroup"
+                      id="copy-link-btn"
+                      variant="outlined"
+                      color="primary"
+                      class="event-metadata-action-button"
+                      @click="copyLink"
+                    >
+                      <v-icon class="tw-text-green">mdi-content-copy</v-icon>
+                      <span class="tw-ml-1 tw-text-green">Copy link</span>
+                    </v-btn>
+                  </div>
                 </div>
               </div>
               <div
@@ -245,7 +253,8 @@
                             class="desktop-event-header-control tw-w-full tw-whitespace-nowrap tw-px-3 tw-text-sm tw-text-green"
                             @click="triggerSecondaryAddAvailability"
                           >
-                            {{ secondaryAddAvailabilityButtonText }}
+                            <v-icon>mdi-plus</v-icon>
+                            <span class="tw-ml-1">{{ secondaryAddAvailabilityButtonText }}</span>
                           </v-btn>
                           <div
                             v-if="showBestTimesToggle"
@@ -288,7 +297,9 @@
                               :style="{ opacity: availabilityBtnOpacity }"
                               @click="handlePrimaryAvailabilityAction"
                             >
-                              {{ primaryAvailabilityButtonText }}
+                              <v-icon v-if="primaryAvailabilityButtonText.startsWith('Edit')">mdi-pencil</v-icon>
+                              <v-icon v-else>mdi-plus</v-icon>
+                              <span class="tw-ml-1">{{ primaryAvailabilityButtonText }}</span>
                             </v-btn>
                             <v-menu
                               v-if="
@@ -353,7 +364,8 @@
                           class="desktop-event-header-control tw-w-full tw-whitespace-nowrap tw-px-3 tw-text-sm tw-text-green"
                           @click="triggerSecondaryAddAvailability"
                         >
-                          {{ secondaryAddAvailabilityButtonText }}
+                          <v-icon>mdi-plus</v-icon>
+                          <span class="tw-ml-1">{{ secondaryAddAvailabilityButtonText }}</span>
                         </v-btn>
                         <div
                           class="desktop-primary-availability-anchor tw-relative tw-min-w-0"
@@ -374,7 +386,9 @@
                             :style="{ opacity: availabilityBtnOpacity }"
                             @click="handlePrimaryAvailabilityAction"
                           >
-                            {{ primaryAvailabilityButtonText }}
+                            <v-icon v-if="primaryAvailabilityButtonText.startsWith('Edit')">mdi-pencil</v-icon>
+                            <v-icon v-else>mdi-plus</v-icon>
+                            <span class="tw-ml-1">{{ primaryAvailabilityButtonText }}</span>
                           </v-btn>
                           <v-menu
                             v-if="
@@ -1998,6 +2012,17 @@ watch(
   block-size: var(--desktop-event-header-control-height);
   min-block-size: var(--desktop-event-header-control-height);
   border-radius: var(--desktop-event-header-control-radius);
+}
+
+.event-metadata-action-button {
+  --v-btn-height: 1.75rem;
+  min-width: 0;
+  height: 1.75rem;
+  min-height: 1.75rem;
+  border-radius: 0.375rem;
+  padding-inline: 0.625rem;
+  font-size: 0.875rem;
+  color: rgb(0 153 76 / 1);
 }
 </style>
 

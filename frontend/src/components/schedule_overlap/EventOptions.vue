@@ -13,8 +13,8 @@
             ]"
             v-bind="activatorProps"
           >
+            <v-icon size="18" class="tw-mr-1">mdi-tune-vertical</v-icon>
             {{ menuButtonLabel }}
-            <v-icon end size="18">mdi-tune-vertical</v-icon>
           </v-btn>
         </template>
         <v-card min-width="260">
