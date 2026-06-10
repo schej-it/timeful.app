@@ -10,6 +10,7 @@ import {
   getRenderedWeekStart,
 } from "./scheduleDateRules"
 import {
+  getTimedEventTimezone,
   getTimedSlotCoverage,
   hasCanonicalTimedSlots,
   timedSlotsEqual,
@@ -148,8 +149,15 @@ export const processEvent = (
     } else {
       const coverage = getTimedSlotCoverage(event)
       if (coverage) {
-        event.startTime = coverage.minTime
-        event.endTime = coverage.maxTime
+        const timeZone = getTimedEventTimezone(event)
+        const eventDateSeeds = getEventDateSeeds(event)
+        const referenceDate = eventDateSeeds.length > 0
+          ? eventDateSeeds[0].toPlainDate()
+          : Temporal.Now.plainDateISO()
+        const startZDT = referenceDate.toZonedDateTime({ timeZone, plainTime: coverage.minTime }).withTimeZone(UTC)
+        const endZDT = referenceDate.toZonedDateTime({ timeZone, plainTime: coverage.maxTime }).withTimeZone(UTC)
+        event.startTime = startZDT.toPlainTime()
+        event.endTime = endZDT.toPlainTime()
       }
     }
     event.times = activeSlots
