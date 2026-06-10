@@ -571,7 +571,7 @@ const {
   responsesFormatted, curTimeslot, curTimeslotAvailability, timeslotSelected,
   availabilityArray: _availabilityArray, ifNeededArray: _ifNeededArray, parsedResponses, respondents, userHasResponded, max,
   getRespondentsForHoursOffset: _getRespondentsForHoursOffset, getResponsesFormatted, populateUserAvailability,
-  resetCurUserAvailability, resetCurTimeslot, animateAvailability: _animateAvailability, stopAvailabilityAnim,
+  resetCurUserAvailability, animateAvailability: _animateAvailability, stopAvailabilityAnim,
   setAvailabilityAutomatically: _setAvailabilityAutomatically, reanimateAvailability, isTouched: _isTouched, getAvailabilityForColumn: _getAvailabilityForColumn,
   getManualAvailabilityDow: _getManualAvailabilityDow, curRespondentsMaxFor, showAvailability, submitAvailability: _submitAvailability,
   deleteAvailability: _deleteAvailability, getAllValidTimeRanges: _getAllValidTimeRanges,
@@ -1354,7 +1354,7 @@ const daysOnlyGridActions = computed<ScheduleOverlapDaysOnlyGridActions>(() => (
   startDrag,
   moveDrag,
   endDrag,
-  resetCurTimeslot,
+  resetCurTimeslot: ui.resetCurTimeslot,
   closeHint,
 }))
 
@@ -1365,7 +1365,7 @@ const timedGridActions = computed<ScheduleOverlapTimeGridActions>(() => ({
   startDrag,
   moveDrag,
   endDrag,
-  resetCurTimeslot,
+  resetCurTimeslot: ui.resetCurTimeslot,
   closeHint,
   signUpForBlock: (block) => {
     handleSignUpBlockClick(block, emitSignUpForBlock)
