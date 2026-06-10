@@ -609,11 +609,13 @@
           <template v-if="!isEditing && !isScheduling">
             <v-btn
               v-if="!event.daysOnly && numResponses > 0"
-              variant="text"
-              class="tw-text-white"
+              variant="outlined"
+              class="tw-border-white tw-text-white"
               @click="scheduleEvent"
-              >Schedule</v-btn
             >
+              <v-icon>mdi-calendar-check</v-icon>
+              <span class="tw-ml-1">Schedule</span>
+            </v-btn>
             <v-spacer />
             <div class="tw-flex tw-min-w-0 tw-items-center tw-gap-2">
               <v-btn
@@ -660,10 +662,12 @@
             <v-spacer />
             <v-btn
               :disabled="!allowScheduleEvent"
-              class="tw-bg-white tw-text-blue"
+              variant="outlined"
+              class="tw-border-white tw-text-white"
               @click="confirmScheduleEvent"
             >
-              Schedule
+              <v-icon>mdi-calendar-check</v-icon>
+              <span class="tw-ml-1">Schedule</span>
             </v-btn>
           </template>
         </div>
