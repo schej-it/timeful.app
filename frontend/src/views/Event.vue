@@ -170,6 +170,7 @@
                   class="tw-flex tw-flex-col tw-gap-2 md:tw-flex-row md:tw-flex-wrap md:tw-items-center md:tw-gap-x-3 md:tw-gap-y-2"
                 >
                   <div
+                    v-if="showHeaderDateSummary"
                     class="tw-text-sm tw-font-normal tw-text-very-dark-gray sm:tw-text-base"
                   >
                     {{ dateString }}
@@ -924,6 +925,15 @@ const dateString = computed(() =>
     ? getDateRangeStringForEvent(loader.event.value, eventHeaderTimezone.value)
     : ""
 )
+const showHeaderDateSummary = computed(() => {
+  const event = loader.event.value
+  if (!event) return false
+
+  const isTimedSpecificDateEvent =
+    event.type === eventTypes.SPECIFIC_DATES && event.daysOnly === false
+
+  return !(isTimedSpecificDateEvent && scheduleOverlapReady.value)
+})
 const showAds = computed(
   () =>
     freemiumEnabled &&

@@ -251,6 +251,12 @@ describe("EventItem", () => {
     expect(eventItemSource).not.toContain("solo\n")
   })
 
+  it("keeps date summaries for non-event-page consumers", () => {
+    const wrapper = mountEventItem()
+
+    expect(wrapper.text()).toContain("Jan 1")
+  })
+
   it("keeps owner menus compact and preserves duplicate, copy, archive, and move actions", async () => {
     const wrapper = mountEventItem()
 

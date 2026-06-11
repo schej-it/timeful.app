@@ -27,6 +27,7 @@ interface EventTestState {
   ownerId: string
   name: string
   type: string
+  daysOnly?: boolean
   dates?: Temporal.PlainDate[]
   responses: Record<string, EventTestResponse>
   blindAvailabilityEnabled: boolean
@@ -1668,10 +1669,11 @@ describe("Event guest edit action", () => {
     expect(copyLinkButton.text()).toContain("Copy link")
   })
 
-  it("renders timed specific-date metadata from projected enabled-slot days", async () => {
+  it("hides the header date summary for timed specific-date events", async () => {
     loaderEventState.value = {
       ...createDefaultEventState(),
       type: eventTypes.SPECIFIC_DATES,
+      daysOnly: false,
       dates: [Temporal.PlainDate.from("2026-05-28")],
       hasSpecificTimes: true,
       enabledSlots: [
@@ -1730,13 +1732,16 @@ describe("Event guest edit action", () => {
 
     await flushDeferredMount()
 
-    expect(wrapper.get("#event-header-meta-row").text()).toContain("5/28 - 5/29")
+    expect(wrapper.get("#event-header-meta-row").text()).not.toContain(
+      "5/28 - 5/29"
+    )
   })
 
-  it("renders timed specific-date metadata in the viewer timezone when provided", async () => {
+  it("keeps timed specific-date header summaries hidden in viewer timezones too", async () => {
     loaderEventState.value = {
       ...createDefaultEventState(),
       type: eventTypes.SPECIFIC_DATES,
+      daysOnly: false,
       dates: [Temporal.PlainDate.from("2026-05-28")],
       hasSpecificTimes: true,
       enabledSlots: [
@@ -1801,7 +1806,58 @@ describe("Event guest edit action", () => {
 
     await flushDeferredMount()
 
-    expect(wrapper.get("#event-header-meta-row").text()).toContain("5/27 - 5/28")
+    expect(wrapper.get("#event-header-meta-row").text()).not.toContain(
+      "5/27 - 5/28"
+    )
+  })
+
+  it("keeps the header date summary for days-only specific-date events", async () => {
+    loaderEventState.value = {
+      ...createDefaultEventState(),
+      type: eventTypes.SPECIFIC_DATES,
+      daysOnly: true,
+      dates: [
+        Temporal.PlainDate.from("2026-05-28"),
+        Temporal.PlainDate.from("2026-05-29"),
+      ],
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.get("#event-header-meta-row").text()).toContain("5/28 - 5/29")
   })
 
   it("invokes copy link from the metadata action row", async () => {
