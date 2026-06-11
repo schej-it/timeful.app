@@ -625,7 +625,8 @@
                 class="tw-min-w-0 tw-whitespace-nowrap tw-border-white tw-px-2 tw-text-[13px] tw-text-white"
                 @click="triggerSecondaryAddAvailability"
               >
-                {{ secondaryAddAvailabilityButtonText }}
+                <v-icon>mdi-plus</v-icon>
+                <span class="tw-ml-1">{{ secondaryAddAvailabilityButtonText }}</span>
               </v-btn>
               <v-btn
                 id="mobile-primary-availability-btn"
@@ -641,7 +642,9 @@
                 :style="{ opacity: availabilityBtnOpacity }"
                 @click="handlePrimaryAvailabilityAction"
               >
-                {{ mobilePrimaryAvailabilityButtonText }}
+                <v-icon v-if="mobilePrimaryAvailabilityButtonText.startsWith('Edit')">mdi-pencil</v-icon>
+                <v-icon v-else>mdi-plus</v-icon>
+                <span class="tw-ml-1">{{ mobilePrimaryAvailabilityButtonText }}</span>
               </v-btn>
             </div>
           </template>
