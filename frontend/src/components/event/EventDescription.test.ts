@@ -211,7 +211,32 @@ describe("EventDescription", () => {
       'class="event-description-editor tw-pr-20"'
     )
     expect(eventDescriptionSource).toContain(
-      'class="event-description-copy event-description-editor-field tw-min-h-6 tw-border-0 tw-border-b tw-border-solid tw-bg-transparent tw-outline-none"'
+      'class="event-description-copy event-description-text event-description-editor-field tw-border-0 tw-border-b tw-border-solid tw-bg-transparent tw-outline-none"'
+    )
+  })
+
+  it("renders the add-description trigger as a native button with shared description typography", () => {
+    const wrapper = shallowMount(EventDescription, {
+      props: {
+        event: baseEvent,
+        canEdit: true,
+      },
+      global: {
+        stubs: {
+          "v-btn": VBtnStub,
+          "v-icon": true,
+        },
+      },
+    })
+
+    const addTrigger = wrapper.get("button.event-description-add-trigger")
+    expect(addTrigger.attributes("type")).toBe("button")
+    expect(addTrigger.text()).toBe("+ Add description")
+    expect(addTrigger.classes()).toEqual(
+      expect.arrayContaining(["event-description-add-trigger", "event-description-text"])
+    )
+    expect(eventDescriptionSource).toContain(
+      'class="event-description-add-trigger event-description-text tw-mt-0 tw-px-2 tw-py-2 tw-text-dark-gray"'
     )
   })
 

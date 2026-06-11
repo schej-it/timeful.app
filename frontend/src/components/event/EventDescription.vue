@@ -8,7 +8,7 @@
         <div
           v-for="(line, i) in (event.description ?? '').split('\n')"
           :key="i"
-          class="event-description-copy tw-min-h-6"
+          class="event-description-copy event-description-text"
         >
           {{ line }}
         </div>
@@ -30,14 +30,14 @@
       </div>
     </div>
 
-    <v-btn
+    <button
       v-else-if="canEdit && !isEditing"
-      variant="text"
-      class="tw-mt-0 tw-w-min tw-px-2 tw-text-dark-gray"
+      type="button"
+      class="event-description-add-trigger event-description-text tw-mt-0 tw-px-2 tw-py-2 tw-text-dark-gray"
       @click="beginEditing"
     >
       + Add description
-    </v-btn>
+    </button>
     <div
       v-else-if="canEdit && isEditing"
       class="event-description-edit-shell tw-relative tw-w-full tw-px-2 tw-py-2 tw-font-normal tw-text-very-dark-gray"
@@ -45,7 +45,7 @@
       <div class="event-description-editor tw-pr-20">
         <div
           ref="descriptionEditor"
-          class="event-description-copy event-description-editor-field tw-min-h-6 tw-border-0 tw-border-b tw-border-solid tw-bg-transparent tw-outline-none"
+          class="event-description-copy event-description-text event-description-editor-field tw-border-0 tw-border-b tw-border-solid tw-bg-transparent tw-outline-none"
           :contenteditable="isEditing ? 'true' : 'false'"
           :data-placeholder="descriptionPlaceholder"
           role="textbox"
@@ -167,16 +167,37 @@ const cancelEditing = () => {
 </script>
 
 <style scoped>
-.event-description-copy {
+.event-description-text {
   font-size: 0.75rem;
   line-height: 1.5rem;
 }
 
 @media (min-width: 640px) {
-  .event-description-copy {
+  .event-description-text {
     font-size: 0.875rem;
     line-height: 1.5rem;
   }
+}
+
+.event-description-copy {
+  min-height: 1.5rem;
+}
+
+.event-description-add-trigger {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: block;
+  font-family: inherit;
+  font-weight: inherit;
+  margin: 0;
+  text-align: left;
+}
+
+.event-description-add-trigger:focus-visible {
+  outline: 2px solid rgb(0 153 76 / 1);
+  outline-offset: 2px;
 }
 
 .event-description-editor-field {

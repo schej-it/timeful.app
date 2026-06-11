@@ -43,6 +43,9 @@ test("event description stays aligned to the left header column on desktop", asy
   interface AddButtonMetrics {
     buttonRowLeft: number
     addButtonLeft: number
+    addButtonTextTop: number
+    addButtonFontSize: string
+    addButtonLineHeight: string
   }
 
   interface DescriptionLayoutMetrics {
@@ -50,6 +53,9 @@ test("event description stays aligned to the left header column on desktop", asy
     metaToDescriptionGap: number
     descriptionRight: number
     editorRight: number
+    editorTop: number
+    editorFontSize: string
+    editorLineHeight: string
     actionsLeft: number
   }
 
@@ -65,10 +71,15 @@ test("event description stays aligned to the left header column on desktop", asy
 
     const buttonRowRect = buttonRow.getBoundingClientRect()
     const addButtonRect = addButton.getBoundingClientRect()
+    const addButtonStyle = window.getComputedStyle(addButton)
 
     return {
       buttonRowLeft: buttonRowRect.left,
       addButtonLeft: addButtonRect.left,
+      addButtonTextTop:
+        addButtonRect.top + Number.parseFloat(addButtonStyle.paddingTop || "0"),
+      addButtonFontSize: addButtonStyle.fontSize,
+      addButtonLineHeight: addButtonStyle.lineHeight,
     }
   })
 
@@ -99,12 +110,16 @@ test("event description stays aligned to the left header column on desktop", asy
     const descriptionRect = descriptionShell.getBoundingClientRect()
     const editorRect = descriptionEditor.getBoundingClientRect()
     const actionsRect = headerActions.getBoundingClientRect()
+    const editorStyle = window.getComputedStyle(descriptionEditor)
 
     return {
       titleToMetaGap: metaRect.top - titleRect.bottom,
       metaToDescriptionGap: descriptionRect.top - metaRect.bottom,
       descriptionRight: descriptionRect.right,
       editorRight: editorRect.right,
+      editorTop: editorRect.top,
+      editorFontSize: editorStyle.fontSize,
+      editorLineHeight: editorStyle.lineHeight,
       actionsLeft: actionsRect.left,
     }
   })
@@ -116,6 +131,9 @@ test("event description stays aligned to the left header column on desktop", asy
   expect(
     Math.abs(layoutMetrics.titleToMetaGap - layoutMetrics.metaToDescriptionGap)
   ).toBeLessThanOrEqual(4)
+  expect(addButtonMetrics.addButtonFontSize).toBe(layoutMetrics.editorFontSize)
+  expect(addButtonMetrics.addButtonLineHeight).toBe(layoutMetrics.editorLineHeight)
+  expect(Math.abs(addButtonMetrics.addButtonTextTop - layoutMetrics.editorTop)).toBeLessThanOrEqual(1)
   expect(layoutMetrics.descriptionRight).toBeLessThanOrEqual(layoutMetrics.actionsLeft + 1)
   expect(layoutMetrics.editorRight).toBeLessThanOrEqual(layoutMetrics.actionsLeft + 1)
 })
