@@ -306,6 +306,27 @@ const ScheduleOverlapNoGuestSelectionStub = {
   },
 }
 
+const ScheduleOverlapNoOwnedGuestResponsesStub = {
+  ...ScheduleOverlapStub,
+  data() {
+    return {
+      ...ScheduleOverlapStub.data(),
+      ownedGuestResponses: [],
+      respondents: [],
+    }
+  },
+}
+
+const ScheduleOverlapEditingStub = {
+  ...ScheduleOverlapStub,
+  data() {
+    return {
+      ...ScheduleOverlapStub.data(),
+      editing: true,
+    }
+  },
+}
+
 const ScheduleOverlapLegacyAndTokenGuestSelectionStub = {
   ...ScheduleOverlapStub,
   data() {
@@ -397,7 +418,7 @@ describe("Event guest edit action", () => {
 
   it("keeps the metadata actions stacked until the md breakpoint", () => {
     expect(eventViewSource).toContain(
-      "tw-flex tw-flex-col tw-gap-2 md:tw-flex-row md:tw-flex-wrap md:tw-items-center md:tw-gap-x-1 md:tw-gap-y-2"
+      "tw-flex tw-flex-col tw-gap-2 md:tw-flex-row md:tw-flex-wrap md:tw-items-center md:tw-gap-x-3 md:tw-gap-y-2"
     )
   })
 
@@ -684,6 +705,9 @@ describe("Event guest edit action", () => {
     expect(wrapper.get("#desktop-primary-availability-btn").text()).toContain(
       "Edit availability"
     )
+    expect(wrapper.get("#desktop-primary-availability-btn").classes()).toContain(
+      "desktop-primary-availability-button--edit"
+    )
     expect(wrapper.get("#desktop-secondary-availability-btn").text()).toContain(
       "Add availability"
     )
@@ -732,6 +756,9 @@ describe("Event guest edit action", () => {
 
     expect(wrapper.get("#desktop-primary-availability-btn").text()).toContain(
       "Edit availability"
+    )
+    expect(wrapper.get("#desktop-primary-availability-btn").classes()).toContain(
+      "desktop-primary-availability-button--edit"
     )
     expect(wrapper.get("#desktop-secondary-availability-btn").text()).toContain(
       "Add guest availability"
@@ -806,6 +833,56 @@ describe("Event guest edit action", () => {
     expect(wrapper.find("#show-best-times-header-toggle").exists()).toBe(true)
     expect(wrapper.find("#desktop-header-more-options").exists()).toBe(true)
     expect(wrapper.find("#show-all-hours-toggle").exists()).toBe(false)
+  })
+
+  it("uses the add-specific desktop CTA styling when the primary action is Add availability", async () => {
+    loaderEventState.value = {
+      ...loaderEventState.value,
+      responses: {},
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapNoOwnedGuestResponsesStub,
+          EventOptions: true,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-btn": buttonSemanticStub,
+          "v-card": true,
+          "v-card-actions": true,
+          "v-card-text": true,
+          "v-card-title": true,
+          "v-chip": true,
+          "v-dialog": true,
+          "v-icon": true,
+          "v-spacer": true,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.get("#desktop-primary-availability-btn").text()).toContain(
+      "Add availability"
+    )
+    expect(wrapper.get("#desktop-primary-availability-btn").classes()).toContain(
+      "desktop-primary-availability-button--add"
+    )
   })
 
   it("triggers add guest availability from the new secondary desktop action", async () => {
@@ -1183,6 +1260,9 @@ describe("Event guest edit action", () => {
     ).toBe(true)
     expect(wrapper.get("#mobile-primary-availability-btn").text()).toContain(
       "Edit availability"
+    )
+    expect(wrapper.get("#mobile-primary-availability-btn").classes()).toContain(
+      "mobile-primary-availability-button--edit"
     )
     expect(wrapper.findComponent({ name: "VMenu" }).exists()).toBe(true)
   })
@@ -1826,6 +1906,9 @@ describe("Event guest edit action", () => {
     expect(wrapper.get("#mobile-primary-availability-btn").text()).toContain(
       "Edit availability"
     )
+    expect(wrapper.get("#mobile-primary-availability-btn").classes()).toContain(
+      "mobile-primary-availability-button--edit"
+    )
     expect(wrapper.get("#mobile-secondary-availability-btn").text()).toContain(
       "Add availability"
     )
@@ -1876,6 +1959,96 @@ describe("Event guest edit action", () => {
     expect(wrapper.get("#mobile-secondary-availability-btn").text()).toContain(
       "Add guest"
     )
+  })
+
+  it("renders desktop editing actions with a flat save button", async () => {
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapEditingStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": iconTextStub,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    const cancelButton = wrapper.get(".desktop-editing-cancel-button")
+    const saveButton = wrapper.get(".desktop-editing-save-button")
+    expect(cancelButton.text()).toContain("Cancel")
+    expect(cancelButton.attributes("data-variant")).toBe("outlined")
+    expect(saveButton.text()).toContain("Save")
+    expect(saveButton.classes()).toContain("desktop-editing-save-button")
+  })
+
+  it("renders mobile editing actions with outlined cancel and flat save", async () => {
+    isPhoneState.value = true
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapEditingStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": iconTextStub,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    const cancelButton = wrapper.get(".mobile-editing-cancel-button")
+    const saveButton = wrapper.get(".mobile-editing-save-button")
+    expect(cancelButton.text()).toContain("Cancel")
+    expect(cancelButton.attributes("data-variant")).toBe("outlined")
+    expect(saveButton.text()).toContain("Save")
+    expect(saveButton.classes()).toContain("mobile-editing-save-button")
   })
 
   it("does not render the relocated copy link action for group events", async () => {

@@ -283,18 +283,11 @@
                           >
                             <v-btn
                               id="desktop-primary-availability-btn"
-                              class="desktop-event-header-control timeful-elevated-button tw-w-full tw-text-white tw-transition-opacity"
-                              :class="[
-                                'tw-bg-green',
-                                {
-                                  'timeful-availability-button-attention':
-                                    availabilityBtnAttentionActive,
-                                },
-                              ]"
+                              class="desktop-event-header-control tw-w-full tw-bg-green tw-text-white"
+                              :class="desktopPrimaryAvailabilityButtonClass"
                               :disabled="
                                 loading && !showGuestActionButton && !userHasResponded
                               "
-                              :style="{ opacity: availabilityBtnOpacity }"
                               @click="handlePrimaryAvailabilityAction"
                             >
                               <v-icon v-if="primaryAvailabilityButtonText.startsWith('Edit')">mdi-pencil</v-icon>
@@ -372,18 +365,11 @@
                         >
                           <v-btn
                             id="desktop-primary-availability-btn"
-                            class="desktop-event-header-control timeful-elevated-button tw-w-full tw-text-white tw-transition-opacity"
-                            :class="[
-                              'tw-bg-green',
-                              {
-                                'timeful-availability-button-attention':
-                                  availabilityBtnAttentionActive,
-                              },
-                            ]"
+                            class="desktop-event-header-control tw-w-full tw-bg-green tw-text-white"
+                            :class="desktopPrimaryAvailabilityButtonClass"
                             :disabled="
                               loading && !showGuestActionButton && !userHasResponded
                             "
-                            :style="{ opacity: availabilityBtnOpacity }"
                             @click="handlePrimaryAvailabilityAction"
                           >
                             <v-icon v-if="primaryAvailabilityButtonText.startsWith('Edit')">mdi-pencil</v-icon>
@@ -434,13 +420,13 @@
                     <div class="tw-flex tw-gap-2">
                       <v-btn
                         variant="outlined"
-                        class="tw-w-20 tw-text-red"
+                        class="desktop-editing-cancel-button tw-w-20 tw-text-red"
                         @click="cancelEditing"
                       >
                         Cancel
                       </v-btn>
                       <v-btn
-                        class="timeful-elevated-button tw-w-20 tw-text-white"
+                        class="desktop-editing-save-button tw-w-20 tw-text-white"
                         :class="'tw-bg-green'"
                         @click="saveChanges"
                       >
@@ -644,10 +630,13 @@
               <v-btn
                 id="mobile-primary-availability-btn"
                 class="tw-min-w-0 tw-whitespace-nowrap tw-bg-white tw-px-2 tw-text-[13px] tw-text-green tw-transition-opacity"
-                :class="{
-                  'timeful-availability-button-attention':
-                    availabilityBtnAttentionActive,
-                }"
+                :class="[
+                  mobilePrimaryAvailabilityButtonClass,
+                  {
+                    'timeful-availability-button-attention':
+                      availabilityBtnAttentionActive,
+                  },
+                ]"
                 :disabled="loading && !showGuestActionButton && !userHasResponded"
                 :style="{ opacity: availabilityBtnOpacity }"
                 @click="handlePrimaryAvailabilityAction"
@@ -657,11 +646,18 @@
             </div>
           </template>
           <template v-else-if="isEditing">
-            <v-btn variant="text" class="tw-text-white" @click="cancelEditing">
+            <v-btn
+              variant="outlined"
+              class="mobile-editing-cancel-button tw-border-white tw-text-white"
+              @click="cancelEditing"
+            >
               Cancel
             </v-btn>
             <v-spacer />
-            <v-btn class="tw-bg-white tw-text-green" @click="saveChanges">
+            <v-btn
+              class="mobile-editing-save-button tw-bg-white tw-text-green"
+              @click="saveChanges"
+            >
               Save
             </v-btn>
           </template>
@@ -1007,6 +1003,13 @@ const primaryAvailabilityButtonText = computed(() => {
   if (showGuestActionButton.value) return guestActionButtonText.value
   return actionButtonText.value
 })
+const desktopPrimaryAvailabilityButtonClass = computed(() => ({
+  "desktop-primary-availability-button": true,
+  "desktop-primary-availability-button--add":
+    primaryAvailabilityButtonText.value === "Add availability",
+  "desktop-primary-availability-button--edit":
+    primaryAvailabilityButtonText.value === "Edit availability",
+}))
 const guestRespondentNames = computed(() =>
   Object.values(loader.event.value?.responses ?? {}).flatMap((response) => {
     if (
@@ -1023,6 +1026,10 @@ const mobilePrimaryAvailabilityButtonText = computed(() => {
   if (showGuestActionButton.value) return guestActionButtonText.value
   return actionButtonText.value
 })
+const mobilePrimaryAvailabilityButtonClass = computed(() => ({
+  "mobile-primary-availability-button--edit":
+    mobilePrimaryAvailabilityButtonText.value === "Edit availability",
+}))
 const isIOS = computed(() => isIOSFn())
 const desktopShowBestTimes = computed(
   () => scheduleOverlap.value?.showBestTimes ?? false
@@ -2023,6 +2030,40 @@ watch(
   padding-inline: 0.625rem;
   font-size: 0.875rem;
   color: rgb(0 153 76 / 1);
+}
+
+.desktop-primary-availability-button {
+  border: 1px solid theme("colors.light-green") !important;
+}
+
+.desktop-primary-availability-button--add {
+  -webkit-box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.14) !important;
+  -moz-box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.14) !important;
+  box-shadow: 0px 2px 6px 0px rgba(0, 0, 0, 0.14) !important;
+}
+
+.desktop-primary-availability-button--edit {
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  box-shadow: none !important;
+}
+
+.mobile-primary-availability-button--edit {
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  box-shadow: none !important;
+}
+
+.mobile-editing-save-button {
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  box-shadow: none !important;
+}
+
+.desktop-editing-save-button {
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  box-shadow: none !important;
 }
 </style>
 
