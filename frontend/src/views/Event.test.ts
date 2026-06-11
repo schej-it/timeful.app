@@ -1661,6 +1661,9 @@ describe("Event guest edit action", () => {
     const buttonRow = wrapper.get("#event-header-button-row")
     const copyLinkButton = wrapper.get("#copy-link-btn")
 
+    expect(metaRow.classes()).toEqual(
+      expect.arrayContaining(["tw-mt-1", "sm:tw-mt-2"]),
+    )
     expect(metaRow.text()).toContain("Copy link")
     expect(buttonRow.text()).toContain("Copy link")
     expect(copyLinkButton.attributes("data-variant")).toBe("outlined")

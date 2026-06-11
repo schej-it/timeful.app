@@ -167,7 +167,7 @@
                 </div>
                 <div
                   id="event-header-meta-row"
-                  class="tw-flex tw-flex-col tw-gap-2 md:tw-flex-row md:tw-flex-wrap md:tw-items-center md:tw-gap-x-3 md:tw-gap-y-2"
+                  class="tw-mt-1 sm:tw-mt-2 tw-flex tw-flex-col tw-gap-2 md:tw-flex-row md:tw-flex-wrap md:tw-items-center md:tw-gap-x-3 md:tw-gap-y-2"
                 >
                   <div
                     v-if="showHeaderDateSummary"
