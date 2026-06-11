@@ -79,6 +79,35 @@ describe("dateFormatting", () => {
     ).toBe("1/4 - 1/5")
   })
 
+  it("can format timed specific-date summaries in the viewer timezone", () => {
+    expect(
+      getDateRangeStringForEvent(
+        {
+          type: eventTypes.SPECIFIC_DATES,
+          dates: [Temporal.PlainDate.from("2026-06-11"), Temporal.PlainDate.from("2026-06-12")],
+          enabledSlots: [
+            zdt("2026-06-11T00:00:00Z"),
+            zdt("2026-06-11T07:45:00Z"),
+            zdt("2026-06-12T00:00:00Z"),
+            zdt("2026-06-12T07:45:00Z"),
+          ],
+          eventTimezone: "Asia/Seoul",
+          slotGeneration: {
+            startTimeLocal: Temporal.PlainTime.from("09:00:00"),
+            endTimeLocal: Temporal.PlainTime.from("17:00:00"),
+            timeIncrement: Temporal.Duration.from({ minutes: 15 }),
+          },
+        },
+        {
+          value: "America/Los_Angeles",
+          offset: Temporal.Duration.from({ hours: 7 }),
+          label: "America/Los_Angeles",
+          gmtString: "GMT-7",
+        }
+      )
+    ).toBe("6/10 - 6/11")
+  })
+
   it("formats time numbers for display and transport", () => {
     expect(timeNumToTimeText(0)).toBe("12 am")
     expect(timeNumToTimeText(13.5)).toBe("1:30 pm")

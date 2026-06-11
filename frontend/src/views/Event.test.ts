@@ -1733,6 +1733,77 @@ describe("Event guest edit action", () => {
     expect(wrapper.get("#event-header-meta-row").text()).toContain("5/28 - 5/29")
   })
 
+  it("renders timed specific-date metadata in the viewer timezone when provided", async () => {
+    loaderEventState.value = {
+      ...createDefaultEventState(),
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [Temporal.PlainDate.from("2026-05-28")],
+      hasSpecificTimes: true,
+      enabledSlots: [
+        Temporal.Instant.from("2026-05-28T00:00:00Z").toZonedDateTimeISO("UTC"),
+        Temporal.Instant.from("2026-05-29T00:00:00Z").toZonedDateTimeISO("UTC"),
+      ],
+      activeSlots: [
+        Temporal.Instant.from("2026-05-29T00:00:00Z").toZonedDateTimeISO("UTC"),
+      ],
+      eventTimezone: "UTC",
+      slotGeneration: {
+        startTimeLocal: Temporal.PlainTime.from("00:00:00"),
+        endTimeLocal: Temporal.PlainTime.from("01:00:00"),
+        timeIncrement: Temporal.Duration.from({ minutes: 60 }),
+      },
+      timedRecurrence: {
+        kind: "specific_dates",
+        selectedDays: [Temporal.PlainDate.from("2026-05-28")],
+        selectedDaysOfWeek: [],
+        startOnMonday: true,
+      },
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+        initialTimezone: {
+          value: "America/Los_Angeles",
+          offset: Temporal.Duration.from({ hours: 7 }),
+          label: "America/Los_Angeles",
+          gmtString: "GMT-7",
+        },
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": true,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.get("#event-header-meta-row").text()).toContain("5/27 - 5/28")
+  })
+
   it("invokes copy link from the metadata action row", async () => {
     const wrapper = shallowMount(EventView, {
       props: {

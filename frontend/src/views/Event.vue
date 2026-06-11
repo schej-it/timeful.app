@@ -910,6 +910,9 @@ const isOwner = computed(() =>
 const canEditMetadata = computed(() =>
   canEditEventMetadata(loader.event.value, authUser.value)
 )
+const eventHeaderTimezone = computed(
+  () => scheduleOverlap.value?.curTimezone ?? props.initialTimezone
+)
 const userHasResponded = computed(() => {
   const ev = loader.event.value
   return Boolean(
@@ -917,7 +920,9 @@ const userHasResponded = computed(() => {
   )
 })
 const dateString = computed(() =>
-  loader.event.value ? getDateRangeStringForEvent(loader.event.value) : ""
+  loader.event.value
+    ? getDateRangeStringForEvent(loader.event.value, eventHeaderTimezone.value)
+    : ""
 )
 const showAds = computed(
   () =>

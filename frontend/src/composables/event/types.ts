@@ -10,6 +10,7 @@ export interface ScheduleOverlapInstance {
   scheduling: boolean
   allowScheduleEvent: boolean
   unsavedChanges: boolean
+  curTimezone: Timezone
   selectedGuestRespondent: string | undefined
   ownedGuestResponses: StoredGuestOwnership[]
   pageHasChanged: boolean

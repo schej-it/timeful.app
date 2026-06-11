@@ -1,5 +1,6 @@
 import { computed, ref } from "vue"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { durations } from "@/constants"
 import type { Event } from "@/types"
 import type { ScheduleOverlapInstance } from "./types"
 import { useEventEditing } from "./useEventEditing"
@@ -31,6 +32,12 @@ describe("useEventEditing", () => {
       scheduling: false,
       allowScheduleEvent: false,
       unsavedChanges: false,
+      curTimezone: {
+        value: "UTC",
+        offset: durations.ZERO,
+        label: "UTC",
+        gmtString: "GMT+0",
+      },
       showBestTimes: false,
       hideIfNeeded: false,
       showAllHours: false,

@@ -1718,6 +1718,7 @@ defineExpose({
   scheduling: _scheduling,
   allowScheduleEvent,
   unsavedChanges,
+  curTimezone,
   selectedGuestRespondent: _selectedGuestRespondent,
   ownedGuestResponses,
   pageHasChanged,

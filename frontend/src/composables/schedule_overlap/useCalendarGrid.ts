@@ -19,7 +19,11 @@ import {
   ZdtSet,
   zdtSetHas,
 } from "@/utils"
-import { getTimedEventTimezone, getTimedSlotForMembershipDay } from "@/utils/timedEventSlots"
+import {
+  getTimedEventTimezone,
+  getTimedSlotForMembershipDay,
+  hasCanonicalTimedSlots,
+} from "@/utils/timedEventSlots"
 import {
   eventTypes,
   timeTypes,
@@ -498,6 +502,19 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       return days
     }
 
+    if (!isSpecificTimes.value && hasCanonicalTimedSlots(event.value)) {
+      for (const day of getSpecificTimesDayStarts(eventDates, curTimezone.value)) {
+        const { dayString, dateString } = getDateString(day.dateObject)
+        days.push({
+          dayText: dayString,
+          dateString,
+          dateObject: day.dateObject,
+          isConsecutive: day.isConsecutive,
+        })
+      }
+      return days
+    }
+
     for (const date of eventDates) {
       const zdt =
         isSpecificTimes.value && specificTimesDisplaySeedTime.value
@@ -511,34 +528,6 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       datesSoFar.add(date)
       const { dayString, dateString } = getDateString(zdt)
       days.push({ dayText: dayString, dateString, dateObject: zdt })
-    }
-
-    let dayIndex = 0
-    for (const date of eventDates) {
-      const zdt = date
-      // Convert Duration to minutes for subtraction
-      const offsetMinutes = timezoneOffset.value.total("minutes")
-      const localStart = zdt.subtract({ minutes: offsetMinutes })
-      const localEnd = localStart.add(event.value.duration ?? durations.ZERO)
-      const localEndIsMidnight = localEnd.hour === 0 && localEnd.minute === 0
-      if (localStart.day !== localEnd.day && !localEndIsMidnight) {
-        // Convert to ZonedDateTime to add days, then back to Instant
-        const nextDate = date
-          .add({ days: 1 })
-          
-        if (!zdtSetHas(datesSoFar, nextDate)) {
-          datesSoFar.add(nextDate)
-          const nextZDT = nextDate
-          const { dayString, dateString } = getDateString(nextZDT)
-          days.splice(dayIndex + 1, 0, {
-            dayText: dayString,
-            dateString,
-            dateObject: nextZDT,
-          })
-          dayIndex++
-        }
-      }
-      dayIndex++
     }
 
     let prevDate: Temporal.ZonedDateTime | null = null

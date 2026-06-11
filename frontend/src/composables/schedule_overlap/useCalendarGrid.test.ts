@@ -334,6 +334,82 @@ describe("useCalendarGrid", () => {
     }
   })
 
+  it("keeps ordinary timed columns aligned to localized event seeds without inventing a trailing day", () => {
+    const event = ref<ScheduleOverlapEvent>({
+      _id: "evt-ee4cb",
+      shortId: "ee4Cb",
+      name: "Seed-owned timed columns",
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [Temporal.PlainDate.from("2026-06-11"), Temporal.PlainDate.from("2026-06-12")],
+      timeSeed: zdt("2026-06-11T00:00:00Z"),
+      startTime: Temporal.PlainTime.from("09:00"),
+      duration: Temporal.Duration.from({ hours: 8 }),
+      hasSpecificTimes: false,
+      enabledSlots: [
+        ...Array.from({ length: 32 }, (_, index) =>
+          zdt(`2026-06-11T${String(Math.floor(index / 4)).padStart(2, "0")}:${String((index % 4) * 15).padStart(2, "0")}:00Z`)
+        ),
+        ...Array.from({ length: 32 }, (_, index) =>
+          zdt(`2026-06-12T${String(Math.floor(index / 4)).padStart(2, "0")}:${String((index % 4) * 15).padStart(2, "0")}:00Z`)
+        ),
+      ],
+      activeSlots: [],
+      eventTimezone: "Asia/Seoul",
+      slotGeneration: {
+        startTimeLocal: Temporal.PlainTime.from("09:00:00"),
+        endTimeLocal: Temporal.PlainTime.from("17:00:00"),
+        timeIncrement: Temporal.Duration.from({ minutes: 15 }),
+      },
+      notificationsEnabled: false,
+      blindAvailabilityEnabled: false,
+      daysOnly: false,
+      sendEmailAfterXResponses: -1,
+      collectEmails: false,
+      startOnMonday: true,
+      timeIncrement: durations.FIFTEEN_MINUTES,
+      creatorPosthogId: "creator-ee4cb",
+      remindees: [],
+    })
+
+    const losAngelesGrid = useCalendarGrid({
+      event,
+      weekOffset: ref(0),
+      curTimezone: ref({
+        value: "America/Los_Angeles",
+        offset: Temporal.Duration.from({ hours: 7 }),
+        label: "America/Los_Angeles",
+        gmtString: "GMT-7",
+      }),
+      state: ref(states.HEATMAP),
+      isPhone: ref(false),
+    })
+
+    expect(
+      losAngelesGrid.days.value.map((day) =>
+        day.dateObject.withTimeZone("America/Los_Angeles").toPlainDate().toString()
+      )
+    ).toEqual(["2026-06-10", "2026-06-11"])
+
+    const tokyoGrid = useCalendarGrid({
+      event,
+      weekOffset: ref(0),
+      curTimezone: ref({
+        value: "Asia/Tokyo",
+        offset: Temporal.Duration.from({ hours: -9 }),
+        label: "Asia/Tokyo",
+        gmtString: "GMT+9",
+      }),
+      state: ref(states.HEATMAP),
+      isPhone: ref(false),
+    })
+
+    expect(
+      tokyoGrid.days.value.map((day) =>
+        day.dateObject.withTimeZone("Asia/Tokyo").toPlainDate().toString()
+      )
+    ).toEqual(["2026-06-11", "2026-06-12"])
+  })
+
   it("uses saved specific-time instants instead of stale duration metadata for the visible window", () => {
     const event = ref<ScheduleOverlapEvent>({
       _id: "evt-5c",

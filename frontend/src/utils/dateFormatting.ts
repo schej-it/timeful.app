@@ -1,8 +1,10 @@
 import { eventTypes } from "@/constants"
 import type { Event } from "@/types"
 import { Temporal } from "temporal-polyfill"
+import type { Timezone } from "@/composables/schedule_overlap/types"
 import type { PlainDate, ZonedDateTime } from "./temporalPrimitives"
 import { getEventDateSeeds } from "./eventDateRules"
+import { getSpecificTimesDayStarts } from "./scheduleDateRules"
 import {
   getTimedEventTimezone,
   getTimedSlotGeneration,
@@ -79,7 +81,8 @@ export const getDateRangeStringForEvent = (
     | "slotGeneration"
     | "timeIncrement"
     | "timedRecurrence"
-  >
+  >,
+  viewerTimezone?: Timezone
 ): string => {
   if (!event.dates || event.dates.length === 0) return ""
 
@@ -102,6 +105,19 @@ export const getDateRangeStringForEvent = (
   }
 
   if (event.type === eventTypes.SPECIFIC_DATES) {
+    if (viewerTimezone) {
+      const viewerDays = getSpecificTimesDayStarts(
+        getEventDateSeeds(event),
+        viewerTimezone
+      )
+      if (viewerDays.length > 0) {
+        return (
+          `${getPlainDateString(viewerDays[0].dateObject.toPlainDate())} - ` +
+          getPlainDateString(viewerDays[viewerDays.length - 1].dateObject.toPlainDate())
+        )
+      }
+    }
+
     const enabledDays = projectSlotsToLocalDays(
       event.enabledSlots ?? event.activeSlots,
       getTimedEventTimezone(event),
