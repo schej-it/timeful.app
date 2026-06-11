@@ -2,9 +2,11 @@ import { expect, test } from "@playwright/test"
 import {
   SLOT_UTC_MAY_28,
   SLOT_UTC_MAY_29,
+  buildUtcSpecificTimesRangeInstants,
   buildSpecificDateSeed,
   clickDateCell,
   collectDatePickerState,
+  countGridCellsByClass,
   dismissConsent,
   fetchEventByShortId,
   openEditDialog,
@@ -96,6 +98,93 @@ test("disabling specific-times restores active slots to the full enabled domain"
   expect(sortIsoInstants(savedEvent.activeSlots)).toEqual(
     sortIsoInstants([...SLOT_UTC_MAY_28, ...SLOT_UTC_MAY_29])
   )
+})
+
+test("broad timed edits rewrite contradictory canonical slots before reopen-specific-times seeding", async ({
+  page,
+  request,
+}) => {
+  const canonicalWindow = [
+    ...buildUtcSpecificTimesRangeInstants({
+      day: "2026-05-28",
+      startHour: 9,
+      startMinute: 0,
+      endHour: 16,
+      endMinute: 0,
+      incrementMinutes: 60,
+    }),
+    ...buildUtcSpecificTimesRangeInstants({
+      day: "2026-05-29",
+      startHour: 9,
+      startMinute: 0,
+      endHour: 16,
+      endMinute: 0,
+      incrementMinutes: 60,
+    }),
+  ]
+  const staleSlots = [
+    "2026-05-28T06:00:00Z",
+    "2026-05-28T07:00:00Z",
+    "2026-05-29T05:00:00Z",
+  ]
+
+  const seeded = await seedCanonicalTimedEvent(
+    request,
+    buildSpecificDateSeed({
+      name: "Broad timed canonical rewrite regression",
+      selectedDays: ["2026-05-28", "2026-05-29"],
+      enabledSlots: [...staleSlots, ...canonicalWindow],
+      activeSlots: [...staleSlots, ...canonicalWindow],
+      eventTimezone: "UTC",
+      startTimeLocal: "09:00:00",
+      endTimeLocal: "17:00:00",
+      timeIncrementMinutes: 60,
+      hasSpecificTimes: false,
+    })
+  )
+
+  await openEventPage(page, seeded.shortId)
+  const editorCard = await openEditDialog(page)
+  await revealAdvancedOptions(editorCard)
+  await setSpecificTimesEnabled(editorCard, false)
+
+  const putResponsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === "PUT" &&
+      response.url().includes("/api/events/"),
+    { timeout: 30000 }
+  )
+  await saveEditorAndWaitForPut(page, { action: "save" })
+  const putPayload = putResponsePromise.then((response) =>
+    response.request().postDataJSON() as {
+      enabledSlots?: string[]
+      activeSlots?: string[]
+    }
+  )
+
+  expect(sortIsoInstants((await putPayload).enabledSlots)).toEqual(
+    sortIsoInstants(canonicalWindow)
+  )
+  expect(sortIsoInstants((await putPayload).activeSlots)).toEqual(
+    sortIsoInstants(canonicalWindow)
+  )
+
+  const savedEvent = await fetchEventByShortId(request, seeded.shortId)
+  expect(sortIsoInstants(savedEvent.enabledSlots)).toEqual(
+    sortIsoInstants(canonicalWindow)
+  )
+  expect(sortIsoInstants(savedEvent.activeSlots)).toEqual(
+    sortIsoInstants(canonicalWindow)
+  )
+
+  await page.reload({ waitUntil: "domcontentloaded" })
+  await dismissConsent(page)
+  const reopenedEditor = await openEditDialog(page)
+  await revealAdvancedOptions(reopenedEditor)
+  await setSpecificTimesEnabled(reopenedEditor, true)
+  await proceedToSpecificTimesGrid(page)
+
+  expect(await countGridCellsByClass(page, "tw-bg-white")).toBe(canonicalWindow.length)
 })
 
 test("timed date edits preserve active subsets on add and remove both enabled and active slots on delete", async ({

@@ -508,6 +508,78 @@ describe("useCalendarGrid", () => {
     ])
   })
 
+  it("uses canonical slot generation instead of stale duration metadata for non-specific timed windows", () => {
+    const event = ref<ScheduleOverlapEvent>({
+      _id: "evt-5cc",
+      shortId: "grid-canonical-window-from-slot-generation",
+      name: "Canonical timed window ignores stale duration",
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [Temporal.PlainDate.from("2026-06-11"), Temporal.PlainDate.from("2026-06-12")],
+      timeSeed: zdt("2026-06-11T09:00:00Z"),
+      startTime: Temporal.PlainTime.from("09:00"),
+      duration: Temporal.Duration.from({ hours: 3 }),
+      hasSpecificTimes: false,
+      times: [],
+      notificationsEnabled: false,
+      blindAvailabilityEnabled: false,
+      daysOnly: false,
+      sendEmailAfterXResponses: -1,
+      collectEmails: false,
+      startOnMonday: true,
+      timeIncrement: durations.FIFTEEN_MINUTES,
+      creatorPosthogId: "creator-5cc",
+      remindees: [],
+      eventTimezone: UTC,
+      slotGeneration: {
+        startTimeLocal: Temporal.PlainTime.from("09:00"),
+        endTimeLocal: Temporal.PlainTime.from("17:00"),
+        timeIncrement: durations.FIFTEEN_MINUTES,
+      },
+      enabledSlots: [
+        zdt("2026-06-11T09:00:00Z"),
+        zdt("2026-06-11T09:15:00Z"),
+        zdt("2026-06-11T16:30:00Z"),
+        zdt("2026-06-11T16:45:00Z"),
+        zdt("2026-06-12T09:00:00Z"),
+        zdt("2026-06-12T09:15:00Z"),
+        zdt("2026-06-12T16:30:00Z"),
+        zdt("2026-06-12T16:45:00Z"),
+      ],
+      activeSlots: [
+        zdt("2026-06-11T09:00:00Z"),
+        zdt("2026-06-11T09:15:00Z"),
+        zdt("2026-06-11T16:30:00Z"),
+        zdt("2026-06-11T16:45:00Z"),
+        zdt("2026-06-12T09:00:00Z"),
+        zdt("2026-06-12T09:15:00Z"),
+        zdt("2026-06-12T16:30:00Z"),
+        zdt("2026-06-12T16:45:00Z"),
+      ],
+    })
+
+    const grid = useCalendarGrid({
+      event,
+      weekOffset: ref(0),
+      curTimezone: ref({
+        value: UTC,
+        offset: Temporal.Duration.from({ hours: 0 }),
+        label: "UTC",
+        gmtString: "GMT+0",
+      }),
+      state: ref(states.HEATMAP),
+      isPhone: ref(false),
+    })
+
+    expect(grid.splitTimes.value[1]).toEqual([])
+    expect(grid.splitTimes.value[0]).toHaveLength(32)
+    expect(grid.splitTimes.value[0][0]?.text).toBe("9 am")
+    expect(grid.splitTimes.value[0][28]?.text).toBe("4 pm")
+    expect(grid.splitTimes.value[0][31]?.absoluteMinutes).toBe(16 * 60 + 45)
+    expect(grid.getDateFromRowCol(31, 0)?.toInstant().toString()).toBe(
+      "2026-06-11T16:45:00Z"
+    )
+  })
+
   it("uses saved specific-time instants for edit-mode day columns", () => {
     const event = ref<ScheduleOverlapEvent>({
       _id: "evt-5d",

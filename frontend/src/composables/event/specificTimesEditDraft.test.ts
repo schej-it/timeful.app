@@ -390,6 +390,65 @@ describe("specificTimesEditDraft", () => {
     })
   })
 
+  it("rewrites non-specific timed edits to the schedule canonical slots instead of preserving stale out-of-window slots", () => {
+    const event = buildEvent()
+    event.hasSpecificTimes = false
+    event.duration = Temporal.Duration.from({ hours: 8 })
+    event.slotGeneration = {
+      startTimeLocal: Temporal.PlainTime.from("09:00"),
+      endTimeLocal: Temporal.PlainTime.from("17:00"),
+      timeIncrement: durations.FIFTEEN_MINUTES,
+    }
+    event.enabledSlots = [
+      Temporal.Instant.from("2026-05-30T08:00:00Z").toZonedDateTimeISO(UTC),
+      Temporal.Instant.from("2026-05-30T08:15:00Z").toZonedDateTimeISO(UTC),
+      Temporal.Instant.from("2026-05-30T09:00:00Z").toZonedDateTimeISO(UTC),
+      Temporal.Instant.from("2026-05-31T08:00:00Z").toZonedDateTimeISO(UTC),
+      Temporal.Instant.from("2026-05-31T16:45:00Z").toZonedDateTimeISO(UTC),
+    ]
+    event.activeSlots = [...event.enabledSlots]
+    event.times = [
+      Temporal.Instant.from("2026-05-30T09:00:00Z").toZonedDateTimeISO(UTC),
+      Temporal.Instant.from("2026-05-31T09:00:00Z").toZonedDateTimeISO(UTC),
+    ]
+
+    const schedule = buildEventEditorSchedule({
+      daysOnly: false,
+      daysOnlyType: "specific_dates",
+      selectedDateOption: "Specific dates",
+      selectedDays: [
+        Temporal.PlainDate.from("2026-05-30"),
+        Temporal.PlainDate.from("2026-05-31"),
+      ],
+      selectedDaysOfWeek: [],
+      startOnMonday: true,
+      startTime: Temporal.PlainTime.from("09:00"),
+      endTime: Temporal.PlainTime.from("17:00"),
+      timezoneValue: UTC,
+      timeIncrementMinutes: 15,
+    })
+
+    const draft = buildSpecificTimesEditDraft({
+      event,
+      schedule,
+      timeIncrementMinutes: 15,
+      specificTimesEnabled: false,
+    })
+
+    expect(draft?.enabledSlots?.map((slot) => slot.toInstant().toString())).toEqual(
+      schedule.enabledSlots.map((slot) => slot.toInstant().toString())
+    )
+    expect(draft?.activeSlots?.map((slot) => slot.toInstant().toString())).toEqual(
+      schedule.enabledSlots.map((slot) => slot.toInstant().toString())
+    )
+    expect(draft?.enabledSlots?.some((slot) => slot.toInstant().toString().includes("T08:"))).toBe(
+      false
+    )
+    expect(draft?.activeSlots?.some((slot) => slot.toInstant().toString().includes("T08:"))).toBe(
+      false
+    )
+  })
+
   it("applies a reset draft by clearing stale times and updating local event seeds", () => {
     const event = buildEvent()
     const nextEvent = applySpecificTimesEditDraft({

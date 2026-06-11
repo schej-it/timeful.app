@@ -23,7 +23,6 @@ import {
   zdtSetHas,
 } from "@/utils"
 import { eventTypes, durations, UTC } from "@/constants"
-import { hasCanonicalTimedSlots } from "@/utils/timedEventSlots"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import { Temporal } from "temporal-polyfill"
@@ -325,19 +324,17 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       times: TimeItem[],
       pr: ParsedResponses,
       daysOnly: boolean,
-      hideIfNeededFlag: boolean,
-      useAbsoluteMinutes: boolean
+      hideIfNeededFlag: boolean
     ) => {
       const dates: Temporal.ZonedDateTime[] = []
       if (daysOnly) {
         for (const day of days) dates.push(day.dateObject)
       } else {
-        for (const day of days) {
-          for (const time of times) {
-            if (useAbsoluteMinutes && typeof time.absoluteMinutes === "number") {
-              dates.push(day.dateObject.add({ minutes: time.absoluteMinutes }))
-            } else {
-              dates.push(day.dateObject.add(time.hoursOffset))
+        for (let col = 0; col < days.length; col++) {
+          for (let row = 0; row < times.length; row++) {
+            const date = opts.getDateFromRowCol(row, col)
+            if (date) {
+              dates.push(date)
             }
           }
         }
@@ -360,17 +357,12 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
       return formatted
     }
 
-    const useAbsoluteMinutes =
-      !opts.event.value.hasSpecificTimes &&
-      hasCanonicalTimedSlots(opts.event.value)
-
     const formatted = job(
       opts.allDays.value,
       opts.times.value,
       parsedResponses.value,
       Boolean(opts.event.value.daysOnly),
-      hideIfNeeded.value,
-      useAbsoluteMinutes
+      hideIfNeeded.value
     )
 
     if (dateCompare(lastFetched, opts.loadingResponses.value.lastFetched) >= 0) {

@@ -12,6 +12,7 @@ import {
   zdt,
 } from "@/test/regressionHarness"
 import { durations, eventTypes, hoursPlainTime, UTC } from "@/constants"
+import { useAvailabilityData } from "@/composables/schedule_overlap/useAvailabilityData"
 import { useCalendarEvents } from "@/composables/schedule_overlap/useCalendarEvents"
 import { useCalendarGrid } from "@/composables/schedule_overlap/useCalendarGrid"
 import { useDragPaint } from "@/composables/schedule_overlap/useDragPaint"
@@ -575,5 +576,107 @@ describe("schedule-overlap Temporal regressions", () => {
       col: 0,
       numRows: 4,
     })
+  })
+
+  it("maps fetched timed responses onto rendered slots that use absolute local minutes", () => {
+    const displayDay = Temporal.ZonedDateTime.from(
+      "2026-06-11T00:00:00+03:00[Europe/Moscow]"
+    )
+    const visibleSlot = zdt("2026-06-11T07:30:00Z")
+
+    const availabilityData = useAvailabilityData({
+      event: ref({
+        _id: "evt-1",
+        type: eventTypes.SPECIFIC_DATES,
+        dates: [Temporal.PlainDate.from("2026-06-11")],
+        timeSeed: visibleSlot,
+        duration: durations.ONE_HOUR,
+        hasSpecificTimes: true,
+        timeIncrement: durations.FIFTEEN_MINUTES,
+        times: [visibleSlot],
+        responses: {
+          "guest-1": {
+            user: { _id: "guest-1" },
+          },
+        },
+      } as never),
+      weekOffset: ref(0),
+      state: ref(states.HEATMAP),
+      fetchedResponses: ref({
+        "guest-1": {
+          user: { _id: "guest-1" },
+          availability: [visibleSlot],
+          ifNeeded: [],
+        },
+      }),
+      loadingResponses: ref({
+        loading: false,
+        lastFetched: displayDay,
+      }),
+      curGuestId: ref(""),
+      addingAvailabilityAsGuest: ref(false),
+      showSnackbar: ref(false),
+      calendarPermissionGranted: ref(false),
+      loadingCalendarEvents: ref(false),
+      allDays: computed(() => [
+        {
+          dayText: "thu",
+          dateString: "jun 11",
+          dateObject: displayDay,
+          isConsecutive: true,
+        },
+      ]),
+      days: computed(() => [
+        {
+          dayText: "thu",
+          dateString: "jun 11",
+          dateObject: displayDay,
+          isConsecutive: true,
+        },
+      ]),
+      times: computed(() => [
+        {
+          hoursOffset: durations.ZERO,
+          absoluteMinutes: 10 * 60 + 30,
+          displayedMinutes: 10 * 60 + 30,
+          text: "10:30",
+        },
+      ]),
+      splitTimes: computed(() => [[{ hoursOffset: durations.ZERO, text: "10:30" }], []]),
+      timeslotDuration: computed(() => durations.FIFTEEN_MINUTES),
+      page: ref(0),
+      maxDaysPerPage: computed(() => 7),
+      isGroup: computed(() => false),
+      isOwner: computed(() => false),
+      guestNameKey: computed(() => "guestName"),
+      guestName: computed(() => undefined),
+      guestOwnership: computed(() => undefined),
+      guestResponseLookupKey: computed(() => undefined),
+      ownedGuestResponses: computed(() => []),
+      setGuestName: vi.fn(),
+      setGuestOwnership: vi.fn(),
+      selectGuestOwnership: vi.fn(),
+      removeGuestOwnership: vi.fn(),
+      getOwnedGuestOwnership: vi.fn(),
+      getDateFromRowCol: (row: number, col: number) =>
+        row === 0 && col === 0
+          ? Temporal.ZonedDateTime.from("2026-06-11T10:30:00+03:00[Europe/Moscow]")
+          : null,
+      calendarEventsByDay: computed(() => []),
+      groupCalendarEventsByDay: computed(() => ({})),
+      bufferTime: ref({ enabled: false, time: 0 }),
+      workingHours: ref({ enabled: false, startTime: 9, endTime: 17 }),
+      getAvailabilityFromCalendarEvents: () => new ZdtSet(),
+      refreshEvent: vi.fn(),
+    })
+
+    availabilityData.getResponsesFormatted()
+
+    const bucket = availabilityData.responsesFormatted.value.get(
+      Temporal.ZonedDateTime.from("2026-06-11T10:30:00+03:00[Europe/Moscow]")
+    )
+
+    expect(bucket ? Array.from(bucket) : []).toEqual(["guest-1"])
+    expect(availabilityData.max.value).toBe(1)
   })
 })

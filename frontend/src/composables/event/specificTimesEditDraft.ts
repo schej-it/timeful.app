@@ -143,7 +143,7 @@ export const buildSpecificTimesEditDraft = ({
     const nonSpecificDateKeys = new Set(
       schedule.normalizedSelectedDays.map((d) => d.toString())
     )
-    const nonSpecificFilteredSlots = enabledSlotsSource.filter((slot) => {
+    const nonSpecificFilteredSlots = schedule.enabledSlots.filter((slot) => {
       const localDay = getLocalSlotDomainDay({
         slot,
         timeZone: schedule.eventTimezone,

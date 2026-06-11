@@ -106,62 +106,18 @@ export const getBaseTimeslotClassStyle = ({
   const timeslotRespondents =
     zdtMapGet(responsesFormatted, date) ?? new Set<string>()
 
-  if (
-    (!overlayAvailability && state === states.EDIT_AVAILABILITY) ||
-    state === states.SET_SPECIFIC_TIMES
-  ) {
-    s.backgroundColor = UNAVAILABLE_BG
-    const inRange = inDragRange(row, col)
-    if (inRange) {
-      if (dragType === DRAG_TYPES.ADD) {
-        if (state === states.SET_SPECIFIC_TIMES) {
-          c += "tw-bg-white "
-        } else if (availabilityType === availabilityTypes.AVAILABLE) {
-          s.backgroundColor = "#00994C77"
-        } else {
-          c += "tw-bg-yellow "
-        }
-      } else if (state === states.SET_SPECIFIC_TIMES) {
-        c += "tw-bg-gray "
-      }
-    } else if (state === states.SET_SPECIFIC_TIMES) {
-      c += zdtSetHas(tempTimes, date) ? "tw-bg-white " : "tw-bg-gray "
-    } else if (zdtSetHas(availability, date)) {
-      s.backgroundColor = "#00994C77"
-    } else if (zdtSetHas(ifNeeded, date)) {
-      c += "tw-bg-yellow "
-    }
-  }
-
-  if (state === states.SINGLE_AVAILABILITY) {
-    if (timeslotRespondents.has(curRespondent)) {
-      if (
-        parsedResponses[curRespondent].ifNeeded &&
-        zdtSetHas(parsedResponses[curRespondent].ifNeeded, date)
-      ) {
-        c += "tw-bg-yellow "
-      } else {
-        s.backgroundColor = "#00994C77"
-      }
-    } else {
-      s.backgroundColor = UNAVAILABLE_BG
-    }
-    return { class: c, style: s }
-  }
-
-  if (
-    overlayAvailability ||
-    state === states.BEST_TIMES ||
-    state === states.HEATMAP ||
-    state === states.SCHEDULE_EVENT ||
-    state === states.SUBSET_AVAILABILITY
-  ) {
+  const applyAggregateRespondentFill = ({
+    allowUnavailableFallback,
+  }: {
+    allowUnavailableFallback: boolean
+  }) => {
     let numRespondents = 0
     let maxVal = 0
     if (
       state === states.BEST_TIMES ||
       state === states.HEATMAP ||
-      state === states.SCHEDULE_EVENT
+      state === states.SCHEDULE_EVENT ||
+      state === states.SET_SPECIFIC_TIMES
     ) {
       numRespondents = timeslotRespondents.size
       maxVal = max
@@ -194,53 +150,122 @@ export const getBaseTimeslotClassStyle = ({
           totalRespondents === 1 || overlayAvailability
             ? "#00994C88"
             : "#00994C"
-      } else {
+      } else if (allowUnavailableFallback) {
         s.backgroundColor = UNAVAILABLE_BG
       }
-    } else if (defaultState === states.HEATMAP) {
-      if (numRespondents > 0) {
-        if (totalRespondents === 1) {
-          const respondentId =
-            state === states.SUBSET_AVAILABILITY
-              ? curRespondents[0]
-              : respondents[0]?._id
-          if (
-            respondentId &&
-            parsedResponses[respondentId].ifNeeded &&
-            zdtSetHas(parsedResponses[respondentId].ifNeeded, date)
-          ) {
-            c += "tw-bg-yellow "
-          } else {
-            s.backgroundColor = "#00994C88"
-          }
+      return
+    }
+
+    if (defaultState !== states.HEATMAP) {
+      return
+    }
+
+    if (numRespondents > 0) {
+      if (totalRespondents === 1) {
+        const respondentId =
+          state === states.SUBSET_AVAILABILITY
+            ? curRespondents[0]
+            : respondents[0]?._id
+        if (
+          respondentId &&
+          parsedResponses[respondentId].ifNeeded &&
+          zdtSetHas(parsedResponses[respondentId].ifNeeded, date)
+        ) {
+          c += "tw-bg-yellow "
         } else {
-          const fracDenominator = overlayAvailability
-            ? maxVal
-            : Math.max(totalRespondents, 1)
-          const frac = numRespondents / fracDenominator
-          let alpha: string
-          if (!overlayAvailability) {
-            alpha = Math.floor(frac * (255 - 30))
-              .toString(16)
-              .toUpperCase()
-              .substring(0, 2)
-              .padStart(2, "0")
-            if (numRespondents === totalRespondents) {
-              alpha = "FF"
-            }
-          } else {
-            alpha = Math.floor(frac * (255 - 85))
-              .toString(16)
-              .toUpperCase()
-              .substring(0, 2)
-              .padStart(2, "0")
-          }
-          s.backgroundColor = "#00994C" + alpha
+          s.backgroundColor = "#00994C88"
         }
       } else {
-        s.backgroundColor = UNAVAILABLE_BG
+        const fracDenominator = overlayAvailability
+          ? maxVal
+          : Math.max(totalRespondents, 1)
+        const frac = numRespondents / fracDenominator
+        let alpha: string
+        if (!overlayAvailability) {
+          alpha = Math.floor(frac * (255 - 30))
+            .toString(16)
+            .toUpperCase()
+            .substring(0, 2)
+            .padStart(2, "0")
+          if (numRespondents === totalRespondents) {
+            alpha = "FF"
+          }
+        } else {
+          alpha = Math.floor(frac * (255 - 85))
+            .toString(16)
+            .toUpperCase()
+            .substring(0, 2)
+            .padStart(2, "0")
+        }
+        s.backgroundColor = "#00994C" + alpha
       }
+    } else if (allowUnavailableFallback) {
+      s.backgroundColor = UNAVAILABLE_BG
     }
+  }
+
+  if (
+    (!overlayAvailability && state === states.EDIT_AVAILABILITY) ||
+    state === states.SET_SPECIFIC_TIMES
+  ) {
+    s.backgroundColor = UNAVAILABLE_BG
+    const inRange = inDragRange(row, col)
+    let selectedSpecificTime = false
+    if (inRange) {
+      if (dragType === DRAG_TYPES.ADD) {
+        if (state === states.SET_SPECIFIC_TIMES) {
+          c += "tw-bg-white "
+          selectedSpecificTime = true
+        } else if (availabilityType === availabilityTypes.AVAILABLE) {
+          s.backgroundColor = "#00994C77"
+        } else {
+          c += "tw-bg-yellow "
+        }
+      } else if (state === states.SET_SPECIFIC_TIMES) {
+        c += "tw-bg-gray "
+      }
+      } else if (state === states.SET_SPECIFIC_TIMES) {
+      if (zdtSetHas(tempTimes, date)) {
+        c += "tw-bg-white "
+        selectedSpecificTime = true
+      } else {
+        c += "tw-bg-gray "
+      }
+    } else if (zdtSetHas(availability, date)) {
+      s.backgroundColor = "#00994C77"
+    } else if (zdtSetHas(ifNeeded, date)) {
+      c += "tw-bg-yellow "
+    }
+
+    if (state === states.SET_SPECIFIC_TIMES && selectedSpecificTime) {
+      applyAggregateRespondentFill({ allowUnavailableFallback: false })
+    }
+  }
+
+  if (state === states.SINGLE_AVAILABILITY) {
+    if (timeslotRespondents.has(curRespondent)) {
+      if (
+        parsedResponses[curRespondent].ifNeeded &&
+        zdtSetHas(parsedResponses[curRespondent].ifNeeded, date)
+      ) {
+        c += "tw-bg-yellow "
+      } else {
+        s.backgroundColor = "#00994C77"
+      }
+    } else {
+      s.backgroundColor = UNAVAILABLE_BG
+    }
+    return { class: c, style: s }
+  }
+
+  if (
+    overlayAvailability ||
+    state === states.BEST_TIMES ||
+    state === states.HEATMAP ||
+    state === states.SCHEDULE_EVENT ||
+    state === states.SUBSET_AVAILABILITY
+  ) {
+    applyAggregateRespondentFill({ allowUnavailableFallback: true })
   }
 
   return { class: c, style: s }

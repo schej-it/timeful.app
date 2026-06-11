@@ -736,6 +736,67 @@ describe("scheduleOverlapRendering", () => {
     expect(classStyle.style.backgroundColor).toBe("var(--timeful-unavailable-bg-time-grid)")
   })
 
+  it("keeps responded specific-times slots tinted while preserving the selected edit state", () => {
+    const slot = zdt("2026-01-01T09:00:00Z")
+    const responsesFormatted = new ZdtMap<Set<string>>()
+    responsesFormatted.set(slot, new Set(["guest-1"]))
+
+    const classStyle = getTimeGridTimeslotClassStyle({
+      date: slot,
+      row: 0,
+      col: 0,
+      isFirstSplit: true,
+      isDisabled: false,
+      animateTimeslotAlways: false,
+      availabilityAnimEnabled: false,
+      timeslotHeight: 15,
+      timeHoursOffset: Temporal.Duration.from({ hours: 9 }),
+      splitStartHoursOffset: Temporal.Duration.from({ hours: 9 }),
+      timezoneOffset: Temporal.Duration.from({ minutes: 0 }),
+      curTimeslot: { row: -1, col: -1 },
+      editing: false,
+      isColConsecutive: () => true,
+      daysLength: 1,
+      firstSplitLength: 1,
+      lastRow: 0,
+      state: states.SET_SPECIFIC_TIMES,
+      overlayAvailability: false,
+      dragType: DRAG_TYPES.ADD,
+      availabilityType: availabilityTypes.AVAILABLE,
+      availability: new ZdtSet(),
+      ifNeeded: new ZdtSet(),
+      tempTimes: new ZdtSet([slot]),
+      responsesFormatted,
+      parsedResponses: {
+        "guest-1": {
+          user: { _id: "guest-1" },
+          availability: new ZdtSet([slot]),
+          ifNeeded: new ZdtSet(),
+          enabledCalendars: undefined,
+          calendarOptions: undefined,
+          guest: true,
+          guestId: "guest-1",
+          guestEditPolicy: "protected",
+          guestOwnershipMode: "token",
+        },
+      },
+      curRespondent: "",
+      curRespondents: [],
+      curRespondentsSet: new Set<string>(),
+      respondents: [{ _id: "guest-1" }],
+      curRespondentsMax: 0,
+      max: 1,
+      defaultState: states.HEATMAP,
+      userHasResponded: false,
+      curGuestId: "",
+      authUserId: undefined,
+      inDragRange: () => false,
+    })
+
+    expect(classStyle.class).toContain("tw-bg-white")
+    expect(classStyle.style.backgroundColor).toBe("#00994C88")
+  })
+
   it("draws an inset solid selection stroke for zero-response timed-grid slots in heatmap view", () => {
     const slot = zdt("2026-01-01T09:00:00Z")
 

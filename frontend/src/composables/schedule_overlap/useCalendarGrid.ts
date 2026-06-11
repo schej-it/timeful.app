@@ -10,6 +10,7 @@ import {
   getScheduleTimezoneOffset,
   getSpecificTimesDayStarts,
   getTimezoneReferenceDateForEvent,
+  getWrappedTimeRangeDuration,
   plainTimeToTimeNum,
   prefersStartOnMonday,
   timeNumToTimeText,
@@ -21,6 +22,7 @@ import {
 } from "@/utils"
 import {
   getTimedEventTimezone,
+  getTimedSlotGeneration,
   getTimedSlotForMembershipDay,
   hasCanonicalTimedSlots,
 } from "@/utils/timedEventSlots"
@@ -201,6 +203,18 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     return savedSpecificTimesWindow.value?.startTime ?? null
   })
 
+  const canonicalTimedDuration = computed<Temporal.Duration | null>(() => {
+    if (isSpecificTimes.value || !hasCanonicalTimedSlots(event.value)) {
+      return null
+    }
+
+    const slotGeneration = getTimedSlotGeneration(event.value)
+    return getWrappedTimeRangeDuration(
+      slotGeneration.startTimeLocal,
+      slotGeneration.endTimeLocal
+    )
+  })
+
   const computeMinMaxHoursFromTimes = (
     timesArr: Temporal.ZonedDateTime[]
   ): { minHours: Temporal.PlainTime; maxHours: Temporal.PlainTime } => {
@@ -229,7 +243,9 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
         ? (event.value.startTime ?? Temporal.PlainTime.from({ hour: 0 }))
         : null
     const durationHours =
-      preferredSpecificTimesWindow?.duration ?? (event.value.duration ?? durations.ZERO)
+      preferredSpecificTimesWindow?.duration ??
+      canonicalTimedDuration.value ??
+      (event.value.duration ?? durations.ZERO)
     const localStartMinutes =
       preferredSpecificTimesWindow?.localStartMinutes ??
       (() => {
@@ -729,7 +745,8 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       return intervalsByDay
     }
 
-    const duration = event.value.duration ?? durations.ZERO
+    const duration =
+      canonicalTimedDuration.value ?? event.value.duration ?? durations.ZERO
     if (compareDuration(duration, durations.ZERO) <= 0) {
       return intervalsByDay
     }
