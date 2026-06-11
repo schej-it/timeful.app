@@ -276,7 +276,7 @@
                             >
                               <template #label>
                                 <div class="tw-text-sm tw-text-black">
-                                  Best {{ scheduleOverlapEvent.daysOnly ? "days" : "times" }}
+                                  Show best {{ scheduleOverlapEvent.daysOnly ? "days" : "times" }}
                                 </div>
                               </template>
                             </v-switch>
