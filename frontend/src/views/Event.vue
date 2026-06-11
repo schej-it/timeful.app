@@ -206,6 +206,10 @@
                     </v-btn>
                   </div>
                 </div>
+                <EventDescription
+                  v-model:event="event"
+                  :can-edit="canEditMetadata"
+                />
               </div>
               <div
                 v-if="isGroup || (!isPhone && (!isSignUp || canEditAvailability))"
@@ -439,11 +443,6 @@
               </div>
             </div>
 
-            <!-- Description -->
-            <EventDescription
-              v-model:event="event"
-              :can-edit="canEditMetadata"
-            />
           </div>
 
           <!-- Calendar -->

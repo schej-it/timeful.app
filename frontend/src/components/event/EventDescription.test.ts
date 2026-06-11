@@ -83,6 +83,11 @@ describe("EventDescription", () => {
       },
     })
 
+    expect(wrapper.classes()).toEqual(
+      expect.arrayContaining(["tw-mt-1", "sm:tw-mt-2"]),
+    )
+    expect(wrapper.classes()).not.toContain("sm:tw-max-w-[calc(100%-236px)]")
+
     await wrapper.get(".event-description-edit-button").trigger("click")
 
     const editor = wrapper.get('[role="textbox"]')

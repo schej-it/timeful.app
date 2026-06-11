@@ -358,7 +358,13 @@ const eventDescriptionCanEditStub = {
   props: {
     canEdit: { type: Boolean, required: true },
   },
-  template: "<div id=\"event-description-stub\" :data-can-edit=\"String(canEdit)\" />",
+  template: `
+    <div
+      id="event-description-stub"
+      class="event-description-stub"
+      :data-can-edit="String(canEdit)"
+    />
+  `,
 }
 
 const invitationDialogStub = {
@@ -1904,7 +1910,7 @@ describe("Event guest edit action", () => {
     expect(copyLinkMock).toHaveBeenCalled()
   })
 
-  it("keeps the metadata action cluster inside the metadata row before the description", async () => {
+  it("renders the description under the metadata row inside the left header column", async () => {
     const wrapper = shallowMount(EventView, {
       props: {
         eventId: "dEeaF",
@@ -1941,6 +1947,7 @@ describe("Event guest edit action", () => {
     await flushDeferredMount()
 
     const rendered = wrapper.html()
+    const leftColumn = wrapper.find("#event-header > .tw-min-w-0.tw-flex-1")
 
     expect(rendered.indexOf("event-header-meta-row")).toBeGreaterThan(-1)
     expect(rendered.indexOf("event-header-button-row")).toBeGreaterThan(
@@ -1949,6 +1956,10 @@ describe("Event guest edit action", () => {
     expect(rendered.indexOf("event-description-stub")).toBeGreaterThan(
       rendered.indexOf("event-header-meta-row")
     )
+    expect(rendered.indexOf("event-description-stub")).toBeLessThan(
+      rendered.indexOf("event-header-actions")
+    )
+    expect(leftColumn.html()).toContain("event-description-stub")
   })
 
   it("keeps copy link explicit on phones instead of switching to a share icon", async () => {
