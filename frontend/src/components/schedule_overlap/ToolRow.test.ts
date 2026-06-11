@@ -87,61 +87,6 @@ const baseToolRow = {
 }
 
 describe("ToolRow", () => {
-  it("uses explicit outlined variants for desktop schedule actions", () => {
-    const scheduleWrapper = shallowMount(ToolRow, {
-      props: {
-        toolRow: baseToolRow,
-      },
-      global: {
-        stubs: {
-          "v-btn": VBtnStub,
-          "v-icon": true,
-          "v-img": true,
-          "v-list": passThroughStub,
-          "v-list-item": passThroughStub,
-          "v-list-item-content": passThroughStub,
-          "v-list-item-title": passThroughStub,
-          "v-menu": passThroughStub,
-          "v-select": true,
-          "v-spacer": true,
-          EventOptions: true,
-          GCalWeekSelector: true,
-          TimezoneSelector: true,
-        },
-      },
-    })
-
-    expect(scheduleWrapper.find("button").attributes("data-variant")).toBe("outlined")
-
-    const cancelWrapper = shallowMount(ToolRow, {
-      props: {
-        toolRow: {
-          ...baseToolRow,
-          state: states.SCHEDULE_EVENT,
-        },
-      },
-      global: {
-        stubs: {
-          "v-btn": VBtnStub,
-          "v-icon": true,
-          "v-img": true,
-          "v-list": passThroughStub,
-          "v-list-item": passThroughStub,
-          "v-list-item-content": passThroughStub,
-          "v-list-item-title": passThroughStub,
-          "v-menu": passThroughStub,
-          "v-select": true,
-          "v-spacer": true,
-          EventOptions: true,
-          GCalWeekSelector: true,
-          TimezoneSelector: true,
-        },
-      },
-    })
-
-    expect(cancelWrapper.find("button").attributes("data-variant")).toBe("outlined")
-  })
-
   it("uses explicit Vuetify 3 select semantics for the time type control", () => {
     expect(toolRowSource).toContain(':model-value="toolRow.timeType"')
     expect(toolRowSource).toContain('item-title="label"')
@@ -153,8 +98,6 @@ describe("ToolRow", () => {
     expect(toolRowSource).toContain("@update:model-value=\"(value) => value && toolRow.actions.updateTimeType(value)\"")
     expect(toolRowSource).toContain('class="tool-row-inline-select__selection-text"')
     expect(toolRowSource).toContain("'tool-row-inline-select__item--active': item.raw.value === toolRow.timeType")
-    expect(toolRowSource).toContain('<v-list density="compact">')
-    expect(toolRowSource).not.toContain("<v-list dense>")
     expect(toolRowSource).toContain(".tool-row-inline-select__item--active {\n  background-color: var(--timeful-selection-bg);\n  color: var(--timeful-selection-fg);\n}")
   })
 

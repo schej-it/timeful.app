@@ -129,67 +129,6 @@
           </div>
         </template>
       </div>
-
-      <div
-        v-if="showScheduleEventButton"
-        style="width: 181.5px"
-        class="tw-hidden sm:tw-flex"
-      >
-        <template v-if="toolRow.state !== toolRow.states.SCHEDULE_EVENT">
-          <v-btn
-            variant="outlined"
-            class="tw-w-full tw-text-blue"
-            @click="(e: MouseEvent) => toolRow.actions.scheduleEvent(e)"
-          >
-            <v-icon small>mdi-calendar-check</v-icon>
-            <span class="tw-ml-2">Schedule event</span>
-          </v-btn>
-        </template>
-        <template v-else>
-          <v-btn
-            variant="outlined"
-            class="tw-mr-1 tw-text-red"
-            @click="(e: MouseEvent) => toolRow.actions.cancelScheduleEvent(e)"
-          >
-            Cancel
-          </v-btn>
-          <v-menu offset-y class="tw-z-20">
-            <template #activator="{ props: activatorProps }">
-              <v-btn
-                :disabled="!toolRow.allowScheduleEvent"
-                class="timeful-elevated-button tw-bg-blue tw-text-white"
-                v-bind="activatorProps"
-              >
-                Schedule
-              </v-btn>
-            </template>
-            <v-list density="compact">
-              <v-list-item @click="toolRow.actions.confirmScheduleEvent(true)">
-                <v-img
-                  src="@/assets/gcal_logo.png"
-                  class="tw-mr-2 tw-flex-none"
-                  height="20"
-                  width="20"
-                />
-                <div class="tw-flex tw-min-w-0 tw-flex-col">
-                  <v-list-item-title>Google Calendar</v-list-item-title>
-                </div>
-              </v-list-item>
-              <v-list-item @click="toolRow.actions.confirmScheduleEvent(false)">
-                <v-img
-                  src="@/assets/outlook_logo.svg"
-                  class="tw-mr-2 tw-flex-none"
-                  height="20"
-                  width="20"
-                />
-                <div class="tw-flex tw-min-w-0 tw-flex-col">
-                  <v-list-item-title>Outlook</v-list-item-title>
-                </div>
-              </v-list-item>
-            </v-list>
-          </v-menu>
-        </template>
-      </div>
     </div>
 
     <!-- <Advertisement
@@ -211,23 +150,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue"
-import { storeToRefs } from "pinia"
-import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import TimezoneSelector from "./TimezoneSelector.vue"
 import GCalWeekSelector from "./GCalWeekSelector.vue"
 import EventOptions from "./EventOptions.vue"
 import { timeTypes } from "@/constants"
-import { isAnonymousOwnerEvent, isSignedInOwner } from "@/composables/event/eventOwnership"
 import type { ScheduleOverlapToolRowViewModel } from "./scheduleOverlapViewModels"
 
-const props = defineProps<{
+defineProps<{
   toolRow: ScheduleOverlapToolRowViewModel
 }>()
-
-const mainStore = useMainStore()
-const { authUser } = storeToRefs(mainStore)
 
 const { isPhone } = useDisplayHelpers()
 
@@ -239,16 +171,6 @@ const timeTypeOptions = [
   { label: "12h", value: timeTypes.HOUR12 },
   { label: "24h", value: timeTypes.HOUR24 },
 ]
-
-const guestEvent = computed(() => isAnonymousOwnerEvent(props.toolRow.event))
-const isOwner = computed(() => isSignedInOwner(props.toolRow.event, authUser.value))
-const showScheduleEventButton = computed(
-  () =>
-    !props.toolRow.event.daysOnly &&
-    props.toolRow.numResponses > 0 &&
-    props.toolRow.state !== props.toolRow.states.EDIT_AVAILABILITY &&
-    (guestEvent.value || isOwner.value)
-)
 
 function stripGeneratedTitle(
   itemProps: Record<string, unknown>

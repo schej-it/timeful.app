@@ -281,6 +281,15 @@
                               </template>
                             </v-switch>
                           </div>
+                          <div v-if="showScheduleEventButton && isScheduling">
+                            <v-btn
+                              variant="outlined"
+                              class="desktop-event-header-control tw-w-full tw-text-red"
+                              @click="cancelScheduleEvent"
+                            >
+                              Cancel
+                            </v-btn>
+                          </div>
                         </div>
                         <div class="tw-flex tw-flex-col tw-gap-2 tw-flex-1 tw-min-w-0">
                           <div
@@ -349,7 +358,58 @@
                               "
                             />
                           </div>
+                          <div v-if="showScheduleEventButton && isScheduling">
+                            <v-menu offset-y class="tw-z-20">
+                              <template #activator="{ props: activatorProps }">
+                                <v-btn
+                                  :disabled="!allowScheduleEvent"
+                                  class="desktop-event-header-control tw-w-full tw-bg-blue tw-text-white"
+                                  flat
+                                  v-bind="activatorProps"
+                                >
+                                  Schedule
+                                </v-btn>
+                              </template>
+                              <v-list density="compact">
+                                <v-list-item @click="scheduleOverlap?.confirmScheduleEvent(true)">
+                                  <v-img
+                                    src="@/assets/gcal_logo.png"
+                                    class="tw-mr-2 tw-flex-none"
+                                    height="20"
+                                    width="20"
+                                  />
+                                  <div class="tw-flex tw-min-w-0 tw-flex-col">
+                                    <v-list-item-title>Google Calendar</v-list-item-title>
+                                  </div>
+                                </v-list-item>
+                                <v-list-item @click="scheduleOverlap?.confirmScheduleEvent(false)">
+                                  <v-img
+                                    src="@/assets/outlook_logo.svg"
+                                    class="tw-mr-2 tw-flex-none"
+                                    height="20"
+                                    width="20"
+                                  />
+                                  <div class="tw-flex tw-min-w-0 tw-flex-col">
+                                    <v-list-item-title>Outlook</v-list-item-title>
+                                  </div>
+                                </v-list-item>
+                              </v-list>
+                            </v-menu>
+                          </div>
                         </div>
+                      </div>
+                      <div
+                        v-if="showScheduleEventButton && !isScheduling"
+                        class="tw-flex tw-gap-2"
+                      >
+                        <v-btn
+                          variant="outlined"
+                          class="desktop-event-header-control tw-flex-1 tw-text-blue"
+                          @click="scheduleEvent"
+                        >
+                          <v-icon small>mdi-calendar-check</v-icon>
+                          <span class="tw-ml-2">Schedule event</span>
+                        </v-btn>
                       </div>
                     </template>
                     <template v-else>
@@ -822,6 +882,7 @@ import { toQueryInstantString } from "@/utils/temporalQuery"
 import {
   canEditAvailabilityAsCurrentViewer,
   canEditEventMetadata,
+  isAnonymousOwnerEvent,
   isSignedInOwner,
 } from "@/composables/event/eventOwnership"
 
@@ -1016,6 +1077,14 @@ const showSecondaryAddAvailabilityAction = computed(() => {
   if (!event) return false
   return !event.blindAvailabilityEnabled || isOwner.value
 })
+const guestEvent = computed(() => isAnonymousOwnerEvent(event.value))
+const showScheduleEventButton = computed(
+  () =>
+    !scheduleOverlapEvent.value.daysOnly &&
+    numResponses.value > 0 &&
+    !isEditing.value &&
+    (guestEvent.value || isOwner.value)
+)
 const primaryAvailabilityButtonText = computed(() => {
   if (showGuestActionButton.value) return guestActionButtonText.value
   return actionButtonText.value
@@ -2028,6 +2097,7 @@ watch(
   --desktop-event-header-control-height: 2.5rem;
   --desktop-event-header-control-radius: 0.375rem;
   --desktop-event-header-control-width: 10.25rem;
+  min-width: 21rem;
 }
 
 .desktop-event-header-control {
