@@ -121,7 +121,7 @@
                 </div>
               </v-expand-transition>
               <div
-                class="tw-mb-2"
+                class="tw-mb-6"
                 data-testid="specific-times-toggle"
               >
                 <div class="compact-switch-grid specific-times-switch-grid">
