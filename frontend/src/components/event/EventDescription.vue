@@ -4,14 +4,11 @@
       v-if="showDescription"
       class="event-description-shell tw-relative tw-w-full tw-cursor-pointer tw-rounded-md tw-border tw-border-light-gray-stroke tw-bg-light-gray tw-p-2 tw-font-normal tw-text-very-dark-gray hover:tw-bg-[#eeeeee]"
     >
-      <div class="tw-space-y-1" :class="canEdit ? 'tw-pr-10' : ''">
-        <div
-          v-for="(line, i) in (event.description ?? '').split('\n')"
-          :key="i"
-          class="event-description-copy event-description-text"
-        >
-          {{ line }}
-        </div>
+      <div
+        class="event-description-copy event-description-text tw-whitespace-pre-wrap tw-break-words"
+        :class="canEdit ? 'tw-pr-10' : ''"
+      >
+        {{ event.description }}
       </div>
       <div
         v-if="canEdit"
