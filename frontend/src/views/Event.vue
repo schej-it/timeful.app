@@ -99,6 +99,24 @@
         </v-card>
       </v-dialog>
 
+      <!-- Delete availability confirmation dialog -->
+      <v-dialog v-model="deleteAvailabilityDialog" width="500" :retain-focus="false">
+        <v-card>
+          <v-card-title>Are you sure?</v-card-title>
+          <v-card-text class="tw-text-sm tw-text-dark-gray"
+            >Are you sure you want to
+            {{ !isGroup ? "delete your availability from this event?" : "leave this group?" }}</v-card-text
+          >
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="deleteAvailabilityDialog = false">Cancel</v-btn>
+            <v-btn variant="text" color="error" @click="handleDeleteAvailabilityConfirm"
+              >{{ !isGroup ? "Delete" : "Leave" }}</v-btn
+            >
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
       <div
         class="tw-mx-auto tw-mt-4 lg:tw-flex lg:tw-items-start lg:tw-justify-center lg:tw-gap-6"
       >
@@ -494,22 +512,39 @@
                     </template>
                   </template>
                   <template v-else>
-                    <div class="tw-flex tw-justify-end tw-gap-2">
-                      <v-btn
-                        variant="outlined"
-                        class="desktop-editing-cancel-button tw-w-20 tw-text-red"
-                        @click="cancelEditing"
-                      >
-                        Cancel
-                      </v-btn>
-                      <v-btn
-                        class="desktop-editing-save-button tw-w-20 tw-text-white"
-                        :class="'tw-bg-green'"
-                        :disabled="respondentSaveDisabled"
-                        @click="saveChanges"
-                      >
-                        Save
-                      </v-btn>
+                    <div class="tw-flex tw-flex-col tw-items-end">
+                      <div class="tw-flex tw-flex-col">
+                        <div class="tw-flex tw-justify-end tw-gap-2">
+                          <v-btn
+                            variant="outlined"
+                            class="desktop-editing-cancel-button tw-w-20 tw-text-red"
+                            @click="cancelEditing"
+                          >
+                            Cancel
+                          </v-btn>
+                          <v-btn
+                            class="desktop-editing-save-button tw-w-20 tw-text-white"
+                            :class="'tw-bg-green'"
+                            :disabled="respondentSaveDisabled"
+                            @click="saveChanges"
+                          >
+                            Save
+                          </v-btn>
+                        </div>
+                        <div
+                          v-if="showDeleteAvailabilityAction"
+                          class="tw-h-6"
+                        ></div>
+                        <v-btn
+                          v-if="showDeleteAvailabilityAction"
+                          variant="outlined"
+                          color="error"
+                          class="tw-normal-case tw-w-full"
+                          @click="deleteAvailabilityDialog = true"
+                        >
+                          Delete
+                        </v-btn>
+                      </div>
                     </div>
                   </template>
                 </div>
@@ -723,20 +758,30 @@
           </template>
           <template v-else-if="isEditing">
             <v-btn
-              variant="outlined"
-              class="mobile-editing-cancel-button tw-border-white tw-text-white"
-              @click="cancelEditing"
+              v-if="showDeleteAvailabilityAction"
+              color="error"
+              class="tw-normal-case tw-text-sm tw-shadow-none"
+              @click="deleteAvailabilityDialog = true"
             >
-              Cancel
+              Delete
             </v-btn>
             <v-spacer />
-            <v-btn
-              class="mobile-editing-save-button tw-bg-white tw-text-green"
-              :disabled="respondentSaveDisabled"
-              @click="saveChanges"
-            >
-              Save
-            </v-btn>
+            <div class="tw-flex tw-gap-2">
+              <v-btn
+                variant="outlined"
+                class="mobile-editing-cancel-button tw-border-white tw-text-white"
+                @click="cancelEditing"
+              >
+                Cancel
+              </v-btn>
+              <v-btn
+                class="mobile-editing-save-button tw-bg-white tw-text-green"
+                :disabled="respondentSaveDisabled"
+                @click="saveChanges"
+              >
+                Save
+              </v-btn>
+            </div>
           </template>
           <template v-else-if="isScheduling">
             <v-btn
@@ -940,6 +985,7 @@ const weekOffset = ref(0)
 const invitationDialog = ref(false)
 const helpDialog = ref(false)
 const showGuestEditMenu = ref(false)
+const deleteAvailabilityDialog = ref(false)
 const scheduleOverlapLoaded = ref(false)
 const scheduleOverlapReady = ref(false)
 const adsBootstrapped = ref(false)
@@ -968,6 +1014,10 @@ const mobileScheduleButtonStyle = computed<Record<string, string>>(() => ({
     ? "1px solid transparent"
     : "1px solid rgba(255,255,255,0.28)",
 }))
+const showDeleteAvailabilityAction = computed(
+  () => (!addingAvailabilityAsGuest.value && userHasResponded.value) || Boolean(curGuestId.value)
+)
+
 const areUnsavedChanges = computed(
   () => scheduleOverlap.value?.unsavedChanges ?? false
 )
@@ -1330,6 +1380,11 @@ function triggerSecondaryAddAvailability() {
     return
   }
   addAvailability()
+}
+
+function handleDeleteAvailabilityConfirm() {
+  void deleteAvailability()
+  deleteAvailabilityDialog.value = false
 }
 
 watch(

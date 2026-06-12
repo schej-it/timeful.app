@@ -1245,10 +1245,6 @@ function updateWorkingHours(value: typeof workingHours.value) {
   workingHours.value = value
 }
 
-function updateDeleteAvailabilityDialog(value: boolean) {
-  deleteAvailabilityDialog.value = value
-}
-
 function updateShowCalendarEvents(value: boolean) {
   showCalendarEvents.value = value
 }
@@ -1331,8 +1327,7 @@ const sidebarListeners = {
   "update:calendarOptionsDialog": updateCalendarOptionsDialog,
   "update:bufferTime": updateBufferTime,
   "update:workingHours": updateWorkingHours,
-  "update:deleteAvailabilityDialog": updateDeleteAvailabilityDialog,
-  deleteAvailability: handleDeleteAvailability,
+
   updateSignUpBlock: editSignUpBlock,
   deleteSignUpBlock: deleteSignUpBlock,
   signUpForBlock: emitSignUpForBlock,
@@ -1602,11 +1597,6 @@ function editGuestAvailability(id: string) {
     populateUserAvailability(id)
     emit("setCurGuestId", id)
   })
-}
-
-function handleDeleteAvailability() {
-  emit('deleteAvailability')
-  deleteAvailabilityDialog.value = false
 }
 
 function handleGuestAvailabilityDeleted(userId: string) {

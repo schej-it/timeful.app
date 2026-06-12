@@ -209,46 +209,7 @@
           </ExpandableSection>
         </div>
 
-        <div v-if="showDeleteAvailabilityAction">
-          <v-dialog
-            :model-value="sidebar.deleteAvailabilityDialog"
-            width="500"
-            persistent
-            @update:model-value="emit('update:deleteAvailabilityDialog', $event)"
-          >
-            <template #activator="{ props: activatorProps }">
-              <span
-                v-bind="activatorProps"
-                class="tw-cursor-pointer tw-text-sm tw-text-red"
-              >
-                {{ !sidebar.isGroup ? "Delete availability" : "Leave group" }}
-              </span>
-            </template>
 
-            <v-card>
-              <v-card-title>Are you sure?</v-card-title>
-              <v-card-text class="tw-text-sm tw-text-dark-gray"
-                >Are you sure you want to
-                {{
-                  !sidebar.isGroup
-                    ? "delete your availability from this event?"
-                    : "leave this group?"
-                }}</v-card-text
-              >
-              <v-card-actions>
-                <v-spacer />
-                <v-btn
-                  variant="text"
-                  @click="emit('update:deleteAvailabilityDialog', false)"
-                  >Cancel</v-btn
-                >
-                <v-btn variant="text" color="error" @click="emit('deleteAvailability')"
-                  >{{ !sidebar.isGroup ? "Delete" : "Leave" }}</v-btn
-                >
-              </v-card-actions>
-            </v-card>
-          </v-dialog>
-        </div>
       </div>
 
       <template v-else>
@@ -328,8 +289,6 @@ const emit = defineEmits<{
   "update:calendarOptionsDialog": [value: boolean]
   "update:bufferTime": [value: { enabled: boolean; time: number }]
   "update:workingHours": [value: { enabled: boolean; startTime: number; endTime: number }]
-  "update:deleteAvailabilityDialog": [value: boolean]
-  deleteAvailability: []
   updateSignUpBlock: [block: SignUpBlockLite]
   deleteSignUpBlock: [blockId: string]
   signUpForBlock: [block: SignUpBlockLite]
@@ -399,12 +358,6 @@ const initialCalendarAccountsData = computed(() =>
   props.sidebar.isGroup
     ? props.sidebar.sharedCalendarAccounts
     : (props.sidebar.authUser?.calendarAccounts ?? {})
-)
-
-const showDeleteAvailabilityAction = computed(
-  () =>
-    (!props.sidebar.addingAvailabilityAsGuest && props.sidebar.userHasResponded) ||
-    Boolean(props.sidebar.curGuestId)
 )
 
 const onAvailabilityTypeUpdate = (value: string) => {
