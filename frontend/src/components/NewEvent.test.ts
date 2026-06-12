@@ -113,6 +113,11 @@ const VCheckboxSlotStub = {
   `,
 }
 
+const TimezoneSelectorStub = {
+  name: "TimezoneSelector",
+  template: '<div data-testid="timezone-selector-stub">Timezone selector</div>',
+}
+
 const VBtnStub = defineComponent({
   name: "VBtn",
   props: {
@@ -370,6 +375,30 @@ describe("NewEvent", () => {
       { title: "30 min", value: 30 },
       { title: "60 min", value: 60 },
     ])
+  })
+
+  it("renders advanced event options inline without an expandable toggle", () => {
+    const wrapper = shallowMount(NewEvent, {
+      global: {
+        stubs: {
+          ...defaultStubs,
+          "v-checkbox": VCheckboxSlotStub,
+          "v-select": VSelectStub,
+          TimezoneSelector: TimezoneSelectorStub,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain("Advanced options")
+    expect(wrapper.text()).toContain("Time increment:")
+    expect(wrapper.get('[data-testid="timezone-selector-stub"]').text()).toBe(
+      "Timezone selector"
+    )
+    expect(
+      wrapper
+        .findAll("button")
+        .some((button) => /advanced options/i.exec(button.text()) !== null)
+    ).toBe(false)
   })
 
   it("uses a compact numeric reminder threshold field and preserves its enabled gating", () => {

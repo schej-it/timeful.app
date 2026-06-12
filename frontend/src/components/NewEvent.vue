@@ -318,174 +318,167 @@
             </div>
           </ExpandableSection>
 
-          <ExpandableSection
-            v-model="showAdvancedOptions"
-            label="Advanced options"
-            :auto-scroll="dialog"
-          >
-            <div
-              class="advanced-options-panel tw-flex tw-flex-col tw-gap-5 tw-pt-2"
-            >
-              <div v-if="!edit" class="tw-flex tw-items-center tw-gap-x-2">
-                <div class="tw-text-sm tw-text-black">Time increment:</div>
-                <v-select
-                  v-model="timeIncrement"
-                  class="time-increment-select -tw-mt-[2px] tw-w-24 tw-grow-0 tw-text-sm tw-text-black"
-                  density="compact"
-                  hide-details
-                  :items="timeIncrementItems"
-                  item-title="title"
-                  item-value="value"
-                  single-line
-                  variant="plain"
-                >
-                  <template #item="{ item, props: itemProps }">
-                    <div
-                      v-bind="itemProps"
-                      class="time-range-select-item"
-                      :class="{
-                        'time-range-select-item--active':
-                          item.raw.value === timeIncrement,
-                      }"
-                    >
-                      {{ item.raw.title }}
-                    </div>
-                  </template>
-                </v-select>
-              </div>
-              <v-checkbox
-                v-if="authUser && !guestEvent"
-                v-model="collectEmails"
+          <div class="tw-mb-2 tw-text-lg tw-text-black">Advanced options</div>
+          <div class="advanced-options-panel tw-flex tw-flex-col tw-gap-5 tw-pt-2">
+            <div v-if="!edit" class="tw-flex tw-items-center tw-gap-x-2">
+              <div class="tw-text-sm tw-text-black">Time increment:</div>
+              <v-select
+                v-model="timeIncrement"
+                class="time-increment-select -tw-mt-[2px] tw-w-24 tw-grow-0 tw-text-sm tw-text-black"
                 density="compact"
                 hide-details
+                :items="timeIncrementItems"
+                item-title="title"
+                item-value="value"
+                single-line
+                variant="plain"
               >
-                <template #label>
-                  <span class="tw-text-sm tw-text-black">
-                    Collect respondents' email addresses
-                  </span>
-                </template>
-                <template #message="{ message }">
+                <template #item="{ item, props: itemProps }">
                   <div
-                    class="-tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
+                    v-bind="itemProps"
+                    class="time-range-select-item"
+                    :class="{
+                      'time-range-select-item--active':
+                        item.raw.value === timeIncrement,
+                    }"
                   >
-                    {{ message }}
+                    {{ item.raw.title }}
                   </div>
                 </template>
-              </v-checkbox>
-              <v-checkbox
-                v-else-if="!guestEvent"
-                class="gated-feature-checkbox"
-                disabled
-                density="compact"
-                messages="test"
-                false-icon="mdi-checkbox-blank-off-outline"
-              >
-                <template #label>
-                  <span class="advanced-options-disabled-label tw-text-sm"
-                    >Collect respondents' email addresses</span
-                  >
-                </template>
-                <template #message>
-                  <div
-                    class="advanced-options-disabled-message tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
-                  >
-                    <span
-                      class="advanced-options-disabled-copy tw-font-medium tw-text-very-dark-gray"
-                      ><a class="advanced-options-sign-in-link" @click="emit('signIn')"
-                        >Sign in</a
-                      >
-                      to use this feature
-                    </span>
-                  </div>
-                </template>
-              </v-checkbox>
-              <v-checkbox
-                v-if="authUser && !guestEvent"
-                v-model="blindAvailabilityEnabled"
-                density="compact"
-                messages="Only show responses to event creator"
-              >
-                <template #label>
-                  <span class="tw-text-sm tw-text-black">
-                    Hide responses from respondents
-                  </span>
-                </template>
-                <template #message="{ message }">
-                  <div
-                    class="-tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
-                  >
-                    {{ message }}
-                  </div>
-                </template>
-              </v-checkbox>
-              <v-checkbox
-                v-else-if="!guestEvent"
-                class="gated-feature-checkbox"
-                disabled
-                density="compact"
-                messages="Only show responses to event creator. "
-                false-icon="mdi-checkbox-blank-off-outline"
-              >
-                <template #label>
-                  <span class="advanced-options-disabled-label tw-text-sm"
-                    >Hide responses from respondents</span
-                  >
-                </template>
-                <template #message="{ message }">
-                  <div
-                    class="advanced-options-disabled-message tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
-                  >
-                    {{ message }}
-                    <span
-                      class="advanced-options-disabled-copy tw-font-medium tw-text-very-dark-gray"
-                      ><a class="advanced-options-sign-in-link" @click="emit('signIn')"
-                        >Sign in</a
-                      >
-                      to use this feature
-                    </span>
-                  </div>
-                </template>
-              </v-checkbox>
-              <v-checkbox
-                v-if="authUser && !guestEvent"
-                v-model="sendEmailAfterXResponsesEnabled"
-                density="compact"
-                hide-details
-              >
-                <template #label>
-                  <div
-                    :class="!sendEmailAfterXResponsesEnabled && 'tw-opacity-50'"
-                    class="tw-flex tw-items-center tw-gap-x-2 tw-text-sm tw-text-very-dark-gray"
-                  >
-                    <div>Email me after</div>
-                    <v-text-field
-                      v-model="sendEmailAfterXResponses"
-                      :disabled="!sendEmailAfterXResponsesEnabled"
-                      density="compact"
-                      class="email-me-after-text-field -tw-mt-[2px] tw-w-10"
-                      hide-details
-                      type="number"
-                      min="1"
-                    ></v-text-field>
-                    <div>responses</div>
-                  </div>
-                </template>
-              </v-checkbox>
-              <TimezoneSelector
-                :model-value="timezone"
-                :modified="timezoneModified"
-                label="Timezone"
-                label-color="tw-text-sm tw-text-black"
-                @update:model-value="
-                  (val) => {
-                    setTimezone(val)
-                    trackTimezoneChange(val)
-                  }
-                "
-                @reset="resetTimezone"
-              />
+              </v-select>
             </div>
-          </ExpandableSection>
+            <v-checkbox
+              v-if="authUser && !guestEvent"
+              v-model="collectEmails"
+              density="compact"
+              hide-details
+            >
+              <template #label>
+                <span class="tw-text-sm tw-text-black">
+                  Collect respondents' email addresses
+                </span>
+              </template>
+              <template #message="{ message }">
+                <div
+                  class="-tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
+                >
+                  {{ message }}
+                </div>
+              </template>
+            </v-checkbox>
+            <v-checkbox
+              v-else-if="!guestEvent"
+              class="gated-feature-checkbox"
+              disabled
+              density="compact"
+              messages="test"
+              false-icon="mdi-checkbox-blank-off-outline"
+            >
+              <template #label>
+                <span class="advanced-options-disabled-label tw-text-sm"
+                  >Collect respondents' email addresses</span
+                >
+              </template>
+              <template #message>
+                <div
+                  class="advanced-options-disabled-message tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
+                >
+                  <span
+                    class="advanced-options-disabled-copy tw-font-medium tw-text-very-dark-gray"
+                    ><a class="advanced-options-sign-in-link" @click="emit('signIn')"
+                      >Sign in</a
+                    >
+                    to use this feature
+                  </span>
+                </div>
+              </template>
+            </v-checkbox>
+            <v-checkbox
+              v-if="authUser && !guestEvent"
+              v-model="blindAvailabilityEnabled"
+              density="compact"
+              messages="Only show responses to event creator"
+            >
+              <template #label>
+                <span class="tw-text-sm tw-text-black">
+                  Hide responses from respondents
+                </span>
+              </template>
+              <template #message="{ message }">
+                <div
+                  class="-tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
+                >
+                  {{ message }}
+                </div>
+              </template>
+            </v-checkbox>
+            <v-checkbox
+              v-else-if="!guestEvent"
+              class="gated-feature-checkbox"
+              disabled
+              density="compact"
+              messages="Only show responses to event creator. "
+              false-icon="mdi-checkbox-blank-off-outline"
+            >
+              <template #label>
+                <span class="advanced-options-disabled-label tw-text-sm"
+                  >Hide responses from respondents</span
+                >
+              </template>
+              <template #message="{ message }">
+                <div
+                  class="advanced-options-disabled-message tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
+                >
+                  {{ message }}
+                  <span
+                    class="advanced-options-disabled-copy tw-font-medium tw-text-very-dark-gray"
+                    ><a class="advanced-options-sign-in-link" @click="emit('signIn')"
+                      >Sign in</a
+                    >
+                    to use this feature
+                  </span>
+                </div>
+              </template>
+            </v-checkbox>
+            <v-checkbox
+              v-if="authUser && !guestEvent"
+              v-model="sendEmailAfterXResponsesEnabled"
+              density="compact"
+              hide-details
+            >
+              <template #label>
+                <div
+                  :class="!sendEmailAfterXResponsesEnabled && 'tw-opacity-50'"
+                  class="tw-flex tw-items-center tw-gap-x-2 tw-text-sm tw-text-very-dark-gray"
+                >
+                  <div>Email me after</div>
+                  <v-text-field
+                    v-model="sendEmailAfterXResponses"
+                    :disabled="!sendEmailAfterXResponsesEnabled"
+                    density="compact"
+                    class="email-me-after-text-field -tw-mt-[2px] tw-w-10"
+                    hide-details
+                    type="number"
+                    min="1"
+                  ></v-text-field>
+                  <div>responses</div>
+                </div>
+              </template>
+            </v-checkbox>
+            <TimezoneSelector
+              :model-value="timezone"
+              :modified="timezoneModified"
+              label="Timezone"
+              label-color="tw-text-sm tw-text-black"
+              @update:model-value="
+                (val) => {
+                  setTimezone(val)
+                  trackTimezoneChange(val)
+                }
+              "
+              @reset="resetTimezone"
+            />
+          </div>
         </div>
       </v-form>
     </v-card-text>
@@ -557,7 +550,6 @@ import DatePicker from "@/components/DatePicker.vue"
 import SlideToggle from "./SlideToggle.vue"
 import AlertText from "@/components/AlertText.vue"
 import OverflowGradient from "@/components/OverflowGradient.vue"
-import ExpandableSection from "./ExpandableSection.vue"
 import EditorDialogHeader from "./EditorDialogHeader.vue"
 import type { Event as EventModel } from "@/types"
 import type { Timezone } from "@/composables/schedule_overlap/types"
@@ -732,7 +724,6 @@ const {
   selectedDateOption,
   showEmailReminders,
   emails,
-  showAdvancedOptions,
   collectEmails,
   blindAvailabilityEnabled,
   sendEmailAfterXResponsesEnabled,
