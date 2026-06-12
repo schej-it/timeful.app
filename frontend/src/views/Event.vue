@@ -726,8 +726,8 @@
           </template>
           <template v-else-if="isScheduling">
             <v-btn
-              variant="text"
-              class="tw-text-white"
+              variant="outlined"
+              class="tw-border-white tw-text-white"
               @click="cancelScheduleEvent"
             >
               Cancel
@@ -735,8 +735,8 @@
             <v-spacer />
             <v-btn
               :disabled="!allowScheduleEvent"
-              variant="outlined"
-              class="tw-border-white tw-text-white"
+              class="mobile-schedule-button"
+              :style="mobileScheduleButtonStyle"
               @click="confirmScheduleEvent"
             >
               <v-icon>mdi-calendar-check</v-icon>
@@ -937,6 +937,17 @@ const isScheduling = computed(() => scheduleOverlap.value?.scheduling ?? false)
 const allowScheduleEvent = computed(
   () => scheduleOverlap.value?.allowScheduleEvent ?? false
 )
+const mobileScheduleButtonStyle = computed<Record<string, string>>(() => ({
+  backgroundColor: allowScheduleEvent.value
+    ? "#FFFFFF"
+    : "rgba(255,255,255,0.12)",
+  color: allowScheduleEvent.value
+    ? "var(--timeful-primary-action-bg)"
+    : "rgba(255,255,255,0.5)",
+  border: allowScheduleEvent.value
+    ? "1px solid transparent"
+    : "1px solid rgba(255,255,255,0.28)",
+}))
 const areUnsavedChanges = computed(
   () => scheduleOverlap.value?.unsavedChanges ?? false
 )
@@ -2136,6 +2147,17 @@ watch(
 }
 
 .mobile-primary-availability-button--edit {
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  box-shadow: none !important;
+}
+
+.mobile-schedule-button .v-btn__content,
+.mobile-schedule-button .v-icon {
+  color: inherit;
+}
+
+.mobile-schedule-button {
   -webkit-box-shadow: none !important;
   -moz-box-shadow: none !important;
   box-shadow: none !important;

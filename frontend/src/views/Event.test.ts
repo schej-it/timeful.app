@@ -328,6 +328,28 @@ const ScheduleOverlapEditingStub = {
   },
 }
 
+const ScheduleOverlapSchedulingStub = {
+  ...ScheduleOverlapStub,
+  data() {
+    return {
+      ...ScheduleOverlapStub.data(),
+      scheduling: true,
+      allowScheduleEvent: true,
+    }
+  },
+}
+
+const ScheduleOverlapSchedulingDisabledStub = {
+  ...ScheduleOverlapStub,
+  data() {
+    return {
+      ...ScheduleOverlapStub.data(),
+      scheduling: true,
+      allowScheduleEvent: false,
+    }
+  },
+}
+
 const ScheduleOverlapLegacyAndTokenGuestSelectionStub = {
   ...ScheduleOverlapStub,
   data() {
@@ -2190,6 +2212,113 @@ describe("Event guest edit action", () => {
     expect(cancelButton.attributes("data-variant")).toBe("outlined")
     expect(saveButton.text()).toContain("Save")
     expect(saveButton.classes()).toContain("mobile-editing-save-button")
+  })
+
+  it("renders mobile scheduling actions with outlined cancel and explicit active schedule colors", async () => {
+    isPhoneState.value = true
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapSchedulingStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": iconTextStub,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    const buttons = wrapper.findAll("button")
+    const cancelButton = buttons.find((button) => button.text().includes("Cancel"))
+    const scheduleButton = buttons.find((button) => button.text().includes("Schedule"))
+
+    expect(cancelButton?.attributes("data-variant")).toBe("outlined")
+    expect(scheduleButton?.classes()).toContain("mobile-schedule-button")
+    expect(scheduleButton?.attributes("style")).toContain("background-color: #FFFFFF")
+    expect(scheduleButton?.attributes("style")).toContain(
+      "color: var(--timeful-primary-action-bg)"
+    )
+    expect(scheduleButton?.attributes("style")).toContain(
+      "border: 1px solid transparent"
+    )
+  })
+
+  it("renders mobile scheduling actions with muted disabled schedule colors", async () => {
+    isPhoneState.value = true
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapSchedulingDisabledStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": iconTextStub,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    const buttons = wrapper.findAll("button")
+    const cancelButton = buttons.find((button) => button.text().includes("Cancel"))
+    const scheduleButton = buttons.find((button) => button.text().includes("Schedule"))
+
+    expect(cancelButton?.attributes("data-variant")).toBe("outlined")
+    expect(scheduleButton?.attributes("style")).toContain(
+      "background-color: rgba(255, 255, 255, 0.12)"
+    )
+    expect(scheduleButton?.attributes("style")).toContain(
+      "color: rgba(255, 255, 255, 0.5)"
+    )
+    expect(scheduleButton?.attributes("style")).toContain(
+      "border: 1px solid rgba(255, 255, 255, 0.28)"
+    )
   })
 
   it("does not render the relocated copy link action for group events", async () => {
