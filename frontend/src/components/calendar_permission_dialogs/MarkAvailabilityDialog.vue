@@ -16,53 +16,82 @@
             You can always manually edit after autofilling
           </div>
           <div class="tw-flex tw-flex-col tw-gap-2">
-            <v-btn block class="timeful-elevated-button tw-bg-white" @click="autofillWithGcal">
-              <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
-                <v-img
-                  class="tw-flex-initial"
-                  width="20"
-                  height="20"
-                  src="@/assets/google_logo.svg"
-                />
-                <v-spacer />
-                Autofill with Google Calendar
-                <v-spacer />
+            <v-btn
+              block
+              class="timeful-autofill-provider-button timeful-elevated-button tw-bg-white"
+              @click="autofillWithGcal"
+            >
+              <div class="tw-relative tw-w-full">
+                <span
+                  class="tw-absolute tw-left-0 tw-top-1/2 tw-flex tw-h-5 tw-w-7 -tw-translate-y-1/2 tw-items-center tw-justify-center"
+                >
+                  <img
+                    :src="googleLogoUrl"
+                    alt="Google"
+                    class="tw-h-5 tw-w-5 tw-flex-initial"
+                  />
+                </span>
+                <span class="tw-block tw-w-full tw-px-7 tw-text-center">
+                  Autofill with Google Calendar
+                </span>
               </div>
             </v-btn>
-            <v-btn block class="timeful-elevated-button tw-bg-white" @click="autofillWithApple">
-              <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
-                <v-img
-                  class="tw-flex-initial"
-                  width="20"
-                  height="20"
-                  src="@/assets/apple_logo.svg"
-                />
-                <v-spacer />
-                Autofill with Apple Calendar
-                <v-spacer />
+            <v-btn
+              block
+              class="timeful-autofill-provider-button timeful-elevated-button tw-bg-white"
+              @click="autofillWithApple"
+            >
+              <div class="tw-relative tw-w-full">
+                <span
+                  class="tw-absolute tw-left-0 tw-top-1/2 tw-flex tw-h-5 tw-w-7 -tw-translate-y-1/2 tw-items-center tw-justify-center"
+                >
+                  <img
+                    :src="appleLogoUrl"
+                    alt="Apple"
+                    class="tw-h-5 tw-w-5 tw-flex-initial"
+                  />
+                </span>
+                <span class="tw-block tw-w-full tw-px-7 tw-text-center">
+                  Autofill with Apple Calendar
+                </span>
               </div>
             </v-btn>
-            <v-btn block class="timeful-elevated-button tw-bg-white" @click="autofillWithOutlook">
-              <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
-                <v-img
-                  class="tw-flex-initial"
-                  width="20"
-                  height="20"
-                  src="@/assets/outlook_logo.svg"
-                />
-                <v-spacer />
-                Autofill with Outlook Calendar
-                <v-spacer />
+            <v-btn
+              block
+              class="timeful-autofill-provider-button timeful-elevated-button tw-bg-white"
+              @click="autofillWithOutlook"
+            >
+              <div class="tw-relative tw-w-full">
+                <span
+                  class="tw-absolute tw-left-0 tw-top-1/2 tw-flex tw-h-5 tw-w-7 -tw-translate-y-1/2 tw-items-center tw-justify-center"
+                >
+                  <img
+                    :src="outlookLogoUrl"
+                    alt="Outlook"
+                    class="tw-h-5 tw-w-5 tw-flex-initial"
+                  />
+                </span>
+                <span class="tw-block tw-w-full tw-px-7 tw-text-center">
+                  Autofill with Outlook Calendar
+                </span>
               </div>
             </v-btn>
-            <v-btn block class="timeful-elevated-button tw-bg-white" @click="autofillWithICS">
-              <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
-                <v-icon class="tw-flex-initial" size="20">
-                  mdi-calendar-sync
-                </v-icon>
-                <v-spacer />
-                Autofill with ICS Calendar Feed
-                <v-spacer />
+            <v-btn
+              block
+              class="timeful-autofill-provider-button timeful-elevated-button tw-bg-white"
+              @click="autofillWithICS"
+            >
+              <div class="tw-relative tw-w-full">
+                <span
+                  class="tw-absolute tw-left-0 tw-top-1/2 tw-flex tw-h-5 tw-w-7 -tw-translate-y-1/2 tw-items-center tw-justify-center"
+                >
+                  <v-icon class="tw-flex-initial" size="20">
+                    mdi-calendar-sync
+                  </v-icon>
+                </span>
+                <span class="tw-block tw-w-full tw-px-7 tw-text-center">
+                  Autofill with ICS Calendar Feed
+                </span>
               </div>
             </v-btn>
             <div class="tw-flex tw-items-center tw-gap-3">
@@ -117,6 +146,9 @@ import { ref, watch } from "vue"
 import { storeToRefs } from "pinia"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
+import appleLogoUrl from "@/assets/apple_logo.svg"
+import googleLogoUrl from "@/assets/google_logo.svg"
+import outlookLogoUrl from "@/assets/outlook_logo.svg"
 import CalendarPermissionsCard from "./CalendarPermissionsCard.vue"
 import CreateAccount from "./CreateAccount.vue"
 import AppleCredentials from "./AppleCredentials.vue"
@@ -187,3 +219,9 @@ watch(
   }
 )
 </script>
+
+<style>
+.timeful-autofill-provider-button .v-btn__content {
+  width: 100%;
+}
+</style>
