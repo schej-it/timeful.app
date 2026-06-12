@@ -160,12 +160,9 @@ export function useEventEditing(opts: UseEventEditingOptions) {
       }
       return
     }
-    let changesPersisted = true
-    if (opts.isSignUp.value) {
-      changesPersisted = await so.submitNewSignUpBlocks()
-    } else {
-      await so.submitAvailability()
-    }
+    const changesPersisted = opts.isSignUp.value
+      ? await so.submitNewSignUpBlocks()
+      : await so.submitAvailability()
     if (changesPersisted) {
       mainStore.showInfo("Changes saved!")
       so.stopEditing()
@@ -181,7 +178,10 @@ export function useEventEditing(opts: UseEventEditingOptions) {
     if (!so) return false
     if (payload.name.length > 0) {
       try {
-        await so.submitAvailability(payload)
+        const changesSaved = await so.submitAvailability(payload)
+        if (!changesSaved) {
+          return false
+        }
         mainStore.showInfo("Changes saved!")
         so.resetCurUserAvailability()
         so.stopEditing()

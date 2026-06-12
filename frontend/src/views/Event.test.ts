@@ -243,6 +243,7 @@ const ScheduleOverlapStub = {
       editing: false,
       scheduling: false,
       allowScheduleEvent: false,
+      respondentSaveAllowed: true,
       unsavedChanges: false,
       showBestTimes: true,
       hideIfNeeded: false,
@@ -324,6 +325,17 @@ const ScheduleOverlapEditingStub = {
     return {
       ...ScheduleOverlapStub.data(),
       editing: true,
+    }
+  },
+}
+
+const ScheduleOverlapEditingSaveDisabledStub = {
+  ...ScheduleOverlapStub,
+  data() {
+    return {
+      ...ScheduleOverlapStub.data(),
+      editing: true,
+      respondentSaveAllowed: false,
     }
   },
 }
@@ -2166,6 +2178,48 @@ describe("Event guest edit action", () => {
     expect(cancelButton.attributes("data-variant")).toBe("outlined")
     expect(saveButton.text()).toContain("Save")
     expect(saveButton.classes()).toContain("desktop-editing-save-button")
+    expect(saveButton.attributes("disabled")).toBeUndefined()
+  })
+
+  it("disables the desktop editing save button when respondent availability is empty", async () => {
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapEditingSaveDisabledStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": iconTextStub,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.get(".desktop-editing-save-button").attributes("disabled")).toBe(
+      ""
+    )
   })
 
   it("renders mobile editing actions with outlined cancel and flat save", async () => {
@@ -2212,6 +2266,50 @@ describe("Event guest edit action", () => {
     expect(cancelButton.attributes("data-variant")).toBe("outlined")
     expect(saveButton.text()).toContain("Save")
     expect(saveButton.classes()).toContain("mobile-editing-save-button")
+    expect(saveButton.attributes("disabled")).toBeUndefined()
+  })
+
+  it("disables the mobile editing save button when respondent availability is empty", async () => {
+    isPhoneState.value = true
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapEditingSaveDisabledStub,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-chip": true,
+          "v-icon": iconTextStub,
+          "v-card": true,
+          "v-card-title": true,
+          "v-card-text": true,
+          "v-card-actions": true,
+          "v-dialog": true,
+          "v-spacer": true,
+          "v-btn": buttonSemanticStub,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.get(".mobile-editing-save-button").attributes("disabled")).toBe(
+      ""
+    )
   })
 
   it("renders mobile scheduling actions with outlined cancel and explicit active schedule colors", async () => {

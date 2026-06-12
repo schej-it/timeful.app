@@ -158,6 +158,31 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   const ifNeededArray = computed<Temporal.ZonedDateTime[]>(() => [
     ...ifNeeded.value,
   ])
+  const effectiveRespondentAvailability = computed<ZdtSet>(() => {
+    if (!opts.isGroup.value) {
+      return availability.value
+    }
+
+    const authUserId = mainStore.authUser?._id ?? ""
+
+    return opts.getAvailabilityFromCalendarEvents({
+      calendarEventsByDay: opts.calendarEventsByDay.value,
+      includeTouchedAvailability: true,
+      fetchedManualAvailability: authUserId
+        ? getFetchedManualAvailabilityDow(
+            opts.fetchedResponses.value[authUserId]?.manualAvailability
+          )
+        : {},
+      curManualAvailability: getManualAvailabilityDow(manualAvailability.value),
+      calendarOptions: {
+        bufferTime: opts.bufferTime.value,
+        workingHours: opts.workingHours.value,
+      },
+    })
+  })
+  const respondentSaveAllowed = computed(
+    () => effectiveRespondentAvailability.value.size > 0
+  )
 
   const parsedResponses = computed<ParsedResponses>(() => {
     const parsed: ParsedResponses = {}
@@ -685,6 +710,11 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     } = { name: "", email: "" },
     sharedCalendarAccounts?: SharedCalendarAccounts
   ) => {
+    if (!respondentSaveAllowed.value) {
+      mainStore.showError("Select at least one time before saving.")
+      return false
+    }
+
     const eventId =
       typeof opts.event.value._id === "string" ? opts.event.value._id : ""
     let type: string
@@ -781,6 +811,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
 
     opts.refreshEvent()
     unsavedChanges.value = false
+    return true
   }
 
   const deleteAvailability = async (name = "") => {
@@ -884,8 +915,10 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     // computed
     availabilityArray,
     ifNeededArray,
+    effectiveRespondentAvailability,
     parsedResponses,
     respondents,
+    respondentSaveAllowed,
     userHasResponded,
     max,
     // helpers

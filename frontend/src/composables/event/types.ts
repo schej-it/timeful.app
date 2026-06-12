@@ -9,6 +9,7 @@ export interface ScheduleOverlapInstance {
   editing: boolean
   scheduling: boolean
   allowScheduleEvent: boolean
+  respondentSaveAllowed: boolean
   unsavedChanges: boolean
   curTimezone: Timezone
   selectedGuestRespondent: string | undefined
@@ -37,7 +38,7 @@ export interface ScheduleOverlapInstance {
   submitAvailability(
     payload?: { name: string; email: string },
     sharedCalendarAccounts?: SharedCalendarAccounts
-  ): Promise<void>
+  ): Promise<boolean>
   submitNewSignUpBlocks(): Promise<boolean>
   deleteAvailability(name?: string): Promise<void>
   resetCurUserAvailability(): void

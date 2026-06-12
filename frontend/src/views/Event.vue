@@ -503,6 +503,7 @@
                       <v-btn
                         class="desktop-editing-save-button tw-w-20 tw-text-white"
                         :class="'tw-bg-green'"
+                        :disabled="respondentSaveDisabled"
                         @click="saveChanges"
                       >
                         Save
@@ -729,6 +730,7 @@
             <v-spacer />
             <v-btn
               class="mobile-editing-save-button tw-bg-white tw-text-green"
+              :disabled="respondentSaveDisabled"
               @click="saveChanges"
             >
               Save
@@ -946,6 +948,12 @@ const isEditing = computed(() => scheduleOverlap.value?.editing ?? false)
 const isScheduling = computed(() => scheduleOverlap.value?.scheduling ?? false)
 const allowScheduleEvent = computed(
   () => scheduleOverlap.value?.allowScheduleEvent ?? false
+)
+const respondentSaveAllowed = computed(
+  () => scheduleOverlap.value?.respondentSaveAllowed ?? true
+)
+const respondentSaveDisabled = computed(
+  () => !isSignUp.value && !respondentSaveAllowed.value
 )
 const mobileScheduleButtonStyle = computed<Record<string, string>>(() => ({
   backgroundColor: allowScheduleEvent.value
