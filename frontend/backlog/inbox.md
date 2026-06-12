@@ -116,16 +116,49 @@ Semi-structured TODO list
 - [ ] there's no time when all 8 respondents are available should be over responses
 - [ ] when I move the mouse cursor out of the grid, the responses still show who's available and unavailable at specific time
 - [x] too drastic width change at page width breakpoints (1/3 of the screen)
-- [ ] Make edit event a button with a pencil icon
-- [ ] When no responses, show only add availability and show all hours
+- [x] Make edit event a button with a pencil icon
+- [x] When no responses, show only add availability and show all hours
 - [ ] event Dates, edit event at the same height as best times, more options
 - [x] show pencils
 - [ ] When scrolled, then clicked edit event, the header moves higher (timeful, create an event, etc.)
 - [ ] Add concurrency control (two people edit the event simultaneously)
 - [ ] Disallow saving empty availability set
-- [ ] When one response, doesn't show best times
+- [x] When one response, doesn't show best times
 - [ ] Create an event with specific times for dates May 30, 31, mark hours 0-4 for both dates, edit event, set dates for 28, 29, click next. See May 28, 30, 31 in specific times page, and May 30, 31 on the event page.
 - [ ] Mark dates for only one day in specific times, save, edit again and see only one day
 - [ ] Create an event for may 28 with availability from 0 to 4 and timezone +02:00. If you open the date picker in +0:00, should you see two days marked in the date picker?
 - [x] There's no source of truth for dates for specific times and event
   - Added ADR-012
+- [x] do we have recurring events?
+      Yes — it uses a custom TimedRecurrence model with two kinds: specific_dates (explicit date list) and weekly (day-of-week pattern). No iCalendar RRULE support.
+- [x] In the new event form, in Advanced options, The Timezone text isn't aligned horizontally with "Time increment"
+      The styling differs too
+- [x] On the event page without responses, there should be only Add availability and Show all hours, not very wide Add availability and More options
+
+      "Show all hours" should be under "Add availability", as before.
+      The toggle and "Show all hours" text should be centered vertically within their box
+- [x] Create event with 9 - 17, timezone +9 (<http://127.0.0.1:4173/e/ee4Cb>), june 11 and 12.
+      Expected: june 10 and 11 are shown on the event page
+      Actual: june 11, 12, 13 are shown there
+- [ ] Spacing between lines is different when editing and viewing event description
+- [x] Shown in shouldn't affect the time zone
+- [ ] Availability not rendered at <http://127.0.0.1:4173/e/Eb67A>
+- [ ] <http://127.0.0.1:4173/e/Eb67A> shown in GMT -7 shows blank grey columns
+- [ ] <http://127.0.0.1:4173/e/Eb67A> doesn't show the bottom separator
+- [ ] When there are no responses, Add availability and show all hours are too wide
+- [ ] When adding availability, cancel and save should be aligned to the right
+- [ ] Who are the group respondents?
+- [ ] Make available/If needed on mobile higher to cover the "Adding availability" text
+- [ ] Remove magic constants in CSS
+- [ ] in What days might work, when sun and mon are selected, when enabling start on monday, both mon and sun must be selected
+- [ ] what is group (NewGroup.vue)?
+
+## MUST
+
+- [ ] Event can be edited only by the creator. The description too
+- [ ] event in +3, edit specific times in +9, some time slots are lost
+- [ ] event in +3,
+
+## COULD
+
+- [ ] anon identity to save preferences, maybe sign in by password
