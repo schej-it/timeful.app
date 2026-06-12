@@ -10,7 +10,7 @@
         :model-value="selectedTimezoneValue"
         :items="visibleTimezoneItems"
         data-testid="timezone-select-trigger"
-        class="compact-inline-select tw-z-20 -tw-mt-px tw-w-64 tw-min-w-0 tw-text-sm tw-text-black"
+        class="compact-inline-select tw-z-20 -tw-mt-px tw-w-40 sm:tw-w-44 md:tw-w-64 tw-min-w-0 tw-text-sm tw-text-black"
         color="#219653"
         density="compact"
         item-color="green"
