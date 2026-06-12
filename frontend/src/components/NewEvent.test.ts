@@ -520,14 +520,15 @@ describe("NewEvent", () => {
 
   it("uses semantic tokens for weekday segmented controls and compact switch tracks", () => {
     expect(newEventStyleBlock).toMatch(
-      /\.editor-dow-toggle\s*\{\s*display:\s*grid;[\s\S]*grid-template-columns:\s*repeat\(7, minmax\(0, 1fr\)\);[\s\S]*border:\s*1px solid var\(--timeful-weekday-segment-border\);[\s\S]*background-color:\s*var\(--timeful-weekday-segment-surface\);/
+      /\.editor-dow-toggle\s*\{\s*display:\s*grid;[\s\S]*grid-template-columns:\s*repeat\(7, minmax\(0, 1fr\)\);[\s\S]*border:\s*1px solid var\(--timeful-weekday-segment-border\);[\s\S]*border-radius:\s*12px;[\s\S]*background-color:\s*var\(--timeful-weekday-segment-surface\);/
     )
     expect(newEventStyleBlock).toMatch(
-      /\.editor-dow-button\s*\{[^}]*color:\s*var\(--timeful-weekday-segment-foreground\) !important;/
+      /\.editor-dow-button\s*\{[^}]*border-radius:\s*8px !important;[^}]*color:\s*var\(--timeful-weekday-segment-foreground\) !important;/
     )
     expect(newEventStyleBlock).toMatch(
       /\.editor-dow-button \+ \.editor-dow-button\s*\{\s*border-left:\s*1px solid var\(--timeful-weekday-segment-border\);/
     )
+    expect(newEventStyleBlock).not.toContain("border-radius: 999px")
     expect(newEventStyleBlock).not.toMatch(
       /\.editor-dow-button\s*\{[^}]*rgba\(0,\s*0,\s*0,\s*0\.87\)/
     )

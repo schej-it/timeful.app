@@ -1101,7 +1101,7 @@ watch(
   gap: 0;
   padding: 4px;
   border: 1px solid var(--timeful-weekday-segment-border);
-  border-radius: 999px;
+  border-radius: 12px;
   background-color: var(--timeful-weekday-segment-surface);
   overflow: hidden;
 }
@@ -1109,7 +1109,7 @@ watch(
 .editor-dow-button {
   min-width: 0;
   width: 100%;
-  border-radius: 999px !important;
+  border-radius: 8px !important;
   color: var(--timeful-weekday-segment-foreground) !important;
 }
 
