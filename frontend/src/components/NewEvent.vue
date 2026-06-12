@@ -126,8 +126,9 @@
               >
                 <v-checkbox
                   v-model="specificTimesEnabled"
+                  class="specific-times-checkbox"
                   color="primary"
-                  messages="Specify the times in the next step"
+                  messages="Click the Next button below"
                 >
                   <template #label>
                     <span
@@ -1127,6 +1128,12 @@ watch(
 
 .new-event-form .v-checkbox .v-selection-control {
   --v-selection-control-size: 32px;
+}
+
+.specific-times-checkbox .v-input__details,
+.specific-times-checkbox .v-messages,
+.specific-times-checkbox .v-messages__message {
+  opacity: 1 !important;
 }
 
 .gated-feature-checkbox {

@@ -466,8 +466,15 @@ describe("NewEvent", () => {
   it("uses explicit primary checkbox semantics for the specific-times toggle", () => {
     expect(newEventSource).toContain('data-testid="specific-times-toggle"')
     expect(newEventSource).toContain('v-model="specificTimesEnabled"')
+    expect(newEventSource).toContain('class="specific-times-checkbox"')
     expect(newEventSource).toContain('color="primary"')
-    expect(newEventSource).toContain('messages="Specify the times in the next step"')
+    expect(newEventSource).toContain('messages="Click the Next button below"')
+    expect(newEventSource).toContain(
+      'class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"'
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.specific-times-checkbox \.v-input__details,\s*\.specific-times-checkbox \.v-messages,\s*\.specific-times-checkbox \.v-messages__message\s*\{\s*opacity:\s*1 !important;/
+    )
   })
 
   it("uses crossed-out Vuetify 3 false-icon for disabled unchecked gated checkboxes", () => {
