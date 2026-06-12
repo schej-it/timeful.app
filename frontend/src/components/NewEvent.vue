@@ -1308,6 +1308,10 @@ watch(
   border-bottom-color: var(--timeful-grid-line-color);
 }
 
+.time-increment-select .v-field--focused.v-field--variant-underlined .v-field__outline::before {
+  opacity: 0;
+}
+
 .time-range-separator {
   align-items: center;
   display: flex;

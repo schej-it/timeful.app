@@ -868,6 +868,12 @@ describe("NewEvent", () => {
     )
   })
 
+  it("hides the muted underline while the time increment control is focused", () => {
+    expect(newEventStyleBlock).toMatch(
+      /\.time-increment-select \.v-field--focused\.v-field--variant-underlined \.v-field__outline::before\s*\{[\s\S]*?opacity:\s*0;/
+    )
+  })
+
   it("normalizes edit-flow time increment objects into a numeric advanced-options select value", () => {
     const wrapper = shallowMount(NewEvent, {
       props: {
