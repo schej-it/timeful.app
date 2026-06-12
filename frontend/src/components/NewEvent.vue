@@ -124,35 +124,33 @@
                 class="tw-mb-2"
                 data-testid="specific-times-toggle"
               >
-                <v-checkbox
-                  v-model="specificTimesEnabled"
-                  class="specific-times-checkbox"
-                  color="primary"
-                  messages="Click the Next button below"
-                >
-                  <template #label>
-                    <span
-                      class="tw-text-sm"
-                      :class="
-                        specificTimesEnabled
-                          ? 'tw-text-black'
-                          : 'tw-text-very-dark-gray'
-                      "
+                <div class="specific-times-switch-grid">
+                  <v-switch
+                    v-model="specificTimesEnabled"
+                    class="specific-times-switch schedule-overlap-compact-switch"
+                    color="primary"
+                    inset
+                    hide-details
+                  />
+                  <span
+                    class="specific-times-switch__label tw-text-sm"
+                    :class="
+                      specificTimesEnabled
+                        ? 'tw-text-black'
+                        : 'tw-text-very-dark-gray'
+                    "
+                  >
+                    Set specific times per day
+                  </span>
+                  <v-expand-transition>
+                    <div
+                      v-if="specificTimesEnabled"
+                      class="specific-times-switch__message tw-pointer-events-auto tw-text-xs tw-text-dark-gray"
                     >
-                      Set specific times per day
-                    </span>
-                  </template>
-                  <template #message="{ message }">
-                    <v-expand-transition>
-                      <div
-                        v-if="specificTimesEnabled"
-                        class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
-                      >
-                        {{ message }}
-                      </div>
-                    </v-expand-transition>
-                  </template>
-                </v-checkbox>
+                      Click the Next button below
+                    </div>
+                  </v-expand-transition>
+                </div>
               </div>
             </div>
           </v-expand-transition>
@@ -1075,6 +1073,8 @@ watch(
 )
 </script>
 
+<style scoped src="./schedule_overlap/ScheduleOverlapCompactSwitch.css"></style>
+
 <style>
 .email-me-after-text-field input {
   padding: 0px !important;
@@ -1130,10 +1130,41 @@ watch(
   --v-selection-control-size: 32px;
 }
 
-.specific-times-checkbox .v-input__details,
-.specific-times-checkbox .v-messages,
-.specific-times-checkbox .v-messages__message {
-  opacity: 1 !important;
+.specific-times-switch-grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 0.35rem;
+}
+
+.specific-times-switch {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+}
+
+.specific-times-switch__label {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+}
+
+.specific-times-switch__message {
+  grid-column: 2;
+  grid-row: 2;
+  margin-top: 2px;
+}
+
+.specific-times-switch :deep(.v-selection-control) {
+  align-items: center;
+}
+
+.specific-times-switch :deep(.v-label) {
+  display: none;
+}
+
+.specific-times-switch :deep(.v-selection-control__wrapper) {
+  margin-top: 0;
 }
 
 .gated-feature-checkbox {

@@ -113,6 +113,29 @@ const VCheckboxSlotStub = {
   `,
 }
 
+const VSwitchSlotStub = {
+  name: "VSwitch",
+  inheritAttrs: false,
+  props: {
+    class: {
+      type: [String, Array, Object],
+      default: undefined,
+    },
+    messages: {
+      type: String,
+      default: "",
+    },
+  },
+  template: `
+    <div class="v-switch-stub" :class="$props.class">
+      <div class="v-switch-stub__label"><slot name="label" /></div>
+      <div class="v-switch-stub__message">
+        <slot name="message" :message="messages" />
+      </div>
+    </div>
+  `,
+}
+
 const TimezoneSelectorStub = {
   name: "TimezoneSelector",
   template: '<div data-testid="timezone-selector-stub">Timezone selector</div>',
@@ -382,7 +405,7 @@ describe("NewEvent", () => {
       global: {
         stubs: {
           ...defaultStubs,
-          "v-checkbox": VCheckboxSlotStub,
+          "v-switch": VSwitchSlotStub,
           "v-select": VSelectStub,
           TimezoneSelector: TimezoneSelectorStub,
         },
@@ -463,17 +486,31 @@ describe("NewEvent", () => {
     )
   })
 
-  it("uses explicit primary checkbox semantics for the specific-times toggle", () => {
+  it("uses explicit primary switch semantics for the specific-times toggle", () => {
     expect(newEventSource).toContain('data-testid="specific-times-toggle"')
     expect(newEventSource).toContain('v-model="specificTimesEnabled"')
-    expect(newEventSource).toContain('class="specific-times-checkbox"')
-    expect(newEventSource).toContain('color="primary"')
-    expect(newEventSource).toContain('messages="Click the Next button below"')
     expect(newEventSource).toContain(
-      'class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"'
+      'class="specific-times-switch schedule-overlap-compact-switch"'
+    )
+    expect(newEventSource).toContain('class="specific-times-switch-grid"')
+    expect(newEventSource).toContain('class="specific-times-switch__label tw-text-sm"')
+    expect(newEventSource).toContain('color="primary"')
+    expect(newEventSource).toContain("inset")
+    expect(newEventSource).toContain(
+      'class="specific-times-switch__message tw-pointer-events-auto tw-text-xs tw-text-dark-gray"'
+    )
+    expect(newEventSource).toContain("hide-details")
+    expect(newEventStyleBlock).toMatch(
+      /\.specific-times-switch-grid\s*\{\s*display:\s*grid;\s*grid-template-columns:\s*auto minmax\(0, 1fr\);\s*grid-template-rows:\s*auto auto;\s*column-gap:\s*0\.35rem;/
     )
     expect(newEventStyleBlock).toMatch(
-      /\.specific-times-checkbox \.v-input__details,\s*\.specific-times-checkbox \.v-messages,\s*\.specific-times-checkbox \.v-messages__message\s*\{\s*opacity:\s*1 !important;/
+      /\.specific-times-switch__label\s*\{\s*grid-column:\s*2;\s*grid-row:\s*1;\s*align-self:\s*center;/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.specific-times-switch__message\s*\{\s*grid-column:\s*2;\s*grid-row:\s*2;\s*margin-top:\s*2px;/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.specific-times-switch :deep\(\.v-label\)\s*\{\s*display:\s*none;/
     )
   })
 
@@ -722,7 +759,6 @@ describe("NewEvent", () => {
     expect(newEventStyleBlock).toMatch(
       /\.advanced-options-sign-in-link\s*\{\s*color:\s*var\(--timeful-selection-fg\) !important;/
     )
-    expect(newEventStyleBlock).not.toMatch(/:deep\(/)
     expect(newEventStyleBlock).not.toMatch(/v-selection-control--disabled \.v-label/)
     expect(newEventStyleBlock).not.toMatch(/v-input--disabled/)
     expect(newEventStyleBlock).not.toMatch(/v-input--density-default/)

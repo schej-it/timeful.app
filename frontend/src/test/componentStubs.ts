@@ -200,6 +200,7 @@ export const buildEventEditorStubs = (
     "v-input": passThroughStub,
     "v-select": nullStub,
     "v-spacer": nullStub,
+    "v-switch": true,
     "v-text-field": nullStub,
     "v-tooltip": nullStub,
     AlertText: nullStub,
