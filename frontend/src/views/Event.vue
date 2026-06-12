@@ -703,7 +703,7 @@
               </v-btn>
               <v-btn
                 id="mobile-primary-availability-btn"
-                class="tw-min-w-0 tw-whitespace-nowrap tw-bg-white tw-px-2 tw-text-[13px] tw-text-green tw-transition-opacity"
+                class="mobile-primary-availability-button tw-min-w-0 tw-whitespace-nowrap tw-bg-white tw-px-2 tw-text-[13px] tw-text-green tw-transition-opacity"
                 :class="[
                   mobilePrimaryAvailabilityButtonClass,
                   {
@@ -2161,6 +2161,12 @@ watch(
 }
 
 .desktop-primary-availability-button--edit {
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  box-shadow: none !important;
+}
+
+.mobile-primary-availability-button {
   -webkit-box-shadow: none !important;
   -moz-box-shadow: none !important;
   box-shadow: none !important;

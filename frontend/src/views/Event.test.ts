@@ -926,6 +926,57 @@ describe("Event guest edit action", () => {
     )
   })
 
+  it("keeps the mobile primary add-availability CTA shadowless", async () => {
+    isPhoneState.value = true
+    loaderEventState.value = {
+      ...loaderEventState.value,
+      responses: {},
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapNoOwnedGuestResponsesStub,
+          EventOptions: true,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-btn": buttonSemanticStub,
+          "v-card": true,
+          "v-card-actions": true,
+          "v-card-text": true,
+          "v-card-title": true,
+          "v-chip": true,
+          "v-dialog": true,
+          "v-icon": true,
+          "v-spacer": true,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.get("#mobile-primary-availability-btn").text()).toContain(
+      "Add availability"
+    )
+    expect(wrapper.get("#mobile-primary-availability-btn").classes()).toContain(
+      "mobile-primary-availability-button"
+    )
+  })
+
   it("keeps no-response desktop inline options pinned to the second header column", async () => {
     loaderEventState.value = {
       ...loaderEventState.value,
