@@ -371,26 +371,36 @@
                                 </v-btn>
                               </template>
                               <v-list density="compact">
-                                <v-list-item @click="scheduleOverlap?.confirmScheduleEvent(true)">
-                                  <v-img
-                                    src="@/assets/gcal_logo.png"
-                                    class="tw-mr-2 tw-flex-none"
-                                    height="20"
-                                    width="20"
-                                  />
-                                  <div class="tw-flex tw-min-w-0 tw-flex-col">
-                                    <v-list-item-title>Google Calendar</v-list-item-title>
+                                <v-list-item
+                                  class="schedule-event-menu__item"
+                                  @click="scheduleOverlap?.confirmScheduleEvent(true)"
+                                >
+                                  <div class="schedule-event-menu__content">
+                                    <img
+                                      src="@/assets/gcal_logo.png"
+                                      alt=""
+                                      aria-hidden="true"
+                                      class="schedule-event-menu__icon tw-mr-2 tw-flex-none"
+                                    />
+                                    <div class="tw-flex tw-min-w-0 tw-flex-col">
+                                      <v-list-item-title>Google Calendar</v-list-item-title>
+                                    </div>
                                   </div>
                                 </v-list-item>
-                                <v-list-item @click="scheduleOverlap?.confirmScheduleEvent(false)">
-                                  <v-img
-                                    src="@/assets/outlook_logo.svg"
-                                    class="tw-mr-2 tw-flex-none"
-                                    height="20"
-                                    width="20"
-                                  />
-                                  <div class="tw-flex tw-min-w-0 tw-flex-col">
-                                    <v-list-item-title>Outlook</v-list-item-title>
+                                <v-list-item
+                                  class="schedule-event-menu__item"
+                                  @click="scheduleOverlap?.confirmScheduleEvent(false)"
+                                >
+                                  <div class="schedule-event-menu__content">
+                                    <img
+                                      src="@/assets/outlook_logo.svg"
+                                      alt=""
+                                      aria-hidden="true"
+                                      class="schedule-event-menu__icon tw-mr-2 tw-flex-none"
+                                    />
+                                    <div class="tw-flex tw-min-w-0 tw-flex-col">
+                                      <v-list-item-title>Outlook</v-list-item-title>
+                                    </div>
                                   </div>
                                 </v-list-item>
                               </v-list>
@@ -2273,5 +2283,24 @@ watch(
 
 .desktop-event-header-options__menu-button {
   border-color: #e0e0e0;
+}
+
+.schedule-event-menu__item :deep(.v-list-item__content) {
+  display: flex;
+  align-items: center;
+}
+
+.schedule-event-menu__content {
+  display: flex;
+  align-items: center;
+  min-height: 100%;
+  min-width: 0;
+}
+
+.schedule-event-menu__icon {
+  display: block;
+  height: 20px;
+  object-fit: contain;
+  width: 20px;
 }
 </style>
