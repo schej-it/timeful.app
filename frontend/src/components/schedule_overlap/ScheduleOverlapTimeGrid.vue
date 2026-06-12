@@ -100,6 +100,7 @@
                     v-if="row.kind === 'collapsed'"
                     type="button"
                     class="schedule-overlap-collapsed-row tw-flex tw-h-full tw-w-full tw-items-center tw-justify-center tw-gap-2 tw-px-4 tw-text-sm"
+                    @pointerdown.stop
                     @click="timedGrid.actions.toggleCollapsedSpan(row.id)"
                   >
                     <span>{{ row.startLabel }}-{{ row.endLabel }}</span>

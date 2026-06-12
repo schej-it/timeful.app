@@ -1052,7 +1052,6 @@ const expandedCollapsedSpanIds = ref<Set<string>>(new Set())
 const canCollapseTimes = computed(
   () =>
     !props.event.daysOnly &&
-    state.value !== states.EDIT_AVAILABILITY &&
     state.value !== states.EDIT_SIGN_UP_BLOCKS &&
     state.value !== states.SCHEDULE_EVENT &&
     state.value !== states.SET_SPECIFIC_TIMES &&

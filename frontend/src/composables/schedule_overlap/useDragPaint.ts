@@ -248,10 +248,7 @@ export function useDragPaint(opts: UseDragPaintOptions) {
   const resolveTimedGridRowCol = (
     e: PointerEvent | MouseEvent | TouchEvent
   ): RowCol | null => {
-    if (
-      opts.event.value.daysOnly ||
-      opts.state.value !== states.SET_SPECIFIC_TIMES
-    ) {
+    if (opts.event.value.daysOnly) {
       return null
     }
 
@@ -319,6 +316,9 @@ export function useDragPaint(opts: UseDragPaintOptions) {
   }
 
   const startDrag = (e: PointerEvent | MouseEvent | TouchEvent) => {
+    const target = e.target instanceof Element ? e.target : null
+    if (target?.closest(".schedule-overlap-collapsed-row")) return
+
     const { row, col } = getPreferredRowCol(e)
 
     if (opts.isSignUp.value) {

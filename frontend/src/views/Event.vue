@@ -513,8 +513,8 @@
                   </template>
                   <template v-else>
                     <div class="tw-flex tw-flex-col tw-items-end">
-                      <div class="tw-flex tw-flex-col">
-                        <div class="tw-flex tw-justify-end tw-gap-2">
+                      <div class="tw-flex tw-flex-col tw-items-end tw-gap-2">
+                        <div class="tw-flex tw-gap-2">
                           <v-btn
                             variant="outlined"
                             class="desktop-editing-cancel-button tw-w-20 tw-text-red"
@@ -531,10 +531,20 @@
                             Save
                           </v-btn>
                         </div>
-                        <div
-                          v-if="showDeleteAvailabilityAction"
-                          class="tw-h-6"
-                        ></div>
+                        <v-switch
+                          v-if="!scheduleOverlapEvent.daysOnly"
+                          inset
+                          class="schedule-overlap-compact-switch tw-self-start"
+                          hide-details
+                          :model-value="scheduleOverlap?.showAllHours ?? false"
+                          @update:model-value="
+                            (val: boolean | null) => scheduleOverlap?.updateShowAllHours(!!val)
+                          "
+                        >
+                          <template #label>
+                            <div class="tw-text-sm tw-text-black">Show all hours</div>
+                          </template>
+                        </v-switch>
                         <v-btn
                           v-if="showDeleteAvailabilityAction"
                           variant="outlined"
@@ -767,6 +777,38 @@
             </v-btn>
             <v-spacer />
             <div class="tw-flex tw-gap-2">
+              <v-menu
+                location="top"
+                offset="8"
+                :close-on-content-click="false"
+              >
+                <template #activator="{ props: activatorProps }">
+                  <v-btn
+                    variant="outlined"
+                    class="tw-border-white tw-text-white tw-text-sm"
+                    v-bind="activatorProps"
+                  >
+                    Options
+                  </v-btn>
+                </template>
+                <v-card min-width="200">
+                  <v-card-text class="tw-flex tw-flex-col tw-gap-4 tw-p-4">
+                    <v-switch
+                      inset
+                      class="schedule-overlap-compact-switch"
+                      hide-details
+                      :model-value="scheduleOverlap?.showAllHours ?? false"
+                      @update:model-value="
+                        (val: boolean | null) => scheduleOverlap?.updateShowAllHours(!!val)
+                      "
+                    >
+                      <template #label>
+                        <div class="tw-text-sm tw-text-black">Show all hours</div>
+                      </template>
+                    </v-switch>
+                  </v-card-text>
+                </v-card>
+              </v-menu>
               <v-btn
                 variant="outlined"
                 class="mobile-editing-cancel-button tw-border-white tw-text-white"
