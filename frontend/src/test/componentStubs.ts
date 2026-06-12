@@ -124,6 +124,10 @@ export const vSelectStub = defineComponent({
       type: String,
       default: undefined,
     },
+    color: {
+      type: String,
+      default: undefined,
+    },
     items: {
       type: Array,
       default: () => [],

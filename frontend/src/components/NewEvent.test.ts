@@ -393,6 +393,7 @@ describe("NewEvent", () => {
     expect(selects[3]?.props("itemValue")).toBe("value")
     expect(selects[3]?.props("variant")).toBe("underlined")
     expect(selects[3]?.props("density")).toBe("compact")
+    expect(selects[3]?.props("color")).toBe("#219653")
     expect(selects[3]?.props("items")).toEqual([
       { title: "15 min", value: 15 },
       { title: "30 min", value: 30 },
@@ -413,7 +414,7 @@ describe("NewEvent", () => {
     })
 
     expect(wrapper.text()).toContain("Advanced options")
-    expect(wrapper.text()).toContain("Time increment:")
+    expect(wrapper.text()).toContain("Time increment")
     expect(wrapper.get('[data-testid="timezone-selector-stub"]').text()).toBe(
       "Timezone selector"
     )

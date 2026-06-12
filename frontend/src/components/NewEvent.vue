@@ -320,10 +320,11 @@
           <div class="tw-mb-2 tw-text-lg tw-text-black">Advanced options</div>
           <div class="advanced-options-panel tw-flex tw-flex-col tw-gap-5 tw-pt-2">
             <div v-if="!edit" class="tw-flex tw-items-center tw-gap-x-2">
-              <div class="tw-text-sm tw-text-black">Time increment:</div>
+              <div class="tw-text-sm tw-text-black">Time increment</div>
               <v-select
                 v-model="timeIncrement"
                 class="time-increment-select -tw-mt-[2px] tw-w-24 tw-grow-0 tw-text-sm tw-text-black"
+                color="#219653"
                 density="compact"
                 hide-details
                 :items="timeIncrementItems"
