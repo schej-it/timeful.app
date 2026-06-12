@@ -328,7 +328,7 @@
               <div class="tw-text-sm tw-text-black">Time increment</div>
               <v-select
                 v-model="timeIncrement"
-                class="time-increment-select -tw-mt-[2px] tw-w-24 tw-grow-0 tw-text-sm tw-text-black"
+                class="time-increment-select tw-w-24 tw-grow-0 tw-text-sm tw-text-black"
                 color="#219653"
                 density="compact"
                 hide-details
@@ -1245,6 +1245,9 @@ watch(
 .time-increment-select .v-field__input,
 .time-increment-select .v-select__selection,
 .time-increment-select .v-select__selection-text {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
   letter-spacing: normal !important;
 }
 

@@ -438,6 +438,7 @@ describe("NewEvent", () => {
         .findAll("button")
         .some((button) => /advanced options/i.exec(button.text()) !== null)
     ).toBe(false)
+    expect(newEventSource).toContain('class="time-increment-select tw-w-24 tw-grow-0 tw-text-sm tw-text-black"')
   })
 
   it("uses a compact numeric reminder threshold field and preserves its enabled gating", () => {
@@ -858,6 +859,12 @@ describe("NewEvent", () => {
     expect(newEventSource).toContain('class="advanced-options-panel tw-flex tw-flex-col tw-gap-5 tw-pt-2"')
     expect(newEventStyleBlock).toMatch(
       /\.advanced-options-panel\s*\{\s*color:\s*var\(--timeful-muted-foreground\);/
+    )
+  })
+
+  it("keeps the time increment control typography aligned with its label", () => {
+    expect(newEventStyleBlock).toMatch(
+      /\.time-increment-select,[\s\S]*?\.time-increment-select \.v-select__selection-text\s*\{[\s\S]*?font-family:\s*inherit !important;[\s\S]*?font-size:\s*inherit !important;[\s\S]*?font-weight:\s*inherit !important;/
     )
   })
 
