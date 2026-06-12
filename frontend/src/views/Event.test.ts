@@ -926,6 +926,56 @@ describe("Event guest edit action", () => {
     )
   })
 
+  it("keeps no-response desktop inline options pinned to the second header column", async () => {
+    loaderEventState.value = {
+      ...loaderEventState.value,
+      responses: {},
+    }
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapNoOwnedGuestResponsesStub,
+          EventOptions: true,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-btn": buttonSemanticStub,
+          "v-card": true,
+          "v-card-actions": true,
+          "v-card-text": true,
+          "v-card-title": true,
+          "v-chip": true,
+          "v-dialog": true,
+          "v-icon": true,
+          "v-spacer": true,
+          "v-switch": true,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    const actionClusterHtml = wrapper.get("#event-header-actions").html()
+    expect(actionClusterHtml).toContain("desktop-event-header-inline-options")
+    expect(actionClusterHtml).toContain("desktop-event-header-inline-options__item")
+    expect(eventViewSource).toContain(".desktop-event-header-inline-options__item")
+    expect(eventViewSource).toContain("grid-column: 2;")
+  })
+
   it("triggers add guest availability from the new secondary desktop action", async () => {
     authUserState.value = {
       _id: "000000000000000000000000",

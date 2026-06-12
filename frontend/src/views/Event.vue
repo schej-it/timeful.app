@@ -423,20 +423,22 @@
                       </div>
                     </template>
                     <template v-else>
-                      <div class="tw-flex tw-flex-col tw-gap-2">
+                      <div
+                        class="desktop-event-header-inline-options tw-grid tw-grid-cols-2 tw-gap-2"
+                      >
                         <v-btn
                           v-if="showSecondaryAddAvailabilityAction"
                           id="desktop-secondary-availability-btn"
                           variant="outlined"
                           color="primary"
-                          class="desktop-event-header-control tw-w-full tw-whitespace-nowrap tw-px-3 tw-text-sm tw-text-green"
+                          class="desktop-event-header-control desktop-event-header-inline-options__item tw-w-full tw-whitespace-nowrap tw-px-3 tw-text-sm tw-text-green"
                           @click="triggerSecondaryAddAvailability"
                         >
                           <v-icon>mdi-plus</v-icon>
                           <span class="tw-ml-1">{{ secondaryAddAvailabilityButtonText }}</span>
                         </v-btn>
                         <div
-                          class="desktop-primary-availability-anchor tw-relative tw-min-w-0"
+                          class="desktop-primary-availability-anchor desktop-event-header-inline-options__item tw-relative tw-min-w-0"
                         >
                           <v-btn
                             id="desktop-primary-availability-btn"
@@ -478,7 +480,7 @@
                         </div>
                         <v-switch
                           id="show-all-hours-toggle"
-                          class="desktop-event-header-control schedule-overlap-compact-switch desktop-event-header-options__all-hours-switch tw-w-full"
+                          class="desktop-event-header-control desktop-event-header-inline-options__item schedule-overlap-compact-switch desktop-event-header-options__all-hours-switch tw-w-full"
                           inset
                           :model-value="desktopShowAllHours"
                           hide-details
@@ -2223,6 +2225,10 @@ watch(
   align-items: center;
   justify-content: center;
   min-width: 0;
+}
+
+.desktop-event-header-inline-options__item {
+  grid-column: 2;
 }
 
 .desktop-event-header-options__menu {
