@@ -172,6 +172,10 @@ const VBtnStub = defineComponent({
 const newEventStyleBlock =
   /<style>([\s\S]*)<\/style>/.exec(newEventSource)?.[1] ?? ""
 const appCssSource = readFileSync("src/index.css", "utf8")
+const compactSwitchCssSource = readFileSync(
+  "src/components/schedule_overlap/ScheduleOverlapCompactSwitch.css",
+  "utf8"
+)
 const dayOfWeekButtonSnippet =
   /<v-btn\s+v-for="day in dayOfWeekButtons"[\s\S]*?<\/v-btn>/.exec(newEventSource)?.[0] ?? ""
 
@@ -358,6 +362,17 @@ describe("NewEvent", () => {
     )
   })
 
+  it("defaults Start on Monday to enabled for new events", () => {
+    const wrapper = shallowMount(NewEvent, {
+      global: {
+        stubs: defaultStubs,
+      },
+    })
+
+    const vm = wrapper.vm as unknown as { startOnMonday: boolean }
+    expect(vm.startOnMonday).toBe(true)
+  })
+
   it("passes explicit Vuetify 3 item mappings to event time and increment selects", () => {
     const wrapper = shallowMount(NewEvent, {
       global: {
@@ -483,7 +498,66 @@ describe("NewEvent", () => {
     expect(newEventSource).not.toContain("<v-btn-toggle\n                  v-model=\"selectedDaysOfWeek\"\n                  multiple\n                  solo")
     expect(dayOfWeekButtonSnippet).not.toContain('color="primary"')
     expect(newEventStyleBlock).toMatch(
-      /\.editor-dow-button--selected\s*\{\s*background-color:\s*var\(--timeful-selection-bg\);\s*color:\s*var\(--timeful-selection-fg\);/
+      /\.editor-dow-button--selected\s*\{\s*background-color:\s*var\(--timeful-selection-bg\) !important;\s*color:\s*var\(--timeful-selection-fg\) !important;/
+    )
+  })
+
+  it("renders the day-of-week Monday toggle as a compact switch and defaults it on", () => {
+    expect(newEventSource).toContain('v-model="startOnMonday"')
+    expect(newEventSource).toContain(
+      'class="compact-switch new-event-start-on-monday-switch schedule-overlap-compact-switch"'
+    )
+    expect(newEventSource).toContain(
+      'class="compact-switch__label tw-text-sm tw-text-very-dark-gray"'
+    )
+    expect(newEventSource).not.toContain('<v-checkbox v-model="startOnMonday"')
+    expect(newEventSource).toContain("const DEFAULT_START_ON_MONDAY = true")
+    expect(newEventSource).toContain("initialStartOnMonday: DEFAULT_START_ON_MONDAY")
+    expect(newEventSource).toContain(
+      "props.contactsPayload.startOnMonday ?? DEFAULT_START_ON_MONDAY"
+    )
+  })
+
+  it("uses semantic tokens for weekday segmented controls and compact switch tracks", () => {
+    expect(newEventStyleBlock).toMatch(
+      /\.editor-dow-toggle\s*\{\s*display:\s*grid;[\s\S]*grid-template-columns:\s*repeat\(7, minmax\(0, 1fr\)\);[\s\S]*border:\s*1px solid var\(--timeful-weekday-segment-border\);[\s\S]*background-color:\s*var\(--timeful-weekday-segment-surface\);/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.editor-dow-button\s*\{[^}]*color:\s*var\(--timeful-weekday-segment-foreground\) !important;/
+    )
+    expect(newEventStyleBlock).toMatch(
+      /\.editor-dow-button \+ \.editor-dow-button\s*\{\s*border-left:\s*1px solid var\(--timeful-weekday-segment-border\);/
+    )
+    expect(newEventStyleBlock).not.toMatch(
+      /\.editor-dow-button\s*\{[^}]*rgba\(0,\s*0,\s*0,\s*0\.87\)/
+    )
+    expect(appCssSource).toMatch(/--timeful-weekday-segment-border:\s*rgba\(79,\s*79,\s*79,\s*0\.18\);/i)
+    expect(appCssSource).toMatch(/--timeful-weekday-segment-surface:\s*#ffffff;/i)
+    expect(appCssSource).toMatch(
+      /--timeful-weekday-segment-foreground:\s*rgba\(0,\s*0,\s*0,\s*0\.72\);/i
+    )
+    expect(appCssSource).toMatch(/--timeful-compact-switch-track-border:\s*#bdbdbd;/i)
+    expect(appCssSource).toMatch(/--timeful-compact-switch-track-bg:\s*#bdbdbd;/i)
+    expect(appCssSource).toMatch(
+      /--timeful-compact-switch-track-active-border:\s*#29bc68;/i
+    )
+    expect(appCssSource).toMatch(
+      /--timeful-compact-switch-track-active-bg:\s*#00994c;/i
+    )
+    expect(compactSwitchCssSource).toMatch(
+      /border:\s*2px solid var\(--timeful-compact-switch-track-border\) !important;/
+    )
+    expect(compactSwitchCssSource).toMatch(
+      /background-color:\s*var\(--timeful-compact-switch-track-bg\) !important;/
+    )
+    expect(compactSwitchCssSource).toMatch(
+      /background-color:\s*var\(--timeful-compact-switch-thumb-bg\) !important;/
+    )
+    expect(compactSwitchCssSource).toMatch(
+      /border-color:\s*var\(--timeful-compact-switch-track-active-border\) !important;/
+    )
+    expect(compactSwitchCssSource).toMatch(
+      /background-color:\s*var\(--timeful-compact-switch-track-active-bg\) !important;/
     )
   })
 
@@ -491,27 +565,29 @@ describe("NewEvent", () => {
     expect(newEventSource).toContain('data-testid="specific-times-toggle"')
     expect(newEventSource).toContain('v-model="specificTimesEnabled"')
     expect(newEventSource).toContain(
-      'class="specific-times-switch schedule-overlap-compact-switch"'
+      'class="compact-switch specific-times-switch schedule-overlap-compact-switch"'
     )
-    expect(newEventSource).toContain('class="specific-times-switch-grid"')
-    expect(newEventSource).toContain('class="specific-times-switch__label tw-text-sm"')
+    expect(newEventSource).toContain('class="compact-switch-grid specific-times-switch-grid"')
+    expect(newEventSource).toContain(
+      'class="compact-switch__label specific-times-switch__label tw-text-sm"'
+    )
     expect(newEventSource).toContain('color="primary"')
     expect(newEventSource).toContain("inset")
     expect(newEventSource).toContain(
-      'class="specific-times-switch__message tw-pointer-events-auto tw-text-xs tw-text-dark-gray"'
+      'class="compact-switch__message specific-times-switch__message tw-pointer-events-auto tw-text-xs tw-text-dark-gray"'
     )
     expect(newEventSource).toContain("hide-details")
     expect(newEventStyleBlock).toMatch(
-      /\.specific-times-switch-grid\s*\{\s*display:\s*grid;\s*grid-template-columns:\s*auto minmax\(0, 1fr\);\s*grid-template-rows:\s*auto auto;\s*column-gap:\s*0\.35rem;/
+      /\.compact-switch-grid\s*\{\s*display:\s*grid;\s*grid-template-columns:\s*auto minmax\(0, 1fr\);\s*grid-template-rows:\s*auto auto;\s*column-gap:\s*0\.35rem;/
     )
     expect(newEventStyleBlock).toMatch(
-      /\.specific-times-switch__label\s*\{\s*grid-column:\s*2;\s*grid-row:\s*1;\s*align-self:\s*center;/
+      /\.compact-switch__label\s*\{\s*grid-column:\s*2;\s*grid-row:\s*1;\s*align-self:\s*center;/
     )
     expect(newEventStyleBlock).toMatch(
-      /\.specific-times-switch__message\s*\{\s*grid-column:\s*2;\s*grid-row:\s*2;\s*margin-top:\s*2px;/
+      /\.compact-switch__message\s*\{\s*grid-column:\s*2;\s*grid-row:\s*2;\s*margin-top:\s*2px;/
     )
     expect(newEventStyleBlock).toMatch(
-      /\.specific-times-switch :deep\(\.v-label\)\s*\{\s*display:\s*none;/
+      /\.compact-switch :deep\(\.v-label\)\s*\{\s*display:\s*none;/
     )
   })
 

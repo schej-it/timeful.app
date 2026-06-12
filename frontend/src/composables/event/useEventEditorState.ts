@@ -458,5 +458,15 @@ export function useEventEditorState(
     selectedDays.value = []
   })
 
+  watch(startOnMonday, (nextValue, previousValue) => {
+    if (nextValue === previousValue) return
+
+    selectedDaysOfWeek.value = selectedDaysOfWeek.value.map((dayIndex) => {
+      if (nextValue && dayIndex === 0) return 7
+      if (!nextValue && dayIndex === 7) return 0
+      return dayIndex
+    })
+  })
+
   return state
 }

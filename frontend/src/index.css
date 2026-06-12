@@ -5,6 +5,9 @@
 :root {
   --timeful-selection-bg: #f2faf6;
   --timeful-selection-fg: #00994c;
+  --timeful-weekday-segment-border: rgba(79, 79, 79, 0.18);
+  --timeful-weekday-segment-surface: #ffffff;
+  --timeful-weekday-segment-foreground: rgba(0, 0, 0, 0.72);
   --timeful-grid-cursor-outline: #000000;
   --timeful-error-foreground: #dc2626;
   --timeful-unavailable-bg: #e523230d;
@@ -22,6 +25,11 @@
   --timeful-disabled-foreground: rgba(0, 0, 0, 0.38);
   --timeful-disabled-checkbox-icon: #aaaaaa;
   --timeful-emphasis-foreground: #4f4f4f;
+  --timeful-compact-switch-track-border: #bdbdbd;
+  --timeful-compact-switch-track-bg: #bdbdbd;
+  --timeful-compact-switch-track-active-border: #29bc68;
+  --timeful-compact-switch-track-active-bg: #00994c;
+  --timeful-compact-switch-thumb-bg: #ffffff;
   --timeful-primary-action-bg: #00994c;
   --timeful-primary-action-fg: #ffffff;
   --timeful-primary-action-disabled-bg: rgba(0, 0, 0, 0.12);

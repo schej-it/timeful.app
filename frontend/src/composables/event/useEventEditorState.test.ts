@@ -56,6 +56,43 @@ describe("useEventEditorState", () => {
     expect(state.startOnMonday.value).toBe(true)
   })
 
+  it("remaps Sunday selections when the week start preference changes", async () => {
+    vi.stubGlobal("localStorage", createLocalStorageMock())
+
+    const event = ref<Event | undefined>(undefined)
+    const edit = ref(false)
+    const contactsPayload = ref<EventDraft | undefined>(undefined)
+    const formRef = ref<{ resetValidation: () => void } | null>(null)
+    let state!: EventEditorState
+
+    mount({
+      setup() {
+        state = useEventEditorState({
+          event: computed(() => event.value),
+          edit: computed(() => edit.value),
+          contactsPayload: computed(() => contactsPayload.value),
+          formRef,
+          initialNotificationsEnabled: true,
+          initialStartOnMonday: true,
+        })
+
+        return () => null
+      },
+    })
+
+    state.selectedDateOption.value = dateOptions.DOW
+    state.selectedDaysOfWeek.value = [1, 7]
+    state.startOnMonday.value = false
+    await nextTick()
+
+    expect(state.selectedDaysOfWeek.value).toEqual([1, 0])
+
+    state.startOnMonday.value = true
+    await nextTick()
+
+    expect(state.selectedDaysOfWeek.value).toEqual([1, 7])
+  })
+
   it("hydrates event data and includes extra state in edit tracking", async () => {
     vi.stubGlobal("localStorage", createLocalStorageMock())
 

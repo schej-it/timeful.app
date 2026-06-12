@@ -124,16 +124,16 @@
                 class="tw-mb-2"
                 data-testid="specific-times-toggle"
               >
-                <div class="specific-times-switch-grid">
+                <div class="compact-switch-grid specific-times-switch-grid">
                   <v-switch
                     v-model="specificTimesEnabled"
-                    class="specific-times-switch schedule-overlap-compact-switch"
+                    class="compact-switch specific-times-switch schedule-overlap-compact-switch"
                     color="primary"
                     inset
                     hide-details
                   />
                   <span
-                    class="specific-times-switch__label tw-text-sm"
+                    class="compact-switch__label specific-times-switch__label tw-text-sm"
                     :class="
                       specificTimesEnabled
                         ? 'tw-text-black'
@@ -145,7 +145,7 @@
                   <v-expand-transition>
                     <div
                       v-if="specificTimesEnabled"
-                      class="specific-times-switch__message tw-pointer-events-auto tw-text-xs tw-text-dark-gray"
+                      class="compact-switch__message specific-times-switch__message tw-pointer-events-auto tw-text-xs tw-text-dark-gray"
                     >
                       Click the Next button below
                     </div>
@@ -205,7 +205,7 @@
                 v-model="selectedDaysOfWeek"
                 hide-details="auto"
                 :rules="selectedDaysRules"
-                class="tw-w-fit"
+                class="tw-w-full"
               >
                 <v-btn-toggle
                   v-model="selectedDaysOfWeek"
@@ -223,13 +223,18 @@
                   </v-btn>
                 </v-btn-toggle>
               </v-input>
-              <v-checkbox v-model="startOnMonday" class="tw-mt-2" hide-details>
-                <template #label>
-                  <span class="tw-text-sm tw-text-very-dark-gray">
-                    Start on Monday
-                  </span>
-                </template>
-              </v-checkbox>
+              <div class="compact-switch-grid new-event-start-on-monday-switch-grid tw-mt-2">
+                <v-switch
+                  v-model="startOnMonday"
+                  class="compact-switch new-event-start-on-monday-switch schedule-overlap-compact-switch"
+                  color="primary"
+                  inset
+                  hide-details
+                />
+                <span class="compact-switch__label tw-text-sm tw-text-very-dark-gray">
+                  Start on Monday
+                </span>
+              </div>
             </div>
           </v-expand-transition>
         </div>
@@ -534,7 +539,6 @@ import { isAnonymousOwnerEvent } from "@/composables/event/eventOwnership"
 import {
   addEventToCreatedList,
   plainTimeToTimeNum,
-  prefersStartOnMonday,
   post,
   put,
   resolveTimezoneValue,
@@ -632,6 +636,7 @@ const cardTextElement = computed(() => {
 })
 
 const DEFAULT_TIME_INCREMENT = 15
+const DEFAULT_START_ON_MONDAY = true
 const SUPPORTED_TIME_INCREMENTS = new Set([15, 30, 60])
 const hasBlurredNameField = ref(false)
 const isNameFieldFocused = ref(true)
@@ -663,11 +668,10 @@ const editorState = useEventEditorState({
   contactsPayload: computed(() => props.contactsPayload),
   formRef,
   initialNotificationsEnabled: true,
-  initialStartOnMonday: prefersStartOnMonday(),
+  initialStartOnMonday: DEFAULT_START_ON_MONDAY,
   onDraftHydrate: ({ specificTimesEnabled, startOnMonday }) => {
     specificTimesEnabled.value = props.contactsPayload.specificTimesEnabled ?? false
-    startOnMonday.value =
-      props.contactsPayload.startOnMonday ?? prefersStartOnMonday()
+    startOnMonday.value = props.contactsPayload.startOnMonday ?? DEFAULT_START_ON_MONDAY
   },
   onEventHydrate: (
     {
@@ -685,7 +689,7 @@ const editorState = useEventEditorState({
   },
   onReset: ({ specificTimesEnabled, startOnMonday, timeIncrement }) => {
     specificTimesEnabled.value = false
-    startOnMonday.value = prefersStartOnMonday()
+    startOnMonday.value = DEFAULT_START_ON_MONDAY
     timeIncrement.value = DEFAULT_TIME_INCREMENT
   },
   captureExtraInitialState: ({
@@ -1091,16 +1095,44 @@ watch(
 }
 
 .editor-dow-toggle {
-  gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  width: 100%;
+  gap: 0;
+  padding: 4px;
+  border: 1px solid var(--timeful-weekday-segment-border);
+  border-radius: 999px;
+  background-color: var(--timeful-weekday-segment-surface);
+  overflow: hidden;
 }
 
 .editor-dow-button {
-  color: rgba(0, 0, 0, 0.87);
+  min-width: 0;
+  width: 100%;
+  border-radius: 999px !important;
+  color: var(--timeful-weekday-segment-foreground) !important;
+}
+
+.editor-dow-button + .editor-dow-button {
+  border-left: 1px solid var(--timeful-weekday-segment-border);
 }
 
 .editor-dow-button--selected {
-  background-color: var(--timeful-selection-bg);
-  color: var(--timeful-selection-fg);
+  background-color: var(--timeful-selection-bg) !important;
+  color: var(--timeful-selection-fg) !important;
+}
+
+.new-event-dow-toggle :deep(.v-btn) {
+  min-width: 0;
+  width: 100%;
+  padding-inline: 0;
+  text-transform: none;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+
+.new-event-dow-toggle :deep(.v-btn__overlay) {
+  opacity: 0;
 }
 
 .new-event-submit-button .v-btn__content,
@@ -1131,40 +1163,40 @@ watch(
   --v-selection-control-size: 32px;
 }
 
-.specific-times-switch-grid {
+.compact-switch-grid {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-rows: auto auto;
   column-gap: 0.35rem;
 }
 
-.specific-times-switch {
+.compact-switch {
   grid-column: 1;
   grid-row: 1;
   align-self: center;
 }
 
-.specific-times-switch__label {
+.compact-switch__label {
   grid-column: 2;
   grid-row: 1;
   align-self: center;
 }
 
-.specific-times-switch__message {
+.compact-switch__message {
   grid-column: 2;
   grid-row: 2;
   margin-top: 2px;
 }
 
-.specific-times-switch :deep(.v-selection-control) {
+.compact-switch :deep(.v-selection-control) {
   align-items: center;
 }
 
-.specific-times-switch :deep(.v-label) {
+.compact-switch :deep(.v-label) {
   display: none;
 }
 
-.specific-times-switch :deep(.v-selection-control__wrapper) {
+.compact-switch :deep(.v-selection-control__wrapper) {
   margin-top: 0;
 }
 

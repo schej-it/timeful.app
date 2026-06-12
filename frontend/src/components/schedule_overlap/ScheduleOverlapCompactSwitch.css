@@ -26,9 +26,9 @@
   width: 38.4px !important;
   height: 22.4px !important;
   padding: 0 !important;
-  border: 2px solid #bdbdbd !important;
+  border: 2px solid var(--timeful-compact-switch-track-border) !important;
   border-radius: 14px !important;
-  background-color: #bdbdbd !important;
+  background-color: var(--timeful-compact-switch-track-bg) !important;
   box-shadow: none !important;
   opacity: 1 !important;
 }
@@ -45,7 +45,7 @@
   width: 15.2px !important;
   height: 15.2px !important;
   transform: none !important;
-  background-color: #fff !important;
+  background-color: var(--timeful-compact-switch-thumb-bg) !important;
   box-shadow: none !important;
 }
 
@@ -54,8 +54,8 @@
 }
 
 .schedule-overlap-compact-switch :deep(.v-selection-control--dirty .v-switch__track) {
-  border-color: #29bc68 !important;
-  background-color: #00994c !important;
+  border-color: var(--timeful-compact-switch-track-active-border) !important;
+  background-color: var(--timeful-compact-switch-track-active-bg) !important;
   box-shadow: none !important;
   opacity: 1 !important;
 }
