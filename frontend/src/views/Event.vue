@@ -494,7 +494,7 @@
                     </template>
                   </template>
                   <template v-else>
-                    <div class="tw-flex tw-gap-2">
+                    <div class="tw-flex tw-justify-end tw-gap-2">
                       <v-btn
                         variant="outlined"
                         class="desktop-editing-cancel-button tw-w-20 tw-text-red"
