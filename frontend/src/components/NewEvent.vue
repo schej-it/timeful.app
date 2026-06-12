@@ -331,7 +331,7 @@
                 item-title="title"
                 item-value="value"
                 single-line
-                variant="plain"
+                variant="underlined"
               >
                 <template #item="{ item, props: itemProps }">
                   <div
@@ -1230,8 +1230,8 @@ watch(
   opacity: 0;
 }
 
-.time-increment-select .v-field__outline {
-  display: none;
+.time-increment-select .v-field--variant-underlined .v-field__outline::before {
+  border-bottom-color: var(--timeful-grid-line-color);
 }
 
 .time-range-separator {
