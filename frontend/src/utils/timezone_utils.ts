@@ -119,13 +119,14 @@ export const parseSavedTimezone = (
 }
 
 export const readSavedTimezone = (
-  storage: StorageReader | undefined
+  storage: StorageReader | undefined,
+  storageKey = "timezone"
 ): SavedTimezoneShape | undefined => {
   if (!storage) {
     return undefined
   }
 
-  return parseSavedTimezone(storage.getItem("timezone"))
+  return parseSavedTimezone(storage.getItem(storageKey))
 }
 
 export const resolveSavedTimezoneValue = (
@@ -241,9 +242,10 @@ export const resolveBrowserTimezoneSelection = (
 
 export const resolveSavedTimezoneSelection = (
   timezones: Timezone[],
-  storage: StorageReader | undefined
+  storage: StorageReader | undefined,
+  storageKey = "timezone"
 ): Timezone | undefined => {
-  const savedTimezone = normalizeOptionalTimezone(readSavedTimezone(storage))
+  const savedTimezone = normalizeOptionalTimezone(readSavedTimezone(storage, storageKey))
   if (!savedTimezone) {
     return undefined
   }
@@ -276,12 +278,13 @@ export const resolveInitialTimezoneSelection = (
   referenceDate: Temporal.ZonedDateTime,
   storage: StorageReader | undefined =
     typeof globalThis.localStorage === "undefined" ? undefined : globalThis.localStorage,
-  browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+  storageKey = "timezone"
 ): Timezone => {
   const timezones = buildTimezonesForReferenceDate(referenceDate)
 
   return (
-    resolveSavedTimezoneSelection(timezones, storage) ??
+    resolveSavedTimezoneSelection(timezones, storage, storageKey) ??
     resolveBrowserTimezoneSelection(timezones, referenceDate, browserTimezone) ??
     normalizeTimezone(undefined)
   )

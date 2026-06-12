@@ -14,6 +14,7 @@ interface UseOwnedTimezoneOptions {
   initialTimezone?: MaybeRef<Timezone | null | undefined>
   referenceDate?: MaybeRef<Temporal.ZonedDateTime>
   storage?: Storage | undefined
+  storageKey?: string
 }
 
 const getStorage = () =>
@@ -21,6 +22,7 @@ const getStorage = () =>
 
 export function useOwnedTimezone(options: UseOwnedTimezoneOptions = {}) {
   const storage = options.storage ?? getStorage()
+  const storageKey = options.storageKey ?? "timezone"
   const referenceDate = computed(
     () => options.referenceDate?.value ?? Temporal.Now.zonedDateTimeISO()
   )
@@ -36,15 +38,15 @@ export function useOwnedTimezone(options: UseOwnedTimezoneOptions = {}) {
   const timezone = ref<Timezone>(
     initialTimezone.value != null
       ? normalizeTimezone(initialTimezone.value)
-      : resolveSavedTimezoneSelection(timezones.value, storage) ??
+      : resolveSavedTimezoneSelection(timezones.value, storage, storageKey) ??
           resolveBrowserTimezone()
   )
   const modified = ref(
-    resolveSavedTimezoneSelection(timezones.value, storage) !== undefined
+    resolveSavedTimezoneSelection(timezones.value, storage, storageKey) !== undefined
   )
 
   const persistTimezone = (value: Timezone) => {
-    storage?.setItem("timezone", JSON.stringify(value))
+    storage?.setItem(storageKey, JSON.stringify(value))
     modified.value = true
   }
 
@@ -56,7 +58,7 @@ export function useOwnedTimezone(options: UseOwnedTimezoneOptions = {}) {
 
   const resetTimezone = () => {
     timezone.value = resolveBrowserTimezone()
-    storage?.removeItem("timezone")
+    storage?.removeItem(storageKey)
     modified.value = false
   }
 

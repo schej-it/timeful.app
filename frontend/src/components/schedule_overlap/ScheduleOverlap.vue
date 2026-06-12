@@ -226,6 +226,7 @@ const weekOffsetRef = computed(() => props.weekOffset)
 const scheduleTimezoneReferenceDate = computed(() =>
   getTimezoneReferenceDateForEvent(eventRef.value, props.weekOffset)
 )
+const shownInTimezoneStorageKey = computed(() => `shownInTimezone_${props.event._id ?? ""}`)
 const scheduleOverlapPreferences = useScheduleOverlapPreferences({
   eventId: computed(() => props.event._id ?? ""),
 }) as {
@@ -305,6 +306,7 @@ const {
 } = useOwnedTimezone({
   initialTimezone: computed(() => normalizeOptionalTimezone(props.initialTimezone)),
   referenceDate: scheduleTimezoneReferenceDate,
+  storageKey: shownInTimezoneStorageKey.value,
 })
 const state = ref<ScheduleOverlapState>(states.BEST_TIMES)
 const defaultState = computed<ScheduleOverlapState>(() =>

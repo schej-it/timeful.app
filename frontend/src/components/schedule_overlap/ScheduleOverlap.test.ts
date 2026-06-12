@@ -482,7 +482,7 @@ describe("ScheduleOverlap", () => {
   })
 
   it("uses the saved timezone when initialTimezone is missing", () => {
-    localStorage.setItem("timezone", JSON.stringify({ value: "America/Los_Angeles" }))
+    localStorage.setItem("shownInTimezone_evt-1", JSON.stringify({ value: "America/Los_Angeles" }))
 
     const wrapper = mountScheduleOverlap({
       global: {
