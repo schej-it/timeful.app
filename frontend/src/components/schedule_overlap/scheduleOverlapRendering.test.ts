@@ -4,6 +4,7 @@ import { availabilityTypes, timeTypes, UTC } from "@/constants"
 import { ZdtMap, ZdtSet } from "@/utils"
 import { DRAG_TYPES, HOUR_HEIGHT, SPLIT_GAP_HEIGHT, states } from "@/composables/schedule_overlap/types"
 import {
+  buildRenderedOverlayAvailability,
   buildTimeGridTimeslotClassStyles,
   buildOverlaidAvailability,
   formatTooltipContent,
@@ -93,6 +94,153 @@ describe("scheduleOverlapRendering", () => {
     })
 
     expect(tooltip).toBe("Sat, Jul 4, 2026 14:30 to 15:00")
+  })
+
+  it("clips overlay fragments before visible grey rows that stay rendered", () => {
+    const fragments = buildRenderedOverlayAvailability({
+      renderedRows: [
+        {
+          id: "time-0",
+          kind: "timeslot",
+          height: 30,
+          rowTop: 0,
+          baseRowIndex: 0,
+        },
+        {
+          id: "time-1",
+          kind: "timeslot",
+          height: 30,
+          rowTop: 30,
+          baseRowIndex: 1,
+        },
+      ],
+      overlaidAvailability: [[
+        {
+          hoursOffset: Temporal.Duration.from({ hours: 0 }),
+          hoursLength: Temporal.Duration.from({ hours: 1 }),
+          type: availabilityTypes.AVAILABLE,
+        },
+      ]],
+      splitTimes: [[
+        { hoursOffset: Temporal.Duration.from({ hours: 0 }) },
+        { hoursOffset: Temporal.Duration.from({ minutes: 30 }) },
+      ], []],
+      timeslotDuration: Temporal.Duration.from({ minutes: 30 }),
+      isBaseRowVisibleOnDay: (baseRowIndex) => baseRowIndex !== 1,
+    })
+
+    expect(fragments).toEqual([[
+      {
+        top: "0px",
+        height: "30px",
+        type: availabilityTypes.AVAILABLE,
+      },
+    ]])
+  })
+
+  it("projects overlay fragments from day-specific visible rows instead of a page-wide row set", () => {
+    const fragments = buildRenderedOverlayAvailability({
+      renderedRows: [
+        {
+          id: "time-0",
+          kind: "timeslot",
+          height: 30,
+          rowTop: 0,
+          baseRowIndex: 0,
+        },
+      ],
+      overlaidAvailability: [
+        [],
+        [{
+          hoursOffset: Temporal.Duration.from({ hours: 0 }),
+          hoursLength: Temporal.Duration.from({ minutes: 30 }),
+          type: availabilityTypes.AVAILABLE,
+        }],
+      ],
+      splitTimes: [[
+        { hoursOffset: Temporal.Duration.from({ hours: 0 }) },
+      ], []],
+      timeslotDuration: Temporal.Duration.from({ minutes: 30 }),
+      isBaseRowVisibleOnDay: (baseRowIndex, dayIndex) =>
+        dayIndex === 1 && baseRowIndex === 0,
+    })
+
+    expect(fragments).toEqual([
+      [],
+      [{
+        top: "0px",
+        height: "30px",
+        type: availabilityTypes.AVAILABLE,
+      }],
+    ])
+  })
+
+  it("projects wrapped split overlay fragments from their semantic base rows", () => {
+    const fragments = buildRenderedOverlayAvailability({
+      renderedRows: [
+        {
+          id: "time-0",
+          kind: "timeslot",
+          height: 30,
+          rowTop: 0,
+          baseRowIndex: 0,
+        },
+        {
+          id: "time-1",
+          kind: "timeslot",
+          height: 30,
+          rowTop: 30,
+          baseRowIndex: 1,
+        },
+        {
+          id: "split-gap",
+          kind: "split-gap",
+          height: SPLIT_GAP_HEIGHT,
+          rowTop: 60,
+        },
+        {
+          id: "time-2",
+          kind: "timeslot",
+          height: 30,
+          rowTop: 100,
+          baseRowIndex: 2,
+        },
+      ],
+      overlaidAvailability: [[
+        {
+          hoursOffset: Temporal.Duration.from({ hours: 4 }),
+          hoursLength: Temporal.Duration.from({ minutes: 60 }),
+          type: availabilityTypes.AVAILABLE,
+          startBaseRowIndex: 0,
+        },
+        {
+          hoursOffset: Temporal.Duration.from({ hours: 4 }),
+          hoursLength: Temporal.Duration.from({ minutes: 30 }),
+          type: availabilityTypes.AVAILABLE,
+          startBaseRowIndex: 2,
+        },
+      ]],
+      splitTimes: [[
+        { hoursOffset: Temporal.Duration.from({ hours: 4 }) },
+        { hoursOffset: Temporal.Duration.from({ hours: 4, minutes: 30 }) },
+      ], [
+        { hoursOffset: Temporal.Duration.from({ hours: 4 }) },
+      ]],
+      timeslotDuration: Temporal.Duration.from({ minutes: 30 }),
+    })
+
+    expect(fragments).toEqual([[
+      {
+        top: "0px",
+        height: "60px",
+        type: availabilityTypes.AVAILABLE,
+      },
+      {
+        top: "100px",
+        height: "30px",
+        type: availabilityTypes.AVAILABLE,
+      },
+    ]])
   })
 
   it("builds timed-grid class styles across both splits and marks missing dates disabled", () => {

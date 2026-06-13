@@ -18,6 +18,7 @@ import {
 } from "@/utils"
 import type {
   ParsedResponses,
+  RenderedTimeGridRow,
   ResponsesFormatted,
   ScheduleOverlapState,
   TimeItem,
@@ -38,6 +39,13 @@ export interface ClassStyle {
 export interface OverlaidAvailabilityBlock {
   hoursOffset: Temporal.Duration
   hoursLength: Temporal.Duration
+  type: AvailabilityType
+  startBaseRowIndex?: number
+}
+
+export interface RenderedOverlayAvailabilityFragment {
+  top: string
+  height: string
   type: AvailabilityType
 }
 
@@ -604,7 +612,10 @@ export const buildOverlaidAvailability = ({
 
     const addBlock = (time: TimeItem, row: number) => {
       const date = getDateFromRowCol(row, dayIndex)
-      if (!date) return
+      if (!date) {
+        if (idx in result[dayIndex]) idx += 1
+        return
+      }
 
       const draggingAdd =
         dragging && inDragRange(row, dayIndex) && dragType === DRAG_TYPES.ADD
@@ -633,6 +644,7 @@ export const buildOverlaidAvailability = ({
               hoursOffset: time.hoursOffset,
               hoursLength: timeslotDuration,
               type: blockType,
+              startBaseRowIndex: row,
             })
             idx += 1
           }
@@ -641,6 +653,7 @@ export const buildOverlaidAvailability = ({
             hoursOffset: time.hoursOffset,
             hoursLength: timeslotDuration,
             type: blockType,
+            startBaseRowIndex: row,
           })
         }
       } else if (idx in result[dayIndex]) {
@@ -658,6 +671,145 @@ export const buildOverlaidAvailability = ({
   }
 
   return result
+}
+
+export const buildRenderedOverlayAvailability = ({
+  renderedRows,
+  overlaidAvailability,
+  splitTimes,
+  timeslotDuration,
+  isBaseRowVisibleOnDay = () => true,
+}: {
+  renderedRows: RenderedTimeGridRow[]
+  overlaidAvailability: OverlaidAvailabilityBlock[][]
+  splitTimes: TimeItem[][]
+  timeslotDuration: Temporal.Duration
+  isBaseRowVisibleOnDay?: (baseRowIndex: number, dayIndex: number) => boolean
+}): RenderedOverlayAvailabilityFragment[][] => {
+  const renderedRowIndexesByBaseRow = new Map<number, number>()
+  for (let renderedIndex = 0; renderedIndex < renderedRows.length; renderedIndex += 1) {
+    const row = renderedRows[renderedIndex]
+    if (row.kind === "timeslot" && typeof row.baseRowIndex === "number") {
+      renderedRowIndexesByBaseRow.set(row.baseRowIndex, renderedIndex)
+    }
+  }
+
+  const slotMinutes = Math.round(timeslotDuration.total("minutes"))
+  const totalBaseRows = splitTimes[0].length + splitTimes[1].length
+
+  const findBlockStartBaseRowIndex = (
+    block: OverlaidAvailabilityBlock,
+    coveredBaseRowCount: number
+  ): number | null => {
+    if (typeof block.startBaseRowIndex === "number") {
+      return block.startBaseRowIndex
+    }
+
+    const blockStartMinutes = block.hoursOffset.total("minutes")
+    const splitSearchRanges = [
+      {
+        startBaseRowIndex: 0,
+        times: splitTimes[0],
+      },
+      {
+        startBaseRowIndex: splitTimes[0].length,
+        times: splitTimes[1],
+      },
+    ]
+
+    for (const splitRange of splitSearchRanges) {
+      const latestStartIndex = splitRange.times.length - coveredBaseRowCount
+      for (let splitIndex = 0; splitIndex <= latestStartIndex; splitIndex += 1) {
+        if (
+          splitRange.times[splitIndex]?.hoursOffset.total("minutes") ===
+          blockStartMinutes
+        ) {
+          return splitRange.startBaseRowIndex + splitIndex
+        }
+      }
+    }
+
+    return null
+  }
+
+  return overlaidAvailability.map((dayBlocks, dayIndex) =>
+    dayBlocks.flatMap((block) => {
+      const blockLengthMinutes = block.hoursLength.total("minutes")
+      const coveredBaseRowCount =
+        slotMinutes > 0 ? Math.round(blockLengthMinutes / slotMinutes) : 0
+
+      if (coveredBaseRowCount <= 0) {
+        return []
+      }
+
+      const startBaseRowIndex = findBlockStartBaseRowIndex(block, coveredBaseRowCount)
+
+      if (
+        startBaseRowIndex == null ||
+        startBaseRowIndex < 0 ||
+        startBaseRowIndex + coveredBaseRowCount > totalBaseRows
+      ) {
+        return []
+      }
+
+      const fragments: RenderedOverlayAvailabilityFragment[] = []
+      let currentFragment: RenderedOverlayAvailabilityFragment | null = null
+      let previousRenderedIndex: number | null = null
+
+      const flushFragment = () => {
+        if (currentFragment) {
+          fragments.push(currentFragment)
+          currentFragment = null
+        }
+      }
+
+      for (
+        let baseRowOffset = 0;
+        baseRowOffset < coveredBaseRowCount;
+        baseRowOffset += 1
+      ) {
+        const baseRowIndex = startBaseRowIndex + baseRowOffset
+
+        if (!isBaseRowVisibleOnDay(baseRowIndex, dayIndex)) {
+          flushFragment()
+          previousRenderedIndex = null
+          continue
+        }
+
+        const renderedIndex = renderedRowIndexesByBaseRow.get(baseRowIndex)
+
+        if (typeof renderedIndex !== "number") {
+          flushFragment()
+          previousRenderedIndex = null
+          continue
+        }
+
+        const renderedRow = renderedRows[renderedIndex]
+        const isContiguous =
+          currentFragment !== null &&
+          previousRenderedIndex != null &&
+          renderedIndex === previousRenderedIndex + 1
+
+        if (!isContiguous || currentFragment == null) {
+          flushFragment()
+          currentFragment = {
+            top: `${String(renderedRow.rowTop)}px`,
+            height: `${String(renderedRow.height)}px`,
+            type: block.type,
+          }
+        } else {
+          currentFragment.height = `${String(
+            Number.parseFloat(currentFragment.height) + renderedRow.height
+          )}px`
+        }
+
+        previousRenderedIndex = renderedIndex
+      }
+
+      flushFragment()
+      return fragments
+    })
+  )
 }
 
 export const formatTooltipContent = ({
