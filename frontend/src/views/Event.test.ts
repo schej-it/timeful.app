@@ -319,6 +319,17 @@ const ScheduleOverlapNoOwnedGuestResponsesStub = {
   },
 }
 
+const ScheduleOverlapResponsesWithoutOwnedGuestStub = {
+  ...ScheduleOverlapStub,
+  data() {
+    return {
+      ...ScheduleOverlapStub.data(),
+      ownedGuestResponses: [],
+      respondents: [{ _id: "khh", name: "khh" }],
+    }
+  },
+}
+
 const ScheduleOverlapEditingStub = {
   ...ScheduleOverlapStub,
   data() {
@@ -926,6 +937,54 @@ describe("Event guest edit action", () => {
     )
   })
 
+  it("keeps edit availability visible but disabled when responses exist without an editable response", async () => {
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapResponsesWithoutOwnedGuestStub,
+          EventOptions: true,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-btn": buttonSemanticStub,
+          "v-card": true,
+          "v-card-actions": true,
+          "v-card-text": true,
+          "v-card-title": true,
+          "v-chip": true,
+          "v-dialog": true,
+          "v-icon": true,
+          "v-spacer": true,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.get("#desktop-primary-availability-btn").text()).toContain(
+      "Edit availability"
+    )
+    expect(
+      wrapper.get("#desktop-primary-availability-btn").attributes("disabled")
+    ).toBe("")
+    expect(wrapper.get("#desktop-secondary-availability-btn").text()).toContain(
+      "Add availability"
+    )
+  })
+
   it("keeps the mobile primary add-availability CTA shadowless", async () => {
     isPhoneState.value = true
     loaderEventState.value = {
@@ -974,6 +1033,56 @@ describe("Event guest edit action", () => {
     )
     expect(wrapper.get("#mobile-primary-availability-btn").classes()).toContain(
       "mobile-primary-availability-button"
+    )
+  })
+
+  it("keeps mobile edit availability visible but disabled when responses exist without an editable response", async () => {
+    isPhoneState.value = true
+
+    const wrapper = shallowMount(EventView, {
+      props: {
+        eventId: "dEeaF",
+      },
+      global: {
+        stubs: {
+          ScheduleOverlap: ScheduleOverlapResponsesWithoutOwnedGuestStub,
+          EventOptions: true,
+          NewDialog: true,
+          GuestDialog: true,
+          SignUpForSlotDialog: true,
+          SignInNotSupportedDialog: true,
+          MarkAvailabilityDialog: true,
+          InvitationDialog: true,
+          HelpDialog: true,
+          EventDescription: true,
+          FormerlyKnownAs: true,
+          AsyncPubliftAd: true,
+          AccessDenied: true,
+          NotSignedIn: true,
+          RouterLink: true,
+          "v-btn": buttonSemanticStub,
+          "v-card": true,
+          "v-card-actions": true,
+          "v-card-text": true,
+          "v-card-title": true,
+          "v-chip": true,
+          "v-dialog": true,
+          "v-icon": true,
+          "v-spacer": true,
+        },
+      },
+    })
+
+    await flushDeferredMount()
+
+    expect(wrapper.get("#mobile-primary-availability-btn").text()).toContain(
+      "Edit availability"
+    )
+    expect(
+      wrapper.get("#mobile-primary-availability-btn").attributes("disabled")
+    ).toBe("")
+    expect(wrapper.get("#mobile-secondary-availability-btn").text()).toContain(
+      "Add availability"
     )
   })
 

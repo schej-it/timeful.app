@@ -317,9 +317,7 @@
                               id="desktop-primary-availability-btn"
                               class="desktop-event-header-control tw-w-full tw-bg-green tw-text-white"
                               :class="desktopPrimaryAvailabilityButtonClass"
-                              :disabled="
-                                loading && !showGuestActionButton && !userHasResponded
-                              "
+                              :disabled="primaryAvailabilityButtonDisabled"
                               @click="handlePrimaryAvailabilityAction"
                             >
                               <v-icon v-if="primaryAvailabilityButtonText.startsWith('Edit')">mdi-pencil</v-icon>
@@ -462,9 +460,7 @@
                             id="desktop-primary-availability-btn"
                             class="desktop-event-header-control tw-w-full tw-bg-green tw-text-white"
                             :class="desktopPrimaryAvailabilityButtonClass"
-                            :disabled="
-                              loading && !showGuestActionButton && !userHasResponded
-                            "
+                            :disabled="primaryAvailabilityButtonDisabled"
                             @click="handlePrimaryAvailabilityAction"
                           >
                             <v-icon v-if="primaryAvailabilityButtonText.startsWith('Edit')">mdi-pencil</v-icon>
@@ -756,7 +752,7 @@
                       availabilityBtnAttentionActive,
                   },
                 ]"
-                :disabled="loading && !showGuestActionButton && !userHasResponded"
+                :disabled="primaryAvailabilityButtonDisabled"
                 :style="{ opacity: availabilityBtnOpacity }"
                 @click="handlePrimaryAvailabilityAction"
               >
@@ -1185,16 +1181,28 @@ const showGuestActionButton = computed(
     !userHasResponded.value &&
     ownedGuestEditOptions.value.length > 0
 )
+const hasEditableAvailability = computed(
+  () => userHasResponded.value || showGuestActionButton.value
+)
+const showDisabledEditAvailabilityPrimary = computed(
+  () =>
+    !isGroup.value &&
+    !isSignUp.value &&
+    numResponses.value > 0 &&
+    !hasEditableAvailability.value
+)
 const hasMultipleOwnedGuestResponses = computed(
   () => ownedGuestEditOptions.value.length > 1
 )
 const guestActionButtonText = computed(() => "Edit availability")
 const secondaryAddAvailabilityButtonText = computed(() => {
+  if (showDisabledEditAvailabilityPrimary.value) return "Add availability"
   if (!authUser.value) return "Add availability"
   return isPhone.value ? "Add guest" : "Add guest availability"
 })
 const showSecondaryAddAvailabilityAction = computed(() => {
   if (isGroup.value || isSignUp.value || isEditing.value) return false
+  if (showDisabledEditAvailabilityPrimary.value) return true
   if (!(authUser.value || guestAddedAvailability.value)) return false
   const event = loader.event.value
   if (!event) return false
@@ -1209,9 +1217,15 @@ const showScheduleEventButton = computed(
     (guestEvent.value || isOwner.value)
 )
 const primaryAvailabilityButtonText = computed(() => {
+  if (showDisabledEditAvailabilityPrimary.value) return "Edit availability"
   if (showGuestActionButton.value) return guestActionButtonText.value
   return actionButtonText.value
 })
+const primaryAvailabilityButtonDisabled = computed(
+  () =>
+    showDisabledEditAvailabilityPrimary.value ||
+    (loading.value && !showGuestActionButton.value && !userHasResponded.value)
+)
 const desktopPrimaryAvailabilityButtonClass = computed(() => ({
   "desktop-primary-availability-button": true,
   "desktop-primary-availability-button--add":
@@ -1232,6 +1246,7 @@ const guestRespondentNames = computed(() =>
   })
 )
 const mobilePrimaryAvailabilityButtonText = computed(() => {
+  if (showDisabledEditAvailabilityPrimary.value) return "Edit availability"
   if (showGuestActionButton.value) return guestActionButtonText.value
   return actionButtonText.value
 })
@@ -1408,6 +1423,7 @@ function editOwnedGuestAvailability(lookupKey: string) {
 }
 
 function handlePrimaryAvailabilityAction() {
+  if (showDisabledEditAvailabilityPrimary.value) return
   if (showGuestActionButton.value) {
     editSelectedGuestAvailability()
     return
@@ -1417,6 +1433,10 @@ function handlePrimaryAvailabilityAction() {
 
 function triggerSecondaryAddAvailability() {
   closeGuestEditMenu()
+  if (showDisabledEditAvailabilityPrimary.value) {
+    addAvailability()
+    return
+  }
   if (authUser.value) {
     addAvailabilityAsGuest()
     return

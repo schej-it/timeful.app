@@ -433,11 +433,18 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
         colsByViewerKey.set(key, group)
       }
 
+      const eventTimezone = getTimedEventTimezone(event.value)
       for (const eventDate of eventDates) {
-        const viewerDate = getDateInTimezone(eventDate, curTimezone.value).toPlainDate()
-        const key = viewerDate.toString()
-        if (!colsByViewerKey.has(key)) {
-          colsByViewerKey.set(key, [])
+        const membershipKey = eventDate.toPlainDate().toString()
+        const hasOwnTimes = eventTimes.some((time) =>
+          time.withTimeZone(eventTimezone).toPlainDate().toString() === membershipKey
+        )
+        if (!hasOwnTimes) {
+          const viewerDate = getDateInTimezone(eventDate, curTimezone.value).toPlainDate()
+          const key = viewerDate.toString()
+          if (!colsByViewerKey.has(key)) {
+            colsByViewerKey.set(key, [])
+          }
         }
       }
 
