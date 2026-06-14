@@ -28,6 +28,7 @@ import {
   projectSlotsToLocalDays,
   sortAndUniqueSlots,
 } from "@/utils/timedEventSlots"
+import { normalizeTimedResponseSlots } from "@/utils/timedResponseSlots"
 
 type Schemas = components["schemas"]
 
@@ -489,10 +490,15 @@ export const toEventDateStrings = (
   )
 
 export function fromRawResponse(raw: RawResponse): Response {
-  return {
-    ...raw,
+  const normalizedSlots = normalizeTimedResponseSlots({
     availability: decodeRawInstantValues(raw.availability),
     ifNeeded: decodeRawInstantValues(raw.ifNeeded),
+  })
+
+  return {
+    ...raw,
+    availability: normalizedSlots.availability,
+    ifNeeded: normalizedSlots.ifNeeded,
     manualAvailability: raw.manualAvailability
       ? Object.fromEntries(
           Object.entries(raw.manualAvailability).map(([date, values]) => [

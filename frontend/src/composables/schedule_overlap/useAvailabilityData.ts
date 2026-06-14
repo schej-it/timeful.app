@@ -54,6 +54,7 @@ import {
   type GuestOwnershipState,
   type StoredGuestOwnership,
 } from "./scheduleOverlapStorage"
+import { normalizeTimedResponseSlots } from "@/utils/timedResponseSlots"
 
 declare global {
   interface Window {
@@ -183,6 +184,19 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
   const respondentSaveAllowed = computed(
     () => effectiveRespondentAvailability.value.size > 0
   )
+  const getNormalizedFetchedResponse = (userId: string): FetchedResponse => {
+    const fetchedResponse = opts.fetchedResponses.value[userId]
+    const normalizedSlots = normalizeTimedResponseSlots({
+      availability: fetchedResponse?.availability,
+      ifNeeded: fetchedResponse?.ifNeeded,
+    })
+
+    return {
+      ...fetchedResponse,
+      availability: normalizedSlots.availability,
+      ifNeeded: normalizedSlots.ifNeeded,
+    }
+  }
 
   const parsedResponses = computed<ParsedResponses>(() => {
     const parsed: ParsedResponses = {}
@@ -199,8 +213,9 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
           >
         )[userId]
         if (calendarEventsByDay) {
+          const normalizedFetchedResponse = getNormalizedFetchedResponse(userId)
           const fetchedManualAvailability = getFetchedManualAvailabilityDow(
-            opts.fetchedResponses.value[userId]?.manualAvailability
+            normalizedFetchedResponse.manualAvailability
           )
           const curManualAvailability =
             userId === authUser?._id
@@ -219,7 +234,7 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
                     workingHours: opts.workingHours.value,
                   }
                 : normalizeCalendarOptions(
-                    opts.fetchedResponses.value[userId]?.calendarOptions
+                    normalizedFetchedResponse.calendarOptions
                   ),
           })
 
@@ -230,9 +245,9 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
             },
             availability: computedAvailability,
             ifNeeded:
-              responses[userId].ifNeeded &&
-              Array.isArray(responses[userId].ifNeeded)
-                ? new ZdtSet(responses[userId].ifNeeded)
+              normalizedFetchedResponse.ifNeeded &&
+              Array.isArray(normalizedFetchedResponse.ifNeeded)
+                ? new ZdtSet(normalizedFetchedResponse.ifNeeded)
                 : undefined,
             enabledCalendars: responses[userId].enabledCalendars,
             calendarOptions: normalizeCalendarOptions(
@@ -267,18 +282,15 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     ) {
       const userId = authUser?._id ?? opts.guestResponseLookupKey.value ?? ""
       if (userId in responses) {
+        const normalizedFetchedResponse = getNormalizedFetchedResponse(userId)
         const user = {
           ...(responses[userId].user ?? {}),
           _id: userId,
         }
         parsed[userId] = {
           user,
-          availability: new ZdtSet(
-            opts.fetchedResponses.value[userId]?.availability ?? []
-          ),
-          ifNeeded: new ZdtSet(
-            opts.fetchedResponses.value[userId]?.ifNeeded ?? []
-          ),
+          availability: new ZdtSet(normalizedFetchedResponse.availability ?? []),
+          ifNeeded: new ZdtSet(normalizedFetchedResponse.ifNeeded ?? []),
           enabledCalendars: responses[userId].enabledCalendars,
           calendarOptions: normalizeCalendarOptions(
             responses[userId].calendarOptions
@@ -293,14 +305,15 @@ export function useAvailabilityData(opts: UseAvailabilityDataOptions) {
     }
 
     for (const k of Object.keys(responses)) {
+      const normalizedFetchedResponse = getNormalizedFetchedResponse(k)
       const newUser = {
         ...(responses[k].user ?? {}),
         _id: k,
       }
       parsed[k] = {
         user: newUser,
-        availability: new ZdtSet(opts.fetchedResponses.value[k]?.availability ?? []),
-        ifNeeded: new ZdtSet(opts.fetchedResponses.value[k]?.ifNeeded ?? []),
+        availability: new ZdtSet(normalizedFetchedResponse.availability ?? []),
+        ifNeeded: new ZdtSet(normalizedFetchedResponse.ifNeeded ?? []),
         enabledCalendars: responses[k].enabledCalendars,
         calendarOptions: normalizeCalendarOptions(responses[k].calendarOptions),
         guest: Boolean(responses[k].name),

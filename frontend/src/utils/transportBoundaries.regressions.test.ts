@@ -154,6 +154,21 @@ describe("transport and timezone regression boundaries", () => {
     ).toEqual(["2026-05-15T10:00:00+00:00[UTC]"])
   })
 
+  it("canonicalizes overlapping response slots at decode time so available wins", () => {
+    const sharedSlot = "2026-05-15T08:00:00Z"
+    const response = fromRawResponse(({
+      availability: [sharedSlot],
+      ifNeeded: [sharedSlot, "2026-05-15T09:00:00Z"],
+    }) as unknown as Parameters<typeof fromRawResponse>[0])
+
+    expect(response.availability?.map((value) => value.toString())).toEqual([
+      "2026-05-15T08:00:00+00:00[UTC]",
+    ])
+    expect(response.ifNeeded?.map((value) => value.toString())).toEqual([
+      "2026-05-15T09:00:00+00:00[UTC]",
+    ])
+  })
+
   it("keeps guest ownership metadata at the response transport boundary", () => {
     const response = fromRawResponse({
       name: "Ada",
@@ -692,6 +707,27 @@ describe("transport and timezone regression boundaries", () => {
     const payload = encodeEventResponseSubmissionPayload({
       availability: [zdt("2026-01-03T09:00:00Z")],
       ifNeeded: [zdt("2026-01-03T10:00:00Z")],
+      guest: true,
+      name: "guest",
+      email: "",
+    })
+
+    expect(payload).toEqual({
+      availability: ["2026-01-03T09:00:00Z"],
+      ifNeeded: ["2026-01-03T10:00:00Z"],
+      guest: true,
+      name: "guest",
+      email: "",
+    })
+  })
+
+  it("removes overlap from if-needed slots before encoding event response submissions", () => {
+    const payload = encodeEventResponseSubmissionPayload({
+      availability: [zdt("2026-01-03T09:00:00Z")],
+      ifNeeded: [
+        zdt("2026-01-03T09:00:00Z"),
+        zdt("2026-01-03T10:00:00Z"),
+      ],
       guest: true,
       name: "guest",
       email: "",

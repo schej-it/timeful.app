@@ -259,6 +259,62 @@ func TestEditEventCanonicalTimedPayloadRoundTripsThroughGet(t *testing.T) {
 	}
 }
 
+func TestUpdateEventResponseCanonicalizesOverlappingTimedSlots(t *testing.T) {
+	initRoutesReadFiltersTestDB(t)
+	router := newEventsReadFiltersTestRouter()
+
+	duration := float32(1)
+	numResponses := 0
+	event := models.Event{
+		Id:              primitive.NewObjectID(),
+		Name:            "Canonical response event",
+		Type:            models.SPECIFIC_DATES,
+		Duration:        &duration,
+		Dates:           []primitive.DateTime{timedSlotDateTime(t, "2026-01-05T09:00:00Z")},
+		NumResponses:    &numResponses,
+		SignUpResponses: map[string]*models.SignUpResponse{},
+	}
+	seedEventReadFiltersTestData(t, event, nil, nil)
+
+	payload := map[string]any{
+		"availability": []string{"2026-01-05T09:00:00Z"},
+		"ifNeeded":     []string{"2026-01-05T09:00:00Z", "2026-01-05T09:15:00Z"},
+		"guest":        true,
+		"name":         "Maya",
+	}
+
+	recorder := timedEventRequest(
+		t,
+		router,
+		http.MethodPost,
+		"/api/events/"+event.Id.Hex()+"/response",
+		payload,
+	)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+
+	eventResponses := db.GetEventResponses(event.Id.Hex())
+	if len(eventResponses) != 1 || eventResponses[0].Response == nil {
+		t.Fatalf("expected one stored response, got %#v", eventResponses)
+	}
+
+	assertPrimitiveDateTimesEqual(
+		t,
+		eventResponses[0].Response.Availability,
+		[]primitive.DateTime{
+			timedSlotDateTime(t, "2026-01-05T09:00:00Z"),
+		},
+	)
+	assertPrimitiveDateTimesEqual(
+		t,
+		eventResponses[0].Response.IfNeeded,
+		[]primitive.DateTime{
+			timedSlotDateTime(t, "2026-01-05T09:15:00Z"),
+		},
+	)
+}
+
 func TestCreateEventRejectsActiveSlotsOutsideEnabledSlots(t *testing.T) {
 	initRoutesReadFiltersTestDB(t)
 	router := newEventsReadFiltersTestRouter()

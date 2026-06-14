@@ -5,7 +5,7 @@ import type * as UtilsModule from "@/utils"
 import { durations, eventTypes } from "@/constants"
 import { ZdtSet } from "@/utils"
 import { useAvailabilityData } from "./useAvailabilityData"
-import { states } from "./types"
+import { states, type FetchedResponse, type ScheduleOverlapResponse } from "./types"
 
 const {
   authUserState,
@@ -60,6 +60,9 @@ function makeAvailabilityData(options?: {
   addingAvailabilityAsGuest?: boolean
   authUserId?: string
   eventType?: string
+  state?: string
+  fetchedResponses?: Record<string, FetchedResponse | undefined>
+  eventResponses?: Record<string, ScheduleOverlapResponse>
   getAvailabilityFromCalendarEvents?: () => ZdtSet
 }) {
   authUserState.value = options?.authUserId ? { _id: options.authUserId } : null
@@ -71,11 +74,11 @@ function makeAvailabilityData(options?: {
       dates: [day.toPlainDate()],
       timeSeed: day,
       duration: durations.ONE_HOUR,
-      responses: {},
+      responses: options?.eventResponses ?? {},
     } as never),
     weekOffset: ref(0),
-    state: ref(states.EDIT_AVAILABILITY),
-    fetchedResponses: ref({}),
+    state: ref((options?.state ?? states.EDIT_AVAILABILITY) as never),
+    fetchedResponses: ref(options?.fetchedResponses ?? {}),
     loadingResponses: ref({
       loading: false,
       lastFetched: day,
@@ -228,5 +231,59 @@ describe("useAvailabilityData respondent saves", () => {
       })
     )
     expect(refreshEventMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("removes overlap from if-needed slots before posting respondent availability", async () => {
+    const availabilityData = makeAvailabilityData({
+      addingAvailabilityAsGuest: true,
+    })
+    availabilityData.availability.value = new ZdtSet([day])
+    availabilityData.ifNeeded.value = new ZdtSet([day])
+
+    const submitted = await availabilityData.submitAvailability({
+      name: "Ada",
+      email: "ada@example.com",
+    })
+
+    expect(submitted).toBe(true)
+    expect(postMock).toHaveBeenCalledWith(
+      "/events/evt-1/response",
+      expect.objectContaining({
+        availability: ["2026-01-01T09:00:00Z"],
+        ifNeeded: [],
+      })
+    )
+  })
+
+  it("normalizes fetched overlap so hover state and edit mode both treat the shared slot as available", async () => {
+    const availabilityData = makeAvailabilityData({
+      state: states.SINGLE_AVAILABILITY,
+      eventResponses: {
+        "user-1": {
+          user: { _id: "user-1" },
+          availability: [],
+          ifNeeded: [],
+        },
+      },
+      fetchedResponses: {
+        "user-1": {
+          availability: [day],
+          ifNeeded: [day],
+        },
+      },
+    })
+
+    availabilityData.getResponsesFormatted()
+    availabilityData.showAvailability(0, 0)
+
+    expect(availabilityData.curTimeslotAvailability.value["user-1"]).toBe(true)
+    expect(availabilityData.parsedResponses.value["user-1"].availability.size).toBe(1)
+    expect(availabilityData.parsedResponses.value["user-1"].ifNeeded?.size).toBe(0)
+
+    availabilityData.populateUserAvailability("user-1")
+    await Promise.resolve()
+
+    expect(availabilityData.availability.value.size).toBe(1)
+    expect(availabilityData.ifNeeded.value.size).toBe(0)
   })
 })

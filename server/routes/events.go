@@ -49,6 +49,36 @@ func InitEvents(router *gin.RouterGroup) {
 	eventRouter.POST("/:eventId/archive", middleware.AuthRequired(), archiveEvent)
 }
 
+func normalizeTimedResponseAvailabilitySlots(
+	availability []primitive.DateTime,
+	ifNeeded []primitive.DateTime,
+) ([]primitive.DateTime, []primitive.DateTime) {
+	normalizedAvailability := make([]primitive.DateTime, 0, len(availability))
+	availabilitySet := make(map[primitive.DateTime]struct{}, len(availability))
+	for _, slot := range availability {
+		if _, exists := availabilitySet[slot]; exists {
+			continue
+		}
+		availabilitySet[slot] = struct{}{}
+		normalizedAvailability = append(normalizedAvailability, slot)
+	}
+
+	normalizedIfNeeded := make([]primitive.DateTime, 0, len(ifNeeded))
+	ifNeededSet := make(map[primitive.DateTime]struct{}, len(ifNeeded))
+	for _, slot := range ifNeeded {
+		if _, exists := availabilitySet[slot]; exists {
+			continue
+		}
+		if _, exists := ifNeededSet[slot]; exists {
+			continue
+		}
+		ifNeededSet[slot] = struct{}{}
+		normalizedIfNeeded = append(normalizedIfNeeded, slot)
+	}
+
+	return normalizedAvailability, normalizedIfNeeded
+}
+
 // @Summary Creates a new event
 // @Tags events
 // @Accept json
@@ -871,6 +901,10 @@ func updateEventResponse(c *gin.Context) {
 	}
 
 	eventResponses := db.GetEventResponses(event.Id.Hex())
+	normalizedAvailability, normalizedIfNeeded := normalizeTimedResponseAvailabilitySlots(
+		payload.Availability,
+		payload.IfNeeded,
+	)
 
 	var userIdString string
 	var userHasResponded bool
@@ -889,8 +923,8 @@ func updateEventResponse(c *gin.Context) {
 			response = models.Response{
 				Name:         canonicalName,
 				Email:        payload.Email,
-				Availability: payload.Availability,
-				IfNeeded:     payload.IfNeeded,
+				Availability: normalizedAvailability,
+				IfNeeded:     normalizedIfNeeded,
 			}
 			requestedPolicy := guestEditPolicyProtected
 			if payload.GuestEditPolicy != nil {
@@ -950,8 +984,8 @@ func updateEventResponse(c *gin.Context) {
 
 			response = models.Response{
 				UserId:                  userId,
-				Availability:            payload.Availability,
-				IfNeeded:                payload.IfNeeded,
+				Availability:            normalizedAvailability,
+				IfNeeded:                normalizedIfNeeded,
 				UseCalendarAvailability: payload.UseCalendarAvailability,
 				EnabledCalendars:        payload.EnabledCalendars,
 				CalendarOptions:         payload.CalendarOptions,

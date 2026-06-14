@@ -9,6 +9,7 @@ import {
   toTransportDateTimeStrings,
 } from "@/types/transport"
 import { validateGuestName } from "@/utils/guestName"
+import { normalizeTimedResponseSlots } from "@/utils/timedResponseSlots"
 
 interface GuestPayload {
   name: string
@@ -79,10 +80,15 @@ export function toEventResponseSubmissionPayload(input: {
   addingAvailabilityAsGuest: boolean
   guestPayload: GuestPayload
 }): EventResponseSubmissionPayload {
+  const normalizedSlots = normalizeTimedResponseSlots({
+    availability: input.availability,
+    ifNeeded: input.ifNeeded,
+  })
+
   if (input.authUserId && !input.addingAvailabilityAsGuest) {
     return {
-      availability: input.availability,
-      ifNeeded: input.ifNeeded,
+      availability: normalizedSlots.availability,
+      ifNeeded: normalizedSlots.ifNeeded,
       guest: false,
     }
   }
@@ -90,8 +96,8 @@ export function toEventResponseSubmissionPayload(input: {
   const guestName = validateGuestName(input.guestPayload.name).normalizedName
 
   return {
-    availability: input.availability,
-    ifNeeded: input.ifNeeded,
+    availability: normalizedSlots.availability,
+    ifNeeded: normalizedSlots.ifNeeded,
     guest: true,
     name: guestName,
     email: input.guestPayload.email,
@@ -127,10 +133,14 @@ export function encodeEventResponseSubmissionPayload(
   payload: EventResponseSubmissionPayload
 ): EncodedEventResponseSubmissionPayload {
   const guestName = validateGuestName(payload.name).normalizedName
+  const normalizedSlots = normalizeTimedResponseSlots({
+    availability: payload.availability,
+    ifNeeded: payload.ifNeeded,
+  })
 
   return {
-    availability: toTransportDateTimeStrings(payload.availability) ?? [],
-    ifNeeded: toTransportDateTimeStrings(payload.ifNeeded) ?? [],
+    availability: toTransportDateTimeStrings(normalizedSlots.availability) ?? [],
+    ifNeeded: toTransportDateTimeStrings(normalizedSlots.ifNeeded) ?? [],
     guest: payload.guest,
     name: guestName,
     email: payload.email,
