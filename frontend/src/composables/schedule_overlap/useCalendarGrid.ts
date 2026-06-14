@@ -400,51 +400,66 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       eventDates: Temporal.ZonedDateTime[],
       eventTimes: Temporal.ZonedDateTime[]
     ) => {
-      const membershipTimezone =
-        eventDates.length > 0
-          ? eventDates[0].timeZoneId
-          : event.value.timeSeed !== undefined
-            ? event.value.timeSeed.timeZoneId
-            : eventTimes.length > 0
-              ? eventTimes[0].timeZoneId
-              : UTC
-      const timesByMembershipDate = new Map<string, Temporal.ZonedDateTime[]>()
+      if (eventTimes.length === 0) {
+        let previousDay: Temporal.ZonedDateTime | null = null
+        return eventDates.map((eventDate) => {
+          const dateObject = getDateInTimezone(eventDate, curTimezone.value).with({
+            hour: 0,
+            minute: 0,
+            second: 0,
+            millisecond: 0,
+            microsecond: 0,
+            nanosecond: 0,
+          })
+          const isConsecutive =
+            previousDay == null || previousDay.add({ days: 1 }).equals(dateObject)
 
-      for (const time of eventTimes) {
-        const membershipDateKey = time
-          .withTimeZone(membershipTimezone)
-          .toPlainDate()
-          .toString()
-        const timesForDate = timesByMembershipDate.get(membershipDateKey) ?? []
-        timesForDate.push(time)
-        timesByMembershipDate.set(membershipDateKey, timesForDate)
+          previousDay = dateObject
+          return {
+            dateObject,
+            membershipDate: eventDate.toPlainDate(),
+            isConsecutive,
+          }
+        })
+      }
+
+      const colsByViewerKey = new Map<string, Temporal.ZonedDateTime[]>()
+      const allTimes = [...eventTimes].sort((a, b) => Temporal.ZonedDateTime.compare(a, b))
+      for (const time of allTimes) {
+        const viewerDate = getDateInTimezone(time, curTimezone.value).toPlainDate()
+        const key = viewerDate.toString()
+        const group = colsByViewerKey.get(key) ?? []
+        group.push(time)
+        colsByViewerKey.set(key, group)
+      }
+
+      for (const eventDate of eventDates) {
+        const viewerDate = getDateInTimezone(eventDate, curTimezone.value).toPlainDate()
+        const key = viewerDate.toString()
+        if (!colsByViewerKey.has(key)) {
+          colsByViewerKey.set(key, [])
+        }
       }
 
       let previousDay: Temporal.ZonedDateTime | null = null
-      return eventDates.map((eventDate) => {
-        const membershipDateKey = eventDate.toPlainDate().toString()
-        const savedTimesForDate = [...(timesByMembershipDate.get(membershipDateKey) ?? [])]
-          .sort((left, right) => Temporal.ZonedDateTime.compare(left, right))
-        const displaySeed =
-          savedTimesForDate.length > 0 ? savedTimesForDate[0] : eventDate
-        const dateObject = getDateInTimezone(displaySeed, curTimezone.value).with({
-          hour: 0,
-          minute: 0,
-          second: 0,
-          millisecond: 0,
-          microsecond: 0,
-          nanosecond: 0,
-        })
-        const isConsecutive =
-          previousDay == null || previousDay.add({ days: 1 }).equals(dateObject)
+      return [...colsByViewerKey.entries()]
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        .map(([viewerKey]) => {
+          const plainDate = Temporal.PlainDate.from(viewerKey)
+          const dateObject = plainDate.toZonedDateTime({
+            timeZone: curTimezone.value.value,
+            plainTime: "00:00",
+          })
+          const isConsecutive =
+            previousDay == null || previousDay.add({ days: 1 }).equals(dateObject)
 
-        previousDay = dateObject
-        return {
-          dateObject,
-          membershipDate: eventDate.toPlainDate(),
-          isConsecutive,
-        }
-      })
+          previousDay = dateObject
+          return {
+            dateObject,
+            membershipDate: plainDate,
+            isConsecutive,
+          }
+        })
     }
 
     const getDateString = (date: Temporal.ZonedDateTime) => {

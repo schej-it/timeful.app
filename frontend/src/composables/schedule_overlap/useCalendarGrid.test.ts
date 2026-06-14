@@ -621,7 +621,7 @@ describe("useCalendarGrid", () => {
 
     expect(
       grid.days.value.map((day) => day.dateObject.withTimeZone("Europe/Belgrade").toPlainDate().toString())
-    ).toEqual(["2026-05-29", "2026-05-30"])
+    ).toEqual(["2026-05-28", "2026-05-29", "2026-05-30"])
   })
 
   it("supplements saved specific-time edit days with newly added membership dates", () => {
@@ -712,13 +712,13 @@ describe("useCalendarGrid", () => {
     })
 
     expect(grid.days.value).toHaveLength(2)
-    expect(grid.days.value.map((day) => day.dateString)).toEqual(["may 31", "may 31"])
+    expect(grid.days.value.map((day) => day.dateString)).toEqual(["may 30", "may 31"])
     expect(
       grid.days.value.map((day) =>
         day.dateObject.withTimeZone("Europe/Moscow").toPlainDate().toString()
       )
-    ).toEqual(["2026-05-31", "2026-05-31"])
-    expect(grid.getDateFromRowCol(1, 0)?.toInstant().toString()).toBe(
+    ).toEqual(["2026-05-30", "2026-05-31"])
+    expect(grid.getDateFromRowCol(1, 1)?.toInstant().toString()).toBe(
       "2026-05-30T21:15:00Z"
     )
   })
@@ -765,21 +765,17 @@ describe("useCalendarGrid", () => {
       isPhone: ref(false),
     })
 
-    expect((event.value.dates ?? []).map((date) => date.toString())).toEqual([
-      "2026-05-30",
-      "2026-05-31",
-    ])
     expect(grid.days.value).toHaveLength(2)
-    expect(grid.days.value.map((day) => day.dateString)).toEqual(["may 31", "may 31"])
+    expect(grid.days.value.map((day) => day.dateString)).toEqual(["may 30", "may 31"])
     expect(
       grid.allDays.value.map((day) =>
         day.dateObject.withTimeZone("Europe/Moscow").toPlainDate().toString()
       )
-    ).toEqual(["2026-05-31", "2026-05-31"])
-    expect(grid.getDateFromRowCol(1, 0)?.toInstant().toString()).toBe(
+    ).toEqual(["2026-05-30", "2026-05-31"])
+    expect(grid.getDateFromRowCol(1, 1)?.toInstant().toString()).toBe(
       "2026-05-30T21:15:00Z"
     )
-    expect(grid.getDateFromRowCol(2, 0)?.toInstant().toString()).toBe(
+    expect(grid.getDateFromRowCol(2, 1)?.toInstant().toString()).toBe(
       "2026-05-30T21:30:00Z"
     )
   })
