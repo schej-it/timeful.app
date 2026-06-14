@@ -20,21 +20,23 @@ Semi-structured TODO list
 - [ ] why is the button not blocked when none of the dates is selected
 - [ ] doesn't show time on hover after clicking and moving the cursor - <http://127.0.0.1:4173/e/dEeaF>
 - [ ] In Firefox, when not editing, after I click inside the grid, then release, then move cursor within the grid, the selection doesn't follow like it does if I don't click first and just move the cursor within the grid. Why so?
-- [ ] multi-day <http://127.0.0.1:4173/e/5Ef6f>
-- [ ] Let's nest all toggles under Options dropdown and make it open by default
+- [x] multi-day <http://127.0.0.1:4173/e/5Ef6f>
+- [x] Let's nest all toggles under Options dropdown and make it open by default
+  - Show best times is always visible, other can be opened via Options
 - [ ] refactoring - get rid of duplication
-- [ ] overlay availabilities - each slot has a solid frame <https://timeful.app/e/c762cA>
-- [ ] there should be a space between grids for non-consecutive days
+- [x] overlay availabilities - each slot has a solid frame <https://timeful.app/e/c762cA>
+- [x] there should be a space between grids for non-consecutive days
 - [ ] add more instrumentation?
 - [x] edit event button is missing
-- [ ] shown in should be the same size as the timezone and black
-- [ ] the description text should be at the same vertical position when not editing and when editing
+- [x] shown in should be the same size as the timezone and black
+- [x] the description text should be at the same vertical position when not editing and when editing
 - [ ] don't modify vuetify internals (deep)
-- [ ] replace the Create event button on the main page with the actual form
+- [x] replace the Create event button on the main page with the actual form
+  - No, there's additional useful info about the app on the main page
 - [ ] load all routes lazily
-- [ ] on the event page, near "shown in", the underline colors for the timezone and time should be the same
+- [x] on the event page, near "shown in", the underline colors for the timezone and time should be the same
 - [x] move adr to the repo root
-  - [ ] No, keep adr for frontend inside frontend
+  - No, keep adr for frontend inside frontend
 - [ ] adr - add README that explains the ADR format
   - [ ] Add "Scope" - frontend, backend?
 - [ ] adr - backend handles only particular paths for initial HTML with essential metadata
@@ -48,17 +50,19 @@ Semi-structured TODO list
 - [ ] Check whether NODE_ENV and GIN_MODE are in the example .env files
 - [ ] introduce staging environment
 - [ ] make more functions for business logic pure
-- [ ] use full "development" instead of "dev" and "production" instead of "prod"
+- [x] use full "development" instead of "dev" and "production" instead of "prod"
 - [ ] Get rid of eslint-disable-*
   - [ ] `eslint-disable vue/one-component-per-file`
-- [ ] Can't save time for the first time
+- [x] Can't save time for the first time
 - [ ] When editing the event, shouldn't be able to edit personal time (the button shouldn't be visible)
-- [ ] In create event -> advanced options, "Timezone" should be black
-- [ ] Show full grid by default
-- [ ] add option to collapse unused hours (not hide)
-- [ ] make each collapsed hours uncollapsible
-- [ ] mobile version - switching between 3 days and 7 days doesn't work
-- [ ] event creator can edit other's availabilities (less probability that both guest event creator and guest clear both cookies and localstorage)
+- [x] In create event -> advanced options, "Timezone" should be black
+- [x] Show full grid by default
+  - It's collapsed by default
+- [x] add option to collapse unused hours (not hide)
+- [x] make each collapsed hours uncollapsible
+- [x] mobile version - switching between 3 days and 7 days doesn't work
+  - Works now
+- [ ] event creator can edit other's availabilities (less probability that both guest event creator and guest clear both cookies and localstorage)?
 - [x] Add availability only over the responses section so that it can scroll
   - Moved to the header
 - [x] When viewing an event, when clicking, dragging the box pointer in the red area, then unclicking, the box disappears
@@ -140,18 +144,35 @@ Semi-structured TODO list
 - [x] Create event with 9 - 17, timezone +9 (<http://127.0.0.1:4173/e/ee4Cb>), june 11 and 12.
       Expected: june 10 and 11 are shown on the event page
       Actual: june 11, 12, 13 are shown there
-- [ ] Spacing between lines is different when editing and viewing event description
+- [x] Spacing between lines is different when editing and viewing event description
 - [x] Shown in shouldn't affect the time zone
-- [ ] Availability not rendered at <http://127.0.0.1:4173/e/Eb67A>
-- [ ] <http://127.0.0.1:4173/e/Eb67A> shown in GMT -7 shows blank grey columns
-- [ ] <http://127.0.0.1:4173/e/Eb67A> doesn't show the bottom separator
-- [ ] When there are no responses, Add availability and show all hours are too wide
+- [x] Availability not rendered at <http://127.0.0.1:4173/e/Eb67A>
+- [x] <http://127.0.0.1:4173/e/Eb67A> shown in GMT -7 shows blank grey columns
+- [x] <http://127.0.0.1:4173/e/Eb67A> doesn't show the bottom separator
+- [x] When there are no responses, Add availability and show all hours are too wide
 - [ ] When adding availability, cancel and save should be aligned to the right
 - [ ] Who are the group respondents?
 - [ ] Make available/If needed on mobile higher to cover the "Adding availability" text
 - [ ] Remove magic constants in CSS
-- [ ] in What days might work, when sun and mon are selected, when enabling start on monday, both mon and sun must be selected
+- [x] in What days might work, when sun and mon are selected, when enabling start on monday, both mon and sun must be selected
 - [ ] what is group (NewGroup.vue)?
+- [ ] Handle narrow mobile screens (e.g. iPhone 17)
+- [ ] "Editing availability as" shouldn't be in italic
+- [ ] Collapse hours when editing response availability
+- [ ] Mismatch between event page and specific times <http://127.0.0.1:4173/e/Eb67A>
+- [ ] When creating event with specific times and setting timezone, on the specific times page, the timezone should be set to the one specified in the event (during creation). For a user, shown in should be the same on the event page and specific times page
+- [ ] Lost slots on the specific times page when selected all slots at +7, then switched to +6
+- [ ] <http://127.0.0.1:4173/e/EE2Fc> When editing event specific times, when "shown in" is +7, all slots for jun 15 are selected. When it's set to +6, jun 14 is duplicated and jun 15 is missing and there's a gap between jun 14 and jun 14.
+- [ ] When I set specific times  0-4 on jun 14 and jun 16 when shown in is +5, then switch to +3,
+      jun 15 doesn't appear although it should take some timeslots from jun 16
+- [ ] what is the source of truth for enabled slots?
+  - date picker may show dates that aren't shown when setting specific times.
+    specific times editor should show these dates even if there are no enabled slots at these dates.
+- [ ] Make a demo screenshot of <http://127.0.0.1:4173/e/6df78>
+- [ ] At <http://127.0.0.1:4173/e/6df78>, when I hover over Maya Patel, I see if needed (yellow) for jun 20, 13:45-14:30 but it's available (green) when I edit her availability.
+- [ ] When scrolling shown in timezones, the drop-down list gets narrow or wide depending on the width of the content.
+- [ ] On the specific times page <http://127.0.0.1:4173/e/Eb67A>, when I switch timezone from +5 to +6, the left-most upper-most enabled slot should become disabled
+- [ ] On the specific times page <http://127.0.0.1:4173/e/Eb67A>, when I switch timezone from +5 to +4 and on june 14, 0-4 are selected, jun 13 should appear
 
 ## MUST
 
