@@ -7,7 +7,9 @@ import {
   getTimedSlotForMembershipDay,
   getTimedSlotCoverage,
   getTimedSlotGeneration,
+  mergeActiveSlotsByMembershipDay,
   normalizeActiveSlots,
+  projectSlotsToMembershipDays,
   projectSlotsToLocalDays,
 } from "./timedEventSlots"
 
@@ -73,6 +75,60 @@ describe("timedEventSlots", () => {
         day.toString()
       )
     ).toEqual(["2026-01-04", "2026-01-05"])
+  })
+
+  it("projects slots to membership days with wrapped local windows", () => {
+    const slots = [
+      Temporal.ZonedDateTime.from("2026-01-05T23:00:00+00:00[UTC]"),
+      Temporal.ZonedDateTime.from("2026-01-06T00:30:00+00:00[UTC]"),
+    ]
+
+    expect(
+      projectSlotsToMembershipDays({
+        slots,
+        timeZone: UTC,
+        slotGeneration: {
+          startTimeLocal: Temporal.PlainTime.from("23:00:00"),
+          endTimeLocal: Temporal.PlainTime.from("01:00:00"),
+          timeIncrement: Temporal.Duration.from({ minutes: 30 }),
+        },
+      }).map((day) => day.toString())
+    ).toEqual(["2026-01-05"])
+  })
+
+  it("preserves the prior subset and defaults newly added membership days to fully active", () => {
+    const merged = mergeActiveSlotsByMembershipDay({
+      priorEnabledSlots: [
+        Temporal.ZonedDateTime.from("2026-01-05T09:00:00+00:00[UTC]"),
+        Temporal.ZonedDateTime.from("2026-01-05T09:15:00+00:00[UTC]"),
+      ],
+      priorActiveSlots: [
+        Temporal.ZonedDateTime.from("2026-01-05T09:15:00+00:00[UTC]"),
+      ],
+      nextEnabledSlots: [
+        Temporal.ZonedDateTime.from("2026-01-05T09:00:00+00:00[UTC]"),
+        Temporal.ZonedDateTime.from("2026-01-05T09:15:00+00:00[UTC]"),
+        Temporal.ZonedDateTime.from("2026-01-06T09:00:00+00:00[UTC]"),
+        Temporal.ZonedDateTime.from("2026-01-06T09:15:00+00:00[UTC]"),
+      ],
+      timeZone: UTC,
+      slotGeneration: {
+        startTimeLocal: Temporal.PlainTime.from("09:00:00"),
+        endTimeLocal: Temporal.PlainTime.from("09:30:00"),
+        timeIncrement: Temporal.Duration.from({ minutes: 15 }),
+      },
+      priorMembershipDays: [Temporal.PlainDate.from("2026-01-05")],
+      nextMembershipDays: [
+        Temporal.PlainDate.from("2026-01-05"),
+        Temporal.PlainDate.from("2026-01-06"),
+      ],
+    })
+
+    expect(merged.map((slot) => slot.toString())).toEqual([
+      "2026-01-05T09:15:00+00:00[UTC]",
+      "2026-01-06T09:00:00+00:00[UTC]",
+      "2026-01-06T09:15:00+00:00[UTC]",
+    ])
   })
 
   it("generates slots across DST spring-forward gaps", () => {

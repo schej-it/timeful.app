@@ -40,6 +40,45 @@ const utcTimezone = {
 }
 const buildUtcSpecificTimes = (date: string, times: string[]) =>
   times.map((time) => zdt(`${date}T${time}Z`))
+const buildUtcQuarterHourSlots = (date: string) =>
+  Array.from({ length: 96 }, (_, index) =>
+    Temporal.PlainDate.from(date)
+      .toZonedDateTime({
+        timeZone: "UTC",
+        plainTime: "00:00:00",
+      })
+      .add({ minutes: index * 15 })
+  )
+const buildCanonicalSpecificTimesEvent = ({
+  name,
+  dates,
+}: {
+  name: string
+  dates: string[]
+}): ScheduleOverlapEvent => ({
+  ...buildScheduleOverlapProps().event,
+  name,
+  dates: dates.map((date) => Temporal.PlainDate.from(date)),
+  timeSeed: zdt(`${dates[0]}T00:00:00Z`),
+  startTime: Temporal.PlainTime.from("00:00"),
+  duration: Temporal.Duration.from({ hours: 24 }),
+  hasSpecificTimes: true,
+  timeIncrement: Temporal.Duration.from({ minutes: 15 }),
+  times: [],
+  enabledSlots: dates.flatMap((date) => buildUtcQuarterHourSlots(date)),
+  eventTimezone: "UTC",
+  slotGeneration: {
+    startTimeLocal: Temporal.PlainTime.from("00:00"),
+    endTimeLocal: Temporal.PlainTime.from("00:00"),
+    timeIncrement: Temporal.Duration.from({ minutes: 15 }),
+  },
+  timedRecurrence: {
+    kind: "specific_dates",
+    selectedDays: dates.map((date) => Temporal.PlainDate.from(date)),
+    selectedDaysOfWeek: [],
+    startOnMonday: false,
+  },
+})
 
 vi.mock("vuetify", () => ({
   useDisplay: () => ({
@@ -158,20 +197,10 @@ describe("ScheduleOverlap", () => {
         ...buildScheduleOverlapProps(),
         fromEditEvent: true,
         initialTimezone: utcTimezone,
-        event: {
-          ...buildScheduleOverlapProps().event,
+        event: buildCanonicalSpecificTimesEvent({
           name: "Specific times drag mapping",
-          dates: [
-            Temporal.PlainDate.from("2026-05-29"),
-            Temporal.PlainDate.from("2026-05-30"),
-          ],
-          timeSeed: zdt("2026-05-29T00:00:00Z"),
-          startTime: Temporal.PlainTime.from("00:00"),
-          duration: Temporal.Duration.from({ hours: 24 }),
-          hasSpecificTimes: true,
-          timeIncrement: Temporal.Duration.from({ minutes: 15 }),
-          times: [],
-        },
+          dates: ["2026-05-29", "2026-05-30"],
+        }),
       },
       global: {
         stubs: {
@@ -244,20 +273,10 @@ describe("ScheduleOverlap", () => {
         ...buildScheduleOverlapProps(),
         fromEditEvent: true,
         initialTimezone: utcTimezone,
-        event: {
-          ...buildScheduleOverlapProps().event,
+        event: buildCanonicalSpecificTimesEvent({
           name: "Immediate saved specific times",
-          dates: [
-            Temporal.PlainDate.from("2026-05-29"),
-            Temporal.PlainDate.from("2026-05-30"),
-          ],
-          timeSeed: zdt("2026-05-29T00:00:00Z"),
-          startTime: Temporal.PlainTime.from("00:00"),
-          duration: Temporal.Duration.from({ hours: 24 }),
-          hasSpecificTimes: true,
-          timeIncrement: Temporal.Duration.from({ minutes: 15 }),
-          times: [],
-        },
+          dates: ["2026-05-29", "2026-05-30"],
+        }),
       },
       global: {
         stubs: {
@@ -357,30 +376,18 @@ describe("ScheduleOverlap", () => {
     expect(
       vm.days.map((day) => day.dateObject.withTimeZone("UTC").toPlainDate().toString())
     ).toEqual(["2026-05-29", "2026-05-30"])
-    expect(vm.splitTimes[0].map((time) => time.text).filter(Boolean)).toEqual([
+    const renderedHourLabels = vm.splitTimes[0].map((time) => time.text).filter(Boolean)
+    expect(renderedHourLabels).toHaveLength(24)
+    expect(renderedHourLabels.slice(0, 4)).toEqual([
       "12 am",
       "1 am",
       "2 am",
       "3 am",
     ])
-    expect(vm.splitTimes[0].map((time) => time.displayedMinutes)).toEqual([
-      0,
-      15,
-      30,
-      45,
-      60,
-      75,
-      90,
-      105,
-      120,
-      135,
-      150,
-      165,
-      180,
-      195,
-      210,
-      225,
-    ])
+    expect(renderedHourLabels.at(-1)).toBe("11 pm")
+    expect(vm.splitTimes[0].map((time) => time.displayedMinutes)).toEqual(
+      Array.from({ length: 96 }, (_, index) => index * 15)
+    )
     expect(
       vm.renderedRows.filter((row) => row.kind === "collapsed")
     ).toEqual([])
@@ -406,20 +413,10 @@ describe("ScheduleOverlap", () => {
         ...buildScheduleOverlapProps(),
         fromEditEvent: true,
         initialTimezone: utcTimezone,
-        event: {
-          ...buildScheduleOverlapProps().event,
+        event: buildCanonicalSpecificTimesEvent({
           name: "Specific times preserve membership",
-          dates: [
-            Temporal.PlainDate.from("2026-05-28"),
-            Temporal.PlainDate.from("2026-05-29"),
-          ],
-          timeSeed: zdt("2026-05-28T00:00:00Z"),
-          startTime: Temporal.PlainTime.from("00:00"),
-          duration: Temporal.Duration.from({ hours: 24 }),
-          hasSpecificTimes: true,
-          timeIncrement: Temporal.Duration.from({ minutes: 15 }),
-          times: [],
-        },
+          dates: ["2026-05-28", "2026-05-29"],
+        }),
       },
       global: {
         stubs: {

@@ -15,7 +15,41 @@ export interface TimedRecurrence {
   startOnMonday: boolean
 }
 
+interface TimedContractShape {
+  daysOnly?: boolean
+  timedRecurrence?: unknown
+  enabledSlots?: unknown
+  activeSlots?: unknown
+  eventTimezone?: unknown
+  slotGeneration?: unknown
+}
+
 export const DEFAULT_EVENT_TIMEZONE = UTC
+
+export const timedRecurrenceKindToEventType = (
+  kind: TimedRecurrence["kind"] | undefined
+): Event["type"] =>
+  kind === "weekly" ? eventTypes.DOW : eventTypes.SPECIFIC_DATES
+
+export const isTimedEventContractPayload = (event: TimedContractShape): boolean =>
+  !event.daysOnly &&
+  (
+    event.timedRecurrence != null ||
+    event.enabledSlots != null ||
+    event.activeSlots != null ||
+    event.eventTimezone != null ||
+    event.slotGeneration != null
+  )
+
+export const hasCompleteTimedEventContract = (
+  event: TimedContractShape
+): boolean =>
+  !event.daysOnly &&
+  event.timedRecurrence != null &&
+  event.enabledSlots != null &&
+  event.activeSlots != null &&
+  event.eventTimezone != null &&
+  event.slotGeneration != null
 
 export const sortAndUniqueSlots = (
   slots: Temporal.ZonedDateTime[] | undefined
@@ -171,14 +205,21 @@ export const getTimedEventTimezone = (
 export const getTimedRecurrence = (
   event: Pick<Event, "timedRecurrence" | "dates" | "type" | "startOnMonday">
 ): TimedRecurrence => ({
-  kind:
-    event.timedRecurrence?.kind ??
-    (event.type === eventTypes.SPECIFIC_DATES ? "specific_dates" : "weekly"),
+  kind: event.timedRecurrence?.kind ?? (
+    event.type === eventTypes.SPECIFIC_DATES ? "specific_dates" : "weekly"
+  ),
   selectedDays: [...(event.timedRecurrence?.selectedDays ?? event.dates ?? [])],
   selectedDaysOfWeek: [...(event.timedRecurrence?.selectedDaysOfWeek ?? [])],
   startOnMonday:
     event.timedRecurrence?.startOnMonday ?? event.startOnMonday ?? false,
 })
+
+export const getTimedSpecificDatePickedDays = (
+  event: Pick<Event, "timedRecurrence" | "dates" | "type">
+): Temporal.PlainDate[] =>
+  getTimedRecurrence(event).kind === "specific_dates"
+    ? [...getTimedRecurrence(event).selectedDays]
+    : []
 
 export const projectSlotsToLocalDays = (
   slots: Temporal.ZonedDateTime[] | undefined,
@@ -194,6 +235,79 @@ export const projectSlotsToLocalDays = (
   return [...daysByKey.values()].sort((left, right) =>
     Temporal.PlainDate.compare(left, right)
   )
+}
+
+export const projectSlotsToMembershipDays = ({
+  slots,
+  timeZone,
+  slotGeneration,
+}: {
+  slots: Temporal.ZonedDateTime[] | undefined
+  timeZone: string
+  slotGeneration?: TimedSlotGeneration
+}): Temporal.PlainDate[] =>
+  projectSlotsToLocalDays(slots, timeZone, slotGeneration)
+
+export const mergeActiveSlotsByMembershipDay = ({
+  priorEnabledSlots,
+  priorActiveSlots,
+  nextEnabledSlots,
+  timeZone,
+  slotGeneration,
+  priorMembershipDays,
+  nextMembershipDays,
+}: {
+  priorEnabledSlots: Temporal.ZonedDateTime[] | undefined
+  priorActiveSlots: Temporal.ZonedDateTime[] | undefined
+  nextEnabledSlots: Temporal.ZonedDateTime[] | undefined
+  timeZone: string
+  slotGeneration?: TimedSlotGeneration
+  priorMembershipDays?: Temporal.PlainDate[]
+  nextMembershipDays?: Temporal.PlainDate[]
+}): Temporal.ZonedDateTime[] => {
+  const normalizedNextEnabled = sortAndUniqueSlots(nextEnabledSlots)
+  const preservedActive = normalizeActiveSlots({
+    enabledSlots: normalizedNextEnabled,
+    activeSlots: priorActiveSlots,
+  }).activeSlots
+
+  const previousDayKeys = new Set(
+    (priorMembershipDays ??
+      projectSlotsToMembershipDays({
+        slots: priorEnabledSlots ?? priorActiveSlots,
+        timeZone,
+        slotGeneration,
+      })
+    ).map((day) => day.toString())
+  )
+  const addedDayKeys = new Set(
+    (nextMembershipDays ??
+      projectSlotsToMembershipDays({
+        slots: normalizedNextEnabled,
+        timeZone,
+        slotGeneration,
+      })
+    )
+      .map((day) => day.toString())
+      .filter((dayKey) => !previousDayKeys.has(dayKey))
+  )
+
+  if (addedDayKeys.size === 0) {
+    return preservedActive
+  }
+
+  return sortAndUniqueSlots([
+    ...preservedActive,
+    ...normalizedNextEnabled.filter((slot) =>
+      addedDayKeys.has(
+        getLocalSlotDomainDay({
+          slot,
+          timeZone,
+          slotGeneration,
+        }).toString()
+      )
+    ),
+  ])
 }
 
 export const generateTimedSlotsForDay = ({
@@ -254,6 +368,8 @@ export const buildTimedDateSeeds = (
     | "eventTimezone"
     | "slotGeneration"
     | "dates"
+    | "timedRecurrence"
+    | "type"
     | "timeSeed"
     | "timeIncrement"
   >
@@ -261,6 +377,19 @@ export const buildTimedDateSeeds = (
   if (event.daysOnly) {
     return (event.dates ?? []).map((date) =>
       date.toZonedDateTime({ timeZone: UTC, plainTime: "00:00:00" })
+    )
+  }
+
+  const pickedDays = getTimedSpecificDatePickedDays(event)
+  if (pickedDays.length > 0) {
+    const slotGeneration = getTimedSlotGeneration(event)
+    const timeZone = getTimedEventTimezone(event)
+
+    return pickedDays.map((day) =>
+      day.toZonedDateTime({
+        timeZone,
+        plainTime: slotGeneration.startTimeLocal,
+      })
     )
   }
 

@@ -5,11 +5,6 @@ import type { Timezone } from "@/composables/schedule_overlap/types"
 import type { PlainDate, ZonedDateTime } from "./temporalPrimitives"
 import { getEventDateSeeds } from "./eventDateRules"
 import { getSpecificTimesDayStarts } from "./scheduleDateRules"
-import {
-  getTimedEventTimezone,
-  getTimedSlotGeneration,
-  projectSlotsToLocalDays,
-} from "./timedEventSlots"
 import { toZDT } from "./timezoneDateRules"
 
 /** Returns a string representation of the given date, i.e. May 14th is "5/14". */
@@ -118,23 +113,14 @@ export const getDateRangeStringForEvent = (
       }
     }
 
-    const enabledDays = projectSlotsToLocalDays(
-      event.enabledSlots ?? event.activeSlots,
-      getTimedEventTimezone(event),
-      getTimedSlotGeneration(event)
-    )
-    if (enabledDays.length > 0) {
-      return (
-        `${getPlainDateString(enabledDays[0])} - ` +
-        getPlainDateString(enabledDays[enabledDays.length - 1])
-      )
+    const eventDateSeeds = getEventDateSeeds(event)
+    if (eventDateSeeds.length === 0) {
+      return ""
     }
 
-    const eventDateSeeds = getEventDateSeeds(event)
-    return getDateRangeString(
-      eventDateSeeds[0],
-      eventDateSeeds[eventDateSeeds.length - 1],
-      true
+    return (
+      `${getPlainDateString(eventDateSeeds[0].toPlainDate())} - ` +
+      getPlainDateString(eventDateSeeds[eventDateSeeds.length - 1].toPlainDate())
     )
   }
 

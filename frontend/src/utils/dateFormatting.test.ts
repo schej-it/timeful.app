@@ -35,20 +35,29 @@ describe("dateFormatting", () => {
         dates: [Temporal.PlainDate.from("2026-05-01"), Temporal.PlainDate.from("2026-05-03")],
         timeSeed: zdt("2026-05-01T00:00:00Z"),
       })
-    ).toBe("5/1 - 5/2")
+    ).toBe("5/1 - 5/3")
   })
 
-  it("derives timed specific-date summaries from projected enabled-slot days", () => {
+  it("derives timed specific-date summaries from picked dates", () => {
     expect(
       getDateRangeStringForEvent({
         type: eventTypes.SPECIFIC_DATES,
-        dates: [Temporal.PlainDate.from("2026-05-28")],
+        dates: [Temporal.PlainDate.from("2026-05-28"), Temporal.PlainDate.from("2026-05-29")],
         timeSeed: zdt("2026-05-28T00:00:00Z"),
         enabledSlots: [
           zdt("2026-05-28T00:00:00Z"),
           zdt("2026-05-28T01:00:00Z"),
           zdt("2026-05-29T00:00:00Z"),
         ],
+        timedRecurrence: {
+          kind: "specific_dates",
+          selectedDays: [
+            Temporal.PlainDate.from("2026-05-28"),
+            Temporal.PlainDate.from("2026-05-29"),
+          ],
+          selectedDaysOfWeek: [],
+          startOnMonday: true,
+        },
         eventTimezone: UTC,
         slotGeneration: {
           startTimeLocal: Temporal.PlainTime.from("00:00:00"),
@@ -59,16 +68,25 @@ describe("dateFormatting", () => {
     ).toBe("5/28 - 5/29")
   })
 
-  it("projects timed specific-date summaries in the persisted event timezone", () => {
+  it("keeps timed specific-date summaries on the picked dates in the persisted event timezone", () => {
     expect(
       getDateRangeStringForEvent({
         type: eventTypes.SPECIFIC_DATES,
-        dates: [Temporal.PlainDate.from("2026-01-05")],
+        dates: [Temporal.PlainDate.from("2026-01-05"), Temporal.PlainDate.from("2026-01-06")],
         enabledSlots: [
           zdt("2026-01-05T07:30:00Z"),
           zdt("2026-01-05T08:00:00Z"),
           zdt("2026-01-06T07:30:00Z"),
         ],
+        timedRecurrence: {
+          kind: "specific_dates",
+          selectedDays: [
+            Temporal.PlainDate.from("2026-01-05"),
+            Temporal.PlainDate.from("2026-01-06"),
+          ],
+          selectedDaysOfWeek: [],
+          startOnMonday: true,
+        },
         eventTimezone: "America/Los_Angeles",
         slotGeneration: {
           startTimeLocal: Temporal.PlainTime.from("23:30:00"),
@@ -76,7 +94,7 @@ describe("dateFormatting", () => {
           timeIncrement: Temporal.Duration.from({ minutes: 30 }),
         },
       })
-    ).toBe("1/4 - 1/5")
+    ).toBe("1/5 - 1/6")
   })
 
   it("can format timed specific-date summaries in the viewer timezone", () => {

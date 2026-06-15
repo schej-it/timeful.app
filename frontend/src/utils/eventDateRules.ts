@@ -41,6 +41,8 @@ export const getEventDateSeeds = (event: {
   timeSeed?: ZonedDateTime
   daysOnly?: boolean
   enabledSlots?: ZonedDateTime[]
+  type?: Event["type"]
+  timedRecurrence?: Event["timedRecurrence"]
   eventTimezone?: string
   slotGeneration?: Event["slotGeneration"]
   timeIncrement?: Event["timeIncrement"]

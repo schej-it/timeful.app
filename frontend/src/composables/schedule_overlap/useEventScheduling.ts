@@ -1,5 +1,6 @@
-import { computed, ref, type ComputedRef, type Ref } from "vue"
-import { Temporal } from "temporal-polyfill"
+import { computed, ref } from "vue"
+import type { ComputedRef, Ref } from "vue"
+import type { Temporal } from "temporal-polyfill"
 import {
   dateToDowDate,
   getEventDateSeeds,
@@ -13,9 +14,11 @@ import { toEventPatchPayload } from "@/composables/event/eventMutationBoundary"
 import type { Event, Location } from "@/types"
 import type { ZdtSet } from "@/utils"
 import {
+  generateTimedSlotsForDay,
   getTimedEventTimezone,
+  getTimedRecurrence,
+  getTimedSlotGeneration,
   normalizeActiveSlots,
-  projectSlotsToLocalDays,
   sortAndUniqueSlots,
 } from "@/utils/timedEventSlots"
 import {
@@ -243,43 +246,35 @@ export function useEventScheduling(opts: UseEventSchedulingOptions) {
       eventValue.activeSlots ?? eventValue.times
     )
     const existingEnabledSlots = sortAndUniqueSlots(eventValue.enabledSlots)
-    const selectedDayKeys = projectSlotsToLocalDays(
-      selectedTimes,
-      getTimedEventTimezone(opts.event.value)
-    ).map((day) => day.toString())
-    const membershipDayKeys = (opts.event.value.dates ?? []).map((day) =>
-      day.toString()
-    )
-    const selectionCoversMembershipDays =
-      selectedDayKeys.length === membershipDayKeys.length &&
-      selectedDayKeys.every((day, index) => day === membershipDayKeys[index])
+    const mergeEnabledWithSelected = (
+      baseSlots: Temporal.ZonedDateTime[] | undefined
+    ): Temporal.ZonedDateTime[] =>
+      sortAndUniqueSlots([...(baseSlots ?? []), ...selectedTimes])
+    const generatedEnabledSlots = (() => {
+      if (eventValue.slotGeneration == null) {
+        return []
+      }
+
+      const timedRecurrence = getTimedRecurrence(eventValue)
+      if (timedRecurrence.kind === "specific_dates" && timedRecurrence.selectedDays.length > 0) {
+        const eventTimezone = getTimedEventTimezone(eventValue)
+        const slotGeneration = getTimedSlotGeneration(eventValue)
+        return timedRecurrence.selectedDays.flatMap((day) =>
+          generateTimedSlotsForDay({
+            day,
+            timeZone: eventTimezone,
+            slotGeneration,
+          })
+        )
+      }
+      return []
+    })()
     const enabledSlots =
       existingEnabledSlots.length > 0
-        ? sortAndUniqueSlots([...existingEnabledSlots, ...selectedTimes])
+        ? mergeEnabledWithSelected(existingEnabledSlots)
         : existingActiveSlots.length > 0
-          ? [...selectedTimes]
-          : selectionCoversMembershipDays
-            ? [...selectedTimes]
-          : (() => {
-              const duration = opts.event.value.duration
-              if (!duration) {
-                return [...selectedTimes]
-              }
-
-              const increment =
-                opts.event.value.timeIncrement ?? opts.timeslotDuration.value
-              const generatedEnabledSlots: Temporal.ZonedDateTime[] = []
-              for (const seed of getEventDateSeeds(opts.event.value)) {
-                let current = seed
-                const end = seed.add(duration)
-                while (Temporal.ZonedDateTime.compare(current, end) < 0) {
-                  generatedEnabledSlots.push(current)
-                  current = current.add(increment)
-                }
-              }
-
-              return sortAndUniqueSlots(generatedEnabledSlots)
-            })()
+          ? mergeEnabledWithSelected(existingActiveSlots)
+          : mergeEnabledWithSelected(generatedEnabledSlots)
     const normalizedSlots = normalizeActiveSlots({
       enabledSlots,
       activeSlots: selectedTimes,

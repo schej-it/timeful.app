@@ -580,7 +580,7 @@ describe("useCalendarGrid", () => {
     )
   })
 
-  it("uses saved specific-time instants for edit-mode day columns", () => {
+  it("uses picked dates for specific-times edit-mode day columns", () => {
     const event = ref<ScheduleOverlapEvent>({
       _id: "evt-5d",
       shortId: "grid-specific-edit-days-from-times",
@@ -620,8 +620,70 @@ describe("useCalendarGrid", () => {
     })
 
     expect(
-      grid.days.value.map((day) => day.dateObject.withTimeZone("Europe/Belgrade").toPlainDate().toString())
-    ).toEqual(["2026-05-28", "2026-05-29", "2026-05-30"])
+      grid.days.value.map((day) => day.membershipDate?.toString())
+    ).toEqual(["2026-05-28", "2026-05-29"])
+  })
+
+  it("uses activeSlots for specific-times cell occupancy while keeping the enabled domain for window coverage", () => {
+    const event = ref<ScheduleOverlapEvent>({
+      _id: "evt-5d-active-subset",
+      shortId: "grid-specific-active-subset",
+      name: "Specific times active subset",
+      type: eventTypes.SPECIFIC_DATES,
+      dates: [Temporal.PlainDate.from("2026-05-28")],
+      timeSeed: zdt("2026-05-28T09:00:00Z"),
+      startTime: Temporal.PlainTime.from("09:00"),
+      duration: Temporal.Duration.from({ hours: 1 }),
+      hasSpecificTimes: true,
+      enabledSlots: [
+        zdt("2026-05-28T09:00:00Z"),
+        zdt("2026-05-28T09:15:00Z"),
+        zdt("2026-05-28T09:30:00Z"),
+        zdt("2026-05-28T09:45:00Z"),
+      ],
+      activeSlots: [
+        zdt("2026-05-28T09:30:00Z"),
+        zdt("2026-05-28T09:45:00Z"),
+      ],
+      times: [
+        zdt("2026-05-28T09:30:00Z"),
+        zdt("2026-05-28T09:45:00Z"),
+      ],
+      notificationsEnabled: false,
+      blindAvailabilityEnabled: false,
+      daysOnly: false,
+      sendEmailAfterXResponses: -1,
+      collectEmails: false,
+      startOnMonday: true,
+      timeIncrement: durations.FIFTEEN_MINUTES,
+      creatorPosthogId: "creator-5d-active-subset",
+      remindees: [],
+    })
+
+    const grid = useCalendarGrid({
+      event,
+      weekOffset: ref(0),
+      curTimezone: ref({
+        value: UTC,
+        offset: Temporal.Duration.from({ hours: 0 }),
+        label: "UTC",
+        gmtString: "GMT+0",
+      }),
+      state: ref(states.HEATMAP),
+      isPhone: ref(false),
+    })
+
+    expect(
+      grid.splitTimes.value[0].map((time) => time.displayedMinutes)
+    ).toEqual([9 * 60, 9 * 60 + 15, 9 * 60 + 30, 9 * 60 + 45])
+    expect(grid.getDateFromRowCol(0, 0)).toBeNull()
+    expect(grid.getDateFromRowCol(1, 0)).toBeNull()
+    expect(grid.getDateFromRowCol(2, 0)?.toInstant().toString()).toBe(
+      "2026-05-28T09:30:00Z"
+    )
+    expect(grid.getDateFromRowCol(3, 0)?.toInstant().toString()).toBe(
+      "2026-05-28T09:45:00Z"
+    )
   })
 
   it("supplements saved specific-time edit days with newly added membership dates", () => {
@@ -781,6 +843,21 @@ describe("useCalendarGrid", () => {
   })
 
   it("maps quarter-hour rows in specific-times edit mode from midnight instead of the event window start", () => {
+    const enabledSlots = Array.from({ length: 96 }, (_, index) =>
+      zdt(
+        `2026-05-30T${String(Math.floor(index / 4)).padStart(2, "0")}:${String(
+          (index % 4) * 15
+        ).padStart(2, "0")}:00Z`
+      )
+    ).concat(
+      Array.from({ length: 96 }, (_, index) =>
+        zdt(
+          `2026-05-31T${String(Math.floor(index / 4)).padStart(2, "0")}:${String(
+            (index % 4) * 15
+          ).padStart(2, "0")}:00Z`
+        )
+      )
+    )
     const event = ref<ScheduleOverlapEvent>({
       _id: "evt-5e",
       shortId: "grid-specific-edit-quarter-hours",
@@ -791,6 +868,7 @@ describe("useCalendarGrid", () => {
       startTime: Temporal.PlainTime.from("09:00"),
       duration: Temporal.Duration.from({ hours: 24 }),
       hasSpecificTimes: true,
+      enabledSlots,
       times: [],
       notificationsEnabled: false,
       blindAvailabilityEnabled: false,

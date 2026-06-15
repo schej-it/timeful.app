@@ -142,7 +142,7 @@ describe("specificTimesEditDraft", () => {
     })
   })
 
-  it("preserves the saved active subset when membership dates expand", () => {
+  it("preserves the prior subset on unchanged dates and defaults added dates to fully active", () => {
     const schedule = buildEventEditorSchedule({
       daysOnly: false,
       daysOnlyType: "specific_dates",
@@ -172,11 +172,13 @@ describe("specificTimesEditDraft", () => {
       activeSlots: [
         Temporal.Instant.from("2026-05-31T09:00:00Z").toZonedDateTimeISO(UTC),
         Temporal.Instant.from("2026-05-31T09:15:00Z").toZonedDateTimeISO(UTC),
+        Temporal.Instant.from("2026-06-01T09:00:00Z").toZonedDateTimeISO(UTC),
+        Temporal.Instant.from("2026-06-01T09:15:00Z").toZonedDateTimeISO(UTC),
       ],
     })
   })
 
-  it("preserves only the overlapping active subset when membership dates shrink", () => {
+  it("filters the active subset down to remaining picked dates when membership shrinks", () => {
     const event = buildEvent()
     event.dates = [
       Temporal.PlainDate.from("2026-05-28"),
@@ -310,7 +312,7 @@ describe("specificTimesEditDraft", () => {
     })
   })
 
-  it("preserves saved specific times when only the canonical timezone changes", () => {
+  it("keeps picked dates stable and filters the active subset when only the canonical timezone changes", () => {
     const schedule = buildEventEditorSchedule({
       daysOnly: false,
       daysOnlyType: "specific_dates",
@@ -342,10 +344,7 @@ describe("specificTimesEditDraft", () => {
         Temporal.Instant.from("2026-05-31T09:00:00Z").toZonedDateTimeISO(UTC),
         Temporal.Instant.from("2026-05-31T09:15:00Z").toZonedDateTimeISO(UTC),
       ],
-      activeSlots: [
-        Temporal.Instant.from("2026-05-31T09:00:00Z").toZonedDateTimeISO(UTC),
-        Temporal.Instant.from("2026-05-31T09:15:00Z").toZonedDateTimeISO(UTC),
-      ],
+      activeSlots: [],
     })
   })
 
@@ -477,6 +476,112 @@ describe("specificTimesEditDraft", () => {
     expect(processEventMock).toHaveBeenCalledWith(nextEvent)
   })
 
+  it("applies weekly timed drafts without relabeling them as specific_dates", () => {
+    const event = buildWeeklyEvent()
+    const nextEvent = applySpecificTimesEditDraft({
+      event,
+      draft: {
+        dates: [...(event.dates ?? [])],
+        timeSeed: event.timeSeed,
+        duration: event.duration,
+        enabledSlots: [...(event.enabledSlots ?? [])],
+        activeSlots: [...(event.activeSlots ?? [])],
+        eventTimezone: event.eventTimezone,
+        timedRecurrence: event.timedRecurrence,
+        slotGeneration: event.slotGeneration,
+        timeIncrementMinutes: 30,
+        resetExistingTimes: false,
+      },
+    })
+
+    expect(nextEvent.type).toBe(eventTypes.DOW)
+    expect(nextEvent.timedRecurrence?.kind).toBe("weekly")
+  })
+
+  it("applies specific-date timed drafts with the canonical specific_dates type", () => {
+    const nextEvent = applySpecificTimesEditDraft({
+      event: buildWeeklyEvent(),
+      draft: {
+        dates: [
+          Temporal.PlainDate.from("2026-05-30"),
+          Temporal.PlainDate.from("2026-05-31"),
+        ],
+        timeSeed: Temporal.Instant.from("2026-05-30T09:00:00Z").toZonedDateTimeISO(
+          UTC
+        ),
+        duration: durations.ONE_HOUR,
+        enabledSlots: [
+          Temporal.Instant.from("2026-05-30T09:00:00Z").toZonedDateTimeISO(UTC),
+          Temporal.Instant.from("2026-05-30T09:15:00Z").toZonedDateTimeISO(UTC),
+          Temporal.Instant.from("2026-05-31T09:00:00Z").toZonedDateTimeISO(UTC),
+          Temporal.Instant.from("2026-05-31T09:15:00Z").toZonedDateTimeISO(UTC),
+        ],
+        activeSlots: [
+          Temporal.Instant.from("2026-05-31T09:00:00Z").toZonedDateTimeISO(UTC),
+          Temporal.Instant.from("2026-05-31T09:15:00Z").toZonedDateTimeISO(UTC),
+        ],
+        eventTimezone: UTC,
+        timedRecurrence: {
+          kind: "specific_dates",
+          selectedDays: [
+            Temporal.PlainDate.from("2026-05-30"),
+            Temporal.PlainDate.from("2026-05-31"),
+          ],
+          selectedDaysOfWeek: [],
+          startOnMonday: true,
+        },
+        slotGeneration: {
+          startTimeLocal: Temporal.PlainTime.from("09:00"),
+          endTimeLocal: Temporal.PlainTime.from("09:30"),
+          timeIncrement: durations.FIFTEEN_MINUTES,
+        },
+        timeIncrementMinutes: 15,
+        resetExistingTimes: false,
+      },
+    })
+
+    expect(nextEvent.type).toBe(eventTypes.SPECIFIC_DATES)
+    expect(nextEvent.timedRecurrence?.kind).toBe("specific_dates")
+  })
+
+  it("keeps type and timed recurrence aligned after draft application", () => {
+    const weeklyEvent = applySpecificTimesEditDraft({
+      event: buildWeeklyEvent(),
+      draft: {
+        dates: [...(buildWeeklyEvent().dates ?? [])],
+        timeSeed: buildWeeklyEvent().timeSeed,
+        duration: buildWeeklyEvent().duration,
+        enabledSlots: [...(buildWeeklyEvent().enabledSlots ?? [])],
+        activeSlots: [...(buildWeeklyEvent().activeSlots ?? [])],
+        eventTimezone: buildWeeklyEvent().eventTimezone,
+        timedRecurrence: buildWeeklyEvent().timedRecurrence,
+        slotGeneration: buildWeeklyEvent().slotGeneration,
+        timeIncrementMinutes: 30,
+        resetExistingTimes: false,
+      },
+    })
+    const specificDatesEvent = applySpecificTimesEditDraft({
+      event: buildEvent(),
+      draft: {
+        dates: [...(buildEvent().dates ?? [])],
+        timeSeed: buildEvent().timeSeed,
+        duration: buildEvent().duration,
+        enabledSlots: [...(buildEvent().enabledSlots ?? [])],
+        activeSlots: [...(buildEvent().activeSlots ?? [])],
+        eventTimezone: buildEvent().eventTimezone,
+        timedRecurrence: buildEvent().timedRecurrence,
+        slotGeneration: buildEvent().slotGeneration,
+        timeIncrementMinutes: 15,
+        resetExistingTimes: false,
+      },
+    })
+
+    expect(weeklyEvent.type).toBe(eventTypes.DOW)
+    expect(weeklyEvent.timedRecurrence?.kind).toBe("weekly")
+    expect(specificDatesEvent.type).toBe(eventTypes.SPECIFIC_DATES)
+    expect(specificDatesEvent.timedRecurrence?.kind).toBe("specific_dates")
+  })
+
   it("keeps only the saved active subset when rebuilding a specific-times draft", () => {
     const schedule = buildEventEditorSchedule({
       daysOnly: false,
@@ -587,7 +692,7 @@ describe("specificTimesEditDraft", () => {
       "2026-05-31T09:00:00+00:00[UTC]",
       "2026-05-31T09:15:00+00:00[UTC]",
     ])
-    // activeSlots must NOT contain June 1 slots
+    // activeSlots keep the prior subset after removed-date filtering
     expect(draft?.activeSlots?.map((slot) => slot.toString())).toEqual([
       "2026-05-31T09:00:00+00:00[UTC]",
       "2026-05-31T09:15:00+00:00[UTC]",

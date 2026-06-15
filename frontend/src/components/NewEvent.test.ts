@@ -301,7 +301,7 @@ describe("NewEvent", () => {
     })
   })
 
-  it("creates specific-times events with an empty canonical active subset and routes into the handoff flow", async () => {
+  it("creates specific-times events with a full canonical active domain and routes into the handoff flow", async () => {
     const wrapper = shallowMount(NewEvent, {
       global: {
         stubs: defaultStubs,
@@ -332,12 +332,15 @@ describe("NewEvent", () => {
       "/events",
       expect.objectContaining({
         hasSpecificTimes: true,
-        activeSlots: [],
+        activeSlots: expect.any(Array) as string[],
         enabledSlots: expect.any(Array) as string[],
       })
     )
     expect(
       (postMock.mock.calls[0]?.[1] as { enabledSlots?: string[] }).enabledSlots?.length
+    ).toBeGreaterThan(0)
+    expect(
+      (postMock.mock.calls[0]?.[1] as { activeSlots?: string[] }).activeSlots?.length
     ).toBeGreaterThan(0)
     const pushedState = (routerPushMock.mock.calls[0]?.[0] as {
       state?: {
@@ -356,7 +359,9 @@ describe("NewEvent", () => {
       })
     )
     expect(pushedState?.timefulSpecificTimesEntry?.mode).toBe("create")
-    expect(pushedState?.timefulSpecificTimesEntry?.draft?.activeSlots).toEqual([])
+    expect(pushedState?.timefulSpecificTimesEntry?.draft?.activeSlots?.length).toBeGreaterThan(
+      0
+    )
     expect(pushedState?.timefulSpecificTimesEntry?.draft?.resetExistingTimes).toBe(
       true
     )

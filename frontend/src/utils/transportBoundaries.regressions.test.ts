@@ -8,6 +8,7 @@ import {
   fromRawEvent,
   fromRawResponse,
   fromRawSignUpBlock,
+  type RawEvent,
   toRawEvent,
   fromRawUser,
   toRawCalendarOptions,
@@ -49,6 +50,66 @@ vi.mock("@/utils/fetch_utils", async () => {
   }
 })
 
+const buildCanonicalSpecificDatesRawEvent = (
+  overrides: Partial<RawEvent> = {}
+): RawEvent => ({
+  type: eventTypes.SPECIFIC_DATES,
+  daysOnly: false,
+  dates: [epochMs("2026-01-02T09:00:00Z")],
+  duration: 1,
+  enabledSlots: [
+    "2026-01-02T09:00:00Z",
+    "2026-01-02T09:15:00Z",
+  ],
+  activeSlots: ["2026-01-02T09:00:00Z"],
+  eventTimezone: "UTC",
+  slotGeneration: {
+    startTimeLocal: "09:00:00",
+    endTimeLocal: "10:00:00",
+    timeIncrementMinutes: 15,
+  },
+  timedRecurrence: {
+    kind: "specific_dates",
+    selectedDays: ["2026-01-02"],
+    selectedDaysOfWeek: [],
+    startOnMonday: false,
+  },
+  ...overrides,
+})
+
+const buildCanonicalWeeklyRawEvent = (
+  overrides: Partial<RawEvent> = {}
+): RawEvent => ({
+  type: eventTypes.SPECIFIC_DATES,
+  daysOnly: false,
+  duration: 1,
+  enabledSlots: [
+    "2026-01-05T17:00:00Z",
+    "2026-01-05T17:30:00Z",
+    "2026-01-07T17:00:00Z",
+    "2026-01-07T17:30:00Z",
+  ],
+  activeSlots: [
+    "2026-01-05T17:00:00Z",
+    "2026-01-05T17:30:00Z",
+    "2026-01-07T17:00:00Z",
+    "2026-01-07T17:30:00Z",
+  ],
+  eventTimezone: "America/Los_Angeles",
+  slotGeneration: {
+    startTimeLocal: "09:00:00",
+    endTimeLocal: "10:00:00",
+    timeIncrementMinutes: 30,
+  },
+  timedRecurrence: {
+    kind: "weekly",
+    selectedDays: ["2026-01-05", "2026-01-07"],
+    selectedDaysOfWeek: [1, 3],
+    startOnMonday: true,
+  },
+  ...overrides,
+})
+
 describe("transport and timezone regression boundaries", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -56,11 +117,13 @@ describe("transport and timezone regression boundaries", () => {
   })
 
   it("reconstructs epoch-millisecond API fields without invalid ZonedDateTime bags", () => {
-    expect(() => fromRawEvent({
-      dates: [0],
-      times: [60 * 60 * 1000],
-      duration: 1,
-    })).not.toThrow()
+    expect(() =>
+      fromRawEvent(buildCanonicalSpecificDatesRawEvent({
+        dates: [0],
+        enabledSlots: [60 * 60 * 1000],
+        activeSlots: [60 * 60 * 1000],
+      }))
+    ).not.toThrow()
 
     expect(() =>
       fromRawResponse({
@@ -87,10 +150,23 @@ describe("transport and timezone regression boundaries", () => {
 
   it("decodes ISO instant transport fields at the boundary before event rendering", () => {
     const rawEvent = {
-      dates: ["2026-05-15T06:00:00Z", "2026-05-21T06:00:00Z"],
-      times: ["2026-05-15T08:00:00Z"],
-      duration: 8,
-      timeIncrement: 15,
+      ...buildCanonicalSpecificDatesRawEvent({
+        dates: ["2026-05-15T06:00:00Z", "2026-05-21T06:00:00Z"],
+        duration: 8,
+        enabledSlots: ["2026-05-15T08:00:00Z", "2026-05-15T08:15:00Z"],
+        activeSlots: ["2026-05-15T08:00:00Z"],
+        slotGeneration: {
+          startTimeLocal: "08:00:00",
+          endTimeLocal: "16:00:00",
+          timeIncrementMinutes: 15,
+        },
+        timedRecurrence: {
+          kind: "specific_dates",
+          selectedDays: ["2026-05-15", "2026-05-21"],
+          selectedDaysOfWeek: [],
+          startOnMonday: false,
+        },
+      }),
       responses: {
         user_1: {
           availability: ["2026-05-15T08:00:00Z"],
@@ -215,20 +291,28 @@ describe("transport and timezone regression boundaries", () => {
   })
 
   it("exposes an explicit time seed alongside decoded event dates", () => {
-    const event = fromRawEvent({
-      dates: [epochMs("2026-01-02T09:30:00Z")],
-      duration: 1,
-    })
+    const event = fromRawEvent(
+      buildCanonicalSpecificDatesRawEvent({
+        dates: [epochMs("2026-01-02T09:30:00Z")],
+      })
+    )
 
     expect(event.timeSeed?.toString()).toBe("2026-01-02T09:30:00+00:00[UTC]")
     expect(event.dates?.[0].toString()).toBe("2026-01-02")
   })
 
   it("decodes fractional-hour event durations from the transport boundary", () => {
-    const event = fromRawEvent({
-      dates: ["2026-05-18T07:15:00Z"],
-      duration: 5.5,
-    })
+    const event = fromRawEvent(
+      buildCanonicalSpecificDatesRawEvent({
+        dates: ["2026-05-18T07:15:00Z"],
+        duration: 5.5,
+        slotGeneration: {
+          startTimeLocal: "07:15:00",
+          endTimeLocal: "12:45:00",
+          timeIncrementMinutes: 15,
+        },
+      })
+    )
 
     expect(event.duration?.toString()).toBe("PT5H30M")
   })
@@ -401,10 +485,10 @@ describe("transport and timezone regression boundaries", () => {
 
   it("normalizes raw event extras before schedule-overlap consumes them", () => {
     const event = fromRawEvent({
-      _id: "evt-1",
-      type: eventTypes.SPECIFIC_DATES,
-      dates: [epochMs("2026-01-01T00:00:00Z")],
-      duration: 1,
+      ...buildCanonicalSpecificDatesRawEvent({
+        _id: "evt-1",
+        dates: [epochMs("2026-01-01T09:00:00Z")],
+      }),
       scheduledEvent: {
         calendarId: "primary",
         startDate: epochMs("2026-01-01T11:00:00Z"),
@@ -571,11 +655,10 @@ describe("transport and timezone regression boundaries", () => {
   it("decodes raw event and folder lists before store-level consumption", async () => {
     vi.mocked(get)
       .mockResolvedValueOnce([
-        {
+        buildCanonicalSpecificDatesRawEvent({
           _id: "evt-1",
           dates: [epochMs("2026-01-04T09:00:00Z")],
-          duration: 1,
-        },
+        }),
       ])
       .mockResolvedValueOnce([
         {
@@ -590,6 +673,106 @@ describe("transport and timezone regression boundaries", () => {
     expect(events[0].dates?.[0]).toBeInstanceOf(Temporal.PlainDate)
     expect(events[0].timeSeed).toBeInstanceOf(Temporal.ZonedDateTime)
     expect(folders).toEqual([{ _id: "folder-1", name: "Planning" }])
+  })
+
+  it("decodes canonical timed specific-date payloads", () => {
+    const event = fromRawEvent(
+      buildCanonicalSpecificDatesRawEvent({
+        dates: [epochMs("2026-05-28T09:00:00Z"), epochMs("2026-05-29T09:00:00Z")],
+        enabledSlots: [
+          "2026-05-28T09:00:00Z",
+          "2026-05-28T09:15:00Z",
+          "2026-05-29T09:00:00Z",
+          "2026-05-29T09:15:00Z",
+        ],
+        activeSlots: [
+          "2026-05-29T09:00:00Z",
+          "2026-05-29T09:15:00Z",
+        ],
+        timedRecurrence: {
+          kind: "specific_dates",
+          selectedDays: ["2026-05-28", "2026-05-29"],
+          selectedDaysOfWeek: [],
+          startOnMonday: false,
+        },
+      })
+    )
+
+    expect(event.type).toBe(eventTypes.SPECIFIC_DATES)
+    expect(event.timedRecurrence?.kind).toBe("specific_dates")
+    expect(event.dates?.map((day) => day.toString())).toEqual([
+      "2026-05-28",
+      "2026-05-29",
+    ])
+  })
+
+  it("decodes canonical timed weekly payloads", () => {
+    const event = fromRawEvent(buildCanonicalWeeklyRawEvent())
+
+    expect(event.type).toBe(eventTypes.DOW)
+    expect(event.timedRecurrence?.kind).toBe("weekly")
+    expect(event.timedRecurrence?.selectedDaysOfWeek).toEqual([1, 3])
+    expect(event.dates?.map((day) => day.toString())).toEqual([
+      "2026-01-05",
+      "2026-01-07",
+    ])
+  })
+
+  it.each([
+    "timedRecurrence",
+    "enabledSlots",
+    "activeSlots",
+    "eventTimezone",
+    "slotGeneration",
+  ] as const)("throws when canonical timed payload is missing %s", (missingField) => {
+    const { [missingField]: _omitted, ...rawEvent } =
+      buildCanonicalSpecificDatesRawEvent()
+
+    expect(() => fromRawEvent(rawEvent)).toThrow("Failed to decode event transport payload")
+  })
+
+  it("round-trips canonical timed payloads while keeping compatibility dates and times on write", () => {
+    const decoded = fromRawEvent(
+      buildCanonicalSpecificDatesRawEvent({
+        dates: undefined,
+        enabledSlots: [
+          "2026-05-28T09:00:00Z",
+          "2026-05-28T09:15:00Z",
+          "2026-05-29T09:00:00Z",
+          "2026-05-29T09:15:00Z",
+        ],
+        activeSlots: [
+          "2026-05-29T09:00:00Z",
+          "2026-05-29T09:15:00Z",
+        ],
+        timedRecurrence: {
+          kind: "specific_dates",
+          selectedDays: ["2026-05-28", "2026-05-29"],
+          selectedDaysOfWeek: [],
+          startOnMonday: false,
+        },
+      })
+    )
+    const payload = toRawEvent(decoded)
+
+    expect(payload.dates).toEqual([
+      epochMs("2026-05-28T09:00:00Z"),
+      epochMs("2026-05-29T09:00:00Z"),
+    ])
+    expect(payload.times).toEqual([
+      epochMs("2026-05-29T09:00:00Z"),
+      epochMs("2026-05-29T09:15:00Z"),
+    ])
+    expect(payload.enabledSlots).toEqual([
+      "2026-05-28T09:00:00Z",
+      "2026-05-28T09:15:00Z",
+      "2026-05-29T09:00:00Z",
+      "2026-05-29T09:15:00Z",
+    ])
+    expect(payload.activeSlots).toEqual([
+      "2026-05-29T09:00:00Z",
+      "2026-05-29T09:15:00Z",
+    ])
   })
 
   it("encodes canonical event patch payloads at an explicit mutation boundary", () => {

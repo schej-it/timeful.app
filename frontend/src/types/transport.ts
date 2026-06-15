@@ -1,7 +1,6 @@
 import type { components } from "./api"
 import { Temporal } from "temporal-polyfill"
 import { fromEpochMillisecondsToZDT } from "@/utils"
-import { UTC } from "@/constants"
 import type {
   Attendee,
   BufferTimeOptions,
@@ -24,9 +23,11 @@ import {
   getTimedEventTimezone,
   getTimedRecurrence,
   getTimedSlotGeneration,
+  hasCompleteTimedEventContract,
+  isTimedEventContractPayload,
   normalizeActiveSlots,
-  projectSlotsToLocalDays,
   sortAndUniqueSlots,
+  timedRecurrenceKindToEventType,
 } from "@/utils/timedEventSlots"
 import { normalizeTimedResponseSlots } from "@/utils/timedResponseSlots"
 
@@ -132,8 +133,7 @@ const fromRawDurationHours = (
 }
 
 const decodeRawSlotGeneration = (
-  raw: RawEvent["slotGeneration"],
-  fallbackTimeIncrementMinutes: number | null | undefined
+  raw: RawEvent["slotGeneration"]
 ) =>
   raw
     ? {
@@ -148,17 +148,9 @@ const decodeRawSlotGeneration = (
         timeIncrement:
           raw.timeIncrementMinutes != null
             ? Temporal.Duration.from({ minutes: raw.timeIncrementMinutes })
-            : fallbackTimeIncrementMinutes != null
-              ? Temporal.Duration.from({ minutes: fallbackTimeIncrementMinutes })
-              : undefined,
+            : undefined,
       }
-    : fallbackTimeIncrementMinutes != null
-      ? {
-          timeIncrement: Temporal.Duration.from({
-            minutes: fallbackTimeIncrementMinutes,
-          }),
-        }
-      : undefined
+    : undefined
 
 const decodeRawTimedRecurrence = (
   raw: RawEvent["timedRecurrence"]
@@ -172,36 +164,7 @@ const decodeRawTimedRecurrence = (
       }
     : undefined
 
-const generateLegacyEnabledSlots = (
-  raw: RawEvent,
-  dateSeeds: Temporal.ZonedDateTime[] | undefined
-): Temporal.ZonedDateTime[] => {
-  if (raw.daysOnly) {
-    return []
-  }
-  if (!dateSeeds || dateSeeds.length === 0 || raw.duration == null) {
-    return []
-  }
-
-  const incrementMinutes = raw.timeIncrement ?? 15
-  const increment = Temporal.Duration.from({ minutes: incrementMinutes })
-  const duration = fromRawDurationHours(raw.duration)
-  if (duration == null) {
-    return []
-  }
-
-  const slots: Temporal.ZonedDateTime[] = []
-  for (const seed of dateSeeds) {
-    let current = seed.withTimeZone(UTC)
-    const end = current.add(duration)
-    while (Temporal.ZonedDateTime.compare(current, end) < 0) {
-      slots.push(current)
-      current = current.add(increment)
-    }
-  }
-
-  return sortAndUniqueSlots(slots)
-}
+const EVENT_DECODE_ERROR = "Failed to decode event transport payload"
 
 export const toTransportDateTimeStrings = (
   dateTimes: Temporal.ZonedDateTime[] | undefined
@@ -336,64 +299,63 @@ export function toRawFolder(folder: Folder): RawFolder {
 
 export function fromRawEvent(raw: RawEvent): Event {
   const dateSeeds = raw.dates?.map((value) => fromRawInstantValue(value))
-  const decodedSlotGeneration = decodeRawSlotGeneration(
-    raw.slotGeneration,
-    raw.timeIncrement
-  )
-  const decodedEnabledSlots =
-    decodeRawInstantValues(raw.enabledSlots) ??
-    generateLegacyEnabledSlots(raw, dateSeeds)
-  const decodedActiveSlots =
-    decodeRawInstantValues(raw.activeSlots) ??
-    decodeRawInstantValues(raw.times) ??
-    decodedEnabledSlots
+  const timedContractPayload = isTimedEventContractPayload(raw)
+  if (timedContractPayload && !hasCompleteTimedEventContract(raw)) {
+    throw new Error(EVENT_DECODE_ERROR)
+  }
+
+  const decodedSlotGeneration = decodeRawSlotGeneration(raw.slotGeneration)
+  const decodedEnabledSlots = decodeRawInstantValues(raw.enabledSlots)
+  const decodedActiveSlots = decodeRawInstantValues(raw.activeSlots)
   const normalizedTimedSlots = normalizeActiveSlots({
     enabledSlots: decodedEnabledSlots,
     activeSlots: decodedActiveSlots,
   })
-  const eventTimezone = raw.eventTimezone ?? getTimedEventTimezone({
-    eventTimezone: raw.eventTimezone,
-    timeSeed: dateSeeds?.[0],
-    enabledSlots: normalizedTimedSlots.enabledSlots,
-    times: normalizedTimedSlots.activeSlots,
-  })
-  const timedRecurrence =
-    decodeRawTimedRecurrence(raw.timedRecurrence) ??
-    (raw.daysOnly
-      ? undefined
-      : {
-          kind: raw.type === "specific_dates" || !raw.type ? "specific_dates" : "weekly",
-          selectedDays: projectSlotsToLocalDays(
-            normalizedTimedSlots.enabledSlots,
-            eventTimezone
-          ),
-          selectedDaysOfWeek:
-            raw.type === "dow" || raw.type === "group"
-              ? [...new Set((dateSeeds ?? []).map((seed) => seed.dayOfWeek))]
-              : [],
-          startOnMonday: raw.startOnMonday,
+  const eventTimezone =
+    timedContractPayload
+      ? raw.eventTimezone
+      : getTimedEventTimezone({
+          eventTimezone: raw.eventTimezone,
+          timeSeed: dateSeeds?.[0],
+          enabledSlots: normalizedTimedSlots.enabledSlots,
+          times: decodeRawInstantValues(raw.times),
         })
+  const timedRecurrence = decodeRawTimedRecurrence(raw.timedRecurrence)
+  if (timedContractPayload && timedRecurrence?.kind == null) {
+    throw new Error(EVENT_DECODE_ERROR)
+  }
   const compatibilityDateSeeds =
     dateSeeds && dateSeeds.length > 0
       ? dateSeeds
-      : buildTimedDateSeeds({
-          daysOnly: raw.daysOnly,
-          enabledSlots: normalizedTimedSlots.enabledSlots,
-          eventTimezone,
-          slotGeneration: decodedSlotGeneration,
-          dates: timedRecurrence?.selectedDays,
-          timeSeed: undefined,
-          timeIncrement:
-            raw.timeIncrement != null
-              ? Temporal.Duration.from({ minutes: raw.timeIncrement })
-              : undefined,
-        })
+      : timedContractPayload
+        ? buildTimedDateSeeds({
+            daysOnly: raw.daysOnly,
+            enabledSlots: normalizedTimedSlots.enabledSlots,
+            eventTimezone,
+            slotGeneration: decodedSlotGeneration,
+            dates: timedRecurrence?.selectedDays,
+            timedRecurrence,
+            type: timedRecurrenceKindToEventType(timedRecurrence?.kind),
+            timeSeed: undefined,
+            timeIncrement:
+              decodedSlotGeneration?.timeIncrement ??
+              (raw.timeIncrement != null
+                ? Temporal.Duration.from({ minutes: raw.timeIncrement })
+                : undefined),
+          })
+        : []
 
   return {
     ...raw,
+    type:
+      timedContractPayload
+        ? timedRecurrenceKindToEventType(timedRecurrence?.kind)
+        : raw.type,
     dates: compatibilityDateSeeds.map((seed) => seed.toPlainDate()),
     timeSeed: compatibilityDateSeeds[0],
-    times: normalizedTimedSlots.activeSlots,
+    times: timedContractPayload
+      ? normalizedTimedSlots.activeSlots
+      : decodeRawInstantValues(raw.times),
     duration: fromRawDurationHours(raw.duration),
     timeIncrement:
       decodedSlotGeneration?.timeIncrement ??
@@ -434,10 +396,16 @@ export function toRawEvent(event: Event): RawEvent {
   const eventTimezone = getTimedEventTimezone(event)
   const activeSlots = sortAndUniqueSlots(event.activeSlots ?? event.times)
   const enabledSlots = sortAndUniqueSlots(event.enabledSlots)
+  const compatibilityDates =
+    timedRecurrence.kind === "specific_dates"
+      ? timedRecurrence.selectedDays
+      : event.dates
 
   return {
     ...event,
-    dates: toEventMembershipTimeSeed(event.dates, event.timeSeed)?.map(toEpochMilliseconds),
+    dates: toEventMembershipTimeSeed(compatibilityDates, event.timeSeed)?.map(
+      toEpochMilliseconds
+    ),
     times: activeSlots.map((instant) => instant.epochMilliseconds),
     duration: event.duration?.total("hours"),
     timeIncrement: event.timeIncrement?.total("minutes"),

@@ -21,10 +21,12 @@ import {
   zdtSetHas,
 } from "@/utils"
 import {
+  generateTimedSlotsForDay,
   getTimedEventTimezone,
   getTimedSlotGeneration,
   getTimedSlotForMembershipDay,
   hasCanonicalTimedSlots,
+  sortAndUniqueSlots,
 } from "@/utils/timedEventSlots"
 import {
   eventTypes,
@@ -160,10 +162,52 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     return Math.floor(HOUR_HEIGHT / 4)
   })
 
-  /** Returns a set containing the times for the event if it has specific times */
-  const specificTimesSet = computed<ZdtSet>(() => {
+  const specificTimesActiveSlots = computed<Temporal.ZonedDateTime[]>(() => {
+    if (event.value.activeSlots != null) {
+      return sortAndUniqueSlots(event.value.activeSlots)
+    }
+
     const times = (event.value as { times?: Temporal.ZonedDateTime[] }).times
-    return new ZdtSet(times ?? [])
+    if (times && times.length > 0) {
+      return sortAndUniqueSlots(times)
+    }
+
+    const enabledSlots = event.value.enabledSlots
+    if (enabledSlots && enabledSlots.length > 0) {
+      return sortAndUniqueSlots(enabledSlots)
+    }
+
+    if (!isSpecificTimes.value || event.value.daysOnly) {
+      return []
+    }
+
+    const timeZone = getTimedEventTimezone(event.value)
+    const slotGeneration = getTimedSlotGeneration(event.value)
+    return getEventDateSeeds(event.value).flatMap((seed) =>
+      generateTimedSlotsForDay({
+        day: seed.toPlainDate(),
+        timeZone,
+        slotGeneration,
+      })
+    )
+  })
+
+  const specificTimesCoverageSlots = computed<Temporal.ZonedDateTime[]>(() => {
+    const enabledSlots = event.value.enabledSlots
+    if (enabledSlots && enabledSlots.length > 0) {
+      return sortAndUniqueSlots(enabledSlots)
+    }
+
+    return specificTimesActiveSlots.value
+  })
+
+  /** Returns a set containing the active times for the event if it has specific times */
+  const specificTimesSet = computed<ZdtSet>(() => {
+    if (specificTimesActiveSlots.value.length > 0) {
+      return new ZdtSet(specificTimesActiveSlots.value)
+    }
+
+    return new ZdtSet([])
   })
 
   const savedSpecificTimesWindow = computed<{
@@ -176,12 +220,13 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       return null
     }
 
-    const eventTimes = (event.value as { times?: Temporal.ZonedDateTime[] }).times ?? []
-    if (eventTimes.length === 0) {
+    if (specificTimesCoverageSlots.value.length === 0) {
       return null
     }
 
-    const { minHours, maxHours } = computeMinMaxHoursFromTimes(eventTimes)
+    const { minHours, maxHours } = computeMinMaxHoursFromTimes(
+      specificTimesCoverageSlots.value
+    )
     const slotDuration = event.value.timeIncrement ?? timeslotDuration.value
     const localStartMinutes = minHours.hour * 60 + minHours.minute
     const localEndMinutes =
@@ -396,80 +441,30 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     const datesSoFar = new ZdtSet()
     const displayTimezoneId = curTimezone.value.value
 
-    const getSpecificTimesEditDays = (
-      eventDates: Temporal.ZonedDateTime[],
-      eventTimes: Temporal.ZonedDateTime[]
-    ) => {
-      if (eventTimes.length === 0) {
-        let previousDay: Temporal.ZonedDateTime | null = null
-        return eventDates.map((eventDate) => {
-          const dateObject = getDateInTimezone(eventDate, curTimezone.value).with({
-            hour: 0,
-            minute: 0,
-            second: 0,
-            millisecond: 0,
-            microsecond: 0,
-            nanosecond: 0,
-          })
-          const isConsecutive =
-            previousDay == null || previousDay.add({ days: 1 }).equals(dateObject)
-
-          previousDay = dateObject
-          return {
-            dateObject,
-            membershipDate: eventDate.toPlainDate(),
-            isConsecutive,
-          }
-        })
-      }
-
-      const colsByViewerKey = new Map<string, Temporal.ZonedDateTime[]>()
-      const allTimes = [...eventTimes].sort((a, b) => Temporal.ZonedDateTime.compare(a, b))
-      for (const time of allTimes) {
-        const viewerDate = getDateInTimezone(time, curTimezone.value).toPlainDate()
-        const key = viewerDate.toString()
-        const group = colsByViewerKey.get(key) ?? []
-        group.push(time)
-        colsByViewerKey.set(key, group)
-      }
-
-      const eventTimezone = getTimedEventTimezone(event.value)
-      for (const eventDate of eventDates) {
-        const membershipKey = eventDate.toPlainDate().toString()
-        const hasOwnTimes = eventTimes.some((time) =>
-          time.withTimeZone(eventTimezone).toPlainDate().toString() === membershipKey
-        )
-        if (!hasOwnTimes) {
-          const viewerDate = getDateInTimezone(eventDate, curTimezone.value).toPlainDate()
-          const key = viewerDate.toString()
-          if (!colsByViewerKey.has(key)) {
-            colsByViewerKey.set(key, [])
-          }
-        }
-      }
-
+    const getSpecificTimesEditDays = (eventDates: Temporal.ZonedDateTime[]) => {
       let previousDay: Temporal.ZonedDateTime | null = null
-      return [...colsByViewerKey.entries()]
-        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-        .map(([viewerKey]) => {
-          const plainDate = Temporal.PlainDate.from(viewerKey)
-          const dateObject = plainDate.toZonedDateTime({
-            timeZone: curTimezone.value.value,
-            plainTime: "00:00",
-          })
-          const isConsecutive =
-            previousDay == null || previousDay.add({ days: 1 }).equals(dateObject)
-
-          previousDay = dateObject
-          return {
-            dateObject,
-            membershipDate: plainDate,
-            isConsecutive,
-          }
+      return eventDates.map((eventDate) => {
+        const membershipDate = eventDate.toPlainDate()
+        const dateObject = membershipDate.toZonedDateTime({
+          timeZone: curTimezone.value.value,
+          plainTime: "00:00",
         })
+        const isConsecutive =
+          previousDay == null || previousDay.add({ days: 1 }).equals(dateObject)
+
+        previousDay = dateObject
+        return {
+          dateObject,
+          membershipDate,
+          isConsecutive,
+        }
+      })
     }
 
-    const getDateString = (date: Temporal.ZonedDateTime) => {
+    const getDateString = (
+      date: Temporal.ZonedDateTime,
+      membershipDate?: Temporal.PlainDate
+    ) => {
       let dateString = ""
       let dayString = ""
       let offsetZDT: Temporal.ZonedDateTime
@@ -479,6 +474,11 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
         offsetZDT = date.add(dayOffset.value)
       }
       if (isSpecificDates.value) {
+        if (isSpecificTimes.value && membershipDate != null) {
+          dateString = `${months[membershipDate.month - 1]} ${String(membershipDate.day)}`
+          dayString = daysOfWeek.value[membershipDate.dayOfWeek % 7]
+          return { dateString, dayString }
+        }
         dateString =
           isSpecificTimes.value && event.value.timedRecurrence?.kind === "weekly"
             ? `${String(offsetZDT.month)}/${String(offsetZDT.day)}`
@@ -504,15 +504,12 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     }
 
     const eventDates = getEventDateSeeds(event.value)
-    const eventTimes = (event.value as { times?: Temporal.ZonedDateTime[] })
-      .times
-
-    if (
-      isSpecificTimes.value &&
-      (state.value === states.SET_SPECIFIC_TIMES || eventTimes?.length === 0)
-    ) {
-      for (const day of getSpecificTimesEditDays(eventDates, eventTimes ?? [])) {
-        const { dayString, dateString } = getDateString(day.dateObject)
+    if (isSpecificTimes.value) {
+      for (const day of getSpecificTimesEditDays(eventDates)) {
+        const { dayString, dateString } = getDateString(
+          day.dateObject,
+          day.membershipDate
+        )
         days.push({
           dayText: dayString,
           dateString,
@@ -524,23 +521,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
       return days
     }
 
-    if (isSpecificTimes.value && eventTimes && eventTimes.length > 0) {
-      for (const day of getSpecificTimesDayStarts(
-        eventTimes,
-        curTimezone.value
-      )) {
-        const { dayString, dateString } = getDateString(day.dateObject)
-        days.push({
-          dayText: dayString,
-          dateString,
-          dateObject: day.dateObject,
-          isConsecutive: day.isConsecutive,
-        })
-      }
-      return days
-    }
-
-    if (!isSpecificTimes.value && hasCanonicalTimedSlots(event.value)) {
+    if (hasCanonicalTimedSlots(event.value)) {
       for (const day of getSpecificTimesDayStarts(eventDates, curTimezone.value)) {
         const { dayString, dateString } = getDateString(day.dateObject)
         days.push({
@@ -554,15 +535,14 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
     }
 
     for (const date of eventDates) {
-      const zdt =
-        isSpecificTimes.value && specificTimesDisplaySeedTime.value
-          ? getDateInTimezone(date, curTimezone.value)
-              .toPlainDate()
-              .toZonedDateTime({
-                timeZone: displayTimezoneId,
-                plainTime: specificTimesDisplaySeedTime.value,
-              })
-          : date
+      const zdt = specificTimesDisplaySeedTime.value
+        ? getDateInTimezone(date, curTimezone.value)
+            .toPlainDate()
+            .toZonedDateTime({
+              timeZone: displayTimezoneId,
+              plainTime: specificTimesDisplaySeedTime.value,
+            })
+        : date
       datesSoFar.add(date)
       const { dayString, dateString } = getDateString(zdt)
       days.push({ dayText: dayString, dateString, dateObject: zdt })
@@ -847,13 +827,7 @@ export function useCalendarGrid(opts: UseCalendarGridOptions) {
         ? getDateFromDisplayedAbsoluteMinutes(day, time.absoluteMinutes)
         : getDateHoursOffset(day.dateObject, time.hoursOffset)
     if (isSpecificTimes.value) {
-      const eventTimes = (event.value as { times?: Temporal.ZonedDateTime[] })
-        .times
-      if (
-        !includeSpecificTimesGaps &&
-        state.value !== states.SET_SPECIFIC_TIMES &&
-        (eventTimes?.length ?? 0) > 0
-      ) {
+      if (!includeSpecificTimesGaps) {
         if (!zdtSetHas(specificTimesSet.value, date)) return null
       }
     } else {
