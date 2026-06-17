@@ -27,7 +27,7 @@
       dark
     >
       <div
-        class="tw-relative tw-m-auto tw-flex tw-h-full tw-max-w-6xl tw-items-center tw-justify-center tw-px-4"
+        class="tw-relative tw-m-auto tw-flex tw-h-full tw-max-w-5xl tw-items-center tw-justify-center tw-px-4"
       >
         <router-link :to="{ name: 'home' }">
           <Logo type="timeful" />

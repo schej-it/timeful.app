@@ -121,6 +121,15 @@ const SignInDialogStub = {
 }
 
 describe("App auth restore state", () => {
+  it("keeps the fixed app header aligned to the event-page content width", () => {
+    expect(appSource).toContain(
+      'class="tw-relative tw-m-auto tw-flex tw-h-full tw-max-w-5xl tw-items-center tw-justify-center tw-px-4"'
+    )
+    expect(appSource).not.toContain(
+      'class="tw-relative tw-m-auto tw-flex tw-h-full tw-max-w-6xl tw-items-center tw-justify-center tw-px-4"'
+    )
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     getMock.mockRejectedValue(new Error("not signed in"))
