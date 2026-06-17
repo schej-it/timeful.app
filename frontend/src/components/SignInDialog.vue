@@ -1,9 +1,9 @@
 <template>
   <v-dialog
-    :value="value"
-    @input="onDialogInput"
+    :model-value="modelValue"
     :width="400"
     content-class="tw-m-0"
+    @update:model-value="onDialogInput"
   >
     <v-card>
       <!-- Main sign-in screen -->
@@ -13,8 +13,8 @@
           <div class="tw-mb-4 tw-flex tw-w-full tw-flex-col tw-gap-y-2">
             <v-btn
               block
+              class="timeful-elevated-button tw-bg-white"
               @click="signIn(calendarTypes.GOOGLE)"
-              class="tw-bg-white"
             >
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
@@ -30,8 +30,8 @@
             </v-btn>
             <v-btn
               block
+              class="timeful-elevated-button tw-bg-white"
               @click="signIn(calendarTypes.OUTLOOK)"
-              class="tw-bg-white"
             >
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
@@ -56,10 +56,10 @@
               <div class="tw-mb-1 tw-text-sm tw-font-medium">Email address</div>
               <v-text-field
                 v-model="email"
-                class="tw-mb-2"
+                class="timeful-solo-field tw-mb-2"
                 placeholder="Enter your email..."
                 type="email"
-                solo
+                variant="solo"
                 hide-details="auto"
                 :error-messages="emailError"
                 @keydown.enter="submitEmail"
@@ -67,6 +67,7 @@
               <v-btn
                 block
                 color="primary"
+                class="timeful-elevated-button"
                 :loading="sending"
                 :disabled="sending"
                 @click="submitEmail"
@@ -87,7 +88,12 @@
       <!-- Onboarding: name entry for new users -->
       <template v-else-if="step === 'onboarding'">
         <v-card-title class="tw-flex tw-items-center">
-          <v-btn icon small @click="step = 'select'" class="tw-mr-1">
+          <v-btn
+            icon
+            size="small"
+            class="tw-mr-1"
+            @click="returnToProviderSelection"
+          >
             <v-icon>mdi-arrow-left</v-icon>
           </v-btn>
           What's your name?
@@ -100,37 +106,38 @@
           <v-text-field
             v-model="firstName"
             placeholder="First name"
-            solo
+            variant="solo"
             hide-details="auto"
             autofocus
-            @keydown.enter="$refs.lastNameField && $refs.lastNameField.focus()"
-            class="tw-mb-3"
+            class="timeful-solo-field tw-mb-3"
+            @keydown.enter="lastNameField?.focus()"
           />
           <div class="tw-mb-1 tw-text-sm tw-font-medium">Last name</div>
           <v-text-field
             ref="lastNameField"
             v-model="lastName"
             placeholder="Last name (optional)"
-            solo
+            variant="solo"
             hide-details="auto"
+            class="timeful-solo-field tw-mb-3"
             @keydown.enter="submitOnboarding"
-            class="tw-mb-3"
           />
           <div class="tw-mb-1 tw-text-sm tw-font-medium">Email</div>
           <v-text-field
-            :value="email"
+            :model-value="email"
             placeholder="Email..."
-            solo
+            variant="solo"
             hide-details="auto"
             disabled
             background-color="#f5f5f5"
-            class="tw-mb-3"
+            class="timeful-solo-field tw-mb-3"
           />
           <v-btn
             block
             color="primary"
+            class="timeful-elevated-button"
             :loading="sending"
-            :disabled="!firstName.trim() || sending"
+            :disabled="!canSubmitOnboarding"
             @click="submitOnboarding"
           >
             Continue
@@ -143,9 +150,9 @@
         <v-card-title class="tw-flex tw-items-center">
           <v-btn
             icon
-            small
-            @click="step = isNewUser ? 'onboarding' : 'select'"
+            size="small"
             class="tw-mr-1"
+            @click="returnFromOtp"
           >
             <v-icon>mdi-arrow-left</v-icon>
           </v-btn>
@@ -160,27 +167,28 @@
           <v-text-field
             v-model="otpCode"
             placeholder="Enter 6-digit code..."
-            solo
+            variant="solo"
             hide-details="auto"
             maxlength="6"
             :error-messages="otpError"
-            @keydown.enter="verifyOtp"
             autofocus
-            class="tw-mb-2"
+            class="timeful-solo-field tw-mb-2"
+            @keydown.enter="verifyOtp"
           />
           <v-btn
             block
             color="primary"
+            class="timeful-elevated-button"
             :loading="verifying"
-            :disabled="otpCode.length !== 6 || verifying"
+            :disabled="!canVerifyOtp"
             @click="verifyOtp"
           >
             Verify
           </v-btn>
           <div class="tw-mt-3 tw-text-center">
             <v-btn
-              text
-              x-small
+              variant="text"
+              size="x-small"
               :disabled="resendCooldown > 0"
               @click="resendOtp"
             >
@@ -197,168 +205,52 @@
   </v-dialog>
 </template>
 
-<script>
-import { calendarTypes } from "@/constants"
-import { post } from "@/utils"
+<script setup lang="ts">
+import { ref } from "vue"
+import { calendarTypes, type CalendarType } from "@/constants"
+import type { User } from "@/types"
+import { useSignInDialogState } from "@/composables/useSignInDialogState"
 
-export default {
-  name: "SignInDialog",
-  props: {
-    value: { type: Boolean, required: true },
-  },
-  data() {
-    return {
-      calendarTypes,
-      step: "select",
-      email: "",
-      firstName: "",
-      lastName: "",
-      otpCode: "",
-      emailError: "",
-      otpError: "",
-      sending: false,
-      verifying: false,
-      isNewUser: false,
-      resendCooldown: 0,
-      resendTimer: null,
-    }
-  },
-  methods: {
-    signIn(provider) {
-      this.$emit("signIn", provider)
-    },
-    validateEmail() {
-      const email = this.email.trim()
-      if (!email) {
-        this.emailError = "Please enter an email address."
-        return false
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        this.emailError = "Please enter a valid email address."
-        return false
-      }
-      if (email.includes("+")) {
-        this.emailError = "Email aliases with '+' are not allowed."
-        return false
-      }
-      return true
-    },
-    async submitEmail() {
-      if (this.sending) return
-      this.emailError = ""
-      if (!this.validateEmail()) return
-      this.sending = true
-      try {
-        const res = await post("/auth/otp/check-email", { email: this.email })
-        this.isNewUser = res.isNewUser
-        if (this.isNewUser) {
-          this.step = "onboarding"
-        } else {
-          await this.sendOtpEmail()
-          this.step = "otp"
-          this.otpCode = ""
-          this.otpError = ""
-        }
-      } catch (err) {
-        this.emailError = "Something went wrong. Please try again."
-      } finally {
-        this.sending = false
-      }
-    },
-    async submitOnboarding() {
-      if (!this.firstName.trim() || this.sending) return
-      this.sending = true
-      try {
-        await this.sendOtpEmail()
-        this.step = "otp"
-        this.otpCode = ""
-        this.otpError = ""
-      } catch (err) {
-        this.otpError = "Failed to send code. Please try again."
-      } finally {
-        this.sending = false
-      }
-    },
-    async sendOtpEmail() {
-      await post("/auth/otp/send", { email: this.email })
-      this.startResendCooldown()
-    },
-    async resendOtp() {
-      if (this.sending || this.resendCooldown > 0) return
-      this.sending = true
-      try {
-        await this.sendOtpEmail()
-        this.otpCode = ""
-        this.otpError = ""
-      } catch (err) {
-        this.otpError = "Failed to resend code. Please try again."
-      } finally {
-        this.sending = false
-      }
-    },
-    async verifyOtp() {
-      if (this.otpCode.length !== 6 || this.verifying) return
-      this.otpError = ""
-      this.verifying = true
-      try {
-        const body = {
-          email: this.email,
-          code: this.otpCode,
-          timezoneOffset: new Date().getTimezoneOffset(),
-        }
-        if (this.isNewUser) {
-          body.firstName = this.firstName.trim()
-          body.lastName = this.lastName.trim()
-        }
-        const user = await post("/auth/otp/verify", body)
-        this.$emit("emailSignIn", user)
-        this.reset()
-        this.$emit("input", false)
-      } catch (err) {
-        const errorCode = err?.parsed?.error
-        if (errorCode === "otp-expired") {
-          this.otpError = "Code has expired. Please request a new one."
-        } else if (errorCode === "otp-too-many-attempts") {
-          this.otpError = "Too many attempts. Please request a new code."
-        } else {
-          this.otpError = "Invalid code. Please try again."
-        }
-      } finally {
-        this.verifying = false
-      }
-    },
-    startResendCooldown() {
-      this.resendCooldown = 30
-      if (this.resendTimer) clearInterval(this.resendTimer)
-      this.resendTimer = setInterval(() => {
-        this.resendCooldown--
-        if (this.resendCooldown <= 0) {
-          clearInterval(this.resendTimer)
-          this.resendTimer = null
-        }
-      }, 1000)
-    },
-    reset() {
-      this.step = "select"
-      this.email = ""
-      this.firstName = ""
-      this.lastName = ""
-      this.otpCode = ""
-      this.emailError = ""
-      this.otpError = ""
-      this.sending = false
-      this.verifying = false
-      this.isNewUser = false
-      this.resendCooldown = 0
-      if (this.resendTimer) clearInterval(this.resendTimer)
-    },
-    onDialogInput(e) {
-      this.$emit("input", e)
-      if (!e) this.reset()
-    },
-  },
-  beforeDestroy() {
-    if (this.resendTimer) clearInterval(this.resendTimer)
-  },
+defineProps<{ modelValue: boolean }>()
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+  signIn: [provider: CalendarType]
+  emailSignIn: [user: User]
+}>()
+
+const lastNameField = ref<{ focus: () => void } | null>(null)
+
+const signIn = (provider: CalendarType) => {
+  emit("signIn", provider)
 }
+
+const {
+  step,
+  email,
+  firstName,
+  lastName,
+  otpCode,
+  emailError,
+  otpError,
+  sending,
+  verifying,
+  resendCooldown,
+  canSubmitOnboarding,
+  canVerifyOtp,
+  submitEmail,
+  submitOnboarding,
+  resendOtp,
+  verifyOtp,
+  handleDialogModelChange: onDialogInput,
+  returnToProviderSelection,
+  returnFromOtp,
+} = useSignInDialogState({
+  onEmailSignIn: (user: User) => {
+    emit("emailSignIn", user)
+  },
+  onDialogVisibilityChange: (value: boolean) => {
+    emit("update:modelValue", value)
+  },
+})
 </script>

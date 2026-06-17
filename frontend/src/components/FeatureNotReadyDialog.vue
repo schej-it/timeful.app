@@ -1,14 +1,19 @@
 <template>
-  <v-dialog v-model="dialog" max-width="400px" content-class="tw-m-0">
+  <v-dialog
+    :model-value="modelValue"
+    max-width="400px"
+    content-class="tw-m-0"
+    @update:model-value="(value: boolean) => emit('update:modelValue', value)"
+  >
     <v-card>
       <v-card-title>
         <span class="tw-text-xl tw-font-medium">Oops! Feature Not Ready</span>
         <v-spacer />
         <v-btn
           absolute
-          @click="dialog = false"
           icon
           class="tw-right-0 tw-mr-2 tw-self-center"
+          @click="emit('update:modelValue', false)"
         >
           <v-icon>mdi-close</v-icon>
         </v-btn>
@@ -21,59 +26,46 @@
           label="What would you like to use folders for?"
           rows="3"
           class="tw-mt-4"
-          outlined
-          dense
+          variant="outlined"
+          density="compact"
         ></v-textarea>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn text @click="dialog = false">Close</v-btn>
+        <v-btn variant="text" @click="emit('update:modelValue', false)">Close</v-btn>
         <v-btn color="primary" @click="submitFeedback">Submit</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 
-<script>
-import { mapActions } from "vuex"
+<script setup lang="ts">
+import { ref } from "vue"
+import { useMainStore } from "@/stores/main"
+import { posthog } from "@/plugins/posthog"
 
-export default {
-  name: "FeatureNotReadyDialog",
-  props: {
-    value: Boolean,
-  },
-  data() {
-    return {
-      folderUsageFeedback: "",
-    }
-  },
-  computed: {
-    dialog: {
-      get() {
-        return this.value
-      },
-      set(val) {
-        this.$emit("input", val)
-      },
-    },
-  },
-  methods: {
-    ...mapActions(["showInfo"]),
-    submitFeedback() {
-      if (this.folderUsageFeedback.trim() !== "") {
-        this.$posthog?.capture("folder_usage_feedback_submitted", {
-          feedback: this.folderUsageFeedback,
-        })
-        // Optionally, you can clear the textarea and close the dialog
-        this.folderUsageFeedback = ""
-        this.dialog = false
-        this.showInfo("Thanks for your input!")
-      } else {
-        // Optionally, handle empty feedback (e.g., show a message)
-        console.log("Feedback is empty")
-      }
-    },
-  },
+defineProps<{
+  modelValue: boolean
+}>()
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+}>()
+
+const mainStore = useMainStore()
+const folderUsageFeedback = ref("")
+
+const submitFeedback = () => {
+  if (folderUsageFeedback.value.trim() === "") {
+    return
+  }
+
+  posthog.capture("folder_usage_feedback_submitted", {
+    feedback: folderUsageFeedback.value,
+  })
+  folderUsageFeedback.value = ""
+  emit("update:modelValue", false)
+  mainStore.showInfo("Thanks for your input!")
 }
 </script>
 

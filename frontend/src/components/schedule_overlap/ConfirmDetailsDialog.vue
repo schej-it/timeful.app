@@ -1,32 +1,37 @@
 <template>
   <v-dialog
-    :value="value"
-    @input="(e) => $emit('input', e)"
+    :model-value="modelValue"
     content-class="tw-max-w-xl"
+    @update:model-value="(e) => emit('update:modelValue', e)"
   >
     <v-card>
       <v-card-title class="tw-flex">
         <div>Confirm details</div>
         <v-spacer />
-        <v-btn icon @click="$emit('input', false)">
+        <v-btn icon @click="emit('update:modelValue', false)">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
       <v-card-text class="tw-px-0">
         <v-expansion-panels accordion mandatory flat>
           <v-expansion-panel>
-            <v-expansion-panel-header class="tw-font-medium">
+            <v-expansion-panel-title class="tw-font-medium">
               Attendees
-            </v-expansion-panel-header>
-            <v-expansion-panel-content>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
               <div class="tw-mb-4 tw-text-dark-gray">
                 Google Calendar invites will be sent to people at the following
                 email addresses.
-                <span v-if="!hasContactsAccess">
-                  <a class="tw-underline" @click="requestContactsAccess"
-                    >Enable contacts access</a
-                  >
-                  to receive email auto-suggestions.
+                <template v-if="signInEnabled">
+                  <span v-if="!hasContactsAccess">
+                    <a class="tw-underline" @click="requestContactsAccess"
+                      >Enable contacts access</a
+                    >
+                    to receive email auto-suggestions.
+                  </span>
+                </template>
+                <span v-else>
+                  Requires sign-in, which is disabled in this build
                 </span>
               </div>
               <div class="tw-max-h-96 tw-table-auto tw-overflow-y-auto">
@@ -46,7 +51,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="(respondent, r) in respondents">
+                    <tr v-for="(respondent, r) in respondents" :key="r">
                       <td class="tw-pb-4 tw-pr-4">
                         <div class="tw-flex tw-items-center">
                           <UserAvatarContent
@@ -62,42 +67,42 @@
                         </div>
                       </td>
                       <td class="tw-pr-4">
-                        <div class="tw-pb-4" v-if="respondent.email.length > 0">
+                        <div v-if="respondent.email.length > 0" class="tw-pb-4">
                           {{ respondent.email }}
                         </div>
                         <v-combobox
                           v-else
-                          :search-input.sync="emails[r]"
+                          v-model:search-input="emails[r]"
                           :items="formattedEmailSuggestions[r]"
                           no-filter
-                          item-text="email"
+                          item-title="email"
                           item-value="email"
                           hide-no-data
                           return-object
                           append-icon=""
                           class="tw-pt-2"
                           placeholder="Email (optional)"
-                          outlined
-                          dense
+                          variant="outlined"
+                          density="compact"
                           :rules="[rules.validEmail]"
                         >
-                          <template v-slot:item="{ item }">
-                            <v-list-item-avatar>
+                          <template #item="{ item, props: itemProps }">
+                            <v-list-item v-bind="itemProps">
+                              <template #prepend>
                               <img
-                                v-if="item.picture.length > 0"
-                                :src="item.picture"
+                                v-if="item.raw.picture && item.raw.picture.length > 0"
+                                :src="item.raw.picture"
                                 referrerpolicy="no-referrer"
                               />
                               <v-icon v-else>mdi-account</v-icon>
-                            </v-list-item-avatar>
-                            <v-list-item-content>
+                              </template>
                               <v-list-item-title
-                                v-text="`${item.firstName} ${item.lastName}`"
-                              ></v-list-item-title>
+                                >{{ item.raw.firstName ?? "" }} {{ item.raw.lastName ?? "" }}</v-list-item-title
+                              >
                               <v-list-item-subtitle
-                                v-text="item.email"
-                              ></v-list-item-subtitle>
-                            </v-list-item-content>
+                                >{{ item.raw.email }}</v-list-item-subtitle
+                              >
+                            </v-list-item>
                           </template>
                         </v-combobox>
                       </td>
@@ -105,29 +110,29 @@
                   </tbody>
                 </table>
               </div>
-            </v-expansion-panel-content>
+            </v-expansion-panel-text>
           </v-expansion-panel>
           <v-expansion-panel>
-            <v-expansion-panel-header class="tw-font-medium">
+            <v-expansion-panel-title class="tw-font-medium">
               Location & description (optional)
-            </v-expansion-panel-header>
-            <v-expansion-panel-content>
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
               <v-text-field
                 v-model="location"
                 prepend-icon="mdi-map-marker"
                 placeholder="Location"
-                outlined
-                dense
+                variant="outlined"
+                density="compact"
               />
               <v-textarea
                 v-model="description"
                 prepend-icon="mdi-text"
                 placeholder="Description"
-                outlined
-                dense
+                variant="outlined"
+                density="compact"
                 hide-details
               />
-            </v-expansion-panel-content>
+            </v-expansion-panel-text>
           </v-expansion-panel>
         </v-expansion-panels>
       </v-card-text>
@@ -135,9 +140,9 @@
         <v-spacer />
         <v-btn
           color="primary"
-          @click="confirm"
           :disabled="!confirmEnabled"
           :loading="loading"
+          @click="confirm"
         >
           Confirm
         </v-btn>
@@ -146,134 +151,137 @@
   </v-dialog>
 </template>
 
-<script>
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from "vue"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
-import { validateEmail, get } from "@/utils"
+import { validateEmail } from "@/utils"
+import { signInEnabled } from "@/utils/signInAvailability"
+import { useContactsAccess } from "@/composables/useContactsAccess"
+import { useDebouncedContactLookup } from "@/composables/useDebouncedContactLookup"
 
-export default {
-  name: "ConfirmDetailsDialog",
-
-  props: {
-    value: { type: Boolean, required: true },
-    respondents: { type: Array, default: () => [] },
-    loading: { type: Boolean, default: false },
-  },
-
-  data: () => ({
-    emails: [], // Currently displayed emails
-    prevEmails: new Set(), // Set that tracks previous emails to track the emails that have been changed
-    timeouts: [], // Timeouts for search debouncing
-    emailSuggestions: [], // Auto-suggestions for each email input
-
-    location: "",
-    description: "",
-    hasContactsAccess: true,
-    rules: {
-      validEmail: (email) => {
-        if (email?.length > 0 && !validateEmail(email)) {
-          return "Please enter a valid email."
-        }
-        return true
-      },
-    },
-  }),
-
-  mounted() {
-    this.emails = this.respondents.map((r) => r.email)
-    this.timeouts = this.respondents.map(() => null)
-    this.emailSuggestions = this.respondents.map(() => [])
-
-    // Send a warmup request to update cache and check if contacts permissions are enabled
-    get(`/user/searchContacts?query=`).catch((err) => {
-      // User has not granted contacts permissions
-      if (err.error?.code === 403) {
-        this.hasContactsAccess = false
-      }
-    })
-  },
-
-  computed: {
-    confirmEnabled() {
-      // Only enable confirm button if all emails are valid
-      for (const email of this.emails) {
-        if (this.rules.validEmail(email) !== true) {
-          return false
-        }
-      }
-
-      return true
-    },
-    formattedEmailSuggestions() {
-      // Only return suggestions if email is not empty
-      return this.emailSuggestions.map((suggestion, i) =>
-        this.emails[i]?.length > 0 ? suggestion : []
-      )
-    },
-  },
-
-  methods: {
-    confirm() {
-      this.$emit("confirm", {
-        emails: this.emails,
-        location: this.location,
-        description: this.description,
-      })
-    },
-    requestContactsAccess() {
-      this.$emit("requestContactsAccess", {
-        emails: this.emails,
-        location: this.location,
-        description: this.description,
-      })
-    },
-    setData({ emails, location, description }) {
-      this.emails = emails
-      this.location = location
-      this.description = description
-    },
-    searchContacts(emailsIndex, query) {
-      // Searches the user's contacts using the google contacts API
-      if (this.hasContactsAccess) {
-        clearTimeout(this.timeouts[emailsIndex])
-        this.timeouts[emailsIndex] = setTimeout(() => {
-          get(`/user/searchContacts?query=${query}`).then((results) => {
-            this.$set(this.emailSuggestions, emailsIndex, results)
-          })
-        }, 300)
-      }
-    },
-    emailFilter(item, queryText) {
-      // Custom email filter (unused)
-      const searchText = `${item.firstName} ${item.lastName} ${item.email}`
-      return searchText.toLowerCase().includes(queryText.toLowerCase())
-    },
-  },
-
-  watch: {
-    emails() {
-      // If an email has been changed, search user's contacts for that query
-
-      if (this.value && this.hasContactsAccess) {
-        // Only search contacts if dialog is shown and has contacts access
-        const difference = this.emails.filter(
-          (x) => x && !this.prevEmails.has(x)
-        )
-        if (difference.length === 0) {
-          return
-        }
-
-        const changedEmail = difference[0]
-        const changedEmailIndex = this.emails.indexOf(changedEmail)
-
-        if (changedEmail.length > 0) {
-          this.searchContacts(changedEmailIndex, changedEmail)
-        }
-
-        this.prevEmails = new Set(this.emails)
-      }
-    },
-  },
-
-  components: { UserAvatarContent },
+export interface Respondent {
+  email: string
+  firstName?: string
+  lastName?: string
+  picture?: string
 }
+
+export interface ConfirmDetailsDraft {
+  emails: string[]
+  location: string
+  description: string
+}
+
+const props = withDefaults(
+  defineProps<{
+    modelValue: boolean
+    respondents?: Respondent[]
+    loading?: boolean
+    draft?: ConfirmDetailsDraft
+  }>(),
+  {
+    respondents: () => [],
+    loading: false,
+    draft: () => ({ emails: [], location: "", description: "" }),
+  }
+)
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+  confirm: [
+    payload: { emails: string[]; location: string; description: string },
+  ]
+  requestContactsAccess: [
+    payload: { emails: string[]; location: string; description: string },
+  ]
+}>()
+
+const emails = ref<string[]>([])
+const location = ref("")
+const description = ref("")
+const { hasContactsAccess, probeContactsAccess } = useContactsAccess()
+const { suggestionsByKey, scheduleLookup, clearSuggestions } =
+  useDebouncedContactLookup()
+
+const rules = {
+  validEmail: (email: string) => {
+    if (email.length > 0 && !validateEmail(email)) {
+      return "Please enter a valid email."
+    }
+    return true
+  },
+}
+
+onMounted(() => {
+  void probeContactsAccess()
+})
+
+const confirmEnabled = computed(() => {
+  for (const email of emails.value) {
+    if (rules.validEmail(email) !== true) return false
+  }
+  return true
+})
+const formattedEmailSuggestions = computed(() =>
+  emails.value.map((email, i) =>
+    email.length > 0 ? suggestionsByKey.value[String(i)] ?? [] : []
+  )
+)
+
+const confirm = () => {
+  emit("confirm", {
+    emails: emails.value,
+    location: location.value,
+    description: description.value,
+  })
+}
+const requestContactsAccess = () => {
+  emit("requestContactsAccess", {
+    emails: emails.value,
+    location: location.value,
+    description: description.value,
+  })
+}
+const applyDraft = (draft: ConfirmDetailsDraft) => {
+  emails.value =
+    draft.emails.length > 0
+      ? [...draft.emails]
+      : props.respondents.map((respondent) => respondent.email)
+  location.value = draft.location
+  description.value = draft.description
+}
+
+const searchContacts = (emailsIndex: number, query: string) => {
+  if (!hasContactsAccess.value) return
+  scheduleLookup(String(emailsIndex), query, 300)
+}
+
+watch(
+  () => props.draft,
+  (draft) => {
+    applyDraft(draft)
+  },
+  { deep: true, immediate: true }
+)
+
+watch(
+  emails,
+  (nextEmails, previousEmails) => {
+    if (!props.modelValue || !hasContactsAccess.value) return
+
+    for (let index = 0; index < nextEmails.length; index += 1) {
+      const email = nextEmails[index] ?? ""
+
+      if (email.length === 0) {
+        clearSuggestions(String(index))
+        continue
+      }
+
+      if (email !== (previousEmails[index] || "")) {
+        searchContacts(index, email)
+      }
+    }
+  },
+  { deep: true }
+)
 </script>

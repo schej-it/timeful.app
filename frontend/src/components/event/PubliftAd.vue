@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="showAd"
+    v-if="shouldShowAd"
     class="tw-relative tw-rounded-lg tw-bg-light-gray tw-p-3 tw-pt-5"
   >
     <span
@@ -22,42 +22,51 @@
   </div>
 </template>
 
-<script>
-import { mapActions } from "vuex"
+<script setup lang="ts">
+import { computed, watch, onMounted } from "vue"
+import { useMainStore } from "@/stores/main"
 import { upgradeDialogTypes } from "@/constants"
+import { freemiumEnabled } from "@/utils/freemium"
 
-export default {
-  name: "PubliftAd",
+const props = defineProps<{
+  showAd?: boolean
+  fuseId?: string
+}>()
 
-  props: {
-    showAd: { type: Boolean, default: false },
-    fuseId: { type: String, default: "" },
-  },
+const mainStore = useMainStore()
+const shouldShowAd = computed(() => freemiumEnabled && props.showAd)
 
-  mounted() {
-    if (this.showAd && this.fuseId) this.$nextTick(() => this.registerZone())
-  },
-
-  watch: {
-    showAd: {
-      handler(val) {
-        if (val && this.fuseId) this.$nextTick(() => this.registerZone())
-      },
-    },
-  },
-
-  methods: {
-    ...mapActions(["showUpgradeDialog"]),
-    removeAds() {
-      this.showUpgradeDialog({ type: upgradeDialogTypes.REMOVE_ADS })
-    },
-    registerZone() {
-      const fuseId = this.fuseId
-      const fusetag = window.fusetag || (window.fusetag = { que: [] })
-      fusetag.que.push(function () {
-        fusetag.registerZone(fuseId)
-      })
-    },
-  },
+function removeAds() {
+  mainStore.showUpgradeDialog({ type: upgradeDialogTypes.REMOVE_ADS })
 }
+
+function registerZone() {
+  const fuseId = props.fuseId
+  if (!fuseId) return
+  
+  window.fusetag ??= { que: [], registerZone: () => void 0 }
+  
+  window.fusetag.que.push(function () {
+    window.fusetag?.registerZone?.(fuseId)
+  })
+}
+
+watch(
+  shouldShowAd,
+  (val) => {
+    if (val && props.fuseId) {
+      setTimeout(() => {
+        registerZone()
+      }, 0)
+    }
+  }
+)
+
+onMounted(() => {
+  if (shouldShowAd.value && props.fuseId) {
+    setTimeout(() => {
+      registerZone()
+    }, 0)
+  }
+})
 </script>

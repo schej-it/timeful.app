@@ -4,6 +4,10 @@ vendor/
 # Build outputs
 server
 *.exe
+bin/
+dist/
+coverage/
+.go-cache/
 
 # Environment files
 .env
@@ -14,6 +18,15 @@ server
 *.log
 logs/
 
+# Test and local-only inputs
+*_test.go
+scripts/
+routes.txt
+
+# Documentation
+README.md
+**/README.md
+
 # IDE
 .idea/
 .vscode/
@@ -23,4 +36,3 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
-

@@ -1,14 +1,14 @@
 <template>
-  <v-btn class="gsi-material-button" @click="(e) => $emit('click', e)">
+  <v-btn class="gsi-material-button" @click="(e: MouseEvent) => emit('click', e)">
     <div class="gsi-material-button-state"></div>
     <div class="gsi-material-button-content-wrapper">
       <div class="gsi-material-button-icon">
         <svg
+          class="tw-block"
           version="1.1"
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 48 48"
           xmlns:xlink="http://www.w3.org/1999/xlink"
-          style="display: block"
         >
           <path
             fill="#EA4335"
@@ -30,10 +30,23 @@
         </svg>
       </div>
       <span class="gsi-material-button-contents">{{ text }}</span>
-      <span style="display: none">{{ text }}</span>
+      <span class="tw-hidden">{{ text }}</span>
     </div>
   </v-btn>
 </template>
+
+<script setup lang="ts">
+withDefaults(
+  defineProps<{
+    text?: string
+  }>(),
+  { text: "Continue with Google" }
+)
+
+const emit = defineEmits<{
+  click: [event: MouseEvent]
+}>()
+</script>
 
 <style scoped>
 .gsi-material-button {
@@ -107,15 +120,3 @@
   opacity: 38%;
 }
 </style>
-
-<script>
-export default {
-  name: "SignInGoogleBtn",
-
-  emits: ["click"],
-
-  props: {
-    text: { type: String, default: "Continue with Google" },
-  },
-}
-</script>

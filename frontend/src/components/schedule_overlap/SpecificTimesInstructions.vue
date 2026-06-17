@@ -7,39 +7,49 @@
     <div class="tw-flex tw-flex-col tw-gap-1">
       <div class="tw-text-sm tw-font-medium">Legend:</div>
       <div class="tw-flex tw-items-center tw-gap-2">
-        <div class="tw-h-4 tw-w-4 tw-rounded tw-bg-gray"></div>
+        <div
+          class="specific-times-instructions-swatch tw-bg-gray"
+        ></div>
         <span class="tw-text-sm">Blocked off</span>
       </div>
       <div class="tw-flex tw-items-center tw-gap-2">
         <div
-          class="tw-h-4 tw-w-4 tw-rounded tw-border tw-border-gray tw-bg-white"
+          class="specific-times-instructions-swatch specific-times-instructions-swatch--potential"
         ></div>
         <span class="tw-text-sm">Potential meeting times</span>
       </div>
     </div>
-    <v-btn color="primary" @click="saveTempTimes" :disabled="numTempTimes === 0"
-      >Next</v-btn
+    <v-btn
+      data-testid="specific-times-grid-next"
+      color="primary"
+      :disabled="numTempTimes === 0"
+      @click="emit('saveTempTimes')"
     >
+      Next
+    </v-btn>
   </div>
 </template>
 
-<script>
-export default {
-  name: "SpecificTimesInstructions",
-  props: {
-    numTempTimes: {
-      type: Number,
-      required: true,
-    },
-  },
-  methods: {
-    saveTempTimes() {
-      this.$emit("saveTempTimes")
-    },
-  },
-}
+<script setup lang="ts">
+defineProps<{
+  numTempTimes: number
+}>()
+
+const emit = defineEmits<{
+  saveTempTimes: []
+}>()
 </script>
 
 <style scoped>
-/* Styles can be added here if needed */
+.specific-times-instructions-swatch {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+}
+
+.specific-times-instructions-swatch--potential {
+  background-color: white;
+  box-shadow: inset 0 0 0 1px var(--timeful-grid-separator-strong);
+}
 </style>

@@ -1,100 +1,131 @@
 <template>
   <div v-if="event" class="tw-h-full">
-    <NotSignedIn v-if="!authUser" :event="event" />
-    <AccessDenied v-else-if="accessDenied" />
+    <NotSignedIn
+      v-if="showSignedOutInviteGate"
+      :event="event"
+      :owner="owner"
+    />
+    <AccessDenied v-else-if="authUser && accessDenied" />
     <Event
       v-else
-      :eventId="groupId"
-      :fromSignIn="fromSignIn"
-      :initialTimezone="initialTimezone"
-      :contactsPayload="contactsPayload"
+      :event-id="groupId"
+      :from-sign-in="fromSignIn"
+      :initial-timezone="initialTimezone"
+      :contacts-payload="contactsPayload"
     ></Event>
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref, computed, onMounted } from "vue"
+import { useRouter } from "vue-router"
+import { storeToRefs } from "pinia"
 import Event from "./Event.vue"
-import { mapActions, mapState } from "vuex"
-import { get } from "@/utils"
 import { errors, eventTypes } from "@/constants"
+import { useMainStore } from "@/stores/main"
 import AccessDenied from "@/components/groups/AccessDenied.vue"
 import NotSignedIn from "@/components/groups/NotSignedIn.vue"
+import type { EventDraft } from "@/composables/event/types"
+import {
+  getRealOwnerId,
+  isAnonymousOwnerEvent,
+  isSignedInOwner,
+} from "@/composables/event/eventOwnership"
+import { fetchEventById } from "@/composables/event/eventTransportBoundary"
+import { serializeRouteContactsPayload, serializeRouteTimezone } from "@/router/routeProps"
+import type { Event as EventType, User } from "@/types"
+import type { Timezone } from "@/composables/schedule_overlap/types"
+import { fetchUserById } from "@/utils/services/UserService"
 
-export default {
-  name: "Group",
+const props = defineProps<{
+  groupId: string
+  fromSignIn?: boolean
+  initialTimezone?: Timezone
+  contactsPayload?: EventDraft
+}>()
 
-  props: {
-    groupId: { type: String, required: true },
-    fromSignIn: { type: Boolean, default: false },
-    initialTimezone: { type: Object, default: () => ({}) },
-    contactsPayload: { type: Object, default: () => ({}) },
-  },
+defineOptions({ name: 'AppGroup' })
 
-  components: {
-    AccessDenied,
-    Event,
-    NotSignedIn,
-  },
+const router = useRouter()
+const mainStore = useMainStore()
+const { authUser } = storeToRefs(mainStore)
 
-  data() {
-    return {
-      event: null,
+const event = ref<EventType | null>(null)
+const owner = ref<User | null>(null)
+const ownerLoaded = ref(false)
+
+const showSignedOutInviteGate = computed(() => {
+  return Boolean(event.value && !authUser.value && ownerLoaded.value && !isAnonymousOwnerEvent(event.value))
+})
+
+const accessDenied = computed(() => {
+  if (!event.value) return false
+  if (isSignedInOwner(event.value, authUser.value)) return false
+
+  const attendees = event.value.attendees
+  if (!attendees) return true
+
+  let found = false
+  for (const attendee of attendees) {
+    if (attendee.email?.toLowerCase() === (authUser.value?.email ?? "").toLowerCase()) {
+      found = true
+      break
     }
-  },
+  }
 
-  computed: {
-    ...mapState(["authUser"]),
-    accessDenied() {
-      if (this.event.ownerId === this.authUser?._id) {
-        return false
-      }
+  return !found
+})
 
-      const attendees = this.event?.attendees
-      if (!attendees) return true
+async function loadOwner(groupEvent: EventType) {
+  ownerLoaded.value = false
+  owner.value = null
 
-      let found = false
-      for (const attendee of attendees) {
-        if (attendee.email.toLowerCase() === this.authUser.email.toLowerCase()) {
-          // The line below is commented out because we want attendee to be able to rejoin group after declining
-          // if (attendee.declined) return true
-
-          found = true
-          break
-        }
-      }
-
-      return !found
-    },
-  },
-
-  methods: {
-    ...mapActions(["showError"]),
-  },
-
-  async created() {
-    try {
-      this.event = await get(`/events/${this.groupId}`)
-
-      // Redirect if we're at the wrong route
-      if (this.event.type !== eventTypes.GROUP) {
-        this.$router.replace({
-          name: "event",
-          params: {
-            eventId: this.groupId,
-            initialTimezone: this.initialTimezone,
-            fromSignIn: this.fromSignIn,
-            contactsPayload: this.contactsPayload,
-          },
-        })
-      }
-    } catch (err) {
-      switch (err.error) {
-        case errors.EventNotFound:
-          this.showError("The specified event does not exist!")
-          this.$router.replace({ name: "home" })
-          return
-      }
+  try {
+    const ownerId = getRealOwnerId(groupEvent)
+    if (ownerId) {
+      owner.value = await fetchUserById(ownerId)
     }
-  },
+  } finally {
+    ownerLoaded.value = true
+  }
 }
+
+async function loadEvent() {
+  try {
+    event.value = await fetchEventById(props.groupId)
+
+    if ((event.value as { type?: string }).type !== eventTypes.GROUP) {
+      void router.replace({
+        name: "event",
+        params: {
+          eventId: props.groupId,
+        },
+        query: {
+          initialTimezone: serializeRouteTimezone(props.initialTimezone),
+          fromSignIn: String(props.fromSignIn),
+          contactsPayload: serializeRouteContactsPayload(props.contactsPayload),
+        },
+      })
+      return
+    }
+
+    if (!authUser.value && !isAnonymousOwnerEvent(event.value)) {
+      await loadOwner(event.value)
+    } else {
+      ownerLoaded.value = true
+      owner.value = null
+    }
+  } catch (err: unknown) {
+    switch ((err as { error?: string }).error) {
+      case errors.EventNotFound:
+        mainStore.showError("The specified event does not exist!")
+        void router.replace({ name: "home" })
+        return
+    }
+  }
+}
+
+onMounted(() => {
+  void loadEvent()
+})
 </script>

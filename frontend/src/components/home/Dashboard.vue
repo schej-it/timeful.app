@@ -8,7 +8,7 @@
           Dashboard
         </div>
         <div
-          v-if="!isPremiumUser"
+          v-if="!viewerHasPremiumAccess"
           class="tw-flex tw-items-baseline tw-gap-2 tw-text-sm tw-font-normal tw-text-very-dark-gray"
         >
           <div>
@@ -24,9 +24,9 @@
         </div>
       </div>
       <v-btn
-        text
-        @click="openCreateFolderDialog"
+        variant="text"
         class="tw-text-very-dark-gray"
+        @click="openCreateFolderDialog"
       >
         <v-icon class="tw-text-lg">mdi-folder-plus</v-icon>
         <span class="tw-ml-2">New folder</span>
@@ -40,7 +40,7 @@
         class="tw-group tw-mb-2"
       >
         <div class="tw-flex tw-items-center">
-          <v-btn icon small @click="toggleFolder(folder.id)">
+          <v-btn icon size="small" @click="toggleFolder(folder.id)">
             <v-icon>{{
               folderOpenState[folder.id] ? "mdi-menu-down" : "mdi-menu-right"
             }}</v-icon>
@@ -62,12 +62,12 @@
             class="tw-invisible tw-flex tw-items-center group-hover:tw-visible"
           >
             <v-menu offset-y>
-              <template v-slot:activator="{ on, attrs }">
-                <v-btn icon small v-bind="attrs" v-on="on" @click.stop.prevent>
+              <template #activator="{ props }">
+                <v-btn icon size="small" v-bind="props" @click.stop.prevent>
                   <v-icon small>mdi-dots-horizontal</v-icon>
                 </v-btn>
               </template>
-              <v-list dense class="tw-py-1">
+              <v-list density="compact" class="tw-py-1">
                 <v-list-item @click.stop.prevent="openEditFolderDialog(folder)">
                   <v-list-item-title>Edit</v-list-item-title>
                 </v-list-item>
@@ -80,7 +80,7 @@
             </v-menu>
             <v-btn
               icon
-              small
+              size="small"
               @click.stop.prevent="createEventInFolder(folder.id)"
             >
               <v-icon small>mdi-plus</v-icon>
@@ -89,12 +89,9 @@
         </div>
         <div v-show="folderOpenState[folder.id]">
           <draggable
-            :list="[
-              ...eventsByFolder[folder.id].groups,
-              ...eventsByFolder[folder.id].events,
-            ]"
+            :list="folderItems(folder.id)"
+            item-key="_id"
             group="events"
-            @end="onEnd"
             :data-folder-id="
               folder.type === 'no-folder'
                 ? 'null'
@@ -109,38 +106,25 @@
               'tw-relative tw-grid tw-min-h-[52px] tw-grid-cols-1 tw-gap-4 tw-py-4 sm:tw-grid-cols-2',
               folder.type === 'archived' ? 'tw-opacity-75' : '',
             ]"
+            @end="onEnd"
           >
-            <template v-slot:header>
+            <template #header>
               <div
-                v-if="
-                  eventsByFolder[folder.id].groups.length === 0 &&
-                  eventsByFolder[folder.id].events.length === 0
-                "
+                v-if="folderItems(folder.id).length === 0"
                 class="tw-absolute tw-left-0 tw-py-4 tw-text-sm tw-text-very-dark-gray"
                 :class="folder.type === 'regular' ? 'tw-ml-8' : 'tw-ml-7'"
               >
                 {{ folder.emptyMessage }}
               </div>
             </template>
-            <template v-if="eventsByFolder[folder.id].groups.length > 0">
+            <template #item="{ element }">
               <EventItem
-                v-for="event in eventsByFolder[folder.id].groups"
-                :key="event._id"
-                :id="event._id"
-                :event="event"
+                :id="element._id"
+                :event="element"
                 :folder-id="folder.id"
                 class="item"
               />
-              <div class="tw-col-span-full"></div>
             </template>
-            <EventItem
-              v-for="event in eventsByFolder[folder.id].events"
-              :key="event._id"
-              :id="event._id"
-              :event="event"
-              :folder-id="folder.id"
-              class="item"
-            />
           </draggable>
         </div>
       </div>
@@ -153,15 +137,15 @@
     </div>
     <v-dialog v-model="deleteDialog" max-width="400">
       <v-card>
-        <v-card-title>Delete "{{ folderToDelete.name }}"?</v-card-title>
+        <v-card-title>Delete "{{ folderToDelete?.name }}"?</v-card-title>
         <v-card-text
           >Are you sure you want to delete this folder? All events you own in
           this folder will be deleted as well.</v-card-text
         >
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn text @click="deleteDialog = false">Cancel</v-btn>
-          <v-btn color="red darken-1" text @click="confirmDelete">Delete</v-btn>
+          <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
+          <v-btn color="red darken-1" variant="text" @click="confirmDelete">Delete</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -174,8 +158,8 @@
             label="Folder name"
             placeholder="Untitled folder"
             autofocus
-            @keydown.enter="confirmFolderDialog"
             hide-details
+            @keydown.enter="confirmFolderDialog"
           ></v-text-field>
           <div class="tw-mt-4">
             <span class="tw-text-gray-500 tw-text-sm">Color</span>
@@ -196,8 +180,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn text @click="closeFolderDialog">Cancel</v-btn>
-          <v-btn color="primary" text @click="confirmFolderDialog">{{
+          <v-btn variant="text" @click="closeFolderDialog">Cancel</v-btn>
+          <v-btn color="primary" variant="text" @click="confirmFolderDialog">{{
             folderDialogConfirmText
           }}</v-btn>
         </v-card-actions>
@@ -206,8 +190,10 @@
   </div>
 </template>
 
-<script>
-import { mapState, mapActions, mapGetters } from "vuex"
+<script setup lang="ts">
+defineOptions({ name: "AppDashboard" })
+import { computed, ref } from "vue"
+import { storeToRefs } from "pinia"
 import draggable from "vuedraggable"
 import {
   eventTypes,
@@ -217,310 +203,229 @@ import {
 } from "@/constants"
 import EventItem from "@/components/EventItem.vue"
 import ObjectID from "bson-objectid"
+import { useMainStore } from "@/stores/main"
+import { posthog } from "@/plugins/posthog"
+import type { Event, Folder } from "@/types"
+import { useDashboardFolderOpenState } from "./useDashboardFolderOpenState"
 
-export default {
-  name: "Dashboard",
-  components: {
-    EventItem,
-    draggable,
-  },
-  data() {
-    return {
-      deleteDialog: false,
-      folderToDelete: {},
-      createFolderDialog: false,
-      newFolderName: "",
-      newFolderColor: folderColors[3],
-      isEditingFolder: false,
-      folderToEdit: null,
-      folderOpenState: {
-        "no-folder": true,
-      },
-    }
-  },
-  computed: {
-    ...mapGetters(["isPremiumUser"]),
-    ...mapState(["authUser", "events", "groupsEnabled", "folders"]),
-    orderedFolders() {
-      return this.folders.sort((a, b) => {
-        return a.name.localeCompare(b.name)
-      })
-    },
-    numFreeEvents() {
-      return numFreeEvents
-    },
-    folderColors() {
-      return folderColors
-    },
-    allEvents() {
-      return this.events
-    },
-    allEventsMap() {
-      return this.allEvents.reduce((acc, event) => {
-        acc[event._id] = event
-        return acc
-      }, {})
-    },
-    eventsByFolder() {
-      const eventsByFolder = {}
-      const allEventIds = new Set(this.allEvents.map((e) => e._id))
+interface DragEvent {
+  item: { id: string }
+  to: { dataset: { folderId?: string } }
+  from: { dataset: { folderId?: string } }
+}
 
-      eventsByFolder["no-folder"] = { groups: [], events: [] }
-      eventsByFolder["archived"] = { groups: [], events: [] }
+const mainStore = useMainStore()
+const { authUser, events, folders, viewerHasPremiumAccess } = storeToRefs(mainStore)
 
-      this.folders.forEach((folder) => {
-        eventsByFolder[folder._id] = { groups: [], events: [] }
-        for (const eventId of folder.eventIds) {
-          const event = this.allEventsMap[eventId]
-          if (event) {
-            if (event.isArchived) {
-              if (event.type === eventTypes.GROUP) {
-                eventsByFolder["archived"].groups.push(event)
-              } else {
-                eventsByFolder["archived"].events.push(event)
-              }
-            } else {
-              if (event.type === eventTypes.GROUP) {
-                eventsByFolder[folder._id].groups.push(event)
-              } else {
-                eventsByFolder[folder._id].events.push(event)
-              }
-            }
-            allEventIds.delete(eventId)
-          }
-        }
-        eventsByFolder[folder._id].groups.sort(this.sortEvents)
-        eventsByFolder[folder._id].events.sort(this.sortEvents)
-      })
+const openUpgradeDialog = () => {
+  mainStore.showUpgradeDialog({ type: upgradeDialogTypes.UPGRADE_MANUALLY })
+}
 
-      for (const eventId of allEventIds) {
-        const event = this.allEventsMap[eventId]
-        if (event) {
-          if (event.isArchived) {
-            if (event.type === eventTypes.GROUP) {
-              eventsByFolder["archived"].groups.push(event)
-            } else {
-              eventsByFolder["archived"].events.push(event)
-            }
-          } else {
-            if (event.type === eventTypes.GROUP) {
-              eventsByFolder["no-folder"].groups.push(event)
-            } else {
-              eventsByFolder["no-folder"].events.push(event)
-            }
-          }
-        }
-      }
+const deleteDialog = ref(false)
+const folderToDelete = ref<Folder | null>(null)
+const createFolderDialog = ref(false)
+const newFolderName = ref("")
+const newFolderColor = ref<string>(folderColors[3])
+const isEditingFolder = ref(false)
+const folderToEdit = ref<Folder | null>(null)
+const { folderOpenState, toggleFolder } = useDashboardFolderOpenState(folders)
 
-      eventsByFolder["no-folder"].groups.sort(this.sortEvents)
-      eventsByFolder["no-folder"].events.sort(this.sortEvents)
-      eventsByFolder["archived"].groups.sort(this.sortEvents)
-      eventsByFolder["archived"].events.sort(this.sortEvents)
-      return eventsByFolder
-    },
-    folderDialogTitle() {
-      return this.isEditingFolder ? "Edit folder" : "New folder"
-    },
-    folderDialogConfirmText() {
-      return this.isEditingFolder ? "Save" : "Create"
-    },
-    allFolders() {
-      const folders = this.folders.map((folder) => ({
-        ...folder,
-        id: folder._id,
-        type: "regular",
-        name: folder.name,
-        emptyMessage: "No events in this folder",
-      }))
+const allEvents = computed(() => events.value)
 
-      // Only show "no-folder" section if there are events
-      if (this.allEvents.length > 0) {
-        folders.push({
-          id: "no-folder",
-          type: "no-folder",
-          name: "No folder",
-          emptyMessage: "No events",
-        })
-      }
+const allEventsMap = computed<Record<string, Event>>(() =>
+  allEvents.value.reduce<Record<string, Event>>((acc, event) => {
+    if (event._id) acc[event._id] = event
+    return acc
+  }, {})
+)
 
-      // Only show "archived" section if there are archived events
-      if (this.allEvents.some((event) => event.isArchived)) {
-        folders.push({
-          id: "archived",
-          type: "archived",
-          name: "Archived",
-          emptyMessage: "No archived events",
-        })
-      }
+const sortEvents = (a: Event, b: Event) => {
+  if (
+    a._id &&
+    b._id &&
+    ObjectID.isValid(a._id) &&
+    ObjectID.isValid(b._id)
+  ) {
+    return (
+      ObjectID(b._id).getTimestamp().getTime() -
+      ObjectID(a._id).getTimestamp().getTime()
+    )
+  }
+  return 0
+}
 
-      return folders
-    },
-  },
+const eventsByFolder = computed(() => {
+  const result: Record<string, { groups: Event[]; events: Event[] }> = {}
+  const allEventIds = new Set(
+    allEvents.value.map((e) => e._id).filter((id): id is string => !!id)
+  )
 
-  methods: {
-    ...mapActions([
-      "createFolder",
-      "showUpgradeDialog",
-      "deleteFolder",
-      "setEventFolder",
-      "updateFolder",
-      "createNew",
-    ]),
-    sortEvents(a, b) {
-      if (ObjectID.isValid(a._id) && ObjectID.isValid(b._id)) {
-        return ObjectID(b._id).getTimestamp() - ObjectID(a._id).getTimestamp()
-      }
-      return 0
-    },
-    onEnd(evt) {
-      const eventId = evt.item.id
-      let newFolderId = evt.to.dataset.folderId
-      if (
-        newFolderId === "null" ||
-        newFolderId === undefined ||
-        newFolderId === "no-folder"
-      ) {
-        newFolderId = null
-      }
+  result["no-folder"] = { groups: [], events: [] }
+  result.archived = { groups: [], events: [] }
 
-      // Don't allow dropping into archived section
-      if (newFolderId === "archived") {
-        return
-      }
-
-      let fromFolderId = evt.from.dataset.folderId
-      if (fromFolderId === "no-folder") {
-        fromFolderId = null
-      }
-      if (fromFolderId === "archived") {
-        fromFolderId = null
-      }
-
-      // if moving within the same folder, do nothing.
-      if (fromFolderId === newFolderId) {
-        // Here you might want to handle re-ordering within the same folder
-        // For now, we do nothing.
-        return
-      }
-
-      const event = this.allEvents.find((e) => e._id === eventId)
-
+  folders.value.forEach((folder) => {
+    if (!folder._id) return
+    result[folder._id] = { groups: [], events: [] }
+    for (const eventId of folder.eventIds ?? []) {
+      const event = allEventsMap.value[eventId] as Event | undefined
       if (event) {
-        this.setEventFolder({
-          eventId: event._id,
-          folderId: newFolderId,
-        })
+        const bucket = event.isArchived ? result.archived : result[folder._id]
+        if (event.type === eventTypes.GROUP) bucket.groups.push(event)
+        else bucket.events.push(event)
+        allEventIds.delete(eventId)
       }
-    },
-    confirmFolderDialog() {
-      if (!this.newFolderName.trim()) {
-        this.closeFolderDialog()
-        return
-      }
-      if (this.isEditingFolder) {
-        this.updateFolder({
-          folderId: this.folderToEdit._id,
-          name: this.newFolderName.trim(),
-          color: this.newFolderColor,
-        })
-      } else {
-        this.$posthog.capture("folder_created", {
-          folderName: this.newFolderName.trim(),
-          folderColor: this.newFolderColor,
-        })
-        this.createFolder({
-          name: this.newFolderName.trim(),
-          color: this.newFolderColor,
-        })
-      }
-      this.closeFolderDialog()
-    },
-    closeFolderDialog() {
-      this.createFolderDialog = false
-      this.isEditingFolder = false
-      this.folderToEdit = null
-      this.newFolderName = ""
-      this.newFolderColor = folderColors[3]
-    },
-    openCreateFolderDialog() {
-      this.isEditingFolder = false
-      this.folderToEdit = null
-      this.newFolderName = ""
-      this.newFolderColor = folderColors[3]
-      this.createFolderDialog = true
-    },
-    openEditFolderDialog(folder) {
-      this.isEditingFolder = true
-      this.folderToEdit = folder
-      this.newFolderName = folder.name
-      this.newFolderColor = folder.color || folderColors[3]
-      this.createFolderDialog = true
-    },
-    toggleFolder(folderId) {
-      this.$set(this.folderOpenState, folderId, !this.folderOpenState[folderId])
-    },
-    createEventInFolder(folderId) {
-      const actualFolderId = folderId === "no-folder" ? null : folderId
-      this.createNew({
-        eventOnly: false,
-        folderId: actualFolderId,
-      })
-    },
-    openDeleteDialog(folder) {
-      this.folderToDelete = folder
-      this.deleteDialog = true
-    },
-    confirmDelete() {
-      this.$store.dispatch("deleteFolder", this.folderToDelete._id)
-      this.deleteDialog = false
-    },
-    openUpgradeDialog() {
-      this.showUpgradeDialog({
-        type: upgradeDialogTypes.UPGRADE_MANUALLY,
-      })
-    },
-  },
-  created() {
-    try {
-      const storedState = localStorage.getItem("folderOpenState")
-      if (storedState) {
-        this.folderOpenState = JSON.parse(storedState)
-      }
-    } catch (e) {
-      console.error("Error reading folderOpenState from localStorage", e)
-      // If corrupted, remove it
-      localStorage.removeItem("folderOpenState")
     }
-  },
-  watch: {
-    folderOpenState: {
-      handler(newState) {
-        try {
-          localStorage.setItem("folderOpenState", JSON.stringify(newState))
-        } catch (e) {
-          console.error("Error saving folderOpenState to localStorage", e)
-        }
-      },
-      deep: true,
-    },
-    folders: {
-      handler(newFolders) {
-        if (newFolders) {
-          newFolders.forEach((folder) => {
-            if (this.folderOpenState[folder._id] === undefined) {
-              this.$set(this.folderOpenState, folder._id, true) // default to open
-            }
-          })
-        }
-      },
-      immediate: true,
-    },
-  },
+    result[folder._id].groups.sort(sortEvents)
+    result[folder._id].events.sort(sortEvents)
+  })
+
+  for (const eventId of allEventIds) {
+    const event = allEventsMap.value[eventId] as Event | undefined
+    if (event) {
+      const bucket = event.isArchived ? result.archived : result["no-folder"]
+      if (event.type === eventTypes.GROUP) bucket.groups.push(event)
+      else bucket.events.push(event)
+    }
+  }
+
+  result["no-folder"].groups.sort(sortEvents)
+  result["no-folder"].events.sort(sortEvents)
+  result.archived.groups.sort(sortEvents)
+  result.archived.events.sort(sortEvents)
+  return result
+})
+
+const folderItems = (folderId: string): Event[] => {
+  const bucket = eventsByFolder.value[folderId] as { groups: Event[]; events: Event[] } | undefined
+  if (!bucket) return []
+  return [...bucket.groups, ...bucket.events]
+}
+
+const folderDialogTitle = computed(() =>
+  isEditingFolder.value ? "Edit folder" : "New folder"
+)
+const folderDialogConfirmText = computed(() =>
+  isEditingFolder.value ? "Save" : "Create"
+)
+
+interface FolderRow {
+  id: string
+  type: "regular" | "no-folder" | "archived"
+  name: string
+  emptyMessage: string
+  color?: string
+  _id?: string
+}
+
+const allFolders = computed<FolderRow[]>(() => {
+  const f: FolderRow[] = folders.value.map((folder) => ({
+    ...folder,
+    id: folder._id ?? "",
+    type: "regular",
+    name: folder.name ?? "",
+    emptyMessage: "No events in this folder",
+  }))
+
+  if (allEvents.value.length > 0) {
+    f.push({
+      id: "no-folder",
+      type: "no-folder",
+      name: "No folder",
+      emptyMessage: "No events",
+    })
+  }
+
+  if (allEvents.value.some((event) => event.isArchived)) {
+    f.push({
+      id: "archived",
+      type: "archived",
+      name: "Archived",
+      emptyMessage: "No archived events",
+    })
+  }
+
+  return f
+})
+
+const onEnd = (evt: DragEvent) => {
+  const eventId = evt.item.id
+  let newFolderId: string | null = evt.to.dataset.folderId ?? null
+  if (
+    newFolderId === "no-folder"
+  ) {
+    newFolderId = null
+  }
+  if (newFolderId === "archived") return
+
+  let fromFolderId: string | null = evt.from.dataset.folderId ?? null
+  if (fromFolderId === "no-folder") fromFolderId = null
+  if (fromFolderId === "archived") fromFolderId = null
+
+  if (fromFolderId === newFolderId) return
+
+  const event = allEvents.value.find((e) => e._id === eventId)
+  if (event?._id) {
+    void mainStore.setEventFolder({ eventId: event._id, folderId: newFolderId })
+  }
+}
+
+const confirmFolderDialog = () => {
+  if (!newFolderName.value.trim()) {
+    closeFolderDialog()
+    return
+  }
+  if (isEditingFolder.value && folderToEdit.value?._id) {
+    void mainStore.updateFolder({
+      folderId: folderToEdit.value._id,
+      name: newFolderName.value.trim(),
+      color: newFolderColor.value,
+    })
+  } else {
+    posthog.capture("folder_created", {
+      folderName: newFolderName.value.trim(),
+      folderColor: newFolderColor.value,
+    })
+    void mainStore.createFolder({
+      name: newFolderName.value.trim(),
+      color: newFolderColor.value,
+    })
+  }
+  closeFolderDialog()
+}
+
+const closeFolderDialog = () => {
+  createFolderDialog.value = false
+  isEditingFolder.value = false
+  folderToEdit.value = null
+  newFolderName.value = ""
+  newFolderColor.value = folderColors[3]
+}
+const openCreateFolderDialog = () => {
+  isEditingFolder.value = false
+  folderToEdit.value = null
+  newFolderName.value = ""
+  newFolderColor.value = folderColors[3]
+  createFolderDialog.value = true
+}
+const openEditFolderDialog = (folder: FolderRow) => {
+  isEditingFolder.value = true
+  folderToEdit.value = folder
+  newFolderName.value = folder.name
+  newFolderColor.value = folder.color ?? folderColors[3]
+  createFolderDialog.value = true
+}
+const createEventInFolder = (folderId: string) => {
+  const actualFolderId = folderId === "no-folder" ? null : folderId
+  mainStore.createNew({ eventOnly: false, folderId: actualFolderId })
+}
+const openDeleteDialog = (folder: FolderRow) => {
+  folderToDelete.value = folder
+  deleteDialog.value = true
+}
+const confirmDelete = () => {
+  if (folderToDelete.value?._id) {
+    void mainStore.deleteFolder(folderToDelete.value._id)
+  }
+  deleteDialog.value = false
 }
 </script>
-
-<style>
-.v-expansion-panel-header {
-  padding: 16px 4px !important;
-}
-</style>

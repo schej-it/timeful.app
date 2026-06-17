@@ -1,0 +1,7 @@
+services:
+  server:
+    # Staging binds and probes the staging-specific server port instead of inheriting the base 3002 path.
+    ports: !override
+      - "127.0.0.1:3003:3003"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3003/api/health"]

@@ -13,8 +13,12 @@ type EventResponse struct {
 // A response object containing an array of times that the given user is available
 type Response struct {
 	// Guest information
-	Name  string `json:"name" bson:"name,omitempty"`
-	Email string `json:"email" bson:"email,omitempty"`
+	Name               string `json:"name" bson:"name,omitempty"`
+	Email              string `json:"email" bson:"email,omitempty"`
+	GuestId            string `json:"guestId,omitempty" bson:"guestId,omitempty"`
+	GuestEditToken     string `json:"-" bson:"guestEditToken,omitempty"`
+	GuestEditPolicy    string `json:"guestEditPolicy,omitempty" bson:"guestEditPolicy,omitempty"`
+	GuestOwnershipMode string `json:"guestOwnershipMode,omitempty" bson:"guestOwnershipMode,omitempty"`
 
 	// User information
 	UserId primitive.ObjectID `json:"userId" bson:"userId,omitempty"`

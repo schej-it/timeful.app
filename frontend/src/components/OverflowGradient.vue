@@ -9,8 +9,8 @@
   >
     <v-btn
       v-if="showArrow"
-      fab
-      x-small
+      icon
+      size="x-small"
       class="tw-pointer-events-auto tw-transform"
       @click="scrollToBottom"
     >
@@ -19,43 +19,93 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "OverflowGradient",
-  props: {
-    scrollContainer: {
-      type: HTMLElement,
-      required: true,
-    },
-    showArrow: {
-      type: Boolean,
-      default: true,
-    },
-  },
-  data() {
-    return {
-      showGradient: false,
-    }
-  },
-  mounted() {
-    this.checkScroll()
-    this.scrollContainer.addEventListener("scroll", this.checkScroll)
-  },
-  beforeDestroy() {
-    this.scrollContainer.removeEventListener("scroll", this.checkScroll)
-  },
-  methods: {
-    /**
-     * Checks if the scroll bar is scrolled to the bottom of the client
-     */
-    checkScroll() {
-      const { scrollHeight, clientHeight, scrollTop } = this.scrollContainer
-      this.showGradient =
-        scrollHeight > clientHeight && scrollTop < scrollHeight - clientHeight - 1 // 1px tolerance
-    },
-    scrollToBottom() {
-      this.scrollContainer.scrollTop = this.scrollContainer.scrollHeight
-    },
-  },
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref, watch } from "vue"
+
+const props = withDefaults(
+  defineProps<{
+    scrollContainer: HTMLElement | null
+    showArrow?: boolean
+  }>(),
+  { showArrow: true }
+)
+
+const showGradient = ref(false)
+let resizeObserver: ResizeObserver | null = null
+let mutationObserver: MutationObserver | null = null
+
+const detachObserver = () => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
+  mutationObserver?.disconnect()
+  mutationObserver = null
 }
+
+const checkScroll = () => {
+  if (!props.scrollContainer) return
+  const { scrollHeight, clientHeight, scrollTop } = props.scrollContainer
+  showGradient.value =
+    scrollHeight > clientHeight && scrollTop < scrollHeight - clientHeight - 1
+}
+
+const scrollToBottom = () => {
+  if (!props.scrollContainer) return
+  // Use a local variable to avoid mutating the prop directly
+  const container = props.scrollContainer
+  container.scrollTop = container.scrollHeight
+}
+
+onMounted(() => {
+  checkScroll()
+  props.scrollContainer?.addEventListener("scroll", checkScroll)
+  if (props.scrollContainer && typeof ResizeObserver !== "undefined") {
+    resizeObserver = new ResizeObserver(() => {
+      checkScroll()
+    })
+    resizeObserver.observe(props.scrollContainer)
+  }
+  if (props.scrollContainer && typeof MutationObserver !== "undefined") {
+    mutationObserver = new MutationObserver(() => {
+      checkScroll()
+    })
+    mutationObserver.observe(props.scrollContainer, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    })
+  }
+})
+
+onBeforeUnmount(() => {
+  props.scrollContainer?.removeEventListener("scroll", checkScroll)
+  detachObserver()
+})
+
+watch(
+  () => props.scrollContainer,
+  (nextContainer, prevContainer) => {
+    prevContainer?.removeEventListener("scroll", checkScroll)
+    detachObserver()
+
+    nextContainer?.addEventListener("scroll", checkScroll)
+    if (nextContainer && typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(() => {
+        checkScroll()
+      })
+      resizeObserver.observe(nextContainer)
+    }
+    if (nextContainer && typeof MutationObserver !== "undefined") {
+      mutationObserver = new MutationObserver(() => {
+        checkScroll()
+      })
+      mutationObserver.observe(nextContainer, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      })
+    }
+
+    checkScroll()
+  }
+)
 </script>

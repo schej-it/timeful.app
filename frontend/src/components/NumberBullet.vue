@@ -7,8 +7,4 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "NumberBullet",
-}
-</script>
+<script setup lang="ts"></script>

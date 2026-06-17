@@ -6,65 +6,74 @@
   ></div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount } from "vue"
+import { storeToRefs } from "pinia"
+import { useMainStore } from "@/stores/main"
 import { get } from "@/utils"
-import { guestUserId } from "@/constants"
-import { mapGetters } from "vuex"
+import { freemiumEnabled } from "@/utils/freemium"
+import { getRealOwnerId } from "@/composables/event/eventOwnership"
 
-export default {
-  name: "CarbonAd",
+const props = defineProps<{
+  ownerId?: string
+}>()
 
-  props: {
-    ownerId: { type: String, default: "" },
-  },
+const mainStore = useMainStore()
+const { viewerHasPremiumAccess } = storeToRefs(mainStore)
 
-  data: () => ({
-    ownerIsPremium: false,
-    ownerLoaded: false,
-  }),
+const adContainer = ref<HTMLDivElement>()
+const ownerIsPremium = ref(false)
+const ownerLoaded = ref(false)
 
-  async mounted() {
-    if (this.ownerId && this.ownerId !== guestUserId) {
-      try {
-        const res = await get(`/users/${this.ownerId}/is-premium`)
-        this.ownerIsPremium = res.isPremium
-      } catch {
-        this.ownerIsPremium = false
-      }
+async function loadOwnerStatus() {
+  const ownerId = getRealOwnerId(props)
+  if (ownerId) {
+    try {
+      const res = await get<{ isPremium: boolean }>(`/users/${ownerId}/is-premium`)
+      ownerIsPremium.value = res.isPremium
+    } catch {
+      ownerIsPremium.value = false
     }
-    this.ownerLoaded = true
+  }
+  ownerLoaded.value = true
 
-    await this.$nextTick()
-    if (this.showAd) {
-      this.loadCarbonAd()
-    }
-  },
-
-  beforeDestroy() {
-    const existing = this.$refs.adContainer?.querySelector("#_carbonads_js")
-    if (existing) existing.remove()
-  },
-
-  computed: {
-    ...mapGetters(["isPremiumUser"]),
-    showAd() {
-      return this.ownerLoaded && !this.ownerIsPremium && !this.isPremiumUser
-    },
-  },
-
-  methods: {
-    loadCarbonAd() {
-      const container = this.$refs.adContainer
-      if (!container) return
-
-      const script = document.createElement("script")
-      script.async = true
-      script.type = "text/javascript"
-      script.src =
-        "//cdn.carbonads.com/carbon.js?serve=CWBDC2QJ&placement=timefulapp&format=responsive"
-      script.id = "_carbonads_js"
-      container.appendChild(script)
-    },
-  },
+  await new Promise(resolve => setTimeout(resolve, 0))
+  if (showAd.value) {
+    loadCarbonAd()
+  }
 }
+
+function loadCarbonAd() {
+  const container = adContainer.value
+  if (!container) return
+
+  const existing = container.querySelector("#_carbonads_js")
+  if (existing) existing.remove()
+
+  const script = document.createElement("script")
+  script.async = true
+  script.type = "text/javascript"
+  script.src =
+    "//cdn.carbonads.com/carbon.js?serve=CWBDC2QJ&placement=timefulapp&format=responsive"
+  script.id = "_carbonads_js"
+  container.appendChild(script)
+}
+
+const showAd = computed(() => {
+  return (
+    freemiumEnabled &&
+    ownerLoaded.value &&
+    !ownerIsPremium.value &&
+    !viewerHasPremiumAccess.value
+  )
+})
+
+onMounted(() => {
+  void loadOwnerStatus()
+})
+
+onBeforeUnmount(() => {
+  const existing = adContainer.value?.querySelector("#_carbonads_js")
+  if (existing) existing.remove()
+})
 </script>

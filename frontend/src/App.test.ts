@@ -1,0 +1,290 @@
+// @vitest-environment happy-dom
+
+import { flushPromises, shallowMount } from "@vue/test-utils"
+import { ref } from "vue"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import type * as UtilsModule from "@/utils"
+import { authTypes } from "@/constants"
+import App from "./App.vue"
+import appSource from "./App.vue?raw"
+
+const {
+  signInGoogleMock,
+  signInOutlookMock,
+  getMock,
+  postMock,
+  routeState,
+  routerPushMock,
+  routerReplaceMock,
+  setAuthUserMock,
+  getEventsMock,
+  setFeatureFlagsLoadedMock,
+} = vi.hoisted(() => ({
+  signInGoogleMock: vi.fn(),
+  signInOutlookMock: vi.fn(),
+  getMock: vi.fn(),
+  postMock: vi.fn(),
+  routeState: {
+    name: "signUp",
+    params: { signUpId: "signup-1" },
+    query: {},
+    fullPath: "/s/signup-1",
+  },
+  routerPushMock: vi.fn(),
+  routerReplaceMock: vi.fn(),
+  setAuthUserMock: vi.fn(),
+  getEventsMock: vi.fn(),
+  setFeatureFlagsLoadedMock: vi.fn(),
+}))
+
+vi.mock("@/utils", async () => {
+  const actual = await vi.importActual<typeof UtilsModule>("@/utils")
+
+  return {
+    ...actual,
+    get: getMock,
+    post: postMock,
+    getLocation: vi.fn(),
+    signInGoogle: signInGoogleMock,
+    signInOutlook: signInOutlookMock,
+  }
+})
+
+vi.mock("vue-router", () => ({
+  useRoute: () => routeState,
+  useRouter: () => ({
+    push: routerPushMock,
+    replace: routerReplaceMock,
+  }),
+}))
+
+vi.mock("@unhead/vue", () => ({
+  useHead: vi.fn(),
+}))
+
+vi.mock("is-ua-webview", () => ({
+  default: vi.fn(() => false),
+}))
+
+vi.mock("pinia", () => ({
+  storeToRefs: (store: Record<string, unknown>) => ({
+    authUser: store.authUser,
+    error: store.error,
+    info: store.info,
+    upgradeDialogVisible: store.upgradeDialogVisible,
+    newDialogOptions: store.newDialogOptions,
+    isPremiumUser: store.isPremiumUser,
+  }),
+}))
+
+vi.mock("@/stores/main", () => {
+  return {
+    useMainStore: () => ({
+      authUser: ref(null),
+      error: ref(""),
+      info: ref(""),
+      upgradeDialogVisible: ref(false),
+      newDialogOptions: ref({
+        show: false,
+        contactsPayload: {},
+        openNewGroup: false,
+        eventOnly: false,
+        folderId: null,
+      }),
+      isPremiumUser: ref(false),
+      setAuthUser: setAuthUserMock,
+      setFeatureFlagsLoaded: setFeatureFlagsLoadedMock,
+      hideUpgradeDialog: vi.fn(),
+      createNew: vi.fn(),
+      getEvents: getEventsMock,
+    }),
+  }
+})
+
+vi.mock("@/plugins/posthog", () => ({
+  posthog: {
+    capture: vi.fn(),
+    identify: vi.fn(),
+  },
+}))
+
+vi.mock("@/utils/useDisplayHelpers", () => ({
+  useDisplayHelpers: () => ({
+    isPhone: { value: false },
+  }),
+}))
+
+const SignInDialogStub = {
+  name: "SignInDialog",
+  emits: ["sign-in", "email-sign-in", "update:modelValue"],
+  template: '<button data-test="provider-sign-in" @click="$emit(\'sign-in\', \'google\')" />',
+}
+
+describe("App auth restore state", () => {
+  it("keeps the fixed app header aligned to the event-page content width", () => {
+    expect(appSource).toContain(
+      'class="tw-relative tw-m-auto tw-flex tw-h-full tw-max-w-5xl tw-items-center tw-justify-center tw-px-4"'
+    )
+    expect(appSource).not.toContain(
+      'class="tw-relative tw-m-auto tw-flex tw-h-full tw-max-w-6xl tw-items-center tw-justify-center tw-px-4"'
+    )
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    getMock.mockRejectedValue(new Error("not signed in"))
+    postMock.mockResolvedValue({})
+    routeState.name = "signUp"
+    routeState.params = { signUpId: "signup-1" }
+    routeState.query = {}
+    routeState.fullPath = "/s/signup-1"
+  })
+
+  it("serializes signUpId when OAuth starts from a sign-up route", async () => {
+    const wrapper = shallowMount(App, {
+      global: {
+        mocks: {
+          $route: routeState,
+        },
+        stubs: {
+          SignInDialog: SignInDialogStub,
+          DiscordBanner: true,
+          AutoSnackbar: true,
+          SignInNotSupportedDialog: true,
+          NewDialog: true,
+          UpgradeDialog: true,
+          UpvoteRedditSnackbar: true,
+          Logo: true,
+          AuthUserMenu: true,
+          "router-link": true,
+          "router-view": true,
+          "v-app": { template: "<div><slot /></div>" },
+          "v-main": { template: "<div><slot /></div>" },
+          "v-btn": { template: "<button><slot /></button>" },
+          "v-expand-x-transition": { template: "<div><slot /></div>" },
+          "v-spacer": true,
+        },
+      },
+    })
+
+    await Promise.resolve()
+    await wrapper.get('[data-test="provider-sign-in"]').trigger("click")
+
+    expect(signInGoogleMock).toHaveBeenCalledWith({
+      state: {
+        signUpId: "signup-1",
+        type: authTypes.SIGN_UP_SIGN_IN,
+      },
+      selectAccount: true,
+    })
+    expect(signInOutlookMock).not.toHaveBeenCalled()
+  })
+
+  it("preserves sign-up restore query when routing into the dedicated sign-in page", async () => {
+    routeState.query = {
+      editingMode: "true",
+      initialTimezone: JSON.stringify({
+        value: "Asia/Kathmandu",
+        label: "Kathmandu",
+        gmtString: "GMT+5:45",
+        offset: "PT5H45M",
+      }),
+      contactsPayload: JSON.stringify({
+        name: "Draft",
+      }),
+    }
+
+    const wrapper = shallowMount(App, {
+      global: {
+        mocks: {
+          $route: routeState,
+        },
+        stubs: {
+          SignInDialog: true,
+          DiscordBanner: true,
+          AutoSnackbar: true,
+          SignInNotSupportedDialog: true,
+          NewDialog: true,
+          UpgradeDialog: true,
+          UpvoteRedditSnackbar: true,
+          Logo: true,
+          AuthUserMenu: true,
+          "router-link": true,
+          "router-view": true,
+          "v-app": { template: "<div><slot /></div>" },
+          "v-main": { template: "<div><slot /></div>" },
+          "v-btn": {
+            template: "<button @click=\"$emit('click')\"><slot /></button>",
+          },
+          "v-expand-x-transition": { template: "<div><slot /></div>" },
+          "v-spacer": true,
+        },
+      },
+    })
+
+    await Promise.resolve()
+    await wrapper.get("#top-right-sign-in-btn").trigger("click")
+
+    expect(routerPushMock).toHaveBeenCalledWith({
+      name: "sign-in",
+      query: {
+        signUpId: "signup-1",
+        editingMode: "true",
+        initialTimezone: JSON.stringify({
+          value: "Asia/Kathmandu",
+          label: "Kathmandu",
+          gmtString: "GMT+5:45",
+          offset: "PT5H45M",
+        }),
+        contactsPayload: JSON.stringify({
+          name: "Draft",
+        }),
+      },
+    })
+  })
+
+  it("bootstraps auth and scroll listeners on mount and cleans them up on unmount", async () => {
+    const addEventListenerSpy = vi.spyOn(window, "addEventListener")
+    const removeEventListenerSpy = vi.spyOn(window, "removeEventListener")
+
+    const wrapper = shallowMount(App, {
+      global: {
+        mocks: {
+          $route: routeState,
+        },
+        stubs: {
+          SignInDialog: true,
+          DiscordBanner: true,
+          AutoSnackbar: true,
+          SignInNotSupportedDialog: true,
+          NewDialog: true,
+          UpgradeDialog: true,
+          UpvoteRedditSnackbar: true,
+          Logo: true,
+          AuthUserMenu: true,
+          "router-link": true,
+          "router-view": true,
+          "v-app": { template: "<div><slot /></div>" },
+          "v-main": { template: "<div><slot /></div>" },
+          "v-btn": { template: "<button><slot /></button>" },
+          "v-expand-x-transition": { template: "<div><slot /></div>" },
+          "v-spacer": true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(getMock).toHaveBeenCalled()
+    expect(getEventsMock).toHaveBeenCalled()
+    expect(addEventListenerSpy).toHaveBeenCalledWith("scroll", expect.any(Function))
+
+    wrapper.unmount()
+
+    expect(removeEventListenerSpy).toHaveBeenCalledWith("scroll", expect.any(Function))
+  })
+
+  it("does not retain the legacy global selection-control reset", () => {
+    expect(appSource).not.toContain(".v-input--selection-controls")
+  })
+})

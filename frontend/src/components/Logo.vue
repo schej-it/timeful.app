@@ -1,58 +1,45 @@
 <template>
-  <v-img
+  <img
     :alt="alt"
-    class="shrink tw-cursor-pointer"
-    contain
+    :class="widthClass"
+    class="tw-flex tw-max-w-full tw-shrink-0 tw-cursor-pointer"
     :src="src"
-    transition="fade-transition"
-    :width="width"
   />
 </template>
 
-<script>
-import { isPhone } from "@/utils"
+<script setup lang="ts">
+import { computed } from "vue"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import timefulLogo from "@/assets/timeful_logo_with_text.png"
+import aprilFoolsLogo from "@/assets/april_fools_logo.png"
 
-export default {
-  name: "Logo",
+defineOptions({ name: "AppLogo" })
 
-  props: {
-    type: {
-      type: "timeful" | "betterwhen2meet" | "aprilfools",
-      default: "timeful",
-    },
-  },
+type LogoType = "timeful" | "betterwhen2meet" | "aprilfools"
 
-  computed: {
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-    alt() {
-      if (this.type === "betterwhen2meet") {
-        return "Betterwhen2meet Logo"
-      }
+const props = withDefaults(
+  defineProps<{
+    type?: LogoType
+  }>(),
+  { type: "timeful" }
+)
 
-      return "Timeful Logo"
-    },
-    src() {
-      switch (this.type) {
-        case "timeful":
-          return require("@/assets/timeful_logo_with_text.png")
-        case "betterwhen2meet":
-          return require("@/assets/april_fools_logo.png")
-        case "aprilfools":
-          return require("@/assets/april_fools_logo.png")
-      }
-    },
-    width() {
-      switch (this.type) {
-        case "timeful":
-          return this.isPhone ? 90 : 110
-        case "betterwhen2meet":
-          return this.isPhone ? 200 : 300
-        case "aprilfools":
-          return this.isPhone ? 200 : 300
-      }
-    },
-  },
-}
+const { isPhone } = useDisplayHelpers()
+
+const alt = computed(() =>
+  props.type === "betterwhen2meet" ? "Betterwhen2meet Logo" : "Timeful Logo"
+)
+
+const src = computed(() => {
+  if (props.type === "timeful") return timefulLogo
+  return aprilFoolsLogo
+})
+
+const widthClass = computed(() => {
+  if (props.type === "timeful") {
+    return isPhone.value ? "tw-w-[90px]" : "tw-w-[110px]"
+  }
+
+  return isPhone.value ? "tw-w-[200px]" : "tw-w-[300px]"
+})
 </script>

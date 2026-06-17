@@ -1,0 +1,42 @@
+name: timeful-test
+
+services:
+  mongo-test:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_test_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  server-test:
+    build:
+      context: ./server
+      target: builder
+    working_dir: /app
+    environment:
+      GOCACHE: /tmp/go-cache
+      MONGODB_URI: mongodb://mongo-test:27017/?serverSelectionTimeoutMS=2000&connectTimeoutMS=2000
+      ROUTES_READ_FILTERS_TEST_MODE: "compose"
+      SESSION_SECRET: "01234567890123456789012345678901"
+    volumes:
+      - ./server:/app
+    command:
+      [
+        "go",
+        "test",
+        "./routes",
+        "-run",
+        "TestGetEventFiltersUnnamedGuestResponses|TestGetResponsesFiltersUnnamedGuestResponses|TestGetResponsesBlindAvailabilityUsesFilteredGuestResponseMap|TestGetEventKeepsSignedInRowsWithBlankStoredResponseName|TestGetEventKeepsLegacyOuterKeySignedInSignUpRows|TestGetResponsesPrefersNewestCanonicalGuestDuplicate",
+        "-count=1",
+      ]
+    depends_on:
+      mongo-test:
+        condition: service_healthy
+
+volumes:
+  mongo_test_data:

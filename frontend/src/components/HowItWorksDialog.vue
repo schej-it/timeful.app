@@ -1,5 +1,10 @@
 <template>
-  <v-dialog v-model="dialog" max-width="800px" content-class="tw-m-0 pa-0">
+  <v-dialog
+    :model-value="modelValue"
+    max-width="800px"
+    content-class="tw-m-0 pa-0"
+    @update:model-value="(value: boolean) => emit('update:modelValue', value)"
+  >
     <div class="video-container">
       <iframe
         width="100%"
@@ -16,23 +21,14 @@
   </v-dialog>
 </template>
 
-<script>
-export default {
-  name: "HowItWorksDialog",
-  props: {
-    value: Boolean, // v-model for dialog visibility
-  },
-  computed: {
-    dialog: {
-      get() {
-        return this.value
-      },
-      set(val) {
-        this.$emit("input", val)
-      },
-    },
-  },
-}
+<script setup lang="ts">
+defineProps<{
+  modelValue: boolean
+}>()
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+}>()
 </script>
 
 <style scoped>
@@ -41,7 +37,7 @@ export default {
   padding-bottom: 56.25%; /* 16:9 aspect ratio */
   height: 0;
   overflow: hidden;
-  background-color: #000; /* Optional: background for when video loads */
+  background-color: #000;
 }
 
 .video-container iframe {

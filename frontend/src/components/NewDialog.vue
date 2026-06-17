@@ -1,13 +1,13 @@
 <template>
   <v-dialog
-    :value="value"
-    @click:outside="handleDialogInput"
+    v-model="dialogOpen"
     no-click-animation
     persistent
     content-class="tw-max-w-[28rem]"
     :fullscreen="isPhone"
     scrollable
     :transition="isPhone ? `dialog-bottom-transition` : `dialog-transition`"
+    @click:outside="handleDialogInput"
   >
     <UnsavedChangesDialog v-model="unsavedChangesDialog" @leave="exitDialog">
     </UnsavedChangesDialog>
@@ -18,178 +18,221 @@
             v-for="t in tabs"
             :key="t.type"
             :tab-value="t.type"
-            text
-            small
-            @click="() => (tab = t.type)"
+            variant="text"
+            size="small"
             :class="`tw-text-xs tw-text-dark-gray tw-transition-all ${
               t.type == tab ? 'tw-bg-ligher-green tw-text-green' : ''
             }`"
+            @click="() => (tab = t.type)"
           >
             {{ t.title }}
           </v-btn>
         </div>
         <v-spacer />
         <v-btn
-          absolute
-          @click="$emit('input', false)"
           icon
-          class="tw-right-0 tw-mr-2 tw-self-center"
+          variant="text"
+          size="small"
+          class="tw-mr-2 tw-self-center"
+          @click="handleDialogInput"
         >
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </div>
 
-      <template>
-        <NewEvent
-          v-if="tab === 'event'"
-          ref="event"
-          :key="`event-${value}`"
-          :event="event"
-          :edit="edit"
-          @input="handleDialogInput"
-          :is-dialog-open="value"
-          :contactsPayload="this.type == 'event' ? contactsPayload : {}"
-          :show-help="!_noTabs"
-          :folder-id="folderId"
-          @signIn="$emit('signIn')"
-        />
-        <NewGroup
-          v-else-if="tab === 'group'"
-          ref="group"
-          :key="`group-${value}`"
-          :event="event"
-          :edit="edit"
-          @input="handleDialogInput"
-          :show-help="!_noTabs"
-          :folder-id="folderId"
-          :contactsPayload="this.type == 'group' ? contactsPayload : {}"
-        />
-        <NewSignUp
-          v-if="tab === 'signup'"
-          ref="signup"
-          :key="`signup-${value}`"
-          :event="event"
-          :edit="edit"
-          @input="handleDialogInput"
-          :show-help="!_noTabs"
-          :folder-id="folderId"
-          :contactsPayload="this.type == 'signup' ? contactsPayload : {}"
-        />
-      </template>
+      <NewEvent
+        v-if="tab === 'event'"
+        ref="eventRef"
+        :key="`event-${modelValue}`"
+        :event="event"
+        :edit="edit"
+        :is-dialog-open="modelValue"
+        :contacts-payload="type == 'event' ? contactsPayload : {}"
+        :show-help="!_noTabs"
+        :folder-id="folderId"
+        :hide-dialog-actions="!_noTabs"
+        @update:model-value="handleDialogInput"
+        @refresh-event="handleRefreshEvent"
+        @sign-in="emit('signIn')"
+      />
+      <NewGroup
+        v-else-if="tab === 'group'"
+        ref="groupRef"
+        :key="`group-${modelValue}`"
+        :event="event"
+        :edit="edit"
+        :show-help="!_noTabs"
+        :folder-id="folderId"
+        :hide-dialog-actions="!_noTabs"
+        :contacts-payload="type == 'group' ? contactsPayload : {}"
+        @update:model-value="handleDialogInput"
+        @refresh-event="handleRefreshEvent"
+      />
+      <NewSignUp
+        v-if="tab === 'signup'"
+        ref="signupRef"
+        :key="`signup-${modelValue}`"
+        :event="event"
+        :edit="edit"
+        :show-help="!_noTabs"
+        :folder-id="folderId"
+        :hide-dialog-actions="!_noTabs"
+        :contacts-payload="type == 'signup' ? contactsPayload : {}"
+        @update:model-value="handleDialogInput"
+        @refresh-event="handleRefreshEvent"
+      />
     </v-card>
   </v-dialog>
 </template>
 
-<script>
-import { isPhone } from "@/utils"
+<script setup lang="ts">
+import { computed, ref, watch } from "vue"
+import { storeToRefs } from "pinia"
 import NewEvent from "@/components/NewEvent.vue"
+import NewGroup from "@/components/NewGroup.vue"
+import NewSignUp from "@/components/NewSignUp.vue"
 import UnsavedChangesDialog from "@/components/general/UnsavedChangesDialog.vue"
-import NewGroup from "./NewGroup.vue"
-import NewSignUp from "./NewSignUp.vue"
-import { mapState } from "vuex"
+import { useMainStore } from "@/stores/main"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import type { EventDraft } from "@/composables/event/types"
+import type { Event } from "@/types"
 
-export default {
-  name: "NewDialog",
+type TabType = "event" | "group" | "signup"
 
-  emits: ["input"],
+interface EditableForm {
+  hasEventBeenEdited: () => boolean
+  resetToEventData: () => void
+  reset: () => void
+}
 
-  props: {
-    value: { type: Boolean, required: true },
-    type: { type: String, default: "event" }, // Either "event" or "group"
-    event: { type: Object },
-    edit: { type: Boolean, default: false },
-    contactsPayload: { type: Object, default: () => ({}) },
-    noTabs: { type: Boolean, default: false },
-    folderId: { type: String, default: null },
+interface RefreshEventPayload {
+  fromEditEvent?: boolean
+}
+
+const props = withDefaults(
+  defineProps<{
+    modelValue: boolean
+    type?: TabType
+    event?: Event
+    edit?: boolean
+    contactsPayload?: EventDraft
+    noTabs?: boolean
+    folderId?: string | null
+  }>(),
+  {
+    type: "event",
+    event: undefined,
+    edit: false,
+    contactsPayload: () => ({}),
+    noTabs: false,
+    folderId: null,
+  }
+)
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+  "refresh-event": [payload?: RefreshEventPayload]
+  signIn: []
+}>()
+
+const mainStore = useMainStore()
+const { groupsEnabled, signUpFormEnabled } = storeToRefs(mainStore)
+const { isPhone } = useDisplayHelpers()
+
+const dialogOpen = computed({
+  get: () => props.modelValue,
+  set: (value: boolean) => {
+    emit("update:modelValue", value)
   },
+})
+const tab = ref<TabType>(props.type)
+const tabs = ref<{ title: string; type: TabType }[]>([
+  { title: "Event", type: "event" },
+  { title: "Sign up form", type: "signup" },
+  { title: "Availability group", type: "group" },
+])
 
-  components: {
-    NewEvent,
-    NewGroup,
-    NewSignUp,
-    UnsavedChangesDialog,
+const unsavedChangesDialog = ref(false)
+
+const eventRef = ref<EditableForm | null>(null)
+const groupRef = ref<EditableForm | null>(null)
+const signupRef = ref<EditableForm | null>(null)
+
+const refsByTab = computed<Record<TabType, EditableForm | null>>(() => ({
+  event: eventRef.value,
+  group: groupRef.value,
+  signup: signupRef.value,
+}))
+
+const _noTabs = computed(() => {
+  if (!groupsEnabled.value) return true
+  return props.noTabs
+})
+
+const handleDialogInput = () => {
+  const current = refsByTab.value[tab.value]
+  if (!props.edit || !current?.hasEventBeenEdited()) {
+    exitDialog()
+  } else {
+    unsavedChangesDialog.value = true
+  }
+}
+const exitDialog = () => {
+  dialogOpen.value = false
+  const current = refsByTab.value[tab.value]
+  if (props.edit) current?.resetToEventData()
+  else current?.reset()
+}
+
+const handleRefreshEvent = (payload?: RefreshEventPayload) => {
+  unsavedChangesDialog.value = false
+  dialogOpen.value = false
+  emit("refresh-event", payload)
+}
+
+watch(
+  groupsEnabled,
+  () => {
+    const next: { title: string; type: TabType }[] = [
+      { title: "Event", type: "event" },
+      { title: "Sign up form", type: "signup" },
+    ]
+    if (groupsEnabled.value) {
+      next.push({ title: "Availability group", type: "group" })
+    }
+    tabs.value = next
   },
-
-  data() {
-    return {
-      tab: this.type,
-      tabs: [
-        { title: "Event", type: "event" },
-        { title: "Sign up form", type: "signup" },
-        { title: "Availability group", type: "group" },
-      ],
-
-      unsavedChangesDialog: false,
+  { immediate: true }
+)
+watch(
+  signUpFormEnabled,
+  () => {
+    const next: { title: string; type: TabType }[] = [
+      { title: "Event", type: "event" },
+    ]
+    if (signUpFormEnabled.value) {
+      next.push({ title: "Sign up form", type: "signup" })
+    }
+    next.push({ title: "Availability group", type: "group" })
+    tabs.value = next
+  },
+  { immediate: true }
+)
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (val) {
+      tab.value = props.type
     }
   },
-
-  computed: {
-    ...mapState(["groupsEnabled", "signUpFormEnabled"]),
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-    _noTabs() {
-      if (!this.groupsEnabled) {
-        return true
-      } else {
-        return this.noTabs
-      }
-    },
+  { immediate: true }
+)
+watch(
+  () => props.type,
+  (t) => {
+    if (props.modelValue) {
+      tab.value = t
+    }
   },
-
-  methods: {
-    handleDialogInput() {
-      if (!this.edit || !this.$refs[this.tab].hasEventBeenEdited()) {
-        this.exitDialog()
-      } else {
-        this.unsavedChangesDialog = true
-      }
-    },
-    exitDialog() {
-      this.$emit("input", false)
-      if (this.edit) this.$refs[this.tab].resetToEventData()
-      else this.$refs[this.tab].reset()
-    },
-  },
-
-  watch: {
-    groupsEnabled: {
-      immediate: true,
-      handler() {
-        this.tabs = [
-          { title: "Event", type: "event" },
-          { title: "Sign up form", type: "signup" },
-        ]
-        if (this.groupsEnabled) {
-          this.tabs.push({ title: "Availability group", type: "group" })
-        }
-      },
-    },
-    signUpFormEnabled: {
-      immediate: true,
-      handler() {
-        this.tabs = [{ title: "Event", type: "event" }]
-        if (this.signUpFormEnabled) {
-          this.tabs.push({ title: "Sign up form", type: "signup" })
-        }
-        this.tabs.push({ title: "Availability group", type: "group" })
-      },
-    },
-    value: {
-      immediate: true,
-      handler() {
-        if (this.value) {
-          // Reset tab to the type prop when dialog is opened
-          this.tab = this.type
-        }
-      },
-    },
-    type: {
-      immediate: true,
-      handler() {
-        this.tab = this.type
-      },
-    },
-  },
-}
+)
 </script>

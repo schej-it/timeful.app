@@ -1,14 +1,19 @@
 <template>
-  <v-dialog v-model="dialog" max-width="500px" content-class="tw-m-0">
+  <v-dialog
+    :model-value="props.modelValue"
+    max-width="500px"
+    content-class="tw-m-0"
+    @update:model-value="handleDialogVisibilityChange"
+  >
     <v-card>
       <v-card-title>
         <span class="tw-text-xl tw-font-medium">Import Timeful Event</span>
         <v-spacer />
         <v-btn
           absolute
-          @click="dialog = false"
           icon
           class="tw-right-0 tw-mr-2 tw-self-center"
+          @click="closeDialog"
         >
           <v-icon>mdi-close</v-icon>
         </v-btn>
@@ -22,8 +27,8 @@
           v-model="url"
           label="Event URL"
           placeholder="https://timeful.app/e/abc123"
-          outlined
-          dense
+          variant="outlined"
+          density="compact"
           :disabled="loading"
           :error-messages="error"
           @keydown.enter="importEvent"
@@ -31,7 +36,7 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn text @click="dialog = false" :disabled="loading">Cancel</v-btn>
+        <v-btn variant="text" :disabled="loading" @click="closeDialog">Cancel</v-btn>
         <v-btn
           color="primary"
           :loading="loading"
@@ -45,82 +50,87 @@
   </v-dialog>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref, watch } from "vue"
+import { useRouter } from "vue-router"
 import { post } from "@/utils"
+import { useMainStore } from "@/stores/main"
+import { isBlockedTimefulImportUrl } from "@/utils/timefulImport"
 
-export default {
-  name: "TimefulImportDialog",
-  props: {
-    value: Boolean,
-  },
-  data: () => ({
-    url: "",
-    loading: false,
-    error: "",
-  }),
-  computed: {
-    dialog: {
-      get() {
-        return this.value
-      },
-      set(val) {
-        this.$emit("input", val)
-        if (!val) {
-          this.url = ""
-          this.error = ""
-        }
-      },
-    },
-  },
-  methods: {
-    isBlockedUrl(urlStr) {
-      try {
-        const parsed = new URL(urlStr)
-        const hostname = parsed.hostname
-        if (hostname === window.location.hostname) return true
-        // note, this is just extra client-side validation for optimistic UI. the server checks the outgoing ip properly
-        if (
-          /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.|169\.254\.|0\.0\.0\.0|localhost$|\[?::1\]?)/.test(
-            hostname
-          )
-        )
-          return true
-        return false
-      } catch {
-        return false
-      }
-    },
-    async importEvent() {
-      if (!this.url.trim() || this.loading) return
+const props = defineProps<{ modelValue: boolean }>()
 
-      if (this.isBlockedUrl(this.url.trim())) {
-        this.error = "Not allowed to import from this URL."
-        return
-      }
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+}>()
 
-      this.error = ""
-      this.loading = true
+const router = useRouter()
+const mainStore = useMainStore()
 
-      try {
-        const result = await post("/events/import", { url: this.url.trim() })
-        this.dialog = false
-        this.$store.dispatch("showInfo", "Event imported successfully!")
-        this.$router.push(`/e/${result.shortId}`)
-      } catch (e) {
-        const msg = e?.parsed?.error || "Failed to import event"
-        const errorMessages = {
-          "invalid-url": "Invalid URL. Please enter a valid Timeful event URL.",
-          "remote-fetch-failed": "Could not reach the remote server.",
-          "remote-event-not-found": "Event not found on the remote server.",
-          "private-address": "Not allowed to import from this URL.",
-          "remote-responses-failed":
-            "Event found but could not fetch responses from the remote server.",
-        }
-        this.error = errorMessages[msg] || msg
-      } finally {
-        this.loading = false
-      }
-    },
-  },
+const url = ref("")
+const loading = ref(false)
+const error = ref("")
+
+const resetForm = () => {
+  url.value = ""
+  error.value = ""
+}
+
+const closeDialog = () => {
+  resetForm()
+  emit("update:modelValue", false)
+}
+
+const handleDialogVisibilityChange = (isVisible: boolean) => {
+  if (isVisible) {
+    emit("update:modelValue", true)
+    return
+  }
+
+  closeDialog()
+}
+
+watch(
+  () => props.modelValue,
+  (isVisible, wasVisible) => {
+    if (wasVisible && !isVisible) {
+      resetForm()
+    }
+  }
+)
+
+const importEvent = async () => {
+  if (!url.value.trim() || loading.value) return
+
+  if (isBlockedTimefulImportUrl(url.value.trim(), window.location.hostname)) {
+    error.value = "Not allowed to import from this URL."
+    return
+  }
+
+  error.value = ""
+  loading.value = true
+
+  try {
+    const result = await post<{ shortId: string }>("/events/import", {
+      url: url.value.trim(),
+    })
+    closeDialog()
+    mainStore.showInfo("Event imported successfully!")
+    void router.push(`/e/${result.shortId}`)
+  } catch (e: unknown) {
+    const msg =
+      (e as { parsed?: { error?: string } }).parsed?.error ??
+      "Failed to import event"
+    const errorMessages: Record<string, string> = {
+      "invalid-url": "Invalid URL. Please enter a valid Timeful event URL.",
+      "remote-fetch-failed": "Could not reach the remote server.",
+      "remote-event-not-found": "Event not found on the remote server.",
+      "private-address": "Not allowed to import from this URL.",
+      "remote-responses-failed":
+        "Event found but could not fetch responses from the remote server.",
+    }
+    error.value = errorMessages[msg] || msg
+  } finally {
+    loading.value = false
+  }
 }
 </script>

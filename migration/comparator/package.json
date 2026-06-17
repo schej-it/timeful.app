@@ -1,0 +1,30 @@
+{
+  "name": "timeful-comparator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compare": "node --import tsx ./src/compare.ts",
+    "inspect": "node --import tsx ./src/inspect.ts",
+    "profile:route": "node --import tsx ./src/route-profile.ts",
+    "profile:collector-bisect": "node --import tsx ./src/collector-bisect.ts",
+    "inspect:landing": "node --import tsx ./src/inspect.ts --target landing",
+    "inspect:event-respondents-panel": "node --import tsx ./src/inspect.ts --target event-respondents-panel",
+    "inspect:event-heatmap-grid": "node --import tsx ./src/inspect.ts --target event-heatmap-grid",
+    "inspect:event-best-times-grid": "node --import tsx ./src/inspect.ts --target event-best-times-grid",
+    "inspect:event-overlay-availability": "node --import tsx ./src/inspect.ts --target event-overlay-availability",
+    "inspect:event-timezone-menu": "node --import tsx ./src/inspect.ts --target event-timezone-menu",
+    "compare:landing-styles": "node --import tsx ./src/compare.ts --target landing",
+    "compare:new-event-form-styles": "node --import tsx ./src/compare.ts --target new-event-form",
+    "compare:new-event-calendar-styles": "node --import tsx ./src/compare.ts --target new-event-calendar",
+    "compare:new-event-calendar-interaction": "node --import tsx ./src/compare.ts --target new-event-calendar-interaction",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.60.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

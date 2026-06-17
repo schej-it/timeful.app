@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
+	"schej.it/server/envfiles"
 	"schej.it/server/logger"
 )
 
@@ -20,10 +20,10 @@ func TestSendEmail(t *testing.T) {
 	// Init logger
 	logger.Init(logFile)
 
-	// Load .env file
-	err = godotenv.Load("../../.env")
+	// Load root env file
+	_, err = envfiles.Load()
 	if err != nil {
-		logger.StdErr.Panicln("Error loading .env file")
+		logger.StdErr.Panicln("Error loading env file")
 	}
 
 	SendEmail("schej.team@gmail.com", 8, bson.M{

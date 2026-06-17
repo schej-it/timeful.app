@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script>
+      window.__timefulThirdPartyShellEnabled = (() => {
+        const configuredValue = "%VITE_ENABLE_THIRD_PARTY_SHELL%".trim().toLowerCase()
+
+        if (
+          configuredValue &&
+          configuredValue !== "undefined" &&
+          configuredValue !== "null"
+        ) {
+          return configuredValue !== "false"
+        }
+
+        return (
+          window.location.hostname !== "127.0.0.1" &&
+          window.location.hostname !== "localhost"
+        )
+      })()
+    </script>
+    <!-- Google Tag Manager -->
+    <script>
+      if (window.__timefulThirdPartyShellEnabled) {
+        ;(function (w, d, s, l, i) {
+          w[l] = w[l] || []
+          w[l].push({ "gtm.start": new Date().getTime(), event: "gtm.js" })
+          var f = d.getElementsByTagName(s)[0],
+            j = d.createElement(s),
+            dl = l != "dataLayer" ? "&l=" + l : ""
+          j.async = true
+          j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl
+          f.parentNode.insertBefore(j, f)
+        })(window, document, "script", "dataLayer", "GTM-M677X6V")
+      }
+    </script>
+    <!-- End Google Tag Manager -->
+    <script>
+      if (window.__timefulThirdPartyShellEnabled) {
+        const fuseScript = document.createElement("script")
+        fuseScript.async = true
+        fuseScript.src = "https://cdn.fuseplatform.net/publift/tags/2/4241/fuse.js"
+        document.head.appendChild(fuseScript)
+      }
+    </script>
+    <script>
+      if (
+        window.location.hostname === "127.0.0.1" ||
+        window.location.hostname === "localhost"
+      ) {
+        const localOverlayStyle = document.createElement("style")
+        localOverlayStyle.textContent = `
+          .qc-cmp-cleanslate,
+          #qc-cmp2-container {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            visibility: hidden !important;
+          }
+        `
+        document.head.appendChild(localOverlayStyle)
+      }
+    </script>
+
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <link rel="icon" href="/favicon.ico" />
+    <!-- Chrome, Firefox OS and Opera -->
+    <meta name="theme-color" content="#FFFFFF" />
+    <!-- Windows Phone -->
+    <meta name="msapplication-navbutton-color" content="#FFFFFF" />
+    <!-- iOS Safari -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="#FFFFFF" />
+    <div style="display:none">
+    {{ $defaultTitle := "Timeful (formerly Schej) - Find a time to meet" }}
+    {{ $defaultDescription := "Timeful helps you find the best time for a group to meet. It is a free availability poll that is easy to use and integrates with your calendar." }}
+    {{ $defaultOgImage := "/img/ogImage.png" }}
+    </div>
+    <title>{{ or .title $defaultTitle }}</title>
+    <meta
+      name="description"
+      content="{{or .description $defaultDescription }}"
+    />
+    <meta property="og:title" content="{{or .ogTitle $defaultTitle}}" />
+    <meta property="og:description" content="{{or .ogDescription $defaultDescription }}" />
+    <meta property="og:image" content="{{or .ogImage $defaultOgImage }}" />
+    <meta property="og:image:secure_url" content="{{or .ogImage $defaultOgImage }}" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- TODO(vue3-migration): AdShield is a giant obfuscated/generated blob restored
+         verbatim during the rebase off f8aace52. Revisit before merging the migration:
+         regenerate from source, move to a runtime-loaded external script, or remove. -->
+    <!-- AdShield -->
+    <script>
+      if (window.__timefulThirdPartyShellEnabled) {
+        const adShieldScript = document.createElement("script")
+        adShieldScript.src = "/adshield-bootstrap.js"
+        document.head.appendChild(adShieldScript)
+      }
+    </script>
+    <!-- END AdShield -->
+  </head>
+  <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript
+      ><iframe
+        src="https://www.googletagmanager.com/ns.html?id=GTM-M677X6V"
+        height="0"
+        width="0"
+        style="display: none; visibility: hidden"
+      ></iframe
+    ></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <noscript>
+      <strong
+        >We're sorry but Timeful doesn't work
+        properly without JavaScript enabled. Please enable it to
+        continue.</strong
+      >
+    </noscript>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

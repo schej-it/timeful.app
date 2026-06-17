@@ -5,12 +5,12 @@
       'tw-border-green': toggled,
       'tw-border-light-gray-stroke': !toggled,
     }"
-    @click="() => (toggled = !toggled)"
+    @click="toggled = !toggled"
   >
     <div
       class="tw-flex tw-flex-row tw-content-center tw-justify-between tw-text-base"
     >
-      <div class="tw-mr-4 tw-font-medium" v-html="question"></div>
+      <div class="tw-mr-4 tw-font-medium">{{ question }}</div>
       <v-icon
         size="x-large"
         :class="`${
@@ -23,10 +23,17 @@
     <v-expand-transition>
       <div v-if="toggled">
         <div class="tw-pt-4 tw-text-sm sm:tw-pt-6">
-          <div v-html="answer"></div>
+          <p
+            v-for="(paragraph, index) in answerParagraphs"
+            :key="index"
+            class="tw-mb-4 last:tw-mb-0"
+          >
+            {{ paragraph }}
+          </p>
           <div class="tw-flex tw-flex-col tw-gap-2">
             <div
               v-for="(point, index) in points"
+              :key="index"
               class="tw-flex tw-items-center"
             >
               <div
@@ -37,15 +44,17 @@
               <div>{{ point }}</div>
             </div>
           </div>
-          <div
-            v-if="authRequired"
-            class="tw-mt-6 tw-text-sm tw-font-medium tw-text-dark-gray"
-          >
-            *
-            <a @click.stop="$emit('signIn')" class="tw-text-green tw-underline"
-              >Sign in</a
-            >
-            to use this feature
+          <div v-if="authRequired" class="tw-mt-6 tw-text-sm tw-font-medium tw-text-dark-gray">
+            <template v-if="signInEnabled">
+              *
+              <a class="tw-text-green tw-underline" @click.stop="emit('signIn')"
+                >Sign in</a
+              >
+              to use this feature
+            </template>
+            <template v-else>
+              * Requires sign-in, which is disabled in this build
+            </template>
           </div>
         </div>
       </div>
@@ -53,23 +62,28 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "FAQ",
+<script setup lang="ts">
+import { ref } from "vue"
 
-  props: {
-    question: { type: String, required: true },
-    answer: { type: String },
-    points: { type: Array },
-    authRequired: { type: Boolean, default: false },
-  },
+withDefaults(
+  defineProps<{
+    question: string
+    answerParagraphs?: string[]
+    points?: string[]
+    authRequired?: boolean
+    signInEnabled?: boolean
+  }>(),
+  {
+    answerParagraphs: () => [],
+    points: () => [],
+    authRequired: false,
+    signInEnabled: true,
+  }
+)
 
-  data: () => ({
-    toggled: false,
-  }),
+const emit = defineEmits<{
+  signIn: []
+}>()
 
-  computed: {},
-
-  methods: {},
-}
+const toggled = ref(false)
 </script>

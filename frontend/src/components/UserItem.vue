@@ -1,7 +1,7 @@
 <template>
   <v-container
-    @click="$emit('click')"
     class="tw-flex tw-justify-between tw-rounded-md tw-bg-light-gray tw-py-2 tw-align-middle tw-text-black"
+    @click="$emit('click')"
   >
     <div class="tw-mt-2 tw-flex">
       <div class="tw-mr-3">
@@ -14,17 +14,17 @@
         </v-avatar>
       </div>
       <div>
-        <div class="tw-font-medium">{{ this.user.name }}</div>
+        <div class="tw-font-medium">{{ user.name }}</div>
         <div class="tw-text-sm">
           Currently
           <span
-            v-if="this.user.status == 'free'"
+            v-if="user.status == 'free'"
             class="tw-font-bold tw-text-green"
             >free</span
           ><span v-else>
             in
             <span class="tw-font-bold tw-text-light-blue">
-              {{ this.user.status }}
+              {{ user.status }}
             </span>
           </span>
         </div>
@@ -32,38 +32,33 @@
     </div>
 
     <div>
-      <v-switch v-model="showEventNames" inset></v-switch>
+      <v-switch
+        v-model="showEventNames"
+        class="timeful-switch"
+        color="primary"
+        inset
+      ></v-switch>
     </div>
   </v-container>
 </template>
 
-<script>
-export default {
-  name: "UserItem",
+<script setup lang="ts">
+import { useShowEventNamesPreference } from "@/composables/useShowEventNamesPreference"
 
-  props: {
-    user: { type: Object, required: true },
-  },
-
-  mounted() {
-    if (localStorage.showEventNames) {
-      this.showEventNames = localStorage.showEventNames
-    }
-  },
-
-  data: () => ({
-    showEventNames: true,
-  }),
-
-  computed: {},
-
-  watch: {
-    showEventNames(val) {
-      localStorage.showEventNames = val
-      this.$emit("showEventNames", val)
-    },
-  },
-
-  methods: {},
+interface UserShape {
+  name: string
+  status: string
+  picture?: string
 }
+
+defineProps<{ user: UserShape }>()
+
+const emit = defineEmits<{
+  click: []
+  showEventNames: [value: boolean]
+}>()
+
+const { showEventNames } = useShowEventNamesPreference(value => {
+  emit("showEventNames", value)
+})
 </script>

@@ -7,7 +7,7 @@
       v-if="toggleState"
       class="-tw-ml-2 tw-w-[calc(100%+1rem)] tw-justify-between tw-px-2"
       block
-      text
+      variant="text"
       @click="toggleShowCalendars"
     >
       <span class="tw-mr-1 tw-text-base tw-font-medium">My calendars</span>
@@ -27,55 +27,59 @@
           <CalendarAccount
             v-for="(account, key) in calendarAccounts"
             :key="key"
-            :syncWithBackend="syncWithBackend"
-            :toggleState="toggleState"
+            :sync-with-backend="syncWithBackend"
+            :toggle-state="toggleState"
             :account="account"
-            :eventId="eventId"
-            :calendarEventsMap="calendarEventsMapCopy"
-            :removeDialog="removeDialog"
-            :selectedRemoveEmail="removePayload.email"
-            :fillSpace="fillSpace"
-            @toggleCalendarAccount="
-              (payload) => $emit('toggleCalendarAccount', payload)
+            :event-id="eventId"
+            :calendar-events-map="calendarEventsMapCopy"
+            :remove-dialog="removeDialog"
+            :selected-remove-email="removePayload.email"
+            :fill-space="fillSpace"
+            @toggle-calendar-account="
+              (payload: ToggleCalendarPayload) => emit('toggleCalendarAccount', payload)
             "
-            @toggleSubCalendarAccount="
-              (payload) => $emit('toggleSubCalendarAccount', payload)
+            @toggle-sub-calendar-account="
+              (payload: ToggleSubCalendarPayload) => emit('toggleSubCalendarAccount', payload)
             "
-            @openRemoveDialog="openRemoveDialog"
+            @open-remove-dialog="openRemoveDialog"
           ></CalendarAccount>
-          <v-dialog
-            v-if="allowAddCalendarAccount"
-            v-model="addCalendarAccountDialog"
-            width="400"
-            content-class="tw-m-0"
-          >
-            <template v-slot:activator="{ on, attrs }">
-              <div>
-                <v-btn
-                  text
-                  color="primary"
-                  :class="
-                    toggleState
-                      ? '-tw-ml-2 tw-mt-0 tw-w-min tw-px-2'
-                      : '-tw-ml-2 tw-w-fit tw-px-2'
-                  "
-                  v-bind="attrs"
-                  v-on="on"
-                  >+ Add calendar</v-btn
-                >
-                <p class="tw-mb-0 tw-mt-1 tw-text-xs tw-text-dark-gray">
-                  Only your available times are shared with respondents. Your
-                  personal event details are never shared.
-                </p>
-              </div>
-            </template>
-            <CalendarTypeSelector
-              :visible="addCalendarAccountDialog"
-              @addGoogleCalendar="addGoogleCalendar"
-              @addOutlookCalendar="addOutlookCalendar"
-              @addedCalendar="addedCalendar"
-            />
-          </v-dialog>
+          <template v-if="signInEnabled">
+            <v-dialog
+              v-if="allowAddCalendarAccount"
+              v-model="addCalendarAccountDialog"
+              width="400"
+              content-class="tw-m-0"
+            >
+              <template #activator="{ props: activatorProps }">
+                <div>
+                  <v-btn
+                    variant="text"
+                    color="primary"
+                    :class="
+                      toggleState
+                        ? '-tw-ml-2 tw-mt-0 tw-w-min tw-px-2'
+                        : '-tw-ml-2 tw-w-fit tw-px-2'
+                    "
+                    v-bind="activatorProps"
+                    >+ Add calendar</v-btn
+                  >
+                  <p class="tw-mb-0 tw-mt-1 tw-text-xs tw-text-dark-gray">
+                    Only your available times are shared with respondents. Your
+                    personal event details are never shared.
+                  </p>
+                </div>
+              </template>
+              <CalendarTypeSelector
+                :visible="addCalendarAccountDialog"
+                @add-google-calendar="addGoogleCalendar"
+                @add-outlook-calendar="addOutlookCalendar"
+                @added-calendar="addedCalendar"
+              />
+            </v-dialog>
+          </template>
+          <div v-else class="tw-mt-1 tw-text-xs tw-text-dark-gray">
+            Requires sign-in, which is disabled in this build
+          </div>
         </div>
       </span>
     </v-expand-transition>
@@ -88,156 +92,138 @@
         >
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="removeDialog = false">Cancel</v-btn>
-          <v-btn text color="error" @click="removeAccount">Remove</v-btn>
+          <v-btn variant="text" @click="removeDialog = false">Cancel</v-btn>
+          <v-btn variant="text" color="error" @click="removeAccount">Remove</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
   </div>
 </template>
 
-<script>
-import { mapState, mapActions, mapMutations } from "vuex"
+<script setup lang="ts">
+import { ref, toRef } from "vue"
+import { storeToRefs } from "pinia"
 import { authTypes, calendarTypes } from "@/constants"
 import {
-  get,
-  post,
   _delete,
   signInGoogle,
   signInOutlook,
   getCalendarAccountKey,
 } from "@/utils"
+import { useMainStore } from "@/stores/main"
+import { signInEnabled } from "@/utils/signInAvailability"
 import CalendarAccount from "@/components/settings/CalendarAccount.vue"
 import CalendarTypeSelector from "@/components/settings/CalendarTypeSelector.vue"
+import type { CalendarAccount as CalendarAccountModel } from "@/types"
+import type { CalendarEventsMap } from "@/composables/schedule_overlap/types"
+import { useCalendarAccountsState } from "./useCalendarAccountsState"
+export type CalendarAccountEntry = CalendarAccountModel
 
-export default {
-  name: "CalendarAccounts",
+export interface ToggleCalendarPayload {
+  email?: string
+  calendarType?: string
+  enabled: boolean
+}
 
-  props: {
-    toggleState: { type: Boolean, default: false }, // Whether to allow user to toggle calendar accounts
-    eventId: { type: String, default: "" },
-    calendarEventsMap: { type: Object, default: () => {} }, // Object of different users' calendar events
-    syncWithBackend: { type: Boolean, default: true }, // Whether toggling calendar accounts also updates the backend
-    allowAddCalendarAccount: { type: Boolean, default: true }, // Whether to allow user to add a new calendar account
-    initialCalendarAccountsData: { type: Object, default: () => {} }, // Initial data to display for enabled calendar accounts
-    fillSpace: { type: Boolean, default: false }, // Whether to fill the available space up
-  },
+export interface ToggleSubCalendarPayload {
+  email?: string
+  calendarType?: string
+  enabled: boolean
+  subCalendarId: string | number
+}
 
-  data: () => ({
-    removeDialog: false,
-    removePayload: {},
+const props = withDefaults(
+  defineProps<{
+    toggleState?: boolean
+    eventId?: string
+    calendarEventsMap?: CalendarEventsMap
+    syncWithBackend?: boolean
+    allowAddCalendarAccount?: boolean
+    initialCalendarAccountsData?: Record<string, CalendarAccountEntry>
+    fillSpace?: boolean
+  }>(),
+  {
+    toggleState: false,
+    eventId: "",
+    calendarEventsMap: () => ({}),
+    syncWithBackend: true,
+    allowAddCalendarAccount: true,
+    initialCalendarAccountsData: () => ({}),
+    fillSpace: false,
+  }
+)
 
-    addCalendarAccountDialog: false,
+const emit = defineEmits<{
+  toggleCalendarAccount: [payload: ToggleCalendarPayload]
+  toggleSubCalendarAccount: [payload: ToggleSubCalendarPayload]
+}>()
 
-    calendarAccounts: {},
-    showCalendars:
-      localStorage["showCalendars"] == undefined
-        ? true
-        : localStorage["showCalendars"] == "true",
+const mainStore = useMainStore()
+const { authUser } = storeToRefs(mainStore)
 
-    calendarEventsMapCopy: {},
-  }),
+const removeDialog = ref(false)
+const removePayload = ref<{ email?: string; calendarType?: string }>({})
 
-  computed: {
-    ...mapState(["authUser"]),
-  },
+const addCalendarAccountDialog = ref(false)
 
-  mounted() {
-    this.calendarAccounts = !this.initialCalendarAccountsData
-      ? this.authUser.calendarAccounts
-      : this.initialCalendarAccountsData
-  },
+const { calendarAccounts, showCalendars, calendarEventsMapCopy, toggleShowCalendars } =
+  useCalendarAccountsState({
+    authUser,
+    initialCalendarAccountsData: toRef(props, "initialCalendarAccountsData"),
+    calendarEventsMap: toRef(props, "calendarEventsMap"),
+  })
 
-  methods: {
-    ...mapActions(["showError", "showInfo", "refreshAuthUser"]),
-    ...mapMutations(["setAuthUser"]),
-    addGoogleCalendar() {
-      signInGoogle({
-        state: {
-          type: this.toggleState
-            ? authTypes.ADD_CALENDAR_ACCOUNT_FROM_EDIT
-            : authTypes.ADD_CALENDAR_ACCOUNT,
-          eventId: this.eventId,
-          calendarType: calendarTypes.GOOGLE,
-        },
-        requestCalendarPermission: true,
-        selectAccount: true,
-      })
+const addGoogleCalendar = () => {
+  signInGoogle({
+    state: {
+      type: props.toggleState
+        ? authTypes.ADD_CALENDAR_ACCOUNT_FROM_EDIT
+        : authTypes.ADD_CALENDAR_ACCOUNT,
+      eventId: props.eventId,
+      calendarType: calendarTypes.GOOGLE,
     },
-    addOutlookCalendar() {
-      signInOutlook({
-        state: {
-          type: this.toggleState
-            ? authTypes.ADD_CALENDAR_ACCOUNT_FROM_EDIT
-            : authTypes.ADD_CALENDAR_ACCOUNT,
-          eventId: this.eventId,
-          calendarType: calendarTypes.OUTLOOK,
-        },
-        requestCalendarPermission: true,
-      })
+    requestCalendarPermission: true,
+    selectAccount: true,
+  })
+}
+const addOutlookCalendar = () => {
+  signInOutlook({
+    state: {
+      type: props.toggleState
+        ? authTypes.ADD_CALENDAR_ACCOUNT_FROM_EDIT
+        : authTypes.ADD_CALENDAR_ACCOUNT,
+      eventId: props.eventId,
+      calendarType: calendarTypes.OUTLOOK,
     },
-    addedCalendar() {
-      this.addCalendarAccountDialog = false
-      this.calendarAccounts = this.authUser.calendarAccounts
-    },
-    openRemoveDialog(payload) {
-      this.removeDialog = true
-      this.removePayload = payload
-    },
-    removeAccount() {
-      _delete(`/user/remove-calendar-account`, this.removePayload)
-        .then(async () => {
-          // Remove calendar account locally
-          const calendarAccountKey = getCalendarAccountKey(
-            this.removePayload.email,
-            this.removePayload.calendarType
-          )
-          delete this.authUser.calendarAccounts[calendarAccountKey]
-          this.setAuthUser(this.authUser)
-
-          this.removeDialog = false
-        })
-        .catch((err) => {
-          console.error(err)
-          this.showError(
-            "There was a problem removing this account! Please try again later."
-          )
-        })
-    },
-    toggleShowCalendars() {
-      this.showCalendars = !this.showCalendars
-      localStorage["showCalendars"] = this.showCalendars
-    },
-  },
-
-  components: {
-    CalendarAccount,
-    CalendarTypeSelector,
-  },
-
-  watch: {
-    calendarEventsMap: {
-      immediate: true,
-      async handler() {
-        // Do a test request to calendarevents route to check if calendar access is allowed for each account
-        if (
-          !this.calendarEventsMap ||
-          Object.keys(this.calendarEventsMap).length === 0
-        ) {
-          const timeMin = new Date()
-          const timeMax = new Date()
-          try {
-            this.calendarEventsMapCopy = await get(
-              `/user/calendars?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
-            )
-          } catch (err) {
-            console.error(err)
-          }
-        } else {
-          this.calendarEventsMapCopy = this.calendarEventsMap
-        }
-      },
-    },
-  },
+    requestCalendarPermission: true,
+  })
+}
+const addedCalendar = () => {
+  addCalendarAccountDialog.value = false
+}
+const openRemoveDialog = (payload: { email: string; calendarType: string }) => {
+  removeDialog.value = true
+  removePayload.value = payload
+}
+const removeAccount = () => {
+  _delete(`/user/remove-calendar-account`, removePayload.value)
+    .then(() => {
+      const calendarAccountKey = getCalendarAccountKey(
+        removePayload.value.email ?? "",
+        removePayload.value.calendarType ?? ""
+      )
+      if (authUser.value?.calendarAccounts) {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete (authUser.value.calendarAccounts)[calendarAccountKey]
+        mainStore.setAuthUser(authUser.value)
+      }
+      removeDialog.value = false
+    })
+    .catch((err: unknown) => {
+      console.error(err)
+      mainStore.showError(
+        "There was a problem removing this account! Please try again later."
+      )
+    })
 }
 </script>

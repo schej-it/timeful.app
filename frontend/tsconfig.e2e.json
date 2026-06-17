@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.e2e.tsbuildinfo",
+    "allowImportingTsExtensions": true,
+    "types": ["node", "vite/client", "@playwright/test"]
+  },
+  "include": [
+    "config/**/*.ts",
+    "e2e/**/*.ts",
+    "playwright.config.ts"
+  ]
+}

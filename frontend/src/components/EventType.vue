@@ -7,11 +7,7 @@
       <div class="tw-flex tw-flex-col">
         {{ eventType.header }}
         <div
-          v-if="
-            eventType.header === 'Events I created' &&
-            enablePaywall &&
-            !isPremiumUser
-          "
+          v-if="showCreatedEventsUsage"
           class="tw-flex tw-items-baseline tw-gap-2 tw-text-sm tw-font-normal tw-text-very-dark-gray"
         >
           <div>
@@ -27,21 +23,20 @@
         </div>
       </div>
       <v-btn
-        v-if="eventType.header === 'Events I created'"
-        text
-        @click="createFolder"
+        v-if="isCreatedEventsSection"
+        variant="text"
         class="tw-hidden tw-text-very-dark-gray sm:tw-block"
+        @click="openFolderFeedbackDialog"
       >
         <v-icon class="tw-mr-2 tw-text-lg">mdi-folder-plus</v-icon>
         New folder
       </v-btn>
       <div
-        v-if="eventType.events.length > defaultNumEventsToShow"
-        @click="toggleShowAll"
+        v-if="hasOverflowEvents"
         class="tw-mt-2 tw-cursor-pointer tw-text-sm tw-font-normal tw-text-very-dark-gray sm:tw-hidden"
+        @click="toggleShowAll"
       >
-        Show {{ showAll ? "less" : "more"
-        }}<v-icon :class="showAll && 'tw-rotate-180'">mdi-chevron-down</v-icon>
+        Show {{ showAllLabel }}<v-icon :class="showAll && 'tw-rotate-180'">mdi-chevron-down</v-icon>
       </div>
     </div>
 
@@ -53,28 +48,24 @@
     </div>
     <div
       v-else
-      class="tw-gr id-cols-1 tw-my-3 tw-grid tw-gap-3 sm:tw-grid-cols-2 lg:tw-grid-cols-3"
+      class="tw-grid tw-grid-cols-1 tw-my-3 tw-gap-3 sm:tw-grid-cols-2 lg:tw-grid-cols-3"
     >
       <EventItem
-        class="tw-cursor-pointer"
-        v-for="(event, i) in sortedEvents.slice(0, defaultNumEventsToShow)"
+        v-for="(event, i) in visibleEvents"
         :key="i"
+        class="tw-cursor-pointer"
         :event="event"
       />
     </div>
     <!-- Show more events sections -->
-    <!-- TODO: might want to change for less code repeat -->
-    <div v-if="eventType.events.length > defaultNumEventsToShow">
+    <div v-if="hasOverflowEvents">
       <v-expand-transition>
         <div
           v-if="showAll"
-          class="tw-gr id-cols-1 tw-my-3 tw-grid tw-gap-3 sm:tw-grid-cols-2 lg:tw-grid-cols-3"
+          class="tw-grid tw-grid-cols-1 tw-my-3 tw-gap-3 sm:tw-grid-cols-2 lg:tw-grid-cols-3"
         >
           <EventItem
-            v-for="(event, i) in sortedEvents.slice(
-              defaultNumEventsToShow,
-              eventType.events.length
-            )"
+            v-for="(event, i) in overflowEvents"
             :key="i"
             class="tw-cursor-pointer"
             :event="event"
@@ -82,80 +73,72 @@
         </div>
       </v-expand-transition>
       <div
-        @click="toggleShowAll"
         class="tw-mt-4 tw-hidden tw-cursor-pointer tw-text-sm tw-text-very-dark-gray sm:tw-block"
+        @click="toggleShowAll"
       >
-        Show {{ showAll ? "less" : "more"
-        }}<v-icon :class="showAll && 'tw-rotate-180'">mdi-chevron-down</v-icon>
+        Show {{ showAllLabel }}<v-icon :class="showAll && 'tw-rotate-180'">mdi-chevron-down</v-icon>
       </div>
     </div>
     <FeatureNotReadyDialog v-model="showFeatureNotReadyDialog" />
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { computed, ref } from "vue"
+import { useDisplay } from "vuetify"
 import EventItem from "@/components/EventItem.vue"
 import FeatureNotReadyDialog from "@/components/FeatureNotReadyDialog.vue"
+import { storeToRefs } from "pinia"
+import { posthog } from "@/plugins/posthog"
 import { numFreeEvents, upgradeDialogTypes } from "@/constants"
-import { mapState, mapActions } from "vuex"
-import { isPremiumUser } from "@/utils"
+import { useMainStore } from "@/stores/main"
+import type { Event } from "@/types"
 
-export default {
-  name: "EventType",
+const props = withDefaults(
+  defineProps<{
+    eventType: { header: string; events: Event[] }
+    emptyText?: string
+  }>(),
+  { emptyText: "" }
+)
 
-  components: {
-    EventItem,
-    FeatureNotReadyDialog,
-  },
+const display = useDisplay()
+const showFeatureNotReadyDialog = ref(false)
+const showAll = ref(false)
 
-  props: {
-    eventType: { type: Object, required: true },
-    emptyText: { type: String, default: "" },
-  },
+const defaultNumEventsToShow = computed(() => (display.lgAndUp.value ? 6 : 4))
+const sortedEvents = computed(() => props.eventType.events)
+const isCreatedEventsSection = computed(
+  () => props.eventType.header === "Events I created"
+)
+const showCreatedEventsUsage = computed(
+  () =>
+    isCreatedEventsSection.value &&
+    enablePaywall.value &&
+    !viewerHasPremiumAccess.value
+)
+const hasOverflowEvents = computed(
+  () => props.eventType.events.length > defaultNumEventsToShow.value
+)
+const visibleEvents = computed(() =>
+  sortedEvents.value.slice(0, defaultNumEventsToShow.value)
+)
+const overflowEvents = computed(() =>
+  sortedEvents.value.slice(defaultNumEventsToShow.value)
+)
+const showAllLabel = computed(() => (showAll.value ? "less" : "more"))
 
-  data() {
-    return {
-      showFeatureNotReadyDialog: false,
-      showAll: false,
-    }
-  },
+const mainStore = useMainStore()
+const { authUser, enablePaywall, viewerHasPremiumAccess } = storeToRefs(mainStore)
 
-  computed: {
-    ...mapState(["authUser", "enablePaywall"]),
-    defaultNumEventsToShow() {
-      return this.$vuetify.breakpoint.lgAndUp ? 6 : 4
-    },
-    numEventsToShow() {
-      return this.showAll
-        ? this.eventType.events.length
-        : this.defaultNumEventsToShow
-    },
-    sortedEvents() {
-      // Events are sorted serverside, so no need to sort here
-      return this.eventType.events
-    },
-    numFreeEvents() {
-      return numFreeEvents
-    },
-    isPremiumUser() {
-      return isPremiumUser(this.authUser)
-    },
-  },
-
-  methods: {
-    ...mapActions(["showUpgradeDialog"]),
-    toggleShowAll() {
-      this.showAll = !this.showAll
-    },
-    openUpgradeDialog() {
-      this.showUpgradeDialog({
-        type: upgradeDialogTypes.UPGRADE_MANUALLY,
-      })
-    },
-    createFolder() {
-      this.showFeatureNotReadyDialog = true
-      this.$posthog?.capture("create_folder_clicked")
-    },
-  },
+const toggleShowAll = () => {
+  showAll.value = !showAll.value
+}
+const openUpgradeDialog = () => {
+  mainStore.showUpgradeDialog({ type: upgradeDialogTypes.UPGRADE_MANUALLY })
+}
+const openFolderFeedbackDialog = () => {
+  showFeatureNotReadyDialog.value = true
+  posthog.capture("create_folder_clicked")
 }
 </script>

@@ -3,211 +3,236 @@
     <slot name="header"></slot>
 
     <v-combobox
-      v-model="remindees"
-      :search-input.sync="query"
+      v-model="selectionModel"
+      v-model:search-input="query"
       :items="searchedContacts"
-      item-text="queryString"
+      item-title="queryString"
       item-value="queryString"
-      class="tw-mt-2 tw-text-sm"
+      class="timeful-solo-field tw-mt-2 tw-text-sm"
       placeholder="Type an email address and press enter..."
       multiple
       append-icon=""
-      solo
+      variant="solo"
       :rules="[validEmails]"
     >
-      <template v-slot:selection="data, parent">
+      <template #selection="{ item }">
         <UserChip
-          :user="
-            isContact(data.item) ? data.item : { email: data.item, picture: '' }
-          "
+          :user="item.raw"
           :removable="true"
-          :removeEmail="removeEmail"
+          :remove-email="removeEmail"
         ></UserChip>
       </template>
-      <template v-slot:item="{ item }">
-        <v-list-item-avatar>
-          <img
-            v-if="item.picture.length > 0"
-            :src="item.picture"
-            referrerpolicy="no-referrer"
-          />
-          <v-icon v-else>mdi-account</v-icon>
-        </v-list-item-avatar>
-        <v-list-item-content>
+      <template #item="{ item, props: itemProps }">
+        <v-list-item v-bind="itemProps">
+          <template #prepend>
+            <img
+              v-if="item.raw.picture.length > 0"
+              :src="item.raw.picture"
+              referrerpolicy="no-referrer"
+            />
+            <v-icon v-else>mdi-account</v-icon>
+          </template>
           <v-list-item-title
-            v-text="`${item.firstName} ${item.lastName}`"
-          ></v-list-item-title>
-          <v-list-item-subtitle v-text="item.email"></v-list-item-subtitle>
-        </v-list-item-content>
+            >{{ item.raw.firstName }} {{ item.raw.lastName }}</v-list-item-title
+          >
+          <v-list-item-subtitle>{{ item.raw.email }}</v-list-item-subtitle>
+        </v-list-item>
       </template>
     </v-combobox>
 
-    <div class="tw-transition-all tw-relative" :class="emailsAreValid ? '-tw-mt-5' : ''" @click="requestContactsAccess">
+    <div
+      class="tw-transition-all tw-relative"
+      :class="emailsAreValid ? '-tw-mt-5' : ''"
+    >
       <v-expand-transition>
-        <div class="tw-text-xs tw-text-dark-gray" v-if="!hasContactsAccess">
-          <a class="tw-underline" @click="requestContactsAccess"
-            >Enable contacts access</a
-          >
-          for email auto-suggestions.
+        <template v-if="signInEnabled">
+          <div v-if="!hasContactsAccess" class="tw-text-xs tw-text-dark-gray">
+            <a class="tw-underline" @click="requestContactsAccess"
+              >Enable contacts access</a
+            >
+            for email auto-suggestions.
+          </div>
+        </template>
+        <div v-else class="tw-text-xs tw-text-dark-gray">
+          Requires sign-in, which is disabled in this build
         </div>
       </v-expand-transition>
     </div>
   </div>
 </template>
 
-<script>
-import UserAvatarContent from "@/components/UserAvatarContent.vue"
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from "vue"
 import UserChip from "@/components/general/UserChip.vue"
-import { validateEmail, get, post } from "@/utils"
+import { validateEmail } from "@/utils"
+import { signInEnabled } from "@/utils/signInAvailability"
+import { useContactsAccess } from "@/composables/useContactsAccess"
+import { useDebouncedContactLookup } from "@/composables/useDebouncedContactLookup"
+import { type ContactSearchSuggestion } from "./contactSuggestions"
 
-export default {
-  name: "EmailReminders",
-
-  props: {
-    addedEmails: {
-      type: Array,
-      default: () => [],
-    },
-  },
-
-  data: () => ({
-    remindees: [], // Currently displayed emails
-    searchedContacts: [], // Contacts that match the search query
-    timeout: null, // Timeout for search debouncing
-    searchDebounceTime: 250, // Search debounce time in ms
-
-    hasContactsAccess: true,
-    query: "",
-
-    emailsAreValid: true, // Whether all emails are valid
-  }),
-
-  mounted() {
-    // Send a warmup request to update cache and check if contacts permissions are enabled
-    get(`/user/searchContacts?query=`).catch((err) => {
-      // User has not granted contacts permissions
-      if (err.error?.code === 403 || err.error?.code === 401) {
-        this.hasContactsAccess = false
-      }
-    })
-
-    this.remindees = this.addedEmails
-  },
-
-  methods: {
-    /**
-     * Requests access to contacts.
-     */
-    requestContactsAccess() {
-      this.$emit("requestContactsAccess", {
-        emails: this.remindees,
-      })
-    },
-    /**
-     * Searches contacts based on the query string if the user has access to contacts.
-     */
-    searchContacts() {
-      if (this.hasContactsAccess) {
-        if (this.timeout) clearTimeout(this.timeout)
-        this.timeout = setTimeout(() => {
-          get(`/user/searchContacts?query=${this.query}`).then((results) => {
-            this.searchedContacts = results
-            this.searchedContacts.map((contact) => {
-              contact["queryString"] = this.contactToQueryString(contact)
-            })
-          })
-        }, this.searchDebounceTime)
-      }
-    },
-    /**
-     * Removes the specified email from the remindees list.
-     */
-    removeEmail(email) {
-      // this.remindees.splice(this.remindees.indexOf(email), 1)
-
-      for (let i = 0; i < this.remindees.length; i++) {
-        if (this.isContact(this.remindees[i])) {
-          if (this.remindees[i].email == email) {
-            this.remindees.splice(i, 1)
-          }
-        } else {
-          if (this.remindees[i] == email) {
-            this.remindees.splice(i, 1)
-          }
-        }
-      }
-    },
-    /**
-     * Check if the contact is an object and not a user inputed string.
-     */
-    isContact(contact) {
-      return typeof contact === "object"
-    },
-    /**
-     * Takes a contact object and converts it to a query string.
-     */
-    contactToQueryString(contact) {
-      // Need to split first name to get rid of middle name
-      return `${contact["firstName"].split(" ")[0]} ${contact["lastName"]} ${
-        contact["email"]
-      }`
-    },
-    /**
-     * Determines if emails are all valid.
-     */
-    validEmails(emails) {
-      for (const email of emails) {
-        if (email?.length > 0 && !validateEmail(email)) {
-          this.emailsAreValid = false
-          return "Please enter a valid email."
-        }
-      }
-      this.emailsAreValid = true
-      return true
-    },
-    reset() {
-      this.remindees = this.addedEmails
-    },
-  },
-
-  watch: {
-    remindees() {
-      this.$emit(
-        "update:emails",
-        this.remindees.map((r) => (this.isContact(r) ? r.email : r))
-      )
-    },
-    query() {
-      if (this.query && this.query.length > 0) {
-        if ( /[,\s]/.test(this.query)) {
-          /** If the query has spaces or commas, add the valid emails to the list */
-          let successfullyAdded = false
-          const emailsArray = this.query.split(/[,\s]+/).filter(email => email.trim() !== "");
-
-          emailsArray.forEach((email) => {
-            if (validateEmail(email) && !this.remindees.includes(email)) {
-              successfullyAdded = true
-              this.remindees.push(email)
-            }
-          })
-
-          if (successfullyAdded) {
-            this.query = ""
-            return
-          }
-          
-        }
-
-        this.searchContacts()
-      } else {
-        clearTimeout(this.timeout)
-        this.searchedContacts = []
-      }
-    },
-  },
-
-  computed: {},
-
-  components: { UserAvatarContent, UserChip },
+interface EmailEntry {
+  email: string
+  firstName: string
+  lastName: string
+  picture: string
+  queryString: string
 }
+
+function createManualEmailEntry(email: string): EmailEntry {
+  return {
+    email,
+    firstName: "",
+    lastName: "",
+    picture: "",
+    queryString: email,
+  }
+}
+
+function createContactEmailEntry(contact: ContactSearchSuggestion): EmailEntry {
+  return {
+    email: contact.email,
+    firstName: contact.firstName,
+    lastName: contact.lastName,
+    picture: contact.picture,
+    queryString: contact.queryString,
+  }
+}
+
+function isContactSearchSuggestion(value: unknown): value is ContactSearchSuggestion {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "email" in value &&
+    typeof value.email === "string" &&
+    "queryString" in value &&
+    typeof value.queryString === "string"
+  )
+}
+
+function normalizeEmailEntry(value: unknown): EmailEntry | null {
+  if (typeof value === "string") {
+    return createManualEmailEntry(value)
+  }
+
+  if (isContactSearchSuggestion(value)) {
+    return createContactEmailEntry(value)
+  }
+
+  return null
+}
+
+const props = withDefaults(
+  defineProps<{
+    addedEmails?: string[]
+  }>(),
+  {
+    addedEmails: () => [],
+  }
+)
+
+const emit = defineEmits<{
+  requestContactsAccess: [payload: { emails: string[] }]
+  "update:emails": [emails: string[]]
+}>()
+
+const emailEntries = ref<EmailEntry[]>([])
+const query = ref("")
+const { hasContactsAccess, probeContactsAccess } = useContactsAccess()
+const { suggestionsByKey, scheduleLookup, clearSuggestions } =
+  useDebouncedContactLookup()
+const searchedContacts = computed(() => {
+  if (Object.hasOwn(suggestionsByKey.value, "default")) {
+    return suggestionsByKey.value.default ?? []
+  }
+
+  return []
+})
+const selectionModel = computed({
+  get: () => emailEntries.value,
+  set: (values: unknown[]) => {
+    emailEntries.value = values
+      .map(normalizeEmailEntry)
+      .filter((entry): entry is EmailEntry => entry != null)
+  },
+})
+
+const emailsAreValid = ref(true)
+
+onMounted(() => {
+  void probeContactsAccess()
+})
+
+function requestContactsAccess() {
+  emit("requestContactsAccess", {
+    emails: emailEntries.value.map((entry) => entry.email),
+  })
+}
+
+function removeEmail(email: string) {
+  emailEntries.value = emailEntries.value.filter((entry) => entry.email !== email)
+}
+
+function validEmails(entries: EmailEntry[]): true | string {
+  const invalidEntry = entries.find(
+    (entry) => entry.email.length > 0 && !validateEmail(entry.email)
+  )
+  if (invalidEntry != null) {
+    emailsAreValid.value = false
+    return "Please enter a valid email."
+  }
+
+  emailsAreValid.value = true
+  return true
+}
+
+function appendParsedEmails(rawQuery: string): boolean {
+  let successfullyAdded = false
+  const parsedEmails = rawQuery
+    .split(/[,\s]+/)
+    .filter((email) => email.trim() !== "")
+
+  for (const email of parsedEmails) {
+    if (
+      validateEmail(email) &&
+      !emailEntries.value.some((entry) => entry.email === email)
+    ) {
+      successfullyAdded = true
+      emailEntries.value = [...emailEntries.value, createManualEmailEntry(email)]
+    }
+  }
+
+  return successfullyAdded
+}
+
+watch(
+  () => props.addedEmails,
+  (emails) => {
+    emailEntries.value = emails.map(createManualEmailEntry)
+  },
+  { immediate: true }
+)
+
+watch(emailEntries, () => {
+  emit(
+    "update:emails",
+    emailEntries.value.map((entry) => entry.email)
+  )
+})
+
+watch(query, () => {
+  if (query.value && query.value.length > 0) {
+    if (/[,\s]/.test(query.value)) {
+      if (appendParsedEmails(query.value)) {
+        query.value = ""
+        return
+      }
+    }
+
+    if (hasContactsAccess.value) {
+      scheduleLookup("default", query.value)
+    }
+  } else {
+    clearSuggestions("default")
+  }
+})
 </script>
