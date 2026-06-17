@@ -3,6 +3,7 @@
 import { computed, ref } from "vue"
 import { describe, expect, it, vi } from "vitest"
 import { availabilityTypes } from "@/constants"
+import { COMPACT_RESPONDENTS_PANEL_WIDTH } from "@/components/schedule_overlap/layout"
 import { states } from "./types"
 import { useScheduleOverlapUI } from "./useScheduleOverlapUI"
 import { SCHEDULE_OVERLAP_COMPACT_DESKTOP_BREAKPOINT } from "@/components/schedule_overlap/scheduleOverlapBreakpoints"
@@ -84,7 +85,7 @@ describe("useScheduleOverlapUI deselectRespondents", () => {
   it("uses a responsive respondents panel width on compact desktop", () => {
     const { ui } = createUi()
 
-    expect(ui.rightSideWidth.value).toBe("clamp(10rem, 25vw, 13rem)")
+    expect(ui.rightSideWidth.value).toBe(COMPACT_RESPONDENTS_PANEL_WIDTH)
   })
 
   it("keeps full-width mobile and fixed sign-up respondents widths", () => {

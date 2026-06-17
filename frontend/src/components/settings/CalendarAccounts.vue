@@ -43,38 +43,43 @@
             "
             @open-remove-dialog="openRemoveDialog"
           ></CalendarAccount>
-          <v-dialog
-            v-if="allowAddCalendarAccount"
-            v-model="addCalendarAccountDialog"
-            width="400"
-            content-class="tw-m-0"
-          >
-            <template #activator="{ props: activatorProps }">
-              <div>
-                <v-btn
-                  variant="text"
-                  color="primary"
-                  :class="
-                    toggleState
-                      ? '-tw-ml-2 tw-mt-0 tw-w-min tw-px-2'
-                      : '-tw-ml-2 tw-w-fit tw-px-2'
-                  "
-                  v-bind="activatorProps"
-                  >+ Add calendar</v-btn
-                >
-                <p class="tw-mb-0 tw-mt-1 tw-text-xs tw-text-dark-gray">
-                  Only your available times are shared with respondents. Your
-                  personal event details are never shared.
-                </p>
-              </div>
-            </template>
-            <CalendarTypeSelector
-              :visible="addCalendarAccountDialog"
-              @add-google-calendar="addGoogleCalendar"
-              @add-outlook-calendar="addOutlookCalendar"
-              @added-calendar="addedCalendar"
-            />
-          </v-dialog>
+          <template v-if="signInEnabled">
+            <v-dialog
+              v-if="allowAddCalendarAccount"
+              v-model="addCalendarAccountDialog"
+              width="400"
+              content-class="tw-m-0"
+            >
+              <template #activator="{ props: activatorProps }">
+                <div>
+                  <v-btn
+                    variant="text"
+                    color="primary"
+                    :class="
+                      toggleState
+                        ? '-tw-ml-2 tw-mt-0 tw-w-min tw-px-2'
+                        : '-tw-ml-2 tw-w-fit tw-px-2'
+                    "
+                    v-bind="activatorProps"
+                    >+ Add calendar</v-btn
+                  >
+                  <p class="tw-mb-0 tw-mt-1 tw-text-xs tw-text-dark-gray">
+                    Only your available times are shared with respondents. Your
+                    personal event details are never shared.
+                  </p>
+                </div>
+              </template>
+              <CalendarTypeSelector
+                :visible="addCalendarAccountDialog"
+                @add-google-calendar="addGoogleCalendar"
+                @add-outlook-calendar="addOutlookCalendar"
+                @added-calendar="addedCalendar"
+              />
+            </v-dialog>
+          </template>
+          <div v-else class="tw-mt-1 tw-text-xs tw-text-dark-gray">
+            Requires sign-in, which is disabled in this build
+          </div>
         </div>
       </span>
     </v-expand-transition>
@@ -106,6 +111,7 @@ import {
   getCalendarAccountKey,
 } from "@/utils"
 import { useMainStore } from "@/stores/main"
+import { signInEnabled } from "@/utils/signInAvailability"
 import CalendarAccount from "@/components/settings/CalendarAccount.vue"
 import CalendarTypeSelector from "@/components/settings/CalendarTypeSelector.vue"
 import type { CalendarAccount as CalendarAccountModel } from "@/types"

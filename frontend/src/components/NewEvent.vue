@@ -269,10 +269,13 @@
             >
               <span
                 class="advanced-options-disabled-copy tw-font-medium tw-text-very-dark-gray"
-                ><a class="advanced-options-sign-in-link" @click="emit('signIn')"
-                  >Sign in</a
-                >
-                to use this feature
+                ><template v-if="signInEnabled">
+                  <a class="advanced-options-sign-in-link" @click="emit('signIn')"
+                    >Sign in</a
+                  >
+                  to use this feature
+                </template>
+                <template v-else>Requires sign-in, which is disabled in this build</template>
               </span>
             </div>
           </template>
@@ -390,10 +393,13 @@
                 >
                   <span
                     class="advanced-options-disabled-copy tw-font-medium tw-text-very-dark-gray"
-                    ><a class="advanced-options-sign-in-link" @click="emit('signIn')"
-                      >Sign in</a
-                    >
-                    to use this feature
+                    ><template v-if="signInEnabled">
+                      <a class="advanced-options-sign-in-link" @click="emit('signIn')"
+                        >Sign in</a
+                      >
+                      to use this feature
+                    </template>
+                    <template v-else>Requires sign-in, which is disabled in this build</template>
                   </span>
                 </div>
               </template>
@@ -435,12 +441,14 @@
                   class="advanced-options-disabled-message tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-text-dark-gray"
                 >
                   {{ message }}
-                  <span
-                    class="advanced-options-disabled-copy tw-font-medium tw-text-very-dark-gray"
-                    ><a class="advanced-options-sign-in-link" @click="emit('signIn')"
-                      >Sign in</a
-                    >
-                    to use this feature
+                  <span class="advanced-options-disabled-copy tw-font-medium tw-text-very-dark-gray"
+                    ><template v-if="signInEnabled">
+                      <a class="advanced-options-sign-in-link" @click="emit('signIn')"
+                        >Sign in</a
+                      >
+                      to use this feature
+                    </template>
+                    <template v-else>Requires sign-in, which is disabled in this build</template>
                   </span>
                 </div>
               </template>
@@ -545,6 +553,7 @@ import {
   signInGoogle,
   timeNumToPlainTime,
 } from "@/utils"
+import { signInEnabled } from "@/utils/signInAvailability"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import TimezoneSelector from "./schedule_overlap/TimezoneSelector.vue"

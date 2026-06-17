@@ -34,4 +34,25 @@ describe("FAQ", () => {
     expect(wrapper.html()).not.toContain("<strong>Unsafe question</strong>")
     expect(wrapper.html()).not.toContain("<em>paragraph</em>")
   })
+
+  it("shows a disabled-build message for auth-required entries when sign-in is disabled", async () => {
+    const wrapper = shallowMount(FAQ, {
+      props: {
+        question: "Auth-only question",
+        authRequired: true,
+        signInEnabled: false,
+      },
+      global: {
+        stubs: {
+          "v-expand-transition": PassThroughStub,
+          "v-icon": VIconStub,
+        },
+      },
+    })
+
+    await wrapper.trigger("click")
+
+    expect(wrapper.text()).toContain("Requires sign-in, which is disabled in this build")
+    expect(wrapper.text()).not.toContain("Sign in to use this feature")
+  })
 })

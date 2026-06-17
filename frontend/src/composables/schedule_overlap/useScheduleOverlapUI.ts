@@ -4,6 +4,10 @@ import { posthog } from "@/plugins/posthog"
 import { availabilityTypes, type AvailabilityType } from "@/constants"
 import { useMainStore } from "@/stores/main"
 import {
+  COMPACT_RESPONDENTS_PANEL_WIDTH,
+  SIGN_UP_RESPONDENTS_PANEL_WIDTH,
+} from "@/components/schedule_overlap/layout"
+import {
   readShowBestTimesPreference,
   writeShowBestTimesPreference,
 } from "./scheduleOverlapStorage"
@@ -42,9 +46,6 @@ export interface UseScheduleOverlapUIOptions {
   optionsSectionRef?: Ref<HTMLElement | null>
   respondentsListRef?: Ref<HTMLElement | null>
 }
-
-const COMPACT_RESPONDENTS_PANEL_WIDTH = "clamp(10rem, 25vw, 13rem)"
-const SIGN_UP_RESPONDENTS_PANEL_WIDTH = "18rem"
 
 export function canGuestEditResponse(
   response: ParsedResponse | undefined,

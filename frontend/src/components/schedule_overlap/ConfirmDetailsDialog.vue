@@ -22,11 +22,16 @@
               <div class="tw-mb-4 tw-text-dark-gray">
                 Google Calendar invites will be sent to people at the following
                 email addresses.
-                <span v-if="!hasContactsAccess">
-                  <a class="tw-underline" @click="requestContactsAccess"
-                    >Enable contacts access</a
-                  >
-                  to receive email auto-suggestions.
+                <template v-if="signInEnabled">
+                  <span v-if="!hasContactsAccess">
+                    <a class="tw-underline" @click="requestContactsAccess"
+                      >Enable contacts access</a
+                    >
+                    to receive email auto-suggestions.
+                  </span>
+                </template>
+                <span v-else>
+                  Requires sign-in, which is disabled in this build
                 </span>
               </div>
               <div class="tw-max-h-96 tw-table-auto tw-overflow-y-auto">
@@ -150,6 +155,7 @@
 import { computed, onMounted, ref, watch } from "vue"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
 import { validateEmail } from "@/utils"
+import { signInEnabled } from "@/utils/signInAvailability"
 import { useContactsAccess } from "@/composables/useContactsAccess"
 import { useDebouncedContactLookup } from "@/composables/useDebouncedContactLookup"
 

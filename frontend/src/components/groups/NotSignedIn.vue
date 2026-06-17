@@ -12,17 +12,22 @@
             event.name
           }}"
         </h1>
-        <div class="tw-text-center tw-text-dark-gray">
-          Join the group now to share your real-time <br v-if="!isPhone" />
-          calendar availability with each other!
-        </div>
-      </div>
-      <v-btn color="primary" class="tw-mb-8" @click="join"
-        >Join with Google Calendar</v-btn
-      >
       <div class="tw-text-center tw-text-dark-gray">
-        Already have a Timeful account?
-        <a class="tw-underline" @click="signIn">Sign in</a>
+        Join the group now to share your real-time <br v-if="!isPhone" />
+        calendar availability with each other!
+      </div>
+      </div>
+      <template v-if="signInEnabled">
+        <v-btn color="primary" class="tw-mb-8" @click="join"
+          >Join with Google Calendar</v-btn
+        >
+        <div class="tw-text-center tw-text-dark-gray">
+          Already have a Timeful account?
+          <a class="tw-underline" @click="signIn">Sign in</a>
+        </div>
+      </template>
+      <div v-else class="tw-text-center tw-text-dark-gray">
+        Sign-in is disabled in this build, so group joining is unavailable here.
       </div>
 
       <v-dialog
@@ -49,6 +54,7 @@ import { useRoute } from "vue-router"
 import { signInGoogle } from "@/utils"
 import { authTypes } from "@/constants"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import { signInEnabled } from "@/utils/signInAvailability"
 import CalendarPermissionsCard from "@/components/calendar_permission_dialogs/CalendarPermissionsCard.vue"
 import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"

@@ -4,6 +4,7 @@ import {
   type RouteRecordRaw,
 } from "vue-router"
 import { get } from "@/utils"
+import { signInEnabled } from "@/utils/signInAvailability"
 import {
   getEventRouteProps,
   getGroupRouteProps,
@@ -110,15 +111,22 @@ router.beforeEach(async (to) => {
 
   const authRoutes = ["home", "settings"]
   const noAuthRoutes = ["sign-in", "sign-up"]
+  const signInDisabledRoutes = ["auth", "sign-in", "sign-up"]
   const name = typeof to.name === "string" ? to.name : ""
 
   try {
     await get("/auth/status")
+    if (!signInEnabled && signInDisabledRoutes.includes(name)) {
+      return { name: "home" }
+    }
     if (noAuthRoutes.includes(name)) {
       return { name: "home" }
     }
     return true
   } catch {
+    if (!signInEnabled && signInDisabledRoutes.includes(name)) {
+      return { name: "landing" }
+    }
     if (authRoutes.includes(name)) {
       return { name: "landing" }
     }

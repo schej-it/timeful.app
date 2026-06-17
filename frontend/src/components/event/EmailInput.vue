@@ -43,14 +43,18 @@
     <div
       class="tw-transition-all tw-relative"
       :class="emailsAreValid ? '-tw-mt-5' : ''"
-      @click="requestContactsAccess"
     >
       <v-expand-transition>
-        <div v-if="!hasContactsAccess" class="tw-text-xs tw-text-dark-gray">
-          <a class="tw-underline" @click="requestContactsAccess"
-            >Enable contacts access</a
-          >
-          for email auto-suggestions.
+        <template v-if="signInEnabled">
+          <div v-if="!hasContactsAccess" class="tw-text-xs tw-text-dark-gray">
+            <a class="tw-underline" @click="requestContactsAccess"
+              >Enable contacts access</a
+            >
+            for email auto-suggestions.
+          </div>
+        </template>
+        <div v-else class="tw-text-xs tw-text-dark-gray">
+          Requires sign-in, which is disabled in this build
         </div>
       </v-expand-transition>
     </div>
@@ -61,6 +65,7 @@
 import { computed, onMounted, ref, watch } from "vue"
 import UserChip from "@/components/general/UserChip.vue"
 import { validateEmail } from "@/utils"
+import { signInEnabled } from "@/utils/signInAvailability"
 import { useContactsAccess } from "@/composables/useContactsAccess"
 import { useDebouncedContactLookup } from "@/composables/useDebouncedContactLookup"
 import { type ContactSearchSuggestion } from "./contactSuggestions"

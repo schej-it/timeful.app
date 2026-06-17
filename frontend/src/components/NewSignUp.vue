@@ -202,8 +202,11 @@
                   >
                     {{ message }}
                     <span class="tw-font-medium tw-text-very-dark-gray"
-                      ><a @click="emit('signIn')">Sign in</a>
-                      to use this feature
+                      ><template v-if="signInEnabled">
+                        <a @click="emit('signIn')">Sign in</a>
+                        to use this feature
+                      </template>
+                      <template v-else>Requires sign-in, which is disabled in this build</template>
                     </span>
                   </div>
                 </template>
@@ -255,6 +258,7 @@ import { useRouter } from "vue-router"
 import { storeToRefs } from "pinia"
 import { dateOptions, eventTypes } from "@/constants"
 import { post, put, resolveTimezoneValue } from "@/utils"
+import { signInEnabled } from "@/utils/signInAvailability"
 import { useMainStore } from "@/stores/main"
 import { posthog } from "@/plugins/posthog"
 import TimezoneSelector from "./schedule_overlap/TimezoneSelector.vue"

@@ -36,7 +36,7 @@
         >
           {{ account.email }}
         </div>
-        <v-tooltip v-if="accountHasError" top>
+        <v-tooltip v-if="signInEnabled && accountHasError" top>
           <template #activator="{ props: tooltipProps }">
             <v-btn
               icon
@@ -96,6 +96,7 @@ import { storeToRefs } from "pinia"
 import { authTypes, calendarTypes } from "@/constants"
 import { post, signInGoogle, getCalendarAccountKey } from "@/utils"
 import { useMainStore } from "@/stores/main"
+import { signInEnabled } from "@/utils/signInAvailability"
 import UserAvatarContent from "@/components/UserAvatarContent.vue"
 import type { CalendarAccount as CalendarAccountModel } from "@/types"
 import type { CalendarEventsMap } from "@/composables/schedule_overlap/types"

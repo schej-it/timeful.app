@@ -5,6 +5,7 @@
     <AutoSnackbar color="tw-bg-blue" :text="info" />
     <SignInNotSupportedDialog v-model="webviewDialog" />
     <SignInDialog
+      v-if="signInEnabled"
       v-model="signInDialog"
       @sign-in="_signIn"
       @email-sign-in="_emailSignIn"
@@ -83,7 +84,12 @@
         <div v-if="authUser" class="sm:tw-ml-4">
           <AuthUserMenu />
         </div>
-        <v-btn v-else id="top-right-sign-in-btn" variant="text" @click="signIn">
+        <v-btn
+          v-else-if="signInEnabled"
+          id="top-right-sign-in-btn"
+          variant="text"
+          @click="signIn"
+        >
           Sign in
         </v-btn>
       </div>
@@ -116,6 +122,7 @@ import { getSignInRestoreQuery } from "@/router/authRestoreState"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import type { User } from "@/types"
 import { fetchAuthUserProfile } from "@/utils/services/UserService"
+import { signInEnabled } from "@/utils/signInAvailability"
 import AutoSnackbar from "@/components/AutoSnackbar.vue"
 import AuthUserMenu from "@/components/AuthUserMenu.vue"
 import DiscordBanner from "@/components/DiscordBanner.vue"
@@ -165,6 +172,10 @@ function _createNew(eventOnly = false) {
 }
 
 function signIn() {
+  if (!signInEnabled) {
+    return
+  }
+
   if (route.name === "event" || route.name === "group" || route.name === "signUp") {
     if (isWebview(navigator.userAgent)) {
       webviewDialog.value = true
@@ -177,6 +188,10 @@ function signIn() {
 }
 
 function _signIn(calendarType: string) {
+  if (!signInEnabled) {
+    return
+  }
+
   let state: Record<string, unknown> | undefined
   switch (route.name) {
     case "event":

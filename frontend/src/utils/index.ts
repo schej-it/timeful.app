@@ -6,6 +6,7 @@ export * from "./timezone_utils"
 export * from "./plugin_utils"
 export * from "./freemium"
 export * from "./appEnv"
+export * from "./signInAvailability"
 export {
   getEventDateSeeds,
   getEventMembershipDayOfWeekValues,

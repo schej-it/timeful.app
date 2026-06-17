@@ -1,5 +1,6 @@
 import { calendarTypes } from "@/constants"
 import { useMainStore } from "@/stores/main"
+import { signInEnabled } from "./signInAvailability"
 
 interface SignInGoogleOptions {
   state?: Record<string, unknown> | null
@@ -23,6 +24,10 @@ export const signInGoogle = ({
   requestContactsPermission = false,
   loginHint = "",
 }: SignInGoogleOptions): void => {
+  if (!signInEnabled) {
+    return
+  }
+
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
   const redirectUri = `${window.location.origin}/auth`
 
@@ -64,6 +69,10 @@ export const signInOutlook = ({
   state = {},
   requestCalendarPermission = false,
 }: SignInOutlookOptions): void => {
+  if (!signInEnabled) {
+    return
+  }
+
   const clientId = import.meta.env.VITE_MICROSOFT_CLIENT_ID
   const redirectUri = encodeURIComponent(`${window.location.origin}/auth`)
 

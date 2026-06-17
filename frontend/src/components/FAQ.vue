@@ -44,15 +44,17 @@
               <div>{{ point }}</div>
             </div>
           </div>
-          <div
-            v-if="authRequired"
-            class="tw-mt-6 tw-text-sm tw-font-medium tw-text-dark-gray"
-          >
-            *
-            <a class="tw-text-green tw-underline" @click.stop="emit('signIn')"
-              >Sign in</a
-            >
-            to use this feature
+          <div v-if="authRequired" class="tw-mt-6 tw-text-sm tw-font-medium tw-text-dark-gray">
+            <template v-if="signInEnabled">
+              *
+              <a class="tw-text-green tw-underline" @click.stop="emit('signIn')"
+                >Sign in</a
+              >
+              to use this feature
+            </template>
+            <template v-else>
+              * Requires sign-in, which is disabled in this build
+            </template>
           </div>
         </div>
       </div>
@@ -69,11 +71,13 @@ withDefaults(
     answerParagraphs?: string[]
     points?: string[]
     authRequired?: boolean
+    signInEnabled?: boolean
   }>(),
   {
     answerParagraphs: () => [],
     points: () => [],
     authRequired: false,
+    signInEnabled: true,
   }
 )
 

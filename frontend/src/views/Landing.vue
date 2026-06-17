@@ -16,7 +16,13 @@
             <div v-if="authUser" class="tw-ml-2">
               <AuthUserMenu />
             </div>
-            <v-btn v-else variant="text" :to="{ name: 'sign-in' }">Sign in</v-btn>
+            <v-btn
+              v-else-if="signInEnabled"
+              variant="text"
+              :to="{ name: 'sign-in' }"
+            >
+              Sign in
+            </v-btn>
           </LandingPageHeader>
         </div>
 
@@ -230,6 +236,7 @@
               v-for="faq in faqs"
               :key="faq.question"
               v-bind="faq"
+              :sign-in-enabled="signInEnabled"
               @sign-in="signIn"
             />
           </div>
@@ -241,6 +248,7 @@
 
     <!-- Sign in dialog -->
     <SignInDialog
+      v-if="signInEnabled"
       v-model="signInDialog"
       @sign-in="_signIn"
       @email-sign-in="_emailSignIn"
@@ -279,6 +287,7 @@ import Footer from "@/components/Footer.vue"
 import { useMainStore } from "@/stores/main"
 import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
 import { posthog } from "@/plugins/posthog"
+import { signInEnabled } from "@/utils/signInAvailability"
 import AuthUserMenu from "@/components/AuthUserMenu.vue"
 import FormerlyKnownAs from "@/components/FormerlyKnownAs.vue"
 import type { User } from "@/types"
@@ -497,6 +506,10 @@ function loadRiveAnimation() {
 }
 
 function _signIn(calendarType: string) {
+  if (!signInEnabled) {
+    return
+  }
+
   if (calendarType === calendarTypes.GOOGLE) {
     signInGoogle({ state: null, selectAccount: true })
   } else if (calendarType === calendarTypes.OUTLOOK) {
@@ -515,6 +528,10 @@ function _emailSignIn(user: User) {
 }
 
 function signIn() {
+  if (!signInEnabled) {
+    return
+  }
+
   void router.push({ name: "sign-in" })
 }
 
