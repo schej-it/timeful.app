@@ -47,6 +47,7 @@ Frontend build-time variables:
 
 - `VITE_APP_ENV`
 - `VITE_POSTHOG_API_KEY`
+- `VITE_ENABLE_SIGN_IN`
 - `VITE_ENABLE_FREEMIUM`
 - `VITE_ENABLE_THIRD_PARTY_SHELL`
 - `VITE_SHOW_FORMERLY_KNOWN_AS_SCHEJ`
@@ -56,6 +57,15 @@ Compose-to-frontend build arg mappings:
 - `CLIENT_ID` -> `VITE_GOOGLE_CLIENT_ID`
 - `MICROSOFT_CLIENT_ID` -> `VITE_MICROSOFT_CLIENT_ID`
 - the `VITE_*` build-time flags above are passed through directly
+
+## Frontend build-time flag semantics
+
+- **`VITE_ENABLE_SIGN_IN`** — Controls sign-in and sign-up availability in the frontend.
+  Defaults to `true` when unset or blank. Set to `false` to hide sign-in buttons, redirect
+  sign-in/sign-up routes away, and replace sign-in-gated feature prompts with
+  "Requires sign-in, which is disabled in this build." Existing auth sessions still
+  work, so previously signed-in users retain access to auth-protected routes.
+  This is a frontend-only gate; backend auth endpoints remain live regardless.
 
 Backend runtime variables:
 
