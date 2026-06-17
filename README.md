@@ -18,7 +18,7 @@
 
 Timeful is a scheduling platform helps you find the best time for a group to meet. It is a free availability poll that is easy to use and integrates with your calendar.
 
-Hosted version of the site: https://timeful.app
+Hosted version of the site: <https://timeful.app>
 
 Built with [Vue 2](https://github.com/vuejs/vue), [MongoDB](https://github.com/mongodb/mongo), [Go](https://github.com/golang/go), and [TailwindCSS](https://github.com/tailwindlabs/tailwindcss)
 
@@ -49,3 +49,5 @@ Read these docs to design your own browser plugins to get + set availability on 
 ## Self-hosting
 
 See the [Deployment Guide](./DEPLOYMENT.md) for Docker Compose and NixOS setup instructions.
+
+See [docs/environments.md](./docs/environments.md) for the root env-file model used for development, staging, and production environments.

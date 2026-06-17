@@ -21,6 +21,7 @@ import (
 	"schej.it/server/logger"
 	"schej.it/server/middleware"
 	"schej.it/server/models"
+	"schej.it/server/respondents"
 	"schej.it/server/responses"
 	"schej.it/server/services/calendar"
 	"schej.it/server/services/gcloud"
@@ -48,11 +49,41 @@ func InitEvents(router *gin.RouterGroup) {
 	eventRouter.POST("/:eventId/archive", middleware.AuthRequired(), archiveEvent)
 }
 
+func normalizeTimedResponseAvailabilitySlots(
+	availability []primitive.DateTime,
+	ifNeeded []primitive.DateTime,
+) ([]primitive.DateTime, []primitive.DateTime) {
+	normalizedAvailability := make([]primitive.DateTime, 0, len(availability))
+	availabilitySet := make(map[primitive.DateTime]struct{}, len(availability))
+	for _, slot := range availability {
+		if _, exists := availabilitySet[slot]; exists {
+			continue
+		}
+		availabilitySet[slot] = struct{}{}
+		normalizedAvailability = append(normalizedAvailability, slot)
+	}
+
+	normalizedIfNeeded := make([]primitive.DateTime, 0, len(ifNeeded))
+	ifNeededSet := make(map[primitive.DateTime]struct{}, len(ifNeeded))
+	for _, slot := range ifNeeded {
+		if _, exists := availabilitySet[slot]; exists {
+			continue
+		}
+		if _, exists := ifNeededSet[slot]; exists {
+			continue
+		}
+		ifNeededSet[slot] = struct{}{}
+		normalizedIfNeeded = append(normalizedIfNeeded, slot)
+	}
+
+	return normalizedAvailability, normalizedIfNeeded
+}
+
 // @Summary Creates a new event
 // @Tags events
 // @Accept json
 // @Produce json
-// @Param payload body object{name=string,duration=float32,dates=[]string,type=models.EventType,isSignUpForm=bool,signUpBlocks=[]models.SignUpBlock,notificationsEnabled=bool,blindAvailabilityEnabled=bool,daysOnly=bool,remindees=[]string,sendEmailAfterXResponses=int,when2meetHref=string,timeIncrement=int,attendees=[]string} true "Object containing info about the event to create"
+// @Param payload body object{name=string,duration=float32,dates=[]string,type=models.EventType,isSignUpForm=bool,signUpBlocks=[]models.SignUpBlock,notificationsEnabled=bool,blindAvailabilityEnabled=bool,daysOnly=bool,remindees=[]string,sendEmailAfterXResponses=int,when2meetHref=string,timeIncrement=int,enabledSlots=[]string,activeSlots=[]string,eventTimezone=string,slotGeneration=models.SlotGeneration,timedRecurrence=models.TimedRecurrence,attendees=[]string} true "Object containing info about the event to create"
 // @Success 201 {object} object{eventId=string}
 // @Router /events [post]
 func createEvent(c *gin.Context) {
@@ -75,15 +106,20 @@ func createEvent(c *gin.Context) {
 		SignUpBlocks *[]models.SignUpBlock `json:"signUpBlocks"`
 
 		// Only for events (not groups)
-		StartOnMonday            *bool    `json:"startOnMonday"`
-		NotificationsEnabled     *bool    `json:"notificationsEnabled"`
-		BlindAvailabilityEnabled *bool    `json:"blindAvailabilityEnabled"`
-		DaysOnly                 *bool    `json:"daysOnly"`
-		Remindees                []string `json:"remindees"`
-		SendEmailAfterXResponses *int     `json:"sendEmailAfterXResponses"`
-		When2meetHref            *string  `json:"when2meetHref"`
-		CollectEmails            *bool    `json:"collectEmails"`
-		TimeIncrement            *int     `json:"timeIncrement"`
+		StartOnMonday            *bool                   `json:"startOnMonday"`
+		NotificationsEnabled     *bool                   `json:"notificationsEnabled"`
+		BlindAvailabilityEnabled *bool                   `json:"blindAvailabilityEnabled"`
+		DaysOnly                 *bool                   `json:"daysOnly"`
+		Remindees                []string                `json:"remindees"`
+		SendEmailAfterXResponses *int                    `json:"sendEmailAfterXResponses"`
+		When2meetHref            *string                 `json:"when2meetHref"`
+		CollectEmails            *bool                   `json:"collectEmails"`
+		TimeIncrement            *int                    `json:"timeIncrement"`
+		EnabledSlots             []primitive.DateTime    `json:"enabledSlots"`
+		ActiveSlots              []primitive.DateTime    `json:"activeSlots"`
+		EventTimezone            *string                 `json:"eventTimezone"`
+		SlotGeneration           *models.SlotGeneration  `json:"slotGeneration"`
+		TimedRecurrence          *models.TimedRecurrence `json:"timedRecurrence"`
 
 		// Only for availability groups
 		Attendees []string `json:"attendees"`
@@ -93,6 +129,22 @@ func createEvent(c *gin.Context) {
 		return
 	}
 	session := sessions.Default(c)
+	timedFields, err := normalizeTimedEventPayloadFields(
+		timedEventPayloadFields{
+			EnabledSlots:    payload.EnabledSlots,
+			ActiveSlots:     payload.ActiveSlots,
+			EventTimezone:   payload.EventTimezone,
+			SlotGeneration:  payload.SlotGeneration,
+			TimedRecurrence: payload.TimedRecurrence,
+		},
+		payload.Dates,
+		payload.Duration,
+		payload.TimeIncrement,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, responses.Error{Error: err.Error()})
+		return
+	}
 
 	// If user logged in, set owner id to their user id, otherwise set owner id to nil
 	userIdInterface := session.Get("userId")
@@ -132,6 +184,11 @@ func createEvent(c *gin.Context) {
 		When2meetHref:            payload.When2meetHref,
 		CollectEmails:            payload.CollectEmails,
 		TimeIncrement:            payload.TimeIncrement,
+		EnabledSlots:             timedFields.EnabledSlots,
+		ActiveSlots:              timedFields.ActiveSlots,
+		EventTimezone:            timedFields.EventTimezone,
+		SlotGeneration:           timedFields.SlotGeneration,
+		TimedRecurrence:          timedFields.TimedRecurrence,
 		Type:                     payload.Type,
 		SignUpResponses:          make(map[string]*models.SignUpResponse),
 		NumResponses:             &numResponses,
@@ -243,7 +300,7 @@ func createEvent(c *gin.Context) {
 // @Tags events
 // @Produce json
 // @Param eventId path string true "Event ID"
-// @Param payload body object{name=string,description=string,duration=float32,dates=[]string,type=models.EventType,signUpBlocks=[]models.SignUpBlock,notificationsEnabled=bool,blindAvailabilityEnabled=bool,daysOnly=bool,remindees=[]string,sendEmailAfterXResponses=int,attendees=[]string} true "Object containing info about the event to update"
+// @Param payload body object{name=string,description=string,duration=float32,dates=[]string,type=models.EventType,signUpBlocks=[]models.SignUpBlock,notificationsEnabled=bool,blindAvailabilityEnabled=bool,daysOnly=bool,remindees=[]string,sendEmailAfterXResponses=int,timeIncrement=int,enabledSlots=[]string,activeSlots=[]string,eventTimezone=string,slotGeneration=models.SlotGeneration,timedRecurrence=models.TimedRecurrence,attendees=[]string} true "Object containing info about the event to update"
 // @Success 200
 // @Router /events/{eventId} [put]
 func editEvent(c *gin.Context) {
@@ -265,19 +322,41 @@ func editEvent(c *gin.Context) {
 		SignUpBlocks *[]models.SignUpBlock `json:"signUpBlocks"`
 
 		// Only for events (not groups)
-		StartOnMonday            *bool    `json:"startOnMonday"`
-		NotificationsEnabled     *bool    `json:"notificationsEnabled"`
-		BlindAvailabilityEnabled *bool    `json:"blindAvailabilityEnabled"`
-		DaysOnly                 *bool    `json:"daysOnly"`
-		Remindees                []string `json:"remindees"`
-		SendEmailAfterXResponses *int     `json:"sendEmailAfterXResponses"`
-		CollectEmails            *bool    `json:"collectEmails"`
+		StartOnMonday            *bool                   `json:"startOnMonday"`
+		NotificationsEnabled     *bool                   `json:"notificationsEnabled"`
+		BlindAvailabilityEnabled *bool                   `json:"blindAvailabilityEnabled"`
+		DaysOnly                 *bool                   `json:"daysOnly"`
+		Remindees                []string                `json:"remindees"`
+		SendEmailAfterXResponses *int                    `json:"sendEmailAfterXResponses"`
+		CollectEmails            *bool                   `json:"collectEmails"`
+		TimeIncrement            *int                    `json:"timeIncrement"`
+		EnabledSlots             []primitive.DateTime    `json:"enabledSlots"`
+		ActiveSlots              []primitive.DateTime    `json:"activeSlots"`
+		EventTimezone            *string                 `json:"eventTimezone"`
+		SlotGeneration           *models.SlotGeneration  `json:"slotGeneration"`
+		TimedRecurrence          *models.TimedRecurrence `json:"timedRecurrence"`
 
 		// Only for availability groups
 		Attendees []string `json:"attendees"`
 	}{}
 	if err := c.Bind(&payload); err != nil {
 		logger.StdErr.Println(err)
+		return
+	}
+	timedFields, err := normalizeTimedEventPayloadFields(
+		timedEventPayloadFields{
+			EnabledSlots:    payload.EnabledSlots,
+			ActiveSlots:     payload.ActiveSlots,
+			EventTimezone:   payload.EventTimezone,
+			SlotGeneration:  payload.SlotGeneration,
+			TimedRecurrence: payload.TimedRecurrence,
+		},
+		payload.Dates,
+		payload.Duration,
+		payload.TimeIncrement,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, responses.Error{Error: err.Error()})
 		return
 	}
 
@@ -321,6 +400,12 @@ func editEvent(c *gin.Context) {
 	event.DaysOnly = payload.DaysOnly
 	event.SendEmailAfterXResponses = payload.SendEmailAfterXResponses
 	event.CollectEmails = payload.CollectEmails
+	event.TimeIncrement = payload.TimeIncrement
+	event.EnabledSlots = timedFields.EnabledSlots
+	event.ActiveSlots = timedFields.ActiveSlots
+	event.EventTimezone = timedFields.EventTimezone
+	event.SlotGeneration = timedFields.SlotGeneration
+	event.TimedRecurrence = timedFields.TimedRecurrence
 	event.Type = payload.Type
 
 	// Update remindees
@@ -439,7 +524,7 @@ func editEvent(c *gin.Context) {
 	}
 
 	// Update event object
-	_, err := db.EventsCollection.UpdateOne(
+	_, err = db.EventsCollection.UpdateOne(
 		context.Background(),
 		bson.M{
 			"_id": event.Id,
@@ -498,61 +583,25 @@ func getEvent(c *gin.Context) {
 	}
 	eventResponses := db.GetEventResponses(event.Id.Hex())
 
-	// Convert to old format for backward compatibility
-	utils.ConvertEventToOldFormat(event, eventResponses)
-
 	// Convert responses to map format for JSON response
-	responsesMap := getResponsesMap(eventResponses)
-
-	// Populate user fields
-	for userId, response := range responsesMap {
-		user := db.GetUserById(userId)
-		if user == nil {
-			if len(response.Name) == 0 {
-				// User was deleted
-				delete(responsesMap, userId)
-				continue
-			} else {
-				// User is guest
-				userId = response.Name
-				response.User = &models.User{
-					FirstName: response.Name,
-					Email:     response.Email,
-				}
-			}
-		} else {
-			response.User = user
-			response.User.CalendarAccounts = nil
-		}
-		responsesMap[userId] = response
-
-		// Remove availability arrays
-		responsesMap[userId].Availability = nil
-		responsesMap[userId].IfNeeded = nil
-		responsesMap[userId].ManualAvailability = nil
+	canonicalResponses := make(map[string]models.EventResponse)
+	for _, eventResponse := range eventResponses {
+		storeCanonicalEventResponse(canonicalResponses, eventResponse)
+	}
+	responsesMap := make(map[string]*models.Response, len(canonicalResponses))
+	for lookupKey, eventResponse := range canonicalResponses {
+		eventResponse.Response.Availability = nil
+		eventResponse.Response.IfNeeded = nil
+		eventResponse.Response.ManualAvailability = nil
+		responsesMap[lookupKey] = eventResponse.Response
 	}
 
 	// Populate sign up form fields
+	normalizedSignUpResponses := make(map[string]canonicalSignUpResponseEntry)
 	for userId, response := range event.SignUpResponses {
-		user := db.GetUserById(userId)
-		if user == nil {
-			if len(response.Name) == 0 {
-				// User was deleted
-				delete(event.SignUpResponses, userId)
-				continue
-			} else {
-				// User is guest
-				userId = response.Name
-				response.User = &models.User{
-					FirstName: response.Name,
-					Email:     response.Email,
-				}
-			}
-		} else {
-			response.User = user
-		}
-		event.SignUpResponses[userId] = response
+		storeCanonicalSignUpResponse(normalizedSignUpResponses, userId, response)
 	}
+	event.SignUpResponses = flattenCanonicalSignUpResponses(normalizedSignUpResponses)
 
 	if event.Type == models.GROUP {
 		attendees := db.GetAttendees(event.Id.Hex())
@@ -568,6 +617,7 @@ func getEvent(c *gin.Context) {
 		userSesh = userIdInterface.(string)
 	}
 	guestName := c.Query("guestName")
+	guestId := c.Query("guestId")
 	isOwner := userSesh != "" && ownerSesh == userSesh
 
 	// Strip sensitive user info from all responses
@@ -624,13 +674,13 @@ func getEvent(c *gin.Context) {
 			}
 			privatizedResponse, err = utils.PrivatizeEventResponse(event, privateFields, partialOmissions)
 		}
-	} else if guestName != "" {
+	} else if guestQueryLookupKey(guestId, guestName) != "" {
 		// Guest name query parameter exists
 		privateFields := []string{"numResponses"}
 		partialOmissions := []utils.PartialOmission{
 			{
 				FieldName: "responses",
-				KeepKey:   guestName,
+				KeepKey:   guestQueryLookupKey(guestId, guestName),
 			},
 		}
 		privatizedResponse, err = utils.PrivatizeEventResponse(event, privateFields, partialOmissions)
@@ -685,7 +735,14 @@ func getResponses(c *gin.Context) {
 
 	// Convert to map format and filter availability
 	eventResponses := db.GetEventResponses(event.Id.Hex())
-	responsesMap := getResponsesMap(eventResponses)
+	canonicalResponses := make(map[string]models.EventResponse)
+	for _, eventResponse := range eventResponses {
+		storeCanonicalEventResponse(canonicalResponses, eventResponse)
+	}
+	responsesMap := make(map[string]*models.Response, len(canonicalResponses))
+	for lookupKey, eventResponse := range canonicalResponses {
+		responsesMap[lookupKey] = eventResponse.Response
+	}
 
 	// Filter availability slice based on timeMin and timeMax
 	for userId, response := range responsesMap {
@@ -724,6 +781,7 @@ func getResponses(c *gin.Context) {
 		userSesh = userIdInterface.(string)
 	}
 	guestName := c.Query("guestName")
+	guestId := c.Query("guestId")
 	isOwner := userSesh != "" && ownerSesh == userSesh
 
 	// Strip sensitive user info from all responses
@@ -762,11 +820,12 @@ func getResponses(c *gin.Context) {
 			c.JSON(http.StatusOK, filteredMap)
 			return
 		}
-	} else if guestName != "" {
+	} else if guestQueryLookupKey(guestId, guestName) != "" {
 		// Guest name query parameter exists - return only that guest's response
 		filteredMap := make(map[string]*models.Response)
-		if guestResponse, exists := responsesMap[guestName]; exists {
-			filteredMap[guestName] = guestResponse
+		guestLookupKey := guestQueryLookupKey(guestId, guestName)
+		if guestResponse, exists := responsesMap[guestLookupKey]; exists {
+			filteredMap[guestLookupKey] = guestResponse
 		}
 		c.JSON(http.StatusOK, filteredMap)
 		return
@@ -791,9 +850,12 @@ func updateEventResponse(c *gin.Context) {
 		IfNeeded     []primitive.DateTime `json:"ifNeeded"`
 
 		// Guest information
-		Guest *bool  `json:"guest" binding:"required"`
-		Name  string `json:"name"`
-		Email string `json:"email"`
+		Guest           *bool   `json:"guest" binding:"required"`
+		Name            string  `json:"name"`
+		Email           string  `json:"email"`
+		GuestId         string  `json:"guestId"`
+		GuestEditToken  string  `json:"guestEditToken"`
+		GuestEditPolicy *string `json:"guestEditPolicy"`
 
 		// Calendar availability variables for Availability Groups feature
 		UseCalendarAvailability *bool                                        `json:"useCalendarAvailability"`
@@ -809,6 +871,10 @@ func updateEventResponse(c *gin.Context) {
 	}
 	session := sessions.Default(c)
 	eventId := c.Param("eventId")
+	callerGuestLookupKey := guestQueryLookupKey(
+		c.Query("guestId"),
+		c.Query("guestName"),
+	)
 	event := db.GetEventByEitherId(eventId)
 	if event == nil {
 		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
@@ -835,20 +901,76 @@ func updateEventResponse(c *gin.Context) {
 	}
 
 	eventResponses := db.GetEventResponses(event.Id.Hex())
+	normalizedAvailability, normalizedIfNeeded := normalizeTimedResponseAvailabilitySlots(
+		payload.Availability,
+		payload.IfNeeded,
+	)
 
 	var userIdString string
 	var userHasResponded bool
+	mutationResult := guestResponseMutationResult{}
+	responseIndex := -1
 	if !utils.Coalesce(event.IsSignUpForm) {
 		// Populate response differently if guest vs signed in user
 		var response models.Response
 		if *payload.Guest {
-			userIdString = payload.Name
-
+			guestNameValidation := respondents.ValidateGuestName(payload.Name)
+			if guestNameValidation.Code != respondents.GuestNameValid {
+				c.JSON(http.StatusBadRequest, responses.Error{Error: guestNameValidationErrorMessage(guestNameValidation.Code)})
+				return
+			}
+			canonicalName := guestNameValidation.Name
 			response = models.Response{
-				Name:         payload.Name,
+				Name:         canonicalName,
 				Email:        payload.Email,
-				Availability: payload.Availability,
-				IfNeeded:     payload.IfNeeded,
+				Availability: normalizedAvailability,
+				IfNeeded:     normalizedIfNeeded,
+			}
+			requestedPolicy := guestEditPolicyProtected
+			if payload.GuestEditPolicy != nil {
+				requestedPolicy = normalizeGuestEditPolicy(*payload.GuestEditPolicy)
+			}
+
+			existingIndex, existingEventResponse := findGuestResponseByGuestId(eventResponses, payload.GuestId)
+			if existingIndex == -1 {
+				existingIndex, existingEventResponse = findGuestResponseByName(eventResponses, canonicalName)
+			}
+
+			if existingIndex != -1 && existingEventResponse != nil {
+				if !canMutateGuestResponse(
+					existingEventResponse.Response,
+					callerGuestLookupKey,
+					payload.GuestEditToken,
+				) {
+					c.JSON(http.StatusForbidden, responses.Error{Error: "This guest response is protected and cannot be edited without its edit token"})
+					c.Abort()
+					return
+				}
+				if canonicalName != canonicalGuestName(existingEventResponse.Response.Name) && guestDisplayNameExists(eventResponses, canonicalName, existingIndex) {
+					c.JSON(http.StatusBadRequest, responses.Error{Error: "A guest with this name already exists for this event"})
+					return
+				}
+				responseIndex = existingIndex
+				if isTokenBackedGuestResponse(existingEventResponse.Response) {
+					effectivePolicy := existingEventResponse.Response.GuestEditPolicy
+					if payload.GuestEditPolicy != nil {
+						effectivePolicy = *payload.GuestEditPolicy
+					}
+					response.GuestId = existingEventResponse.Response.GuestId
+					response.GuestEditToken = existingEventResponse.Response.GuestEditToken
+					response.GuestEditPolicy = normalizeGuestEditPolicy(effectivePolicy)
+					response.GuestOwnershipMode = guestOwnershipModeToken
+				} else {
+					mutationResult.GuestCredentials = ensureGuestTokenOwnership(&response, requestedPolicy)
+				}
+				userIdString = guestResponseLookupKey(models.EventResponse{UserId: existingEventResponse.UserId, Response: &response})
+				if mutationResult.GuestCredentials == nil {
+					mutationResult.GuestCredentials = buildGuestCredentialsResponse(&response, canonicalName)
+				}
+				userHasResponded = true
+			} else {
+				mutationResult.GuestCredentials = ensureGuestTokenOwnership(&response, requestedPolicy)
+				userIdString = response.GuestId
 			}
 		} else {
 			userIdInterface := session.Get("userId")
@@ -862,8 +984,8 @@ func updateEventResponse(c *gin.Context) {
 
 			response = models.Response{
 				UserId:                  userId,
-				Availability:            payload.Availability,
-				IfNeeded:                payload.IfNeeded,
+				Availability:            normalizedAvailability,
+				IfNeeded:                normalizedIfNeeded,
 				UseCalendarAvailability: payload.UseCalendarAvailability,
 				EnabledCalendars:        payload.EnabledCalendars,
 				CalendarOptions:         payload.CalendarOptions,
@@ -923,14 +1045,18 @@ func updateEventResponse(c *gin.Context) {
 
 		// Check if user has responded to event before (edit response) or not (new response)
 		idx, _ := findResponse(eventResponses, userIdString)
-		userHasResponded = idx != -1
+		if !*payload.Guest {
+			responseIndex = idx
+			userHasResponded = idx != -1
+		}
 
 		// Update event responses
 		if userHasResponded {
 			db.EventResponsesCollection.UpdateOne(context.Background(), bson.M{
-				"_id": eventResponses[idx].Id,
+				"_id": eventResponses[responseIndex].Id,
 			}, bson.M{
 				"$set": bson.M{
+					"userId":   userIdString,
 					"response": &response,
 				},
 			})
@@ -947,11 +1073,17 @@ func updateEventResponse(c *gin.Context) {
 		var userIdString string
 		// Populate response differently if guest vs signed in user
 		if *payload.Guest {
-			userIdString = payload.Name
+			guestNameValidation := respondents.ValidateGuestName(payload.Name)
+			if guestNameValidation.Code != respondents.GuestNameValid {
+				c.JSON(http.StatusBadRequest, responses.Error{Error: guestNameValidationErrorMessage(guestNameValidation.Code)})
+				return
+			}
+			canonicalName := guestNameValidation.Name
+			userIdString = canonicalName
 
 			response = models.SignUpResponse{
 				SignUpBlockIds: payload.SignUpBlockIds,
-				Name:           payload.Name,
+				Name:           canonicalName,
 				Email:          payload.Email,
 			}
 		} else {
@@ -997,10 +1129,14 @@ func updateEventResponse(c *gin.Context) {
 
 			var respondentName string
 			if *payload.Guest {
-				respondentName = payload.Name
+				respondentName = canonicalGuestName(payload.Name)
 			} else {
 				respondent := db.GetUserById(userIdString)
-				respondentName = fmt.Sprintf("%s %s", respondent.FirstName, respondent.LastName)
+				if respondent == nil {
+					respondentName = ""
+				} else {
+					_, _, respondentName = respondents.SanitizeUserDisplayName(respondent)
+				}
 			}
 
 			if event.Type == models.GROUP {
@@ -1063,7 +1199,7 @@ func updateEventResponse(c *gin.Context) {
 		logger.StdErr.Panicln(err)
 	}
 
-	c.JSON(http.StatusOK, gin.H{})
+	c.JSON(http.StatusOK, mutationResult)
 }
 
 // @Summary Delete the current user's availability
@@ -1076,15 +1212,21 @@ func updateEventResponse(c *gin.Context) {
 // @Router /events/{eventId}/response [delete]
 func deleteEventResponse(c *gin.Context) {
 	payload := struct {
-		UserId string `json:"userId"`
-		Guest  *bool  `json:"guest" binding:"required"`
-		Name   string `json:"name"`
+		UserId         string `json:"userId"`
+		Guest          *bool  `json:"guest" binding:"required"`
+		Name           string `json:"name"`
+		GuestId        string `json:"guestId"`
+		GuestEditToken string `json:"guestEditToken"`
 	}{}
 	if err := c.Bind(&payload); err != nil {
 		return
 	}
 	session := sessions.Default(c)
 	eventId := c.Param("eventId")
+	callerGuestLookupKey := guestQueryLookupKey(
+		c.Query("guestId"),
+		c.Query("guestName"),
+	)
 	event := db.GetEventByEitherId(eventId)
 	if event == nil {
 		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
@@ -1093,19 +1235,47 @@ func deleteEventResponse(c *gin.Context) {
 	eventResponses := db.GetEventResponses(event.Id.Hex())
 
 	if *payload.Guest {
+		canonicalName := canonicalGuestName(payload.Name)
+		if payload.GuestId == "" && canonicalName == "" {
+			c.JSON(http.StatusBadRequest, responses.Error{Error: "Guest name is required"})
+			return
+		}
 		if utils.Coalesce(event.IsSignUpForm) {
-			delete(event.SignUpResponses, payload.Name)
-		} else {
-			// Remove response from array
-			for i := range eventResponses {
-				if eventResponses[i].Response.Name == payload.Name {
-					db.EventResponsesCollection.DeleteOne(context.Background(), bson.M{
-						"_id": eventResponses[i].Id,
-					})
-					*event.NumResponses--
-					break
+			if canonicalName == "" {
+				c.JSON(http.StatusBadRequest, responses.Error{Error: "Guest name is required"})
+				return
+			}
+			for storedKey, responseValue := range event.SignUpResponses {
+				if canonicalGuestName(storedKey) == canonicalName {
+					delete(event.SignUpResponses, storedKey)
+					continue
+				}
+				if responseValue != nil && canonicalGuestName(responseValue.Name) == canonicalName {
+					delete(event.SignUpResponses, storedKey)
 				}
 			}
+		} else {
+			idx, guestResponse := findGuestResponseByGuestId(eventResponses, payload.GuestId)
+			if idx == -1 {
+				idx, guestResponse = findGuestResponseByName(eventResponses, canonicalName)
+			}
+			if idx == -1 || guestResponse == nil {
+				c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
+				return
+			}
+			if !canMutateGuestResponse(
+				guestResponse.Response,
+				callerGuestLookupKey,
+				payload.GuestEditToken,
+			) {
+				c.JSON(http.StatusForbidden, responses.Error{Error: "This guest response is protected and cannot be deleted without its edit token"})
+				c.Abort()
+				return
+			}
+			db.EventResponsesCollection.DeleteOne(context.Background(), bson.M{
+				"_id": eventResponses[idx].Id,
+			})
+			*event.NumResponses--
 		}
 	} else {
 		userIdInterface := session.Get("userId")
@@ -1180,31 +1350,78 @@ func deleteEventResponse(c *gin.Context) {
 // @Router /events/{eventId}/rename-user [post]
 func renameUser(c *gin.Context) {
 	payload := struct {
-		OldName string `json:"oldName"`
-		NewName string `json:"newName"`
+		OldName        string `json:"oldName"`
+		NewName        string `json:"newName"`
+		GuestId        string `json:"guestId"`
+		GuestEditToken string `json:"guestEditToken"`
 	}{}
 	if err := c.Bind(&payload); err != nil {
 		return
 	}
 	eventId := c.Param("eventId")
+	callerGuestLookupKey := guestQueryLookupKey(
+		c.Query("guestId"),
+		c.Query("guestName"),
+	)
 	event := db.GetEventByEitherId(eventId)
 	if event == nil {
 		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
 		return
 	}
 
-	// Check if the new name already exists (only if it's different from the old name)
-	if payload.NewName != payload.OldName {
-		if db.GuestNameExists(event.Id.Hex(), payload.NewName) {
-			c.JSON(http.StatusBadRequest, responses.Error{Error: "A guest with this name already exists for this event"})
-			return
-		}
+	oldName := canonicalGuestName(payload.OldName)
+	if payload.GuestId == "" && oldName == "" {
+		c.JSON(http.StatusBadRequest, responses.Error{Error: "Existing guest name is required"})
+		return
+	}
+	newNameValidation := respondents.ValidateGuestName(payload.NewName)
+	if newNameValidation.Code != respondents.GuestNameValid {
+		c.JSON(http.StatusBadRequest, responses.Error{Error: guestNameValidationErrorMessage(newNameValidation.Code)})
+		return
+	}
+	newName := newNameValidation.Name
+
+	eventResponses := db.GetEventResponses(event.Id.Hex())
+	idx, guestResponse := findGuestResponseByGuestId(eventResponses, payload.GuestId)
+	if idx == -1 {
+		idx, guestResponse = findGuestResponseByName(eventResponses, oldName)
+	}
+	if idx == -1 || guestResponse == nil || guestResponse.Response == nil {
+		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
+		return
+	}
+	if !canMutateGuestResponse(
+		guestResponse.Response,
+		callerGuestLookupKey,
+		payload.GuestEditToken,
+	) {
+		c.JSON(http.StatusForbidden, responses.Error{Error: "This guest response is protected and cannot be renamed without its edit token"})
+		return
+	}
+	if newName != canonicalGuestName(guestResponse.Response.Name) && guestDisplayNameExists(eventResponses, newName, idx) {
+		c.JSON(http.StatusBadRequest, responses.Error{Error: "A guest with this name already exists for this event"})
+		return
 	}
 
-	// Check if old name is a guest response
-	db.UpdateGuestResponseName(event.Id.Hex(), payload.OldName, payload.NewName)
+	updatedResponse := *guestResponse.Response
+	updatedResponse.Name = newName
+	mutationResult := guestResponseMutationResult{}
+	if !isTokenBackedGuestResponse(&updatedResponse) {
+		mutationResult.GuestCredentials = ensureGuestTokenOwnership(&updatedResponse, guestEditPolicyProtected)
+	} else {
+		mutationResult.GuestCredentials = buildGuestCredentialsResponse(&updatedResponse, newName)
+	}
 
-	c.JSON(http.StatusOK, gin.H{})
+	db.EventResponsesCollection.UpdateOne(context.Background(), bson.M{
+		"_id": guestResponse.Id,
+	}, bson.M{
+		"$set": bson.M{
+			"userId":   guestResponseLookupKey(models.EventResponse{UserId: guestResponse.UserId, Response: &updatedResponse}),
+			"response": &updatedResponse,
+		},
+	})
+
+	c.JSON(http.StatusOK, mutationResult)
 }
 
 // @Summary Mark the user as having responded to this event
@@ -1903,11 +2120,106 @@ func stripSensitiveUserFields(user *models.User) {
 	user.PrimaryAccountKey = nil
 }
 
+type canonicalSignUpResponseEntry struct {
+	storedKey string
+	response  *models.SignUpResponse
+}
+
+func preferCanonicalEventResponse(current models.EventResponse, candidate models.EventResponse) bool {
+	currentUserID, _ := respondents.ResolveStoredUserID(current.Response.UserId, current.UserId)
+	candidateUserID, _ := respondents.ResolveStoredUserID(candidate.Response.UserId, candidate.UserId)
+
+	return respondents.CompareCanonicalRecency(
+		respondents.CanonicalRecency{
+			Primary:    candidate.Id,
+			Secondary:  candidateUserID,
+			TieBreaker: candidate.UserId,
+		},
+		respondents.CanonicalRecency{
+			Primary:    current.Id,
+			Secondary:  currentUserID,
+			TieBreaker: current.UserId,
+		},
+	) > 0
+}
+
+func storeCanonicalEventResponse(
+	result map[string]models.EventResponse,
+	eventResponse models.EventResponse,
+) {
+	lookupKey, keep := populateResponsePayloadIdentity(eventResponse.Response, eventResponse.UserId)
+	if !keep || !shouldExposeGuestResponsePayload(lookupKey, eventResponse.Response) {
+		return
+	}
+	normalizeGuestResponseForPayload(eventResponse.Response)
+
+	if existing, exists := result[lookupKey]; exists && !preferCanonicalEventResponse(existing, eventResponse) {
+		return
+	}
+
+	result[lookupKey] = eventResponse
+}
+
+func preferCanonicalSignUpResponse(
+	current canonicalSignUpResponseEntry,
+	candidate canonicalSignUpResponseEntry,
+) bool {
+	currentUserID, _ := respondents.ResolveStoredUserID(current.response.UserId, current.storedKey)
+	candidateUserID, _ := respondents.ResolveStoredUserID(candidate.response.UserId, candidate.storedKey)
+
+	return respondents.CompareCanonicalRecency(
+		respondents.CanonicalRecency{
+			Primary:    candidateUserID,
+			TieBreaker: candidate.storedKey,
+		},
+		respondents.CanonicalRecency{
+			Primary:    currentUserID,
+			TieBreaker: current.storedKey,
+		},
+	) > 0
+}
+
+func storeCanonicalSignUpResponse(
+	result map[string]canonicalSignUpResponseEntry,
+	storedKey string,
+	response *models.SignUpResponse,
+) {
+	lookupKey, keep := populateSignUpResponsePayloadIdentity(response, storedKey)
+	if !keep || !shouldExposeGuestSignUpResponsePayload(lookupKey, response) {
+		return
+	}
+
+	candidate := canonicalSignUpResponseEntry{
+		storedKey: storedKey,
+		response:  response,
+	}
+	if existing, exists := result[lookupKey]; exists && !preferCanonicalSignUpResponse(existing, candidate) {
+		return
+	}
+
+	result[lookupKey] = candidate
+}
+
+func flattenCanonicalSignUpResponses(
+	entries map[string]canonicalSignUpResponseEntry,
+) map[string]*models.SignUpResponse {
+	flattened := make(map[string]*models.SignUpResponse, len(entries))
+	for lookupKey, entry := range entries {
+		flattened[lookupKey] = entry.response
+	}
+	return flattened
+}
+
 // Helper function to get all responses as a map (for backward compatibility)
 func getResponsesMap(responses []models.EventResponse) map[string]*models.Response {
-	result := make(map[string]*models.Response)
+	canonicalResponses := make(map[string]models.EventResponse)
 	for _, resp := range responses {
-		result[resp.UserId] = resp.Response
+		storeCanonicalEventResponse(canonicalResponses, resp)
+	}
+
+	result := make(map[string]*models.Response, len(canonicalResponses))
+	for lookupKey, eventResponse := range canonicalResponses {
+		result[lookupKey] = eventResponse.Response
 	}
 	return result
 }

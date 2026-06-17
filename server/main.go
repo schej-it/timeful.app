@@ -4,13 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
 	"log"
 	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -18,9 +16,10 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"github.com/stripe/stripe-go/v82"
+	"schej.it/server/appenv"
 	"schej.it/server/db"
+	"schej.it/server/envfiles"
 	"schej.it/server/logger"
 	"schej.it/server/routes"
 	"schej.it/server/services/gcloud"
@@ -32,6 +31,8 @@ import (
 
 	_ "schej.it/server/docs"
 )
+
+const defaultLogPath = "logs/server.log"
 
 // @title Schej.it API
 // @version 1.0
@@ -54,7 +55,8 @@ func main() {
 	// Set release flag
 	release := flag.Bool("release", false, "Whether this is the release version of the server")
 	flag.Parse()
-	if *release {
+	currentAppEnv := appenv.Current()
+	if *release || shouldRunInReleaseMode(currentAppEnv) {
 		os.Setenv("GIN_MODE", "release")
 		gin.SetMode(gin.ReleaseMode)
 	} else {
@@ -62,7 +64,7 @@ func main() {
 	}
 
 	// Init logfile
-	logFile, err := os.OpenFile("logs.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logFile, err := openLogFile(defaultLogPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -102,7 +104,17 @@ func main() {
 	// Cors
 	corsOrigins := os.Getenv("CORS_ORIGINS")
 	if corsOrigins == "" {
-		corsOrigins = "https://www.schej.it,https://schej.it,https://www.timeful.app,https://timeful.app,http://localhost:8080"
+		corsOrigins = strings.Join([]string{
+			"https://www.schej.it",
+			"https://schej.it",
+			"https://www.timeful.app",
+			"https://timeful.app",
+			"http://localhost:8080",
+			"http://localhost:4173",
+			"http://localhost:4174",
+			"http://127.0.0.1:4173",
+			"http://127.0.0.1:4174",
+		}, ",")
 	}
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     strings.Split(corsOrigins, ","),
@@ -127,6 +139,9 @@ func main() {
 
 	// Init routes
 	apiRouter := router.Group("/api")
+	apiRouter.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 	routes.InitAuth(apiRouter)
 	routes.InitUser(apiRouter)
 	routes.InitUsers(apiRouter)
@@ -144,49 +159,53 @@ func main() {
 		}
 	}
 
-	err = filepath.WalkDir(frontendDist, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() && d.Name() != "index.html" {
-			// Get the path relative to frontendDist
-			relPath, err := filepath.Rel(frontendDist, path)
-			if err != nil || relPath == "" || relPath == "." {
-				return nil
-			}
-			router.StaticFile(fmt.Sprintf("/%s", relPath), path)
-		}
-		return nil
-	})
-	if err != nil {
-		logger.StdErr.Printf("Warning: failed to walk frontend dist: %s", err)
-	}
-
 	indexPath := filepath.Join(frontendDist, "index.html")
+	hasFrontendIndex := false
 	if _, err := os.Stat(indexPath); err == nil {
 		router.LoadHTMLFiles(indexPath)
+		hasFrontendIndex = true
 	} else {
 		logger.StdErr.Printf("Warning: index.html not found at %s", indexPath)
 	}
+	router.GET("/e/:eventId", eventPageHandler(hasFrontendIndex))
 	router.NoRoute(noRouteHandler())
 
 	// Init swagger documentation
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	// Run server
-	if os.Getenv("NODE_ENV") == "staging" {
-		router.Run(":3003")
-	} else {
-		router.Run(":3002")
+	router.Run(":" + appenv.Port(currentAppEnv))
+}
+
+func shouldRunInReleaseMode(env appenv.Environment) bool {
+	return appenv.ShouldUseReleaseMode(os.Getenv("GIN_MODE"), env)
+}
+
+func openLogFile(path string) (*os.File, error) {
+	logDir := filepath.Dir(path)
+	if logDir != "." {
+		if err := os.MkdirAll(logDir, 0755); err != nil {
+			return nil, err
+		}
 	}
+
+	return os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 }
 
 // Load .env variables
 func loadDotEnv() {
-	err := godotenv.Load(".env")
+	loadedPath, err := envfiles.Load()
 	if err != nil {
-		// .env file is optional - env vars can be passed directly (e.g., via Docker)
-		logger.StdOut.Println("No .env file found, using environment variables")
+		if os.Getenv("ENV_FILE") != "" {
+			logger.StdErr.Panicln(envfiles.InvalidExplicitPathMessage(err))
+		}
+
+		logger.StdErr.Panicln(err)
+	}
+	if loadedPath == "" {
+		logger.StdOut.Println(envfiles.MissingFileMessage())
+	} else {
+		logger.StdOut.Printf("Loaded environment variables from %s\n", loadedPath)
 	}
 
 	// Load stripe key
@@ -210,41 +229,34 @@ func validateSessionSecret() {
 	}
 }
 
-func noRouteHandler() gin.HandlerFunc {
+func eventPageHandler(hasFrontendIndex bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if !hasFrontendIndex {
+			c.JSON(http.StatusNotFound, gin.H{"error": "route not found"})
+			return
+		}
+
 		params := gin.H{}
-		path := c.Request.URL.Path
 
-		// Determine meta tags based off URL
-		if match := regexp.MustCompile(`\/e\/(\w+)`).FindStringSubmatchIndex(path); match != nil {
-			// /e/:eventId
-			eventId := path[match[2]:match[3]]
-			event := db.GetEventByEitherId(eventId)
+		eventId := c.Param("eventId")
+		event := db.GetEventByEitherId(eventId)
 
-			// params["enableStickyFooter"] = true
+		if event != nil {
+			title := fmt.Sprintf("%s - Timeful (formerly Schej)", event.Name)
+			params["title"] = title
+			params["ogTitle"] = title
 
-			if event != nil {
-				title := fmt.Sprintf("%s - Timeful (formerly Schej)", event.Name)
-				params["title"] = title
-				params["ogTitle"] = title
-
-				if len(utils.Coalesce(event.When2meetHref)) > 0 {
-					params["ogImage"] = "/img/when2meetOgImage2.png"
-				}
+			if len(utils.Coalesce(event.When2meetHref)) > 0 {
+				params["ogImage"] = "/img/when2meetOgImage2.png"
 			}
-		} else if regexp.MustCompile(`\/g\/`).MatchString(path) {
-			// /g/ routes
-			// params["enableStickyFooter"] = true
 		}
 
 		c.HTML(http.StatusOK, "index.html", params)
 	}
 }
 
-func splitPath(path string) []string {
-	dir, last := filepath.Split(path)
-	if dir == "" {
-		return []string{last}
+func noRouteHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "route not found"})
 	}
-	return append(splitPath(filepath.Clean(dir)), last)
 }

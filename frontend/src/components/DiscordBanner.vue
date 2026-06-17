@@ -12,10 +12,10 @@
       <v-btn
         :href="discordUrl"
         target="_blank"
-        outlined
+        variant="outlined"
         color="white"
         class="tw-mt-3 tw-flex-shrink-0 sm:tw-ml-4 sm:tw-mt-0"
-        small
+        size="small"
         @click="trackDiscordClick"
       >
         Join Discord
@@ -23,61 +23,34 @@
     </div>
     <v-btn
       icon
-      small
-      @click="dismiss"
+      size="small"
       class="tw-absolute tw-right-2 tw-top-1/2 -tw-translate-y-1/2"
+      @click="dismiss"
     >
       <v-icon color="white">mdi-close</v-icon>
     </v-btn>
   </div>
 </template>
 
-<script>
-import { isPhone } from "@/utils"
-export default {
-  name: "DiscordBanner",
+<script setup lang="ts">
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import { posthog } from "@/plugins/posthog"
+import { useRouteDismissibleVisibility } from "@/composables/useRouteDismissibleVisibility"
 
-  data() {
-    return {
-      discordUrl: "https://discord.gg/v6raNqYxx3",
-      show: false,
-    }
-  },
+const { isPhone } = useDisplayHelpers()
 
-  computed: {
-    isPhone() {
-      return isPhone(this.$vuetify)
+const discordUrl = "https://discord.gg/v6raNqYxx3"
+const { show, dismiss } = useRouteDismissibleVisibility(
+  "landing",
+  "discordBannerDismissed_v1",
+  {
+    onDismiss: () => {
+      posthog.capture("discord_banner_dismissed")
     },
-    localStorageKey() {
-      // Use a versioned key to force re-showing banner if message changes
-      return `discordBannerDismissed_v1`
-    },
-  },
+  }
+)
 
-  methods: {
-    dismiss() {
-      this.show = false
-      localStorage.setItem(this.localStorageKey, "true")
-      this.$posthog?.capture("discord_banner_dismissed")
-    },
-    trackDiscordClick() {
-      this.$posthog?.capture("discord_banner_clicked", {
-        discordUrl: this.discordUrl,
-      })
-    },
-  },
-
-  watch: {
-    $route: {
-      immediate: true,
-      handler() {
-        const showOnRoute = this.$route.name === "landing"
-        const userHasDismissed =
-          localStorage.getItem(this.localStorageKey) === "true"
-
-        this.show = !userHasDismissed && showOnRoute
-      },
-    },
-  },
+const trackDiscordClick = () => {
+  posthog.capture("discord_banner_clicked", { discordUrl })
 }
 </script>

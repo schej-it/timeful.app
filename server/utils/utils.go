@@ -114,7 +114,7 @@ func PrintHttpResponse(resp *http.Response) {
 	resp.Body = io.NopCloser(bytes.NewBuffer(body))
 }
 
-// Returns the correct base url, based on whether we're on dev or prod
+// Returns the correct base URL for development versus release environments.
 func GetBaseUrl() string {
 	var baseUrl string
 	if IsRelease() {

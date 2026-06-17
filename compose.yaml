@@ -13,51 +13,118 @@ services:
       retries: 5
       start_period: 10s
 
-  frontend:
+  frontend-artifacts:
     build:
       context: ./frontend
       target: builder
       args:
-        VUE_APP_POSTHOG_API_KEY: ${VUE_APP_POSTHOG_API_KEY:-}
-        VUE_APP_GOOGLE_CLIENT_ID: ${CLIENT_ID:-}
-        VUE_APP_MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+        VITE_APP_ENV: ${VITE_APP_ENV:-}
+        VITE_POSTHOG_API_KEY: ${VITE_POSTHOG_API_KEY:-}
+        VITE_GOOGLE_CLIENT_ID: ${CLIENT_ID:-}
+        VITE_MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+        VITE_ENABLE_SIGN_IN: ${VITE_ENABLE_SIGN_IN:-}
+        VITE_ENABLE_FREEMIUM: ${VITE_ENABLE_FREEMIUM:-}
+        VITE_ENABLE_THIRD_PARTY_SHELL: ${VITE_ENABLE_THIRD_PARTY_SHELL:-}
+        VITE_SHOW_FORMERLY_KNOWN_AS_SCHEJ: ${VITE_SHOW_FORMERLY_KNOWN_AS_SCHEJ:-}
     volumes:
       - frontend_dist:/app/dist
     command:
       [
         "sh",
         "-c",
-        "rm -rf /app/dist/* && cp -r /build/* /app/dist/ && echo 'Frontend assets copied' && tail -f /dev/null",
+        "find /app/dist -mindepth 1 -maxdepth 1 -exec rm -rf {} + && cp -a /build/. /app/dist/ && test -f /app/dist/index.html && echo 'Frontend artifacts copied'",
       ]
 
   server:
     build:
       context: ./server
     restart: unless-stopped
+    # Base Compose targets the default non-staging server port.
     ports:
       - "3002:3002"
-    env_file:
-      - ./server/.env
     environment:
-      MONGODB_URI: mongodb://mongo:27017
-      GIN_MODE: release
+      APP_ENV: ${APP_ENV:-}
+      ANALYTICS_PASSWORD: ${ANALYTICS_PASSWORD:-}
+      ANALYTICS_USERNAME: ${ANALYTICS_USERNAME:-}
+      ANDROID_CLIENT_ID: ${ANDROID_CLIENT_ID:-}
+      CLIENT_ID: ${CLIENT_ID:-}
+      CLIENT_SECRET: ${CLIENT_SECRET:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      FRONTEND_DIST: /app/frontend/dist
+      GIN_MODE: ${GIN_MODE:-release}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
+      GUILD_ID: ${GUILD_ID:-}
+      IOS_CLIENT_ID: ${IOS_CLIENT_ID:-}
+      LISTMONK_ENABLED: ${LISTMONK_ENABLED:-}
+      LISTMONK_FINAL_EMAIL_REMINDER_ID: ${LISTMONK_FINAL_EMAIL_REMINDER_ID:-}
+      LISTMONK_INITIAL_EMAIL_REMINDER_ID: ${LISTMONK_INITIAL_EMAIL_REMINDER_ID:-}
+      LISTMONK_LIST_ID: ${LISTMONK_LIST_ID:-}
+      LISTMONK_OTP_EMAIL_TEMPLATE_ID: ${LISTMONK_OTP_EMAIL_TEMPLATE_ID:-}
+      LISTMONK_PASSWORD: ${LISTMONK_PASSWORD:-}
+      LISTMONK_SECOND_EMAIL_REMINDER_ID: ${LISTMONK_SECOND_EMAIL_REMINDER_ID:-}
+      LISTMONK_URL: ${LISTMONK_URL:-}
+      LISTMONK_USERNAME: ${LISTMONK_USERNAME:-}
+      MAILCHIMP_API_KEY: ${MAILCHIMP_API_KEY:-}
+      MAILJET_API_KEY: ${MAILJET_API_KEY:-}
+      MAILJET_API_SECRET: ${MAILJET_API_SECRET:-}
+      MAILJET_LIST_ID: ${MAILJET_LIST_ID:-}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017}
+      SCHEJ_EMAIL_ADDRESS: ${SCHEJ_EMAIL_ADDRESS:-}
+      SERVICE_ACCOUNT_KEY_PATH: ${SERVICE_ACCOUNT_KEY_PATH:-}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      SLACK_DEV_WEBHOOK_URL: ${SLACK_DEV_WEBHOOK_URL:-}
+      SLACK_MONETIZATION_WEBHOOK_URL: ${SLACK_MONETIZATION_WEBHOOK_URL:-}
+      SLACK_PROD_WEBHOOK_URL: ${SLACK_PROD_WEBHOOK_URL:-}
+      STRIPE_API_KEY: ${STRIPE_API_KEY:-}
+      STRIPE_LIFETIME_PRICE_ID: ${STRIPE_LIFETIME_PRICE_ID:-}
+      STRIPE_LIFETIME_PRICE_ID_2: ${STRIPE_LIFETIME_PRICE_ID_2:-}
+      STRIPE_LIFETIME_STUDENT_PRICE_ID: ${STRIPE_LIFETIME_STUDENT_PRICE_ID:-}
+      STRIPE_MONTHLY_PRICE_ID: ${STRIPE_MONTHLY_PRICE_ID:-}
+      STRIPE_MONTHLY_STUDENT_PRICE_ID: ${STRIPE_MONTHLY_STUDENT_PRICE_ID:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_YEARLY_PRICE_ID: ${STRIPE_YEARLY_PRICE_ID:-}
+      STRIPE_YEARLY_STUDENT_PRICE_ID: ${STRIPE_YEARLY_STUDENT_PRICE_ID:-}
     volumes:
       - frontend_dist:/app/frontend/dist:ro
       - server_logs:/app/logs
     depends_on:
       mongo:
         condition: service_healthy
-      frontend:
-        condition: service_started
+      frontend-artifacts:
+        condition: service_completed_successfully
+    # Staging overrides this to probe the staging-specific port in compose.staging.yaml.
     healthcheck:
-      test:
-        ["CMD", "wget", "-q", "--spider", "http://localhost:3002/api/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3002/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - frontend_dist:/srv:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend-artifacts:
+        condition: service_completed_successfully
+      server:
+        condition: service_healthy
+
 volumes:
   mongo_data:
   frontend_dist:
   server_logs:
+  caddy_data:
+  caddy_config:

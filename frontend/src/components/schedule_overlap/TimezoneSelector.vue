@@ -1,191 +1,296 @@
-<!-- Allows user to change timezone -->
 <template>
   <div
-    class="tw-flex tw-items-center tw-justify-center"
     id="timezone-select-container"
+    class="tw-flex tw-min-w-0 tw-items-center tw-text-[rgba(0,0,0,0.6)]"
   >
-    <div :class="`tw-mr-2 tw-mt-px ${labelColor}`">{{ label }}</div>
-    <v-select
-      id="timezone-select"
-      :value="value"
-      @input="onChange"
-      :items="timezones"
-      :menu-props="{ auto: true }"
-      class="tw-z-20 -tw-mt-px tw-w-52 tw-text-sm"
-      dense
-      color="#219653"
-      item-color="green"
-      hide-details
-      item-text="label"
-      return-object
-    >
-      <template v-slot:item="{ item, on, attrs }">
-        <v-list-item v-bind="attrs" v-on="on">
-          <v-list-item-content>
-            <v-list-item-title>
-              {{ item.gmtString }} {{ item.label }}
+    <div :class="`tw-mr-2 ${labelColor}`">{{ label }}</div>
+    <div class="timezone-select__field-row tw-flex tw-min-w-0 tw-items-center">
+      <v-select
+        id="timezone-select"
+        :model-value="selectedTimezoneValue"
+        :items="visibleTimezoneItems"
+        data-testid="timezone-select-trigger"
+        class="compact-inline-select tw-z-20 -tw-mt-px tw-w-40 sm:tw-w-44 md:tw-w-64 tw-min-w-0 tw-text-sm tw-text-black"
+        color="#219653"
+        density="compact"
+        item-color="green"
+        hide-details
+        item-title="title"
+        item-value="value"
+        single-line
+        variant="underlined"
+        @update:model-value="onChangeValue"
+      >
+        <template #item="{ item, props: itemProps }">
+          <v-list-item
+            v-bind="stripGeneratedTitle(itemProps)"
+            class="timezone-select__item"
+            data-testid="timezone-select-option"
+            :data-timezone-value="getTimezoneFromSelectItem(item.raw).value"
+            :class="{
+              'timezone-select__item--active': getTimezoneFromSelectItem(item.raw).value === selectedTimezoneValue,
+            }"
+          >
+            <v-list-item-title class="timezone-select__item-title">
+              {{ formatTimezoneSelectItemLabel(item.raw) }}
             </v-list-item-title>
-          </v-list-item-content>
-        </v-list-item>
-      </template>
-      <template v-slot:selection="{ item }">
-        <div class="v-select__selection v-select__selection--comma">
-          {{ item.gmtString }} {{ item.label }}
-        </div>
-      </template>
-    </v-select>
-    <v-btn v-if="timezoneModified" @click="resetTimezone" icon color="primary"
-      ><v-icon>mdi-refresh</v-icon></v-btn
-    >
+          </v-list-item>
+        </template>
+        <template #selection="{ item }">
+          <div
+            class="timezone-select__selection-text v-select__selection v-select__selection--comma"
+          >
+            {{ formatTimezoneSelectItemLabel(item.raw) }}
+          </div>
+        </template>
+      </v-select>
+      <v-btn
+        v-if="modified"
+        icon
+        color="primary"
+        variant="text"
+        class="timezone-select__reset-button"
+        @mousedown.stop.prevent
+        @pointerdown.stop.prevent
+        @click.stop="emit('reset')"
+      >
+        <v-icon>mdi-refresh</v-icon>
+      </v-btn>
+    </div>
   </div>
 </template>
 
-<script>
-import { allTimezones } from "@/constants"
-import dayjs from "dayjs"
-import utcPlugin from "dayjs/plugin/utc"
-import timezonePlugin from "dayjs/plugin/timezone"
-dayjs.extend(utcPlugin)
-dayjs.extend(timezonePlugin)
+<script setup lang="ts">
+import { computed } from "vue"
+import { Temporal } from "temporal-polyfill"
+import type { Timezone } from "@/composables/schedule_overlap/types"
+import {
+  normalizeTimezone,
+  buildTimezonesForReferenceDate,
+} from "@/utils/timezone_utils"
 
-export default {
-  name: "TimezoneSelector",
+interface TimezoneSelectItem {
+  title: string
+  value: string
+  timezone: Timezone
+}
 
-  props: {
-    value: { type: Object, required: true },
-    label: { type: String, default: "Shown in" },
-    labelColor: { type: String, default: "" },
-    referenceDate: { type: Date, default: null },
-  },
+const props = withDefaults(
+  defineProps<{
+    modelValue: Timezone
+    modified?: boolean
+    label?: string
+    labelColor?: string
+    referenceDate?: Temporal.ZonedDateTime | null
+  }>(),
+  {
+    modified: false,
+    label: "Shown in",
+    labelColor: "tw-text-sm tw-text-black",
+    referenceDate: null,
+  }
+)
 
-  created() {
-    if (localStorage["timezone"]) {
-      this.timezoneModified = true
-    }
+const emit = defineEmits<{
+  "update:modelValue": [value: Timezone]
+  reset: []
+}>()
 
-    if (this.value.value) return // Timezone has already been set
+const effectiveReferenceDate = computed(() => {
+  const refDate = props.referenceDate ?? Temporal.Now.zonedDateTimeISO()
+  return refDate
+})
 
-    // Set timezone to localstorage timezone if localstorage is set
-    if (localStorage["timezone"]) {
-      this.$emit("input", JSON.parse(localStorage["timezone"]))
-      return
-    }
+function formatTimezoneTitle(timezone: Timezone): string {
+  return `${timezone.gmtString} ${timezone.label}`.trim()
+}
 
-    // Otherwise, set timezone to local timezone
-    this.$emit("input", this.getLocalTimezone())
-  },
+function isTimezoneSelectItem(item: TimezoneSelectItem | Timezone): item is TimezoneSelectItem {
+  return "timezone" in item
+}
 
-  data() {
-    return {
-      timezoneModified: false, // Whether the timezone has been modified from the local timezone
-    }
-  },
+function getTimezoneFromSelectItem(item: TimezoneSelectItem | Timezone): Timezone {
+  return isTimezoneSelectItem(item) ? item.timezone : item
+}
 
-  computed: {
-    effectiveReferenceDate() {
-      return this.referenceDate ?? new Date()
-    },
-    /** Returns an array of all supported timezones */
-    timezones() {
-      // ===============================================================================
-      // Source: https://github.com/ndom91/react-timezone-select/blob/main/src/index.tsx
-      // ===============================================================================
+function formatTimezoneSelectItemLabel(item: TimezoneSelectItem | Timezone): string {
+  return formatTimezoneTitle(getTimezoneFromSelectItem(item))
+}
 
-      const t = Object.entries(allTimezones)
-        .map((zone) => {
-          try {
-            const min = dayjs(this.effectiveReferenceDate)
-              .tz(zone[0])
-              .utcOffset()
-            const hr = `${(min / 60) ^ 0}:${
-              min % 60 === 0 ? "00" : Math.abs(min % 60)
-            }`
-            const gmtString = `(GMT${hr.includes("-") ? hr : `+${hr}`})`
-            const label = `${zone[1]}`
+function toTimezoneSelectItem(timezone: Timezone): TimezoneSelectItem {
+  const normalizedTimezone = normalizeTimezone(timezone)
 
-            return {
-              value: zone[0],
-              label: label,
-              gmtString: gmtString,
-              offset: min,
-            }
-          } catch (e) {
-            console.error(e)
-            return null
-          }
-        })
-        .filter(Boolean)
-        .sort((a, b) => a.offset - b.offset)
-      return t
-    },
-  },
+  return {
+    title: formatTimezoneTitle(normalizedTimezone),
+    value: normalizedTimezone.value,
+    timezone: normalizedTimezone,
+  }
+}
 
-  methods: {
-    /** Updates local storage and emits the new timezone */
-    onChange(val) {
-      localStorage["timezone"] = JSON.stringify(val)
-      this.$emit("input", val)
-      this.timezoneModified = true
-    },
-    /** Returns a timezone object for the local timezone */
-    getLocalTimezone() {
-      const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+function stripGeneratedTitle(
+  itemProps: Record<string, unknown>
+): Record<string, unknown> {
+  const { title: _title, ...rest } = itemProps
+  return rest
+}
 
-      // Step 1: Exact match on spacetime-canonical name
-      let timezoneObject = this.timezones.find((t) => t.value === localTimezone)
+const timezones = computed<Timezone[]>(() => {
+  return buildTimezonesForReferenceDate(effectiveReferenceDate.value)
+})
 
-      if (!timezoneObject) {
-        // Step 2: Match by offsets at two reference dates (Jan + Jul)
-        // Distinguishes DST-observing zones from non-DST zones that share
-        // the same current offset (e.g. Europe/Belgrade vs Africa/Casablanca)
-        const janOffset = dayjs.tz("2024-01-15 12:00", localTimezone).utcOffset()
-        const julOffset = dayjs.tz("2024-07-15 12:00", localTimezone).utcOffset()
+const timezoneItems = computed<TimezoneSelectItem[]>(() =>
+  timezones.value.map((timezone) => toTimezoneSelectItem(timezone))
+)
 
-        timezoneObject = this.timezones.find((t) => {
-          const tJan = dayjs.tz("2024-01-15 12:00", t.value).utcOffset()
-          const tJul = dayjs.tz("2024-07-15 12:00", t.value).utcOffset()
-          return tJan === janOffset && tJul === julOffset
-        })
-      }
+const selectedTimezoneValue = computed(() => {
+  if (!props.modelValue.value && !(props.modelValue.offset instanceof Temporal.Duration)) {
+    return undefined
+  }
 
-      if (!timezoneObject) {
-        // Step 3: Final fallback — current offset only
-        const offset = dayjs(this.effectiveReferenceDate)
-          .tz(localTimezone)
-          .utcOffset()
-        timezoneObject = this.timezones.find((t) => t.offset === offset)
-      }
+  return normalizeTimezone(props.modelValue).value
+})
 
-      return timezoneObject
-    },
-    /** Resets timezone to the local timezone and clears localstorage as well */
-    resetTimezone() {
-      this.$emit("input", this.getLocalTimezone())
-      localStorage.removeItem("timezone")
-      this.timezoneModified = false
-    },
-  },
+const visibleTimezoneItems = computed<TimezoneSelectItem[]>(() => {
+  const currentValue = selectedTimezoneValue.value
+  if (!currentValue) {
+    return timezoneItems.value
+  }
 
-  watch: {
-    referenceDate() {
-      if (!this.value?.value) {
-        return
-      }
+  if (timezoneItems.value.some((item) => item.value === currentValue)) {
+    return timezoneItems.value
+  }
 
-      const refreshedTimezone = this.timezones.find(
-        (timezone) => timezone.value === this.value.value
-      )
+  return [toTimezoneSelectItem(props.modelValue), ...timezoneItems.value]
+})
 
-      if (!refreshedTimezone || refreshedTimezone.offset === this.value.offset) {
-        return
-      }
+function onChange(val: Timezone) {
+  const normalizedTimezone = normalizeTimezone(val)
+  emit("update:modelValue", normalizedTimezone)
+}
 
-      if (localStorage["timezone"]) {
-        localStorage["timezone"] = JSON.stringify(refreshedTimezone)
-      }
+function onChangeValue(val: string | null) {
+  if (!val) {
+    return
+  }
 
-      this.$emit("input", refreshedTimezone)
-    },
-  },
+  const matchedTimezone = visibleTimezoneItems.value.find(
+    (timezone) => timezone.value === val
+  )?.timezone
+  if (!matchedTimezone) {
+    return
+  }
+
+  onChange(matchedTimezone)
 }
 </script>
+
+<style scoped>
+.compact-inline-select {
+  --v-input-control-height: 26px;
+  --v-field-padding-top: 0px;
+  --v-field-padding-bottom: 0px;
+  --v-field-padding-start: 0px;
+  --v-field-padding-end: 0px;
+  min-width: 0;
+}
+
+.compact-inline-select,
+.compact-inline-select:deep(.v-input),
+.compact-inline-select :deep(.v-input),
+.compact-inline-select :deep(.v-field),
+.compact-inline-select :deep(.v-field__input),
+.compact-inline-select :deep(.v-select__selection),
+.compact-inline-select :deep(.v-select__selection-text) {
+  letter-spacing: normal !important;
+}
+
+.compact-inline-select:deep(.v-input),
+.compact-inline-select :deep(.v-input),
+.compact-inline-select :deep(.v-field),
+.compact-inline-select :deep(.v-field__field),
+.compact-inline-select :deep(.v-select__selection),
+.compact-inline-select :deep(.v-select__selection-text) {
+  min-width: 0 !important;
+}
+
+.compact-inline-select :deep(.v-field) {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-size: 0.875rem;
+}
+
+.compact-inline-select :deep(.v-field--variant-underlined .v-field__outline::before) {
+  border-bottom-color: var(--timeful-grid-line-color);
+}
+
+.compact-inline-select :deep(.v-field__input) {
+  flex-wrap: nowrap !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  padding-inline: 0 !important;
+  padding-bottom: 0;
+  padding-top: 0;
+}
+
+.compact-inline-select :deep(.v-select__selection) {
+  display: block !important;
+  flex: 1 1 0% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.compact-inline-select :deep(.v-field__append-inner) {
+  align-items: center !important;
+  align-self: center !important;
+  display: flex !important;
+  height: 26px !important;
+  min-height: 26px !important;
+  padding-inline-start: 4px !important;
+  padding-bottom: 0 !important;
+  padding-top: 0 !important;
+}
+
+.compact-inline-select :deep(.v-select__selection-text) {
+  display: block !important;
+  max-width: 100% !important;
+  line-height: 22px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.compact-inline-select :deep(.v-field__overlay) {
+  opacity: 0;
+}
+
+.compact-inline-select :deep(.v-select__menu-icon) {
+  order: 1;
+}
+
+.timezone-select__field-row {
+  gap: 2px;
+}
+
+.timezone-select__reset-button {
+  margin-inline-start: -2px;
+}
+
+.timezone-select__item {
+  min-height: 48px;
+}
+
+.timezone-select__item-title {
+  color: rgba(0, 0, 0, 0.87);
+}
+
+.timezone-select__item--active {
+  background-color: var(--timeful-selection-bg);
+}
+
+.timezone-select__item--active :deep(.timezone-select__item-title) {
+  color: var(--timeful-selection-fg);
+}
+</style>

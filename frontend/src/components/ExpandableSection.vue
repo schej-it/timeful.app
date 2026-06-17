@@ -2,9 +2,10 @@
 <template>
   <div>
     <v-btn
-      class="-tw-ml-2 tw-w-[calc(100%+1rem)] tw-justify-between tw-px-2"
+      class="expandable-section-toggle -tw-ml-2 tw-w-[calc(100%+1rem)] tw-justify-between tw-whitespace-nowrap tw-px-2 tw-py-0 tw-normal-case"
       block
-      text
+      density="compact"
+      variant="text"
       @click="toggle"
     >
       <span class="-tw-ml-px tw-mr-1" :class="labelClass">
@@ -12,13 +13,13 @@
       </span>
       <v-spacer />
       <v-icon
-        :class="`tw-rotate-${value ? '180' : '0'} ${iconClass}`"
+        :class="`tw-rotate-${modelValue ? '180' : '0'} ${iconClass}`"
         :size="30"
         >mdi-chevron-down</v-icon
       ></v-btn
     >
     <v-expand-transition>
-      <div v-show="value">
+      <div v-if="modelValue">
         <slot></slot>
       </div>
     </v-expand-transition>
@@ -26,35 +27,85 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: "ExpandableSection",
+<script setup lang="ts">
+import { ref, watch } from "vue"
 
-  props: {
-    value: { type: Boolean, required: true },
-    label: { type: String, default: "" },
-    labelClass: { type: String, default: "tw-text-base" },
-    iconClass: { type: String, default: "" },
-    autoScroll: { type: Boolean, default: false },
-  },
+const props = withDefaults(
+  defineProps<{
+    modelValue: boolean
+    label?: string
+    labelClass?: string
+    iconClass?: string
+    autoScroll?: boolean
+  }>(),
+  {
+    label: "",
+    labelClass: "tw-text-base",
+    iconClass: "",
+    autoScroll: false,
+  }
+)
 
-  methods: {
-    toggle() {
-      this.$emit("input", !this.value)
-    },
-    scrollToElement(element) {
-      if (this.autoScroll && element) {
-        setTimeout(() => element.scrollIntoView({ behavior: "smooth" }), 200)
-      }
-    },
-  },
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+}>()
 
-  watch: {
-    value() {
-      if (this.value) {
-        this.scrollToElement(this.$refs.scrollTo)
-      }
-    },
-  },
+const scrollTo = ref<HTMLElement | null>(null)
+
+const toggle = () => {
+  emit("update:modelValue", !props.modelValue)
 }
+
+const scrollToElement = (element: HTMLElement | null) => {
+  if (props.autoScroll && element) {
+    setTimeout(() => { element.scrollIntoView({ behavior: "smooth" }); }, 200)
+  }
+}
+
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (val) {
+      scrollToElement(scrollTo.value)
+    }
+  }
+)
 </script>
+
+<style scoped>
+.expandable-section-toggle {
+  width: calc(100% + 1rem) !important;
+  max-width: none !important;
+  min-height: 38px !important;
+  border: 0 !important;
+  border-radius: 6px !important;
+  letter-spacing: normal;
+  line-height: 21px;
+  outline: none !important;
+  box-shadow: none !important;
+  color: rgba(0, 0, 0, 0.87) !important;
+}
+
+.expandable-section-toggle :deep(.v-btn__content) {
+  justify-content: space-between;
+  white-space: nowrap;
+  width: 100%;
+  color: rgba(0, 0, 0, 0.87);
+  letter-spacing: normal !important;
+}
+
+.expandable-section-toggle :deep(.v-btn__content *) {
+  color: rgba(0, 0, 0, 0.87);
+  letter-spacing: normal !important;
+}
+
+.expandable-section-toggle :deep(.v-btn__overlay) {
+  opacity: 0;
+}
+
+.expandable-section-toggle:focus,
+.expandable-section-toggle:focus-visible {
+  outline: none !important;
+  outline-width: 0 !important;
+}
+</style>

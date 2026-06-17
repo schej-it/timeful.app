@@ -2,15 +2,15 @@
   <v-avatar v-if="user" :size="size">
     <img v-if="user.picture" :src="user.picture" referrerpolicy="no-referrer" />
     <v-icon
+      v-else-if="'calendarType' in user && user.calendarType === calendarTypes.APPLE"
       class="-tw-mt-1"
       :size="size"
-      v-else-if="user.calendarType === calendarTypes.APPLE"
     >
       mdi-apple
     </v-icon>
     <v-icon
+      v-else-if="'calendarType' in user && user.calendarType === calendarTypes.OUTLOOK"
       :size="size"
-      v-else-if="user.calendarType === calendarTypes.OUTLOOK"
     >
       mdi-microsoft-outlook
     </v-icon>
@@ -23,23 +23,21 @@
   </v-avatar>
 </template>
 
-<script>
+<script setup lang="ts">
+import { computed } from "vue"
 import { calendarTypes } from "@/constants"
+import type { User } from "@/types"
 
-export default {
-  name: "UserAvatarContent",
-  props: {
-    user: Object,
-    size: { type: Number, default: 48 },
-  },
+const props = withDefaults(
+  defineProps<{
+    user?: Partial<User> | null
+    size?: number
+  }>(),
+  { 
+    user: null,
+    size: 48 
+  }
+)
 
-  computed: {
-    calendarTypes() {
-      return calendarTypes
-    },
-    textSize() {
-      return this.size <= 24 ? "xs" : "lg"
-    },
-  },
-}
+const textSize = computed(() => (props.size <= 24 ? "xs" : "lg"))
 </script>

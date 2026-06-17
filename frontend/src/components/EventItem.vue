@@ -30,7 +30,7 @@
           }}</v-icon>
         </div>
         <div class="tw-ml-3">
-          <div>{{ this.event.name }}</div>
+          <div>{{ event.name }}</div>
           <div class="tw-text-sm tw-font-light tw-text-very-dark-gray">
             {{ dateString }}
           </div>
@@ -49,28 +49,25 @@
           class="tw-m-0.5 tw-bg-off-white tw-text-very-dark-gray"
         >
           <v-icon left small> mdi-account-multiple </v-icon>
-          {{ this.event.numResponses }}
+          {{ event.numResponses }}
         </v-chip>
         <v-menu
           v-if="isOwner"
           v-model="showMenu"
-          ref="menu"
           :close-on-content-click="false"
           transition="slide-x-transition"
           right
           offset-x
         >
-          <template v-slot:activator="{ on, attrs }">
-            <v-btn plain icon v-bind="attrs" v-on="on" @click.prevent>
+          <template #activator="{ props: menuProps }">
+            <v-btn variant="plain" icon v-bind="menuProps" @click.prevent>
               <v-icon>mdi-dots-vertical</v-icon>
             </v-btn>
           </template>
 
-          <v-list class="tw-py-1" dense>
+          <v-list class="tw-py-1" density="compact">
             <v-list-item @click="copyLink">
-              <v-list-item-content>
-                <v-list-item-title>Copy link</v-list-item-title>
-              </v-list-item-content>
+              <v-list-item-title>Copy link</v-list-item-title>
             </v-list-item>
             <v-divider />
             <v-dialog
@@ -79,11 +76,9 @@
               width="400"
               persistent
             >
-              <template v-slot:activator="{ on, attrs }">
-                <v-list-item id="duplicate-event-btn" v-bind="attrs" v-on="on">
-                  <v-list-item-content>
-                    <v-list-item-title>Duplicate</v-list-item-title>
-                  </v-list-item-content>
+              <template #activator="{ props: duplicateProps }">
+                <v-list-item id="duplicate-event-btn" v-bind="duplicateProps">
+                  <v-list-item-title>Duplicate</v-list-item-title>
                 </v-list-item>
               </template>
               <v-card>
@@ -91,11 +86,12 @@
                 <v-card-text>
                   <v-text-field
                     v-model="duplicateDialogOptions.name"
+                    class="timeful-solo-field"
                     required
                     placeholder="Name your event..."
                     :disabled="duplicateDialogOptions.loading"
                     hide-details
-                    solo
+                    variant="solo"
                   />
                   <v-checkbox
                     v-model="duplicateDialogOptions.copyAvailability"
@@ -108,16 +104,16 @@
                 <v-card-actions>
                   <v-spacer />
                   <v-btn
-                    text
-                    @click="duplicateDialog = false"
+                    variant="text"
                     :disabled="duplicateDialogOptions.loading"
+                    @click="duplicateDialog = false"
                     >Cancel</v-btn
                   >
                   <v-btn
-                    text
+                    variant="text"
                     color="primary"
-                    @click="duplicateEvent"
                     :loading="duplicateDialogOptions.loading"
+                    @click="duplicateEvent"
                     >Confirm</v-btn
                   >
                 </v-card-actions>
@@ -130,35 +126,34 @@
               :close-on-content-click="false"
               open-on-hover
             >
-              <template v-slot:activator="{ on: onMenu, attrs: attrsMenu }">
+              <template #activator="{ props: moveToMenuProps }">
                 <v-list-item
-                  v-bind="attrsMenu"
-                  v-on="onMenu"
+                  v-bind="moveToMenuProps"
                   class="tw-cursor-pointer tw-pr-1 hover:tw-bg-light-gray"
                 >
                   <v-list-item-title>Move to</v-list-item-title>
-                  <v-list-item-icon>
+                  <template #append>
                     <v-icon small>mdi-chevron-right</v-icon>
-                  </v-list-item-icon>
+                  </template>
                 </v-list-item>
               </template>
-              <v-list dense class="tw-py-1">
-                <v-list-item @click="moveEventToFolder(null)" class="tw-pr-1">
+              <v-list density="compact" class="tw-py-1">
+                <v-list-item class="tw-pr-1" @click="moveEventToFolder(null)">
                   <v-list-item-title>No folder</v-list-item-title>
-                  <v-list-item-action v-if="folderId === null">
+                  <template v-if="folderId === null" #append>
                     <v-icon small>mdi-check</v-icon>
-                  </v-list-item-action>
+                  </template>
                 </v-list-item>
                 <v-list-item
                   v-for="folder in folders"
                   :key="folder._id"
-                  @click="moveEventToFolder(folder._id)"
                   class="tw-pr-1"
+                  @click="moveEventToFolder(folder._id ?? null)"
                 >
                   <v-list-item-title>{{ folder.name }}</v-list-item-title>
-                  <v-list-item-action v-if="folder._id === folderId">
+                  <template v-if="folder._id === folderId" #append>
                     <v-icon small>mdi-check</v-icon>
-                  </v-list-item-action>
+                  </template>
                 </v-list-item>
               </v-list>
             </v-menu>
@@ -169,16 +164,13 @@
               }}</v-list-item-title>
             </v-list-item>
             <v-dialog v-model="removeDialog" width="400" persistent>
-              <template v-slot:activator="{ on, attrs }">
+              <template #activator="{ props: removeDialogProps }">
                 <v-list-item
                   id="delete-event-btn"
                   class="red--text"
-                  v-bind="attrs"
-                  v-on="on"
+                  v-bind="removeDialogProps"
                 >
-                  <v-list-item-content>
-                    <v-list-item-title>Delete {{ typeText }}</v-list-item-title>
-                  </v-list-item-content>
+                  <v-list-item-title>Delete {{ typeText }}</v-list-item-title>
                 </v-list-item>
               </template>
               <v-card>
@@ -189,8 +181,8 @@
                 >
                 <v-card-actions>
                   <v-spacer />
-                  <v-btn text @click="removeDialog = false">Cancel</v-btn>
-                  <v-btn text color="error" @click="removeEvent"
+                  <v-btn variant="text" @click="removeDialog = false">Cancel</v-btn>
+                  <v-btn variant="text" color="error" @click="removeEvent"
                     >I'm sure</v-btn
                   >
                 </v-card-actions>
@@ -206,167 +198,136 @@
   </router-link>
 </template>
 
-<script>
-import { getDateRangeStringForEvent, _delete, isPhone, post } from "@/utils"
-import { mapActions, mapState } from "vuex"
+<script setup lang="ts">
+import { computed, ref, watch } from "vue"
+import { storeToRefs } from "pinia"
+import { getDateRangeStringForEvent, _delete, post } from "@/utils"
 import { eventTypes } from "@/constants"
+import { useMainStore } from "@/stores/main"
+import { posthog } from "@/plugins/posthog"
+import { isSignedInOwner } from "@/composables/event/eventOwnership"
+import type { Event } from "@/types"
 
-export default {
-  name: "EventItem",
+const props = withDefaults(
+  defineProps<{
+    event: Event
+    folderId?: string | null
+  }>(),
+  { folderId: null }
+)
 
-  props: {
-    event: { type: Object, required: true },
-    folderId: { type: String, default: null },
-  },
+const mainStore = useMainStore()
+const { authUser, folders } = storeToRefs(mainStore)
 
-  data: () => ({
-    showMenu: false,
-    duplicateDialog: false,
-    duplicateDialogOptions: {
-      name: "",
-      copyAvailability: false,
-      loading: false,
-    },
-    removeDialog: false,
-  }),
+const showMenu = ref(false)
+const duplicateDialog = ref(false)
+const duplicateDialogOptions = ref({
+  name: "",
+  copyAvailability: false,
+  loading: false,
+})
+const removeDialog = ref(false)
 
-  computed: {
-    ...mapState(["authUser", "folders"]),
-    dateString() {
-      return getDateRangeStringForEvent(this.event)
-    },
-    isOwner() {
-      return this.event.ownerId === this.authUser._id
-    },
-    isGroup() {
-      return this.event.type === eventTypes.GROUP
-    },
-    isDow() {
-      return this.event.type === eventTypes.DOW
-    },
-    isSignUp() {
-      return this.event.isSignUpForm
-    },
-    linkTo() {
-      if (this.isGroup) {
-        return "group"
-      } else if (this.isSignUp) {
-        return "signUp"
-      }
+const dateString = computed(() => getDateRangeStringForEvent(props.event))
+const isOwner = computed(() => isSignedInOwner(props.event, authUser.value))
+const isGroup = computed(() => props.event.type === eventTypes.GROUP)
+const isDow = computed(() => props.event.type === eventTypes.DOW)
+const isSignUp = computed(() => props.event.isSignUpForm)
+const linkTo = computed(() => {
+  if (isGroup.value) return "group"
+  if (isSignUp.value) return "signUp"
+  return "event"
+})
+const identifier = computed(() => {
+  if (isGroup.value) return "groupId"
+  if (isSignUp.value) return "signUpId"
+  return "eventId"
+})
+const typeText = computed(() => (isGroup.value ? "group" : "event"))
+const userHasResponded = computed(() => props.event.hasResponded ?? false)
 
-      return "event"
-    },
-    identifier() {
-      if (this.isGroup) {
-        return "groupId"
-      } else if (this.isSignUp) {
-        return "signUpId"
-      }
-      return "eventId"
-    },
-    typeText() {
-      return this.isGroup ? "group" : "event"
-    },
-    userHasResponded() {
-      return this.event.hasResponded ?? false
-    },
-  },
-
-  methods: {
-    ...mapActions([
-      "showError",
-      "showInfo",
-      "getEvents",
-      "setEventFolder",
-      "archiveEvent",
-      "refreshAuthUser",
-    ]),
-    _archiveEvent() {
-      this.archiveEvent({
-        eventId: this.event._id,
-        archive: !this.event.isArchived,
-      })
-    },
-    moveEventToFolder(folderId) {
-      this.setEventFolder({
-        eventId: this.event._id,
-        folderId: folderId,
-      })
-      this.showMenu = false
-    },
-    copyLink() {
-      /* Copies event link to clipboard */
-      navigator.clipboard.writeText(
-        `${window.location.origin}/e/${this.event.shortId ?? this.event._id}`
-      )
-      this.showInfo("Link copied to clipboard!")
-      this.showMenu = false
-    },
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-    removeEvent() {
-      _delete(`/events/${this.event._id}`)
-        .then(() => {
-          this.refreshAuthUser()
-          this.getEvents()
-          this.$refs.menu.save() // NOTE: Not sure why but without this line, the menu persists to the next event.
-
-          this.$posthog?.capture("Event removed", {
-            eventId: this.event._id,
-            eventName: this.event.name,
-            eventDuration: this.event.duration,
-            eventDates: this.event.dates,
-            eventNotificationsEnabled: this.event.notificationsEnabled,
-            eventType: this.event.type,
-          })
-        })
-        .catch((err) => {
-          this.showError(
-            "There was a problem removing that event! Please try again later."
-          )
-        })
-    },
-    duplicateEvent() {
-      this.duplicateDialogOptions.loading = true
-      post(`/events/${this.event._id}/duplicate`, {
-        eventName: this.duplicateDialogOptions.name,
-        copyAvailability: this.duplicateDialogOptions.copyAvailability,
-      })
-        .then(({ eventId, shortId }) => {
-          this.getEvents()
-          this.$refs.menu.save() // NOTE: Not sure why but without this line, the menu persists to the next event.
-
-          this.$posthog?.capture("Event duplicated", {
-            eventId: eventId,
-            eventName: this.duplicateDialogOptions.name,
-            eventDuration: this.event.duration,
-            eventDates: this.event.dates,
-            eventNotificationsEnabled: this.event.notificationsEnabled,
-            eventType: this.event.type,
-            copyAvailability: this.duplicateDialogOptions.copyAvailability,
-          })
-        })
-        .catch((err) => {
-          this.showError(
-            "There was a problem duplicating that event! Please try again later."
-          )
-        })
-        .finally(() => {
-          this.duplicateDialogOptions.loading = false
-        })
-    },
-  },
-
-  watch: {
-    duplicateDialog: {
-      immediate: true,
-      handler(val) {
-        if (val) {
-          this.duplicateDialogOptions.name = `Copy of ${this.event.name}`
-        }
-      },
-    },
-  },
+const _archiveEvent = () => {
+  void mainStore.archiveEvent({
+    eventId: props.event._id ?? "",
+    archive: !props.event.isArchived,
+  })
 }
+const moveEventToFolder = (folderId: string | null) => {
+  void mainStore.setEventFolder({
+    eventId: props.event._id ?? "",
+    folderId,
+  })
+  showMenu.value = false
+}
+const copyLink = () => {
+  void navigator.clipboard.writeText(
+    `${window.location.origin}/e/${props.event.shortId ?? props.event._id ?? ""}`
+  )
+  mainStore.showInfo("Link copied to clipboard!")
+  showMenu.value = false
+}
+const removeEvent = () => {
+  _delete(`/events/${props.event._id ?? ""}`)
+    .then(() => {
+      void mainStore.refreshAuthUser()
+      void mainStore.getEvents()
+      showMenu.value = false
+
+      posthog.capture("Event removed", {
+        eventId: props.event._id,
+        eventName: props.event.name,
+        eventDuration: props.event.duration,
+        eventDates: props.event.dates,
+        eventNotificationsEnabled: props.event.notificationsEnabled,
+        eventType: props.event.type,
+      })
+    })
+    .catch(() => {
+      mainStore.showError(
+        "There was a problem removing that event! Please try again later."
+      )
+    })
+}
+const duplicateEvent = () => {
+  duplicateDialogOptions.value.loading = true
+  post<{ eventId: string; shortId: string }>(
+    `/events/${props.event._id ?? ""}/duplicate`,
+    {
+      eventName: duplicateDialogOptions.value.name,
+      copyAvailability: duplicateDialogOptions.value.copyAvailability,
+    }
+  )
+    .then(({ eventId }) => {
+      void mainStore.getEvents()
+      showMenu.value = false
+
+      posthog.capture("Event duplicated", {
+        eventId,
+        eventName: duplicateDialogOptions.value.name,
+        eventDuration: props.event.duration,
+        eventDates: props.event.dates,
+        eventNotificationsEnabled: props.event.notificationsEnabled,
+        eventType: props.event.type,
+        copyAvailability: duplicateDialogOptions.value.copyAvailability,
+      })
+    })
+    .catch(() => {
+      mainStore.showError(
+        "There was a problem duplicating that event! Please try again later."
+      )
+    })
+    .finally(() => {
+      duplicateDialogOptions.value.loading = false
+    })
+}
+
+watch(
+  duplicateDialog,
+  (val) => {
+    if (val) {
+      duplicateDialogOptions.value.name = `Copy of ${props.event.name ?? ""}`
+    }
+  },
+  { immediate: true }
+)
 </script>

@@ -1,0 +1,66 @@
+{
+	admin off
+}
+
+
+localhost {
+	
+	encode gzip zstd
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	root * /srv
+
+	handle /api/* {
+		reverse_proxy server:3002
+	}
+
+	handle /swagger/* {
+		reverse_proxy server:3002
+	}
+
+	# Event pages still come from the backend so route-specific meta tags
+	# continue to work for shared links.
+	@eventPage path_regexp eventPage ^/e/[^/]+$
+	handle @eventPage {
+		reverse_proxy server:3002
+	}
+
+	handle /assets/* {
+		file_server
+	}
+
+	handle /favicon.ico {
+		file_server
+	}
+
+	handle /favicon-16x16.png {
+		file_server
+	}
+
+	handle /favicon-32x32.png {
+		file_server
+	}
+
+	handle /robots.txt {
+		file_server
+	}
+
+	handle /ads.txt {
+		file_server
+	}
+
+	handle /img/* {
+		file_server
+	}
+
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}

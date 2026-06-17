@@ -1,9 +1,9 @@
 <template>
   <v-dialog
-    :value="value"
-    @input="(e) => $emit('input', e)"
+    :model-value="modelValue"
     :width="version === 'v2' ? 680 : 600"
     content-class="tw-m-0"
+    @update:model-value="(e) => emit('update:modelValue', e)"
   >
     <!-- ==================== V1 PAYWALL ==================== -->
     <v-card
@@ -12,9 +12,9 @@
     >
       <v-btn
         absolute
-        @click="$emit('input', false)"
         icon
         class="tw-right-0 tw-top-0 tw-mr-2 tw-mt-2"
+        @click="emit('update:modelValue', false)"
       >
         <v-icon>mdi-close</v-icon>
       </v-btn>
@@ -82,29 +82,26 @@
             Per month.<br />Billed monthly.
           </div>
           <v-btn
-            class="tw-mb-0.5"
+            class="tw-mb-0.5 tw-text-white"
             color="primary"
-            outlined
+            variant="outlined"
             block
-            :dark="
-              isStudent
-                ? !loadingCheckoutUrl[monthlyStudentPrice?.id]
-                : !loadingCheckoutUrl[monthlyPrice?.id]
-            "
             :disabled="
               isStudent
-                ? loadingCheckoutUrl[monthlyStudentPrice?.id]
-                : loadingCheckoutUrl[monthlyPrice?.id]
+                ? loadingCheckoutUrl[monthlyStudentPrice?.id ?? '']
+                : loadingCheckoutUrl[monthlyPrice?.id ?? '']
             "
             :loading="
               isStudent
-                ? loadingCheckoutUrl[monthlyStudentPrice?.id]
-                : loadingCheckoutUrl[monthlyPrice?.id]
+                ? loadingCheckoutUrl[monthlyStudentPrice?.id ?? '']
+                : loadingCheckoutUrl[monthlyPrice?.id ?? '']
             "
             @click="
-              isStudent
+              isStudent && monthlyStudentPrice
                 ? handleUpgrade(monthlyStudentPrice)
-                : handleUpgrade(monthlyPrice)
+                : monthlyPrice
+                  ? handleUpgrade(monthlyPrice)
+                  : undefined
             "
           >
             Upgrade
@@ -144,28 +141,25 @@
             Per month.<br />Billed annually.
           </div>
           <v-btn
-            class="tw-mb-0.5"
+            class="tw-mb-0.5 tw-text-white"
             color="primary"
             block
-            :dark="
-              isStudent
-                ? !loadingCheckoutUrl[yearlyStudentPrice?.id]
-                : !loadingCheckoutUrl[yearlyPrice?.id]
-            "
             :disabled="
               isStudent
-                ? loadingCheckoutUrl[yearlyStudentPrice?.id]
-                : loadingCheckoutUrl[yearlyPrice?.id]
+                ? loadingCheckoutUrl[yearlyStudentPrice?.id ?? '']
+                : loadingCheckoutUrl[yearlyPrice?.id ?? '']
             "
             :loading="
               isStudent
-                ? loadingCheckoutUrl[yearlyStudentPrice?.id]
-                : loadingCheckoutUrl[yearlyPrice?.id]
+                ? loadingCheckoutUrl[yearlyStudentPrice?.id ?? '']
+                : loadingCheckoutUrl[yearlyPrice?.id ?? '']
             "
             @click="
-              isStudent
+              isStudent && yearlyStudentPrice
                 ? handleUpgrade(yearlyStudentPrice)
-                : handleUpgrade(yearlyPrice)
+                : yearlyPrice
+                  ? handleUpgrade(yearlyPrice)
+                  : undefined
             "
           >
             Upgrade
@@ -208,28 +202,25 @@
             One-time payment.<br />No subscription.
           </div>
           <v-btn
-            class="tw-mb-0.5"
+            class="tw-mb-0.5 tw-text-white"
             color="primary"
             block
-            :dark="
-              isStudent
-                ? !loadingCheckoutUrl[lifetimeStudentPrice?.id]
-                : !loadingCheckoutUrl[lifetimePrice?.id]
-            "
             :disabled="
               isStudent
-                ? loadingCheckoutUrl[lifetimeStudentPrice?.id]
-                : loadingCheckoutUrl[lifetimePrice?.id]
+                ? loadingCheckoutUrl[lifetimeStudentPrice?.id ?? '']
+                : loadingCheckoutUrl[lifetimePrice?.id ?? '']
             "
             :loading="
               isStudent
-                ? loadingCheckoutUrl[lifetimeStudentPrice?.id]
-                : loadingCheckoutUrl[lifetimePrice?.id]
+                ? loadingCheckoutUrl[lifetimeStudentPrice?.id ?? '']
+                : loadingCheckoutUrl[lifetimePrice?.id ?? '']
             "
             @click="
-              isStudent
+              isStudent && lifetimeStudentPrice
                 ? handleUpgrade(lifetimeStudentPrice)
-                : handleUpgrade(lifetimePrice)
+                : lifetimePrice
+                  ? handleUpgrade(lifetimePrice)
+                  : undefined
             "
           >
             Upgrade
@@ -241,9 +232,10 @@
       >
         <v-checkbox
           id="student-checkbox"
-          v-model="isStudent"
-          dense
+          :model-value="isStudent"
+          density="compact"
           hide-details
+          @update:model-value="handleStudentToggle"
         >
         </v-checkbox>
         <label
@@ -265,9 +257,9 @@
     >
       <v-btn
         absolute
-        @click="$emit('input', false)"
         icon
         class="tw-right-0 tw-top-0 tw-mr-2 tw-mt-2"
+        @click="emit('update:modelValue', false)"
       >
         <v-icon>mdi-close</v-icon>
       </v-btn>
@@ -310,12 +302,11 @@
       <!-- Monthly / Yearly toggle -->
       <div class="tw-mb-4 tw-flex tw-items-center tw-justify-center">
         <SlideToggle
+          v-model="v2BillingCycle"
           class="tw-w-full"
-          :value="v2BillingCycle"
           :options="v2BillingOptions"
-          @input="v2BillingCycle = $event"
         >
-          <template #option-yearly="{ active }">
+          <template #option-yearly>
             <span class="tw-line-clamp-1">Yearly</span>
             <span
               v-if="yearlyDiscount > 0"
@@ -352,7 +343,7 @@
               {{ item }}
             </li>
           </ul>
-          <v-btn depressed disabled class="tw-mt-auto">
+          <v-btn variant="flat" disabled class="tw-mt-auto">
             <span class="tw-text-very-dark-gray">Your current plan</span>
           </v-btn>
         </div>
@@ -405,17 +396,22 @@
               <v-icon small class="tw-mr-2 tw-mt-0.5 tw-text-light-green"
                 >mdi-check</v-icon
               >
-              <span v-html="item.html"></span>
+              <span>
+                <template v-for="(part, partIndex) in item.parts" :key="partIndex">
+                  <span v-if="part.highlight" class="rdt-h">{{ part.text }}</span>
+                  <template v-else>{{ part.text }}</template>
+                </template>
+              </span>
             </li>
           </ul>
 
           <v-btn
+            class="tw-text-white"
             color="primary"
             block
-            :dark="!loadingCheckoutUrl[v2ActivePrice?.id]"
-            :disabled="loadingCheckoutUrl[v2ActivePrice?.id]"
-            :loading="loadingCheckoutUrl[v2ActivePrice?.id]"
-            @click="handleUpgrade(v2ActivePrice)"
+            :disabled="!v2ActivePrice || loadingCheckoutUrl[v2ActivePrice.id ?? '']"
+            :loading="loadingCheckoutUrl[v2ActivePrice?.id ?? '']"
+            @click="v2ActivePrice && handleUpgrade(v2ActivePrice)"
           >
             Upgrade
           </v-btn>
@@ -426,9 +422,10 @@
       <div class="tw-flex tw-h-8 tw-w-full tw-items-center tw-justify-start">
         <v-checkbox
           id="student-checkbox-v2"
-          v-model="isStudent"
-          dense
+          :model-value="isStudent"
+          density="compact"
           hide-details
+          @update:model-value="handleStudentToggle"
         >
         </v-checkbox>
         <label
@@ -448,315 +445,57 @@
   </v-dialog>
 </template>
 
-<script>
-import { get, post } from "@/utils"
-import { mapState, mapActions } from "vuex"
+<script setup lang="ts">
+import { toRef } from "vue"
 import { upgradeDialogTypes } from "@/constants"
+import {
+  formatStripePrice,
+  type StripePrice,
+} from "@/composables/pricing/upgradeDialogModels"
+import { useUpgradeDialogState } from "@/composables/pricing/useUpgradeDialogState"
 import AlreadyDonatedDialog from "./AlreadyDonatedDialog.vue"
 import StudentProofDialog from "./StudentProofDialog.vue"
 import SlideToggle from "@/components/SlideToggle.vue"
 
-export default {
-  name: "UpgradeDialog",
-  components: {
-    AlreadyDonatedDialog,
-    StudentProofDialog,
-    SlideToggle,
+const props = defineProps<{
+  modelValue: boolean
+  version?: "v1" | "v2"
+}>()
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+}>()
+
+const formattedPrice = (price: StripePrice | null) => formatStripePrice(price)
+
+const {
+  freeFeatures,
+  handleStudentToggle,
+  handleUpgrade,
+  isStudent,
+  lifetimePrice,
+  lifetimeStudentPrice,
+  loadingCheckoutUrl,
+  monthlyPrice,
+  monthlyStudentPrice,
+  premiumFeatures,
+  showDonatedDialog,
+  showLifetime,
+  showMonthly,
+  showStudentProofDialog,
+  showYearly,
+  upgradeDialogType,
+  v2ActivePrice,
+  v2BillingCycle,
+  v2BillingOptions,
+  v2MonthlyPrice,
+  yearlyDiscount,
+  yearlyPrice,
+  yearlyStudentPrice,
+} = useUpgradeDialogState({
+  modelValue: toRef(props, "modelValue"),
+  closeDialog: () => {
+    emit("update:modelValue", false)
   },
-  props: {
-    value: { type: Boolean, required: true },
-    version: {
-      type: String,
-      default: "v2",
-      validator: (v) => ["v1", "v2"].includes(v),
-    },
-  },
-
-  data() {
-    return {
-      lifetimePrice: null,
-      monthlyPrice: null,
-      yearlyPrice: null,
-      lifetimeStudentPrice: null,
-      monthlyStudentPrice: null,
-      yearlyStudentPrice: null,
-
-      loadingCheckoutUrl: {},
-      showDonatedDialog: false,
-      isStudent: false,
-      showStudentProofDialog: false,
-
-      showMonthly: true,
-      showYearly: true,
-      showLifetime: false,
-
-      v2BillingCycle: "yearly",
-    }
-  },
-
-  computed: {
-    ...mapState([
-      "featureFlagsLoaded",
-      "pricingPageConversion",
-      "authUser",
-      "upgradeDialogType",
-      "upgradeDialogData",
-    ]),
-    upgradeDialogTypes() {
-      return upgradeDialogTypes
-    },
-    yearlyDiscount() {
-      if (this.isStudent) {
-        if (!this.yearlyStudentPrice || !this.monthlyStudentPrice) return 0
-        return (
-          100 -
-          Math.round(
-            (this.yearlyStudentPrice.unit_amount /
-              12 /
-              this.monthlyStudentPrice.unit_amount) *
-              100
-          )
-        )
-      }
-
-      if (!this.yearlyPrice || !this.monthlyPrice) return 0
-      return (
-        100 -
-        Math.round(
-          (this.yearlyPrice.unit_amount / 12 / this.monthlyPrice.unit_amount) *
-            100
-        )
-      )
-    },
-    isRemoveAdsMode() {
-      return this.upgradeDialogType === upgradeDialogTypes.REMOVE_ADS
-    },
-    freeFeatures() {
-      const events = "Create 3 events per month"
-      const ads = "Ads displayed on all your events"
-      return this.isRemoveAdsMode ? [ads, events] : [events, ads]
-    },
-    premiumFeatures() {
-      const events = {
-        text: "events",
-        html: 'Create <span class="rdt-h">unlimited events</span> per month',
-      }
-      const noAdsOwn = {
-        text: "no-ads-own",
-        html: '<span class="rdt-h">No ads</span> displayed on your events',
-      }
-      const noAdsOthers = {
-        text: "no-ads-others",
-        html: "<span class=\"rdt-h\">Don't see ads</span> on other people's events",
-      }
-      return this.isRemoveAdsMode
-        ? [noAdsOwn, noAdsOthers, events]
-        : [events, noAdsOwn, noAdsOthers]
-    },
-    v2BillingOptions() {
-      return [
-        { text: "Monthly", value: "monthly", style: { minWidth: "150px" } },
-        { text: "Yearly", value: "yearly", style: { minWidth: "150px" } },
-      ]
-    },
-    v2ActivePrice() {
-      if (this.v2BillingCycle === "yearly") {
-        return this.isStudent ? this.yearlyStudentPrice : this.yearlyPrice
-      }
-      return this.isStudent ? this.monthlyStudentPrice : this.monthlyPrice
-    },
-    v2MonthlyPrice() {
-      return this.isStudent ? this.monthlyStudentPrice : this.monthlyPrice
-    },
-    pricesShown() {
-      let pricesShown = []
-      // Monthly
-      if (this.showMonthly) {
-        if (this.isStudent && this.monthlyStudentPrice) {
-          pricesShown.push(
-            `MONTHLY (Student): ${this.formattedPrice(
-              this.monthlyStudentPrice
-            )}/mo`
-          )
-        } else {
-          pricesShown.push(
-            `MONTHLY: ${this.formattedPrice(this.monthlyPrice)}/mo`
-          )
-        }
-      }
-      // Yearly
-      if (this.showYearly) {
-        if (this.isStudent && this.yearlyStudentPrice) {
-          console.log(
-            "yearlyStudentPrice",
-            this.formattedPrice(this.yearlyStudentPrice)
-          )
-          pricesShown.push(
-            `YEARLY (Student): ${this.formattedPrice(
-              this.yearlyStudentPrice
-            )}/mo`
-          )
-        } else {
-          pricesShown.push(
-            `YEARLY: ${this.formattedPrice(this.yearlyPrice)}/mo`
-          )
-        }
-      }
-      // Lifetime
-      if (this.showLifetime) {
-        if (this.isStudent && this.lifetimeStudentPrice) {
-          pricesShown.push(
-            `LIFETIME (Student): ${this.formattedPrice(
-              this.lifetimeStudentPrice
-            )}`
-          )
-        } else {
-          pricesShown.push(
-            `LIFETIME: ${this.formattedPrice(this.lifetimePrice)}`
-          )
-        }
-      }
-      return pricesShown.join(", ")
-    },
-  },
-
-  methods: {
-    ...mapActions(["showError"]),
-    formattedPrice(price) {
-      if (!price) return ""
-      let unitAmount = price.unit_amount / 100
-      if (price.recurring?.interval === "year") {
-        unitAmount = Math.floor((price.unit_amount / 100 / 12) * 100) / 100
-      }
-      return (
-        "$" +
-        (unitAmount % 1 === 0 ? unitAmount.toFixed(0) : unitAmount.toFixed(2))
-      )
-    },
-    async init() {
-      if (!this.lifetimePrice || !this.monthlyPrice) {
-        await this.fetchPrice()
-      }
-    },
-    async fetchPrice() {
-      let res;
-      // Mock stripe price results in development mode as the Stripe API won't be accessible
-      if (process.env.NODE_ENV === "development") {
-        res = {
-          lifetime: { id: "price_dev_lifetime", unit_amount: 9999, recurring: null },
-          monthly: { id: "price_dev_monthly", unit_amount: 999, recurring: { interval: "month" } },
-          yearly: { id: "price_dev_yearly", unit_amount: 7999, recurring: { interval: "year" } },
-          lifetimeStudent: { id: "price_dev_lifetime_student", unit_amount: 4999, recurring: null },
-          monthlyStudent: { id: "price_dev_monthly_student", unit_amount: 499, recurring: { interval: "month" } },
-          yearlyStudent: { id: "price_dev_yearly_student", unit_amount: 3999, recurring: { interval: "year" } },
-        }
-      } else {
-        res = await get("/stripe/price?exp=" + this.pricingPageConversion)
-      }
-
-      const {
-        lifetime,
-        monthly,
-        yearly,
-        lifetimeStudent,
-        monthlyStudent,
-        yearlyStudent,
-      } = res
-      this.lifetimePrice = lifetime
-      this.monthlyPrice = monthly
-      this.yearlyPrice = yearly
-      this.lifetimeStudentPrice = lifetimeStudent
-      this.monthlyStudentPrice = monthlyStudent
-      this.yearlyStudentPrice = yearlyStudent
-    },
-    async handleUpgrade(price) {
-      // if (this.isStudent) {
-      //   this.showStudentProofDialog = true
-      //   this.$posthog.capture("student_upgrade_attempt", {
-      //     price: price,
-      //   })
-      //   return
-      // }
-      this.$posthog.capture("upgrade_clicked", {
-        price: this.formattedPrice(price),
-      })
-
-      if (!this.authUser) {
-        const upgradeParams = {
-          priceId: price.id,
-          isSubscription: price.recurring !== null,
-          originUrl: window.location.href,
-        }
-        this.$emit("input", false)
-        this.$router.push({
-          name: "sign-up",
-          query: {
-            redirect: "upgrade",
-            upgradeParams: JSON.stringify(upgradeParams),
-          },
-        })
-        return
-      }
-
-      this.$set(this.loadingCheckoutUrl, price.id, true)
-      try {
-        let originUrl = window.location.href
-        if (this.upgradeDialogData) {
-          if (this.upgradeDialogType === upgradeDialogTypes.SCHEDULE_EVENT) {
-            originUrl = `${originUrl}?scheduled_event=${encodeURIComponent(
-              JSON.stringify(this.upgradeDialogData.scheduledEvent)
-            )}`
-          }
-        }
-        const res = await post("/stripe/create-checkout-session", {
-          priceId: price.id,
-          userId: this.authUser._id,
-          isSubscription: price.recurring !== null,
-          originUrl: originUrl,
-        })
-        window.location.href = res.url
-      } catch (e) {
-        console.error(e)
-        this.showError(
-          "There was an error generating a checkout url. Please try again later."
-        )
-      } finally {
-        this.$set(this.loadingCheckoutUrl, price.id, false)
-      }
-    },
-  },
-
-  watch: {
-    isStudent: {
-      handler(val) {
-        if (val) {
-          this.$posthog.capture("student_pricing_viewed", {
-            prices: this.pricesShown,
-          })
-        }
-      },
-    },
-    featureFlagsLoaded: {
-      handler() {
-        this.init()
-      },
-      immediate: true,
-    },
-    value: {
-      handler() {
-        if (this.value) {
-          post("/analytics/upgrade-dialog-viewed", {
-            userId: this.authUser?._id ?? this.$posthog?.get_distinct_id(),
-            price: this.pricesShown,
-            type: this.upgradeDialogType,
-          })
-          this.$posthog.capture("upgrade_dialog_viewed", {
-            price: this.pricesShown,
-            type: this.upgradeDialogType,
-          })
-        }
-      },
-    },
-  },
-}
+})
 </script>

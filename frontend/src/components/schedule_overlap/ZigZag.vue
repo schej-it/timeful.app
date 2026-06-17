@@ -6,23 +6,54 @@
   </div>
 </template>
 
+<script setup lang="ts">
+import { computed, onMounted, ref } from "vue"
+
+const props = withDefaults(
+  defineProps<{
+    left?: boolean
+    right?: boolean
+  }>(),
+  { left: false, right: false }
+)
+
+const container = ref<HTMLElement | null>(null)
+const backgroundSize = ref(0)
+
+onMounted(() => {
+  if (container.value) {
+    backgroundSize.value = container.value.offsetWidth * 2
+  }
+})
+
+const lineStyle = computed(() => ({
+  position: "absolute" as const,
+  width: "200%",
+  height: "100%",
+  backgroundSize: `${String(backgroundSize.value)}px ${String(backgroundSize.value)}px`,
+  transform: props.left ? `translate(${String(-backgroundSize.value / 2)}px, 0)` : "",
+}))
+</script>
+
 <style scoped>
 .line1-left {
   background: linear-gradient(
     45deg,
     white,
-    white 49%,
-    black 49%,
-    transparent 51%
+    white calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% + var(--timeful-grid-line-half-width)),
+    transparent calc(50% + var(--timeful-grid-line-half-width))
   );
 }
 .line2-left {
   background: linear-gradient(
     -45deg,
     transparent,
-    transparent 49%,
-    black 49%,
-    white 51%
+    transparent calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% + var(--timeful-grid-line-half-width)),
+    white calc(50% + var(--timeful-grid-line-half-width))
   );
 }
 
@@ -30,54 +61,20 @@
   background: linear-gradient(
     45deg,
     transparent,
-    transparent 49%,
-    black 51%,
-    white 51%
+    transparent calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% + var(--timeful-grid-line-half-width)),
+    white calc(50% + var(--timeful-grid-line-half-width))
   );
 }
 .line2-right {
   background: linear-gradient(
     -45deg,
     white,
-    white 49%,
-    black 51%,
-    transparent 51%
+    white calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% - var(--timeful-grid-line-half-width)),
+    var(--timeful-grid-line-color) calc(50% + var(--timeful-grid-line-half-width)),
+    transparent calc(50% + var(--timeful-grid-line-half-width))
   );
 }
 </style>
-
-<script>
-export default {
-  name: "ZigZag",
-
-  props: {
-    left: { type: Boolean, default: false },
-    right: { type: Boolean, default: false },
-  },
-
-  mounted() {
-    // Background size is 2 * width of the element
-    this.backgroundSize = this.$refs.container.offsetWidth * 2
-  },
-
-  data() {
-    return {
-      backgroundSize: 0,
-    }
-  },
-
-  computed: {
-    lineStyle() {
-      return {
-        position: "absolute",
-        width: "200%",
-        height: "100%",
-        backgroundSize: `${this.backgroundSize}px ${this.backgroundSize}px`,
-        transform: this.left
-          ? `translate(${-this.backgroundSize / 2}px, 0)`
-          : "",
-      }
-    },
-  },
-}
-</script>

@@ -8,9 +8,9 @@
         <v-spacer />
         <v-btn
           absolute
-          @click="$emit('input', false)"
           icon
           class="tw-right-0 tw-mr-2 tw-self-center"
+          @click="emit('update:modelValue', false)"
         >
           <v-icon>mdi-close</v-icon>
         </v-btn>
@@ -33,7 +33,6 @@
 
         <p class="tw-mb-2 tw-font-medium">Watch how to do it:</p>
         <div class="video-container tw-mb-4">
-          <!-- Replace YOUR_YOUTUBE_VIDEO_ID with the actual ID -->
           <iframe
             width="560"
             height="315"
@@ -48,29 +47,22 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn color="primary" text @click="dialog = false"> Got it! </v-btn>
+        <v-btn color="primary" variant="text" @click="dialog = false"> Got it! </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 
-<script>
-export default {
-  name: "When2meetImportDialog",
-  props: {
-    value: Boolean, // v-model
-  },
-  computed: {
-    dialog: {
-      get() {
-        return this.value
-      },
-      set(val) {
-        this.$emit("input", val)
-      },
-    },
-  },
-}
+<script setup lang="ts">
+import { computed } from "vue"
+
+const props = defineProps<{ modelValue: boolean }>()
+const emit = defineEmits<{ "update:modelValue": [value: boolean] }>()
+
+const dialog = computed({
+  get: () => props.modelValue,
+  set: (val: boolean) => { emit("update:modelValue", val); },
+})
 </script>
 
 <style scoped>

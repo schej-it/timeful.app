@@ -34,8 +34,8 @@
             <div class="tw-mb-4 tw-flex tw-w-full tw-flex-col tw-gap-y-2">
               <v-btn
                 block
+                class="timeful-elevated-button tw-bg-white"
                 @click="signIn(calendarTypes.GOOGLE)"
-                class="tw-bg-white"
               >
                 <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                   <v-img
@@ -51,8 +51,8 @@
               </v-btn>
               <v-btn
                 block
+                class="timeful-elevated-button tw-bg-white"
                 @click="signIn(calendarTypes.OUTLOOK)"
-                class="tw-bg-white"
               >
                 <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                   <v-img
@@ -79,10 +79,10 @@
                 </div>
                 <v-text-field
                   v-model="email"
-                  class="tw-mb-2"
+                  class="timeful-solo-field tw-mb-2"
                   placeholder="Enter your email..."
                   type="email"
-                  solo
+                  variant="solo"
                   hide-details="auto"
                   :error-messages="emailError"
                   @keydown.enter="submitEmail"
@@ -90,6 +90,7 @@
                 <v-btn
                   block
                   color="primary"
+                  class="timeful-elevated-button"
                   :loading="sending"
                   :disabled="sending"
                   @click="submitEmail"
@@ -113,7 +114,7 @@
         <!-- Onboarding: name entry for new users -->
         <template v-else-if="step === 'onboarding'">
           <v-card-title class="tw-flex tw-items-center">
-            <v-btn icon small @click="step = 'select'" class="tw-mr-1">
+            <v-btn icon size="small" class="tw-mr-1" @click="step = 'select'">
               <v-icon>mdi-arrow-left</v-icon>
             </v-btn>
             What's your name?
@@ -126,37 +127,36 @@
             <v-text-field
               v-model="firstName"
               placeholder="First name"
-              solo
+              variant="solo"
               hide-details="auto"
               autofocus
-              @keydown.enter="
-                $refs.lastNameField && $refs.lastNameField.focus()
-              "
-              class="tw-mb-3"
+              class="timeful-solo-field tw-mb-3"
+              @keydown.enter="lastNameField && lastNameField.focus()"
             />
             <div class="tw-mb-1 tw-text-sm tw-font-medium">Last name</div>
             <v-text-field
               ref="lastNameField"
               v-model="lastName"
               placeholder="Last name (optional)"
-              solo
+              variant="solo"
               hide-details="auto"
+              class="timeful-solo-field tw-mb-3"
               @keydown.enter="submitOnboarding"
-              class="tw-mb-3"
             />
             <div class="tw-mb-1 tw-text-sm tw-font-medium">Email</div>
             <v-text-field
-              :value="email"
+              :model-value="email"
               placeholder="Email..."
-              solo
+              variant="solo"
               hide-details="auto"
               disabled
               background-color="#f5f5f5"
-              class="tw-mb-3"
+              class="timeful-solo-field tw-mb-3"
             />
             <v-btn
               block
               color="primary"
+              class="timeful-elevated-button"
               :loading="sending"
               :disabled="!firstName.trim() || sending"
               @click="submitOnboarding"
@@ -171,9 +171,9 @@
           <v-card-title class="tw-flex tw-items-center">
             <v-btn
               icon
-              small
-              @click="step = isNewUser ? 'onboarding' : 'select'"
+              size="small"
               class="tw-mr-1"
+              @click="step = isNewUser ? 'onboarding' : 'select'"
             >
               <v-icon>mdi-arrow-left</v-icon>
             </v-btn>
@@ -190,17 +190,18 @@
             <v-text-field
               v-model="otpCode"
               placeholder="Enter 6-digit code..."
-              solo
+              variant="solo"
               hide-details="auto"
               maxlength="6"
               :error-messages="otpError"
-              @keydown.enter="verifyOtp"
               autofocus
-              class="tw-mb-2"
+              class="timeful-solo-field tw-mb-2"
+              @keydown.enter="verifyOtp"
             />
             <v-btn
               block
               color="primary"
+              class="timeful-elevated-button"
               :loading="verifying"
               :disabled="otpCode.length !== 6 || verifying"
               @click="verifyOtp"
@@ -209,8 +210,8 @@
             </v-btn>
             <div class="tw-mt-3 tw-text-center">
               <v-btn
-                text
-                x-small
+                variant="text"
+                size="x-small"
                 :disabled="resendCooldown > 0"
                 @click="resendOtp"
               >
@@ -232,7 +233,7 @@
           Already have an account?
           <router-link
             class="tw-font-medium tw-text-green"
-            :to="{ name: 'sign-in', query: $route.query }"
+            :to="{ name: 'sign-in', query: route.query }"
             >Log in</router-link
           >
         </template>
@@ -240,7 +241,7 @@
           Don't have an account?
           <router-link
             class="tw-font-medium tw-text-green"
-            :to="{ name: 'sign-up', query: $route.query }"
+            :to="{ name: 'sign-up', query: route.query }"
             >Sign up</router-link
           >
         </template>
@@ -249,203 +250,258 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref, computed, onBeforeUnmount } from "vue"
+import { useRouter, useRoute } from "vue-router"
+import { useHead } from "@unhead/vue"
 import { authTypes, calendarTypes } from "@/constants"
+import {
+  getAuthRestoreRouteLocation,
+  getAuthRestoreState,
+} from "@/router/authRestoreState"
 import { post, signInGoogle, signInOutlook } from "@/utils"
-import { mapMutations } from "vuex"
-import Logo from "@/components/Logo.vue"
+import { useMainStore } from "@/stores/main"
+import { posthog } from "@/plugins/posthog"
+import { Temporal } from "temporal-polyfill"
+import type { User } from "@/types"
+import { verifyOtpSignIn } from "@/utils/services/UserService"
 
-export default {
-  name: "SignIn",
+const props = defineProps<{
+  initialIsSignUp?: boolean
+}>()
 
-  props: {
-    initialIsSignUp: { type: Boolean, default: false },
-  },
+const router = useRouter()
+const route = useRoute()
+const mainStore = useMainStore()
 
-  metaInfo() {
-    return {
-      title: this.isSignUp ? "Sign Up - Timeful" : "Sign In - Timeful",
+defineOptions({ name: 'AppSignIn' })
+
+const isSignUp = computed(() => props.initialIsSignUp)
+const step = ref("select")
+const email = ref("")
+const firstName = ref("")
+const lastName = ref("")
+const otpCode = ref("")
+const emailError = ref("")
+const otpError = ref("")
+const sending = ref(false)
+const verifying = ref(false)
+const isNewUser = ref(false)
+const resendCooldown = ref(0)
+const resendTimer = ref<ReturnType<typeof setInterval> | null>(null)
+
+const lastNameField = ref<{ focus: () => void } | null>(null)
+
+useHead(
+  computed(() => ({
+    title: isSignUp.value ? "Sign Up - Timeful" : "Sign In - Timeful",
+  }))
+)
+
+const upgradeRedirect = computed(
+  () => route.query.redirect === "upgrade"
+)
+
+function signIn(provider: string) {
+  const restoreState = getAuthRestoreState(route)
+  let state: Record<string, unknown> | null
+  if (upgradeRedirect.value) {
+    state = { type: authTypes.UPGRADE, upgradeParams: route.query.upgradeParams }
+  } else if (restoreState) {
+    switch (restoreState.routeName) {
+      case "event":
+        state = {
+          type: authTypes.EVENT_SIGN_IN,
+          eventId: restoreState.routeId,
+          restoreQuery: restoreState.routeQuery,
+        }
+        break
+      case "group":
+        state = {
+          type: authTypes.GROUP_SIGN_IN,
+          groupId: restoreState.routeId,
+          restoreQuery: restoreState.routeQuery,
+        }
+        break
+      case "signUp":
+        state = {
+          type: authTypes.SIGN_UP_SIGN_IN,
+          signUpId: restoreState.routeId,
+          restoreQuery: restoreState.routeQuery,
+        }
+        break
     }
-  },
-
-  components: {
-    Logo,
-  },
-
-  computed: {
-    upgradeRedirect() {
-      return this.$route.query.redirect === "upgrade"
-    },
-  },
-
-  data() {
-    return {
-      calendarTypes,
-      isSignUp: this.initialIsSignUp,
-      step: "select",
-      email: "",
-      firstName: "",
-      lastName: "",
-      otpCode: "",
-      emailError: "",
-      otpError: "",
-      sending: false,
-      verifying: false,
-      isNewUser: false,
-      resendCooldown: 0,
-      resendTimer: null,
-    }
-  },
-
-  methods: {
-    ...mapMutations(["setAuthUser"]),
-    signIn(provider) {
-      const state = this.upgradeRedirect
-        ? { type: authTypes.UPGRADE, upgradeParams: this.$route.query.upgradeParams }
-        : null
-      if (provider === calendarTypes.GOOGLE) {
-        signInGoogle({ state, selectAccount: true })
-      } else if (provider === calendarTypes.OUTLOOK) {
-        signInOutlook({ state, selectAccount: true })
-      }
-    },
-    validateEmail() {
-      const email = this.email.trim()
-      if (!email) {
-        this.emailError = "Please enter an email address."
-        return false
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        this.emailError = "Please enter a valid email address."
-        return false
-      }
-      if (email.includes("+")) {
-        this.emailError = "Email aliases with '+' are not allowed."
-        return false
-      }
-      return true
-    },
-    async submitEmail() {
-      if (this.sending) return
-      this.emailError = ""
-      if (!this.validateEmail()) return
-      this.sending = true
-      try {
-        const res = await post("/auth/otp/check-email", { email: this.email })
-        this.isNewUser = res.isNewUser
-        if (this.isNewUser) {
-          this.step = "onboarding"
-        } else {
-          await this.sendOtpEmail()
-          this.step = "otp"
-          this.otpCode = ""
-          this.otpError = ""
-        }
-      } catch (err) {
-        this.emailError = "Something went wrong. Please try again."
-      } finally {
-        this.sending = false
-      }
-    },
-    async submitOnboarding() {
-      if (!this.firstName.trim() || this.sending) return
-      this.sending = true
-      try {
-        await this.sendOtpEmail()
-        this.step = "otp"
-        this.otpCode = ""
-        this.otpError = ""
-      } catch (err) {
-        this.otpError = "Failed to send code. Please try again."
-      } finally {
-        this.sending = false
-      }
-    },
-    async sendOtpEmail() {
-      await post("/auth/otp/send", { email: this.email })
-      this.startResendCooldown()
-    },
-    async resendOtp() {
-      if (this.sending || this.resendCooldown > 0) return
-      this.sending = true
-      try {
-        await this.sendOtpEmail()
-        this.otpCode = ""
-        this.otpError = ""
-      } catch (err) {
-        this.otpError = "Failed to resend code. Please try again."
-      } finally {
-        this.sending = false
-      }
-    },
-    async verifyOtp() {
-      if (this.otpCode.length !== 6 || this.verifying) return
-      this.otpError = ""
-      this.verifying = true
-      try {
-        const body = {
-          email: this.email,
-          code: this.otpCode,
-          timezoneOffset: new Date().getTimezoneOffset(),
-        }
-        if (this.isNewUser) {
-          body.firstName = this.firstName.trim()
-          body.lastName = this.lastName.trim()
-        }
-        const user = await post("/auth/otp/verify", body)
-        this.setAuthUser(user)
-        this.$posthog?.identify(user._id, {
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-        })
-        await this.handlePostAuthRedirect(user)
-      } catch (err) {
-        const errorCode = err?.parsed?.error
-        if (errorCode === "otp-expired") {
-          this.otpError = "Code has expired. Please request a new one."
-        } else if (errorCode === "otp-too-many-attempts") {
-          this.otpError = "Too many attempts. Please request a new code."
-        } else {
-          this.otpError = "Invalid code. Please try again."
-        }
-      } finally {
-        this.verifying = false
-      }
-    },
-    async handlePostAuthRedirect(user) {
-      if (this.upgradeRedirect) {
-        try {
-          const params = JSON.parse(this.$route.query.upgradeParams)
-          const res = await post("/stripe/create-checkout-session", {
-            priceId: params.priceId,
-            userId: user._id,
-            isSubscription: params.isSubscription,
-            originUrl: params.originUrl,
-          })
-          window.location.href = res.url
-          return
-        } catch (e) {
-          console.error(e)
-        }
-      }
-      this.$router.replace({ name: "home" })
-    },
-    startResendCooldown() {
-      this.resendCooldown = 30
-      if (this.resendTimer) clearInterval(this.resendTimer)
-      this.resendTimer = setInterval(() => {
-        this.resendCooldown--
-        if (this.resendCooldown <= 0) {
-          clearInterval(this.resendTimer)
-          this.resendTimer = null
-        }
-      }, 1000)
-    },
-  },
-
-  beforeDestroy() {
-    if (this.resendTimer) clearInterval(this.resendTimer)
-  },
+  } else {
+    state = null
+  }
+  if (provider === calendarTypes.GOOGLE) {
+    signInGoogle({ state, selectAccount: true })
+  } else if (provider === calendarTypes.OUTLOOK) {
+    signInOutlook({ state, selectAccount: true })
+  }
 }
+
+function validateEmail() {
+  const trimmed = email.value.trim()
+  if (!trimmed) {
+    emailError.value = "Please enter an email address."
+    return false
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    emailError.value = "Please enter a valid email address."
+    return false
+  }
+  if (trimmed.includes("+")) {
+    emailError.value = "Email aliases with '+' are not allowed."
+    return false
+  }
+  return true
+}
+
+async function submitEmail() {
+  if (sending.value) return
+  emailError.value = ""
+  if (!validateEmail()) return
+  sending.value = true
+  try {
+    const res = await post<{ isNewUser: boolean }>("/auth/otp/check-email", {
+      email: email.value,
+    })
+    isNewUser.value = res.isNewUser
+    if (isNewUser.value) {
+      step.value = "onboarding"
+    } else {
+      await sendOtpEmail()
+      step.value = "otp"
+      otpCode.value = ""
+      otpError.value = ""
+    }
+  } catch {
+    emailError.value = "Something went wrong. Please try again."
+  } finally {
+    sending.value = false
+  }
+}
+
+async function submitOnboarding() {
+  if (!firstName.value.trim() || sending.value) return
+  sending.value = true
+  try {
+    await sendOtpEmail()
+    step.value = "otp"
+    otpCode.value = ""
+    otpError.value = ""
+  } catch {
+    otpError.value = "Failed to send code. Please try again."
+  } finally {
+    sending.value = false
+  }
+}
+
+async function sendOtpEmail() {
+  await post("/auth/otp/send", { email: email.value })
+  startResendCooldown()
+}
+
+async function resendOtp() {
+  if (sending.value || resendCooldown.value > 0) return
+  sending.value = true
+  try {
+    await sendOtpEmail()
+    otpCode.value = ""
+    otpError.value = ""
+  } catch {
+    otpError.value = "Failed to resend code. Please try again."
+  } finally {
+    sending.value = false
+  }
+}
+
+async function verifyOtp() {
+  if (otpCode.value.length !== 6 || verifying.value) return
+  otpError.value = ""
+  verifying.value = true
+  try {
+    const body: Record<string, unknown> = {
+      email: email.value,
+      code: otpCode.value,
+      timezoneOffset: Temporal.Now.zonedDateTimeISO().offsetNanoseconds / (1000 * 1000 * 1000) / 60 * -1,
+    }
+    if (isNewUser.value) {
+      body.firstName = firstName.value.trim()
+      body.lastName = lastName.value.trim()
+    }
+    const user = await verifyOtpSignIn(body)
+    mainStore.setAuthUser(user)
+    posthog.identify(user._id, {
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    })
+    await handlePostAuthRedirect(user)
+  } catch (err: unknown) {
+    const errorCode = (err as { parsed?: { error?: string } } | undefined)?.parsed?.error
+    if (errorCode === "otp-expired") {
+      otpError.value = "Code has expired. Please request a new one."
+    } else if (errorCode === "otp-too-many-attempts") {
+      otpError.value = "Too many attempts. Please request a new code."
+    } else {
+      otpError.value = "Invalid code. Please try again."
+    }
+  } finally {
+    verifying.value = false
+  }
+}
+
+interface UpgradeParams {
+  priceId: string
+  isSubscription: boolean
+  originUrl: string
+}
+
+async function handlePostAuthRedirect(user: User) {
+  const restoreState = getAuthRestoreState(route)
+
+  if (upgradeRedirect.value) {
+    try {
+      const params = JSON.parse(route.query.upgradeParams as string) as UpgradeParams
+      const res = await post<{ url: string }>(
+        "/stripe/create-checkout-session",
+        {
+          priceId: params.priceId,
+          userId: user._id,
+          isSubscription: params.isSubscription,
+          originUrl: params.originUrl,
+        }
+      )
+      window.location.href = res.url
+      return
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  if (restoreState) {
+    void router.replace(getAuthRestoreRouteLocation(restoreState))
+    return
+  }
+
+  void router.replace({ name: "home" })
+}
+
+function startResendCooldown() {
+  resendCooldown.value = 30
+  if (resendTimer.value) clearInterval(resendTimer.value)
+  resendTimer.value = setInterval(() => {
+    resendCooldown.value--
+    if (resendCooldown.value <= 0) {
+      clearInterval(resendTimer.value ?? undefined)
+      resendTimer.value = null
+    }
+  }, 1000)
+}
+
+onBeforeUnmount(() => {
+  if (resendTimer.value) clearInterval(resendTimer.value)
+})
 </script>

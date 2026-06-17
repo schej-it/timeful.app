@@ -18,31 +18,26 @@
     <v-icon
       v-if="removable"
       small
-      @click="() => removeEmail(user.email)"
       class="tw-ml-1"
+      @click="() => removeEmail(user.email ?? '')"
       >mdi-close</v-icon
     >
   </v-chip>
 </template>
 
-<script>
-export default {
-  name: "UserChip",
+<script setup lang="ts">
+import type { User } from "@/types"
 
-  props: {
-    user: { type: Object, required: true },
-    removable: { type: Boolean, default: false },
-    removeEmail: { type: Function, default: () => {} },
-  },
-
-  components: {},
-
-  data: () => ({}),
-
-  created() {},
-
-  computed: {},
-
-  methods: {},
-}
+withDefaults(
+  defineProps<{
+    user: Partial<User>
+    removable?: boolean
+    removeEmail?: (email: string) => void
+  }>(),
+  {
+    removable: false,
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    removeEmail: () => {},
+  }
+)
 </script>

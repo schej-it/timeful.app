@@ -1,13 +1,13 @@
 <template>
   <v-card class="tw-p-4 sm:tw-p-6">
     <v-expand-transition>
-      <div v-show="state === states.PICK_CALENDAR">
+      <div v-show="activeStep === states.PICK_CALENDAR">
         <v-card-title class="tw-px-0 tw-pt-0"
           >Choose a calendar provider</v-card-title
         >
         <v-card-text class="tw-p-0">
           <div class="tw-flex tw-flex-col tw-gap-2">
-            <v-btn block @click="$emit('addGoogleCalendar')">
+            <v-btn block @click="emit('addGoogleCalendar')">
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
                   class="tw-flex-initial"
@@ -20,7 +20,7 @@
                 <v-spacer />
               </div>
             </v-btn>
-            <v-btn block @click="state = states.APPLE_CREDENTIALS">
+            <v-btn block @click="openAppleCredentials">
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
                   class="tw-flex-initial"
@@ -33,7 +33,7 @@
                 <v-spacer />
               </div>
             </v-btn>
-            <v-btn block @click="$emit('addOutlookCalendar')">
+            <v-btn block @click="emit('addOutlookCalendar')">
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-img
                   class="tw-flex-initial"
@@ -46,7 +46,7 @@
                 <v-spacer />
               </div>
             </v-btn>
-            <v-btn block @click="state = states.ICS_CREDENTIALS">
+            <v-btn block @click="openIcsCredentials">
               <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
                 <v-icon
                   class="tw-flex-initial"
@@ -65,57 +65,67 @@
     </v-expand-transition>
     <v-expand-transition>
       <AppleCredentials
-        v-if="state === states.APPLE_CREDENTIALS"
-        @back="state = states.PICK_CALENDAR"
-        @addedCalendar="$emit('addedCalendar')"
+        v-if="activeStep === states.APPLE_CREDENTIALS"
+        @back="resetFlow"
+        @added-calendar="emit('addedCalendar')"
       />
     </v-expand-transition>
     <v-expand-transition>
       <ICSCredentials
-        v-if="state === states.ICS_CREDENTIALS"
-        @back="state = states.PICK_CALENDAR"
-        @addedCalendar="$emit('addedCalendar')"
+        v-if="activeStep === states.ICS_CREDENTIALS"
+        @back="resetFlow"
+        @added-calendar="emit('addedCalendar')"
       />
     </v-expand-transition>
   </v-card>
 </template>
 
-<script>
+<script setup lang="ts">
+import { ref, watch } from "vue"
 import AppleCredentials from "@/components/calendar_permission_dialogs/AppleCredentials.vue"
-import ICSCredentials from "@/components/calendar_permission_dialogs/ICSCredentials.vue";
+import ICSCredentials from "@/components/calendar_permission_dialogs/ICSCredentials.vue"
 
-export default {
-  name: "CalendarTypeSelector",
+const props = withDefaults(
+  defineProps<{
+    visible?: boolean
+  }>(),
+  { visible: true }
+)
 
-  components: {
-    AppleCredentials,
-    ICSCredentials
-  },
+const emit = defineEmits<{
+  addGoogleCalendar: []
+  addOutlookCalendar: []
+  addedCalendar: []
+}>()
 
-  props: {
-    visible: {
-      type: Boolean,
-      default: true,
-    },
-  },
+const states = {
+  PICK_CALENDAR: "pick-calendar",
+  APPLE_CREDENTIALS: "apple-credentials",
+  ICS_CREDENTIALS: "ics-credentials",
+} as const
 
-  data() {
-    return {
-      states: {
-        PICK_CALENDAR: "pick-calendar",
-        APPLE_CREDENTIALS: "apple-credentials",
-        ICS_CREDENTIALS: "ics-credentials",
-      },
-      state: "pick-calendar",
-    }
-  },
+type State = (typeof states)[keyof typeof states]
 
-  watch: {
-    visible(val) {
-      if (!val) {
-        this.state = this.states.PICK_CALENDAR
-      }
-    },
-  },
+const activeStep = ref<State>(states.PICK_CALENDAR)
+
+const resetFlow = () => {
+  activeStep.value = states.PICK_CALENDAR
 }
+
+const openAppleCredentials = () => {
+  activeStep.value = states.APPLE_CREDENTIALS
+}
+
+const openIcsCredentials = () => {
+  activeStep.value = states.ICS_CREDENTIALS
+}
+
+watch(
+  () => props.visible,
+  (visible, wasVisible) => {
+    if (visible && !wasVisible) {
+      resetFlow()
+    }
+  }
+)
 </script>

@@ -27,18 +27,17 @@
         <template v-if="allowExportCsv">
           <v-spacer />
           <v-menu right offset-x>
-            <template v-slot:activator="{ on, attrs }">
-              <v-btn icon v-on="on" v-bind="attrs"
+            <template #activator="{ props: activatorProps }">
+              <v-btn variant="text" size="small" icon v-bind="activatorProps"
                 ><v-icon>mdi-dots-vertical</v-icon></v-btn
               >
             </template>
-            <v-list class="tw-py-1" dense>
+            <v-list class="tw-py-1" density="compact">
               <v-dialog v-model="exportCsvDialog.visible" width="400">
-                <template v-slot:activator="{ on, attrs }">
+                <template #activator="{ props: activatorProps }">
                   <v-list-item
                     id="export-csv-btn"
-                    v-on="on"
-                    v-bind="attrs"
+                    v-bind="activatorProps"
                     @click="trackExportCsvClick"
                   >
                     <v-list-item-title>Export CSV</v-list-item-title>
@@ -50,26 +49,27 @@
                     <div class="tw-mb-1">Select CSV format:</div>
                     <v-select
                       v-model="exportCsvDialog.type"
-                      solo
+                      class="timeful-solo-field"
+                      variant="solo"
                       hide-details
                       :items="exportCsvDialog.types"
-                      item-text="text"
+                      item-title="text"
                       item-value="value"
                     />
                   </v-card-text>
                   <v-card-actions>
                     <v-spacer />
                     <v-btn
-                      text
-                      @click="exportCsvDialog.visible = false"
+                      variant="text"
                       :disabled="exportCsvDialog.loading"
+                      @click="exportCsvDialog.visible = false"
                       >Cancel</v-btn
                     >
                     <v-btn
-                      text
-                      @click="exportCsv"
+                      variant="text"
                       color="primary"
                       :loading="exportCsvDialog.loading"
+                      @click="exportCsv"
                       >Export</v-btn
                     >
                   </v-card-actions>
@@ -106,155 +106,154 @@
           : ''
       "
     >
-      <div
-        ref="respondentsScrollView"
-        class="-tw-ml-2 tw-pl-2 tw-pt-2 tw-text-sm"
-        :class="
-          isPhone && !maxHeight
-            ? 'tw-overflow-hidden'
-            : 'tw-overflow-y-auto tw-overflow-x-hidden'
-        "
-      >
-        <div v-if="respondents.length === 0" class="tw-mb-6">
-          <span
-            class="tw-text-very-dark-gray"
-            v-if="!isOwner && event.blindAvailabilityEnabled"
-          >
-            No response yet!
-          </span>
-          <span class="tw-text-very-dark-gray" v-else>No responses yet!</span>
-        </div>
-        <template v-else>
-          <transition-group
-            name="list"
-            class="tw-grid tw-grid-cols-2 tw-gap-x-2 sm:tw-block"
-          >
-            <div
-              v-for="(user, i) in orderedRespondents"
-              :key="user._id"
-              class="tw-group tw-relative tw-flex tw-cursor-pointer tw-items-center tw-py-1"
-              @mouseover="(e) => $emit('mouseOverRespondent', e, user._id)"
-              @mouseleave="$emit('mouseLeaveRespondent')"
-              @click="(e) => clickRespondent(e, user._id)"
+      <div class="tw-relative tw-overflow-hidden">
+        <div
+          ref="respondentsScrollView"
+          class="-tw-ml-2 tw-pl-2 tw-pt-2 tw-text-sm"
+          :class="
+            isPhone && !maxHeight
+              ? 'tw-overflow-hidden'
+              : 'tw-overflow-y-auto tw-overflow-x-hidden'
+          "
+        >
+          <div v-if="respondents.length === 0" class="tw-mb-6">
+            <span
+              v-if="!isOwner && event.blindAvailabilityEnabled"
+              class="tw-text-very-dark-gray"
             >
-              <div class="tw-relative tw-flex tw-items-center">
-                <div class="tw-ml-1 tw-mr-3">
-                  <UserAvatarContent
-                    v-if="!isGuest(user)"
-                    :user="user"
-                    :size="16"
-                  ></UserAvatarContent>
-                  <v-avatar v-else :size="16">
-                    <v-icon small>mdi-account</v-icon>
-                  </v-avatar>
-                </div>
-
-                <v-simple-checkbox
-                  @click="(e) => $emit('clickRespondent', e, user._id)"
-                  color="primary"
-                  :value="respondentSelected(user._id)"
-                  class="tw-absolute -tw-top-[2px] tw-left-0 tw-bg-white tw-opacity-0 group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
-                  :class="
-                    respondentSelected(user._id)
-                      ? 'tw-opacity-100'
-                      : 'tw-opacity-0'
-                  "
-                />
-              </div>
-              <div class="tw-flex tw-flex-col">
-                <div
-                  class="tw-mr-1 tw-transition-all"
-                  :class="respondentClass(user._id)"
-                >
-                  {{
-                    user.firstName +
-                    " " +
-                    user.lastName +
-                    (respondentIfNeeded(user._id) ? "*" : "")
-                  }}
-                </div>
-                <div
-                  v-if="isOwner && event.collectEmails"
-                  class="email-hover-target tw-flex tw-items-center tw-rounded-sm tw-p-px tw-text-xs tw-text-dark-gray tw-transition-all hover:tw-bg-light-gray"
-                  :class="respondentClass(user._id)"
-                  @mouseover.stop
-                  @click.stop="copyEmailToClipboard(user.email)"
-                >
-                  {{ user.email }}
-                  <v-icon class="tw-ml-1 tw-text-xs">mdi-content-copy</v-icon>
-                </div>
-              </div>
+              No response yet!
+            </span>
+            <span v-else class="tw-text-very-dark-gray">No responses yet!</span>
+          </div>
+          <template v-else>
+            <transition-group
+              name="list"
+              tag="div"
+              class="tw-grid tw-grid-cols-2 tw-gap-x-2 sm:tw-block"
+            >
               <div
-                class="tw-absolute tw-right-0 tw-transition-none group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
-                :class="isPhone ? 'tw-opacity-100' : 'tw-opacity-0'"
+                v-for="user in orderedRespondents"
+                :key="user._id"
+                class="respondent-row tw-group tw-relative tw-flex tw-cursor-pointer tw-items-center tw-py-1 tw-text-sm tw-leading-5"
+                @mouseover="(e: MouseEvent) => $emit('mouseOverRespondent', e, user._id ?? '')"
+                @mouseleave="$emit('mouseLeaveRespondent')"
+                @click="(e: MouseEvent) => clickRespondent(e, user._id ?? '')"
               >
-                <template
-                  v-if="isPhone && (isGuest(user) || (isOwner && !isGroup))"
+                <div
+                  class="tw-ml-1 tw-mr-3 tw-flex tw-h-5 tw-w-5 tw-shrink-0 tw-items-center tw-justify-center"
                 >
-                  <v-menu right offset-x>
-                    <template v-slot:activator="{ on, attrs }">
-                      <v-btn icon v-on="on" v-bind="attrs">
-                        <v-icon small color="#4F4F4F">mdi-dots-vertical</v-icon>
-                      </v-btn>
-                    </template>
-                    <v-list class="tw-py-1" dense>
-                      <v-list-item
-                        v-if="isGuest(user)"
-                        @click="$emit('editGuestAvailability', user._id)"
+                  <button
+                    type="button"
+                    class="respondent-control tw-flex tw-h-5 tw-w-5 tw-appearance-none tw-items-center tw-justify-center tw-border-0 tw-bg-transparent tw-p-0 tw-leading-none tw-shadow-none"
+                    :aria-pressed="respondentSelected(user._id ?? '')"
+                    :aria-label="
+                      respondentSelected(user._id ?? '')
+                        ? `Deselect ${user.firstName ?? 'respondent'}`
+                        : `Select ${user.firstName ?? 'respondent'}`
+                    "
+                    @click.stop="(e: MouseEvent) => $emit('clickRespondent', e, user._id ?? '')"
+                  >
+                    <span
+                      class="respondent-control__checkbox tw-flex tw-h-4 tw-w-4 tw-items-center tw-justify-center tw-rounded-[2px] tw-border-2 tw-border-solid tw-bg-white"
+                      style="border-color: var(--timeful-primary-action-bg);"
+                    >
+                      <v-icon
+                        v-if="respondentSelected(user._id ?? '')"
+                        size="12"
+                        color="primary"
+                        class="tw-block"
                       >
-                        <v-list-item-title class="tw-flex tw-items-center">
-                          <v-icon small class="tw-mr-2" color="#4F4F4F"
-                            >mdi-pencil</v-icon
-                          >
-                          Edit
-                        </v-list-item-title>
-                      </v-list-item>
-                      <v-list-item
-                        v-if="isOwner && !isGroup"
+                        mdi-check
+                      </v-icon>
+                    </span>
+                    <span
+                      class="respondent-control__avatar tw-flex tw-h-4 tw-w-4 tw-items-center tw-justify-center"
+                    >
+                      <UserAvatarContent
+                        v-if="shouldUseRichAvatar(user)"
+                        :user="user"
+                        :size="16"
+                      ></UserAvatarContent>
+                      <v-avatar v-else :size="16">
+                        <v-icon small>mdi-account</v-icon>
+                      </v-avatar>
+                    </span>
+                  </button>
+                </div>
+                <div class="tw-flex tw-min-w-0 tw-flex-1 tw-flex-col tw-justify-center">
+                  <div class="tw-flex tw-items-center tw-justify-between tw-gap-2">
+                    <div
+                      class="respondent-name-line tw-mr-1 tw-min-w-0 tw-text-sm tw-leading-5 tw-transition-all"
+                      :class="respondentClass(user._id ?? '')"
+                    >
+                      {{ formatRespondentName(user) + (respondentIfNeeded(user._id ?? '') ? "*" : "") }}
+                    </div>
+                    <div
+                      class="respondent-row-actions tw-flex tw-shrink-0 tw-items-center tw-gap-1 tw-transition-none group-hover:tw-opacity-100 group-[&:has(.email-hover-target:hover)]:!tw-opacity-0"
+                      :class="isPhone ? 'tw-opacity-100' : 'tw-opacity-0'"
+                    >
+                      <component
+                        :is="respondentEditActionState(user) === 'editable' ? 'button' : 'div'"
+                        v-if="respondentEditActionState(user) !== 'none'"
+                        type="button"
+                        class="respondent-edit-status tw-flex tw-h-5 tw-w-5 tw-items-center tw-justify-center tw-rounded-full tw-bg-white tw-p-0 tw-text-sm tw-leading-5"
+                        :class="
+                          respondentEditActionState(user) === 'editable'
+                            ? 'tw-cursor-pointer'
+                            : 'tw-cursor-default'
+                        "
+                        :aria-label="
+                          respondentEditActionState(user) === 'editable'
+                            ? `Edit ${formatRespondentName(user)}`
+                            : `${formatRespondentName(user)} cannot be edited`
+                        "
+                        :aria-disabled="respondentEditActionState(user) === 'locked'"
+                        @click.stop="
+                          respondentEditActionState(user) === 'editable' &&
+                          $emit('editGuestAvailability', user._id ?? '')
+                        "
+                      >
+                        <v-icon size="16" color="#4F4F4F">
+                          {{
+                            respondentEditActionState(user) === "editable"
+                              ? "mdi-pencil"
+                              : "mdi-lock"
+                          }}
+                        </v-icon>
+                      </component>
+                      <v-btn
+                        v-if="!isPhone && isOwner && !isGroup"
+                        icon
+                        size="small"
+                        class="tw-bg-white"
                         @click="() => showDeleteAvailabilityDialog(user)"
+                        ><v-icon small class="hover:tw-text-red" color="#4F4F4F"
+                          >mdi-delete</v-icon
+                        ></v-btn
                       >
-                        <v-list-item-title class="tw-flex tw-items-center">
-                          <v-icon small class="tw-mr-2" color="#4F4F4F"
-                            >mdi-delete</v-icon
-                          >
-                          Delete
-                        </v-list-item-title>
-                      </v-list-item>
-                    </v-list>
-                  </v-menu>
-                </template>
-                <template v-else>
-                  <v-btn
-                    v-if="isGuest(user)"
-                    small
-                    icon
-                    class="tw-bg-white"
-                    @click="$emit('editGuestAvailability', user._id)"
-                    ><v-icon small color="#4F4F4F">mdi-pencil</v-icon></v-btn
+                    </div>
+                  </div>
+                  <div
+                    v-if="isOwner && event.collectEmails"
+                    class="email-hover-target tw-flex tw-items-center tw-rounded-sm tw-p-px tw-text-xs tw-text-dark-gray tw-transition-all hover:tw-bg-light-gray"
+                    :class="respondentClass(user._id ?? '')"
+                    @mouseover.stop
+                    @click.stop="copyEmailToClipboard(user.email)"
                   >
-                  <v-btn
-                    v-if="isOwner && !isGroup"
-                    small
-                    icon
-                    class="tw-bg-white"
-                    @click="() => showDeleteAvailabilityDialog(user)"
-                    ><v-icon small class="hover:tw-text-red" color="#4F4F4F"
-                      >mdi-delete</v-icon
-                    ></v-btn
-                  >
-                </template>
+                    {{ user.email }}
+                    <v-icon class="tw-ml-1 tw-text-xs">mdi-content-copy</v-icon>
+                  </div>
+                </div>
               </div>
-            </div>
-          </transition-group>
-          <div class="tw-h-2"></div>
-        </template>
-      </div>
-      <div class="tw-relative">
+            </transition-group>
+            <div class="tw-h-2"></div>
+          </template>
+        </div>
         <OverflowGradient
-          v-if="hasMounted && !isPhone"
+          v-if="hasMounted && !isPhone && respondentsScrollView && !maxHeight"
           class="tw-h-16"
-          :scrollContainer="$refs.respondentsScrollView"
-          :showArrow="false"
+          :scroll-container="respondentsScrollView"
+          :show-arrow="false"
         />
       </div>
 
@@ -274,7 +273,7 @@
           <div class="tw-font-normal">({{ pendingUsers.length }})</div>
         </div>
         <div>
-          <div v-for="(user, i) in pendingUsers" :key="user.email">
+          <div v-for="user in pendingUsers" :key="user.email">
             <div class="tw-relative tw-flex tw-items-center">
               <v-icon class="tw-ml-1 tw-mr-3" small>mdi-account</v-icon>
               <div class="tw-mr-1 tw-text-sm tw-transition-all">
@@ -284,64 +283,6 @@
           </div>
         </div>
       </div>
-      <template v-if="!isPhone">
-        <v-btn
-          v-if="
-            !isGroup &&
-            (authUser || guestAddedAvailability) &&
-            (!event.blindAvailabilityEnabled || isOwner)
-          "
-          text
-          color="primary"
-          class="-tw-ml-2 tw-mb-4 tw-w-min tw-px-2"
-          @click="
-            () => {
-              if (authUser) {
-                $emit('addAvailabilityAsGuest')
-              } else {
-                $emit('addAvailability')
-              }
-            }
-          "
-        >
-          {{
-            authUser ? "+ Add guest availability" : "+ Add availability"
-          }}</v-btn
-        >
-        <v-switch
-          v-if="respondents.length > 1"
-          class="tw-mb-4"
-          inset
-          id="show-best-times-toggle"
-          :input-value="showBestTimes"
-          @change="(val) => $emit('update:showBestTimes', !!val)"
-          hide-details
-        >
-          <template v-slot:label>
-            <div class="tw-text-sm tw-text-black">
-              Show best {{ event.daysOnly ? "days" : "times" }}
-            </div>
-          </template>
-        </v-switch>
-        <EventOptions
-          :event="event"
-          :showEventOptions="showEventOptions"
-          @toggleShowEventOptions="$emit('toggleShowEventOptions')"
-          :showBestTimes="showBestTimes"
-          @update:showBestTimes="(val) => $emit('update:showBestTimes', val)"
-          :hideIfNeeded="hideIfNeeded"
-          @update:hideIfNeeded="(val) => $emit('update:hideIfNeeded', val)"
-          :showCalendarEvents="showCalendarEvents"
-          @update:showCalendarEvents="
-            (val) => $emit('update:showCalendarEvents', val)
-          "
-          :startCalendarOnMonday="startCalendarOnMonday"
-          @update:startCalendarOnMonday="
-            (val) => $emit('update:startCalendarOnMonday', val)
-          "
-          :numResponses="respondents.length"
-        />
-      </template>
     </div>
 
     <div
@@ -362,9 +303,9 @@
         >
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="deleteAvailabilityDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="deleteAvailabilityDialog = false">Cancel</v-btn>
           <v-btn
-            text
+            variant="text"
             color="error"
             @click="
               () => {
@@ -381,464 +322,232 @@
     <v-switch
       v-if="isGroup && isPhone"
       :class="maxHeight && 'tw-mt-2'"
-      class="tw-mb-4"
+      class="timeful-switch tw-mb-4"
+      color="primary"
       inset
-      :input-value="showCalendarEvents"
-      @change="(val) => $emit('update:showCalendarEvents', Boolean(val))"
+      :model-value="showCalendarEvents"
       hide-details
+      @update:model-value="
+        (val: boolean | null) => $emit('update:showCalendarEvents', !!val)
+      "
     >
-      <template v-slot:label>
+      <template #label>
         <div class="tw-text-sm tw-text-black">Overlay calendar events</div>
       </template>
     </v-switch>
 
-    <v-btn
-      v-if="
-        !maxHeight &&
-        isPhone &&
-        !isGroup &&
-        (authUser || guestAddedAvailability) &&
-        (!event.blindAvailabilityEnabled || isOwner)
-      "
-      text
-      color="primary"
-      class="-tw-ml-2 tw-mt-4 tw-w-min tw-px-2"
-      @click="
-        () => {
-          if (authUser) {
-            $emit('addAvailabilityAsGuest')
-          } else {
-            $emit('addAvailability')
-          }
-        }
-      "
-    >
-      {{ authUser ? "+ Add guest availability" : "+ Add availability" }}</v-btn
-    >
   </div>
 </template>
+
+<script setup lang="ts">
+import { computed } from "vue"
+import { storeToRefs } from "pinia"
+import { useMainStore } from "@/stores/main"
+import { useDisplayHelpers } from "@/utils/useDisplayHelpers"
+import { _delete } from "@/utils"
+import { getResponseDisplayName } from "@/utils/guestName"
+import { posthog } from "@/plugins/posthog"
+import UserAvatarContent from "../UserAvatarContent.vue"
+import OverflowGradient from "@/components/OverflowGradient.vue"
+import type { ZdtMap } from "@/utils"
+import type { Temporal } from "temporal-polyfill"
+import type {
+  ParsedResponses,
+  ScheduleOverlapEvent,
+  Timezone,
+} from "@/composables/schedule_overlap/types"
+import { canGuestEditResponse } from "@/composables/schedule_overlap/useScheduleOverlapUI"
+import type { User } from "@/types"
+import { useRespondentsCsvExport } from "./useRespondentsCsvExport"
+import { useRespondentsListSizing } from "./useRespondentsListSizing"
+import { useRespondentsListState } from "./useRespondentsListState"
+
+const props = defineProps<{
+  eventId: string
+  event: ScheduleOverlapEvent
+  curGuestId: string
+  ownedGuestResponseLookupKeys: string[]
+  guestResponseLookupKey: string
+  days: unknown[]
+  times: unknown[]
+  curDate?: Temporal.ZonedDateTime
+  curRespondent: string
+  curRespondents: string[]
+  curTimeslot: { dayIndex: number; timeIndex: number }
+  curTimeslotAvailability: Record<string, boolean>
+  respondents: User[]
+  parsedResponses: ParsedResponses
+  isOwner: boolean
+  maxHeight?: number
+  isGroup: boolean
+  attendees?: { email: string; declined?: boolean }[]
+  showCalendarEvents: boolean
+  responsesFormatted: ZdtMap<Set<string>>
+  timezone: Timezone
+  hideIfNeeded: boolean
+  guestAddedAvailability: boolean
+  addingAvailabilityAsGuest: boolean
+}>()
+
+const emit = defineEmits<{
+  mouseOverRespondent: [e: MouseEvent, userId: string]
+  mouseLeaveRespondent: []
+  clickRespondent: [e: MouseEvent, userId: string]
+  editGuestAvailability: [userId: string]
+  guestAvailabilityDeleted: [userId: string]
+  addAvailabilityAsGuest: []
+  addAvailability: []
+  refreshEvent: []
+  "update:showCalendarEvents": [value: boolean]
+}>()
+
+const mainStore = useMainStore()
+const { authUser } = storeToRefs(mainStore)
+const { showError, showInfo } = mainStore
+
+const { isPhone } = useDisplayHelpers()
+const { scrollableSection, respondentsScrollView, respondentsListMaxHeight, hasMounted } =
+  useRespondentsListSizing()
+
+const {
+  allowExportCsv,
+  isCurTimeslotSelected,
+  numUsersAvailable,
+  numCurRespondentsAvailable,
+  pendingUsers,
+  showIfNeededStar,
+  orderedRespondents,
+  deleteAvailabilityDialog,
+  userToDelete,
+  respondentClass,
+  respondentIfNeeded,
+  respondentSelected,
+  shouldUseRichAvatar,
+  isGuest,
+  showDeleteAvailabilityDialog,
+} = useRespondentsListState({
+  event: props.event,
+  respondents: computed(() => props.respondents),
+  curRespondents: computed(() => props.curRespondents),
+  curTimeslotAvailability: computed(() => props.curTimeslotAvailability),
+  parsedResponses: computed(() => props.parsedResponses),
+  curDate: computed(() => props.curDate),
+  hideIfNeeded: computed(() => props.hideIfNeeded),
+  isGroup: computed(() => props.isGroup),
+  attendees: computed(() => props.attendees),
+  isOwner: computed(() => props.isOwner),
+  isPhone,
+})
+
+const { exportCsvDialog, exportCsv, trackExportCsvClick } = useRespondentsCsvExport({
+  eventId: props.eventId,
+  event: props.event,
+  parsedResponses: props.parsedResponses,
+  respondentCount: props.respondents.length,
+})
+
+function clickRespondent(e: MouseEvent, userId: string) {
+  e.stopImmediatePropagation()
+  emit("clickRespondent", e, userId)
+}
+
+function formatRespondentName(user: User) {
+  return getResponseDisplayName({ user })
+}
+
+function canEditGuestAvailability(user: User) {
+  if (authUser.value || user._id == null) {
+    return false
+  }
+  return canGuestEditResponse(
+    props.parsedResponses[user._id],
+    new Set(props.ownedGuestResponseLookupKeys)
+  )
+}
+
+function respondentEditActionState(user: User): "editable" | "locked" | "none" {
+  if (user._id == null) {
+    return "none"
+  }
+  return canEditGuestAvailability(user) ? "editable" : "locked"
+}
+
+async function deleteAvailability(user: User | null) {
+  if (!user) return
+  try {
+    const parsedResponse = user._id ? props.parsedResponses[user._id] : undefined
+    await _delete(`/events/${props.eventId}/response`, {
+      guest: isGuest(user),
+      userId: user._id,
+      name: user.firstName,
+      guestId: parsedResponse?.guestId,
+    })
+    emit("guestAvailabilityDeleted", user._id ?? "")
+    emit("refreshEvent")
+    showInfo("Availability successfully deleted!")
+
+    posthog.capture("Deleted availability of another user", {
+      eventId: props.eventId,
+      userId: user._id,
+    })
+  } catch (e: unknown) {
+    console.error(e)
+    showError("There was an error deleting that person's availability!")
+  }
+}
+
+async function copyEmailToClipboard(email: string | undefined) {
+  if (!email) return
+  try {
+    await navigator.clipboard.writeText(email)
+    showInfo("Email copied to clipboard!")
+  } catch (err: unknown) {
+    console.error("Failed to copy email: ", err)
+    showError("Failed to copy email.")
+  }
+}
+</script>
+
+<style scoped src="./ScheduleOverlapCompactSwitch.css"></style>
 
 <style scoped>
 .list-move {
   transition: transform 0.5s;
 }
-</style>
 
-<script>
-import { _delete, getLocale, isPhone } from "@/utils"
-import UserAvatarContent from "../UserAvatarContent.vue"
-import { mapState, mapActions } from "vuex"
-import EventOptions from "./EventOptions.vue"
-import OverflowGradient from "@/components/OverflowGradient.vue"
-
-export default {
-  name: "RespondentsList",
-
-  components: { UserAvatarContent, EventOptions, OverflowGradient },
-
-  props: {
-    eventId: { type: String, required: true },
-    event: { type: Object, required: true },
-    days: { type: Array, required: true },
-    times: { type: Array, required: true },
-    curDate: { type: Date, required: false }, // Date of the current timeslot
-    curRespondent: { type: String, required: true },
-    curRespondents: { type: Array, required: true },
-    curTimeslot: { type: Object, required: true },
-    curTimeslotAvailability: { type: Object, required: true },
-    respondents: { type: Array, required: true },
-    parsedResponses: { type: Object, required: true },
-    isOwner: { type: Boolean, required: true },
-    maxHeight: { type: Number },
-    isGroup: { type: Boolean, required: true },
-    attendees: { type: Array, default: () => [] },
-    showCalendarEvents: { type: Boolean, required: true },
-    responsesFormatted: { type: Map, required: true },
-    timezone: { type: Object, required: true },
-    showBestTimes: { type: Boolean, required: true },
-    hideIfNeeded: { type: Boolean, required: true },
-    startCalendarOnMonday: { type: Boolean, default: false },
-    showEventOptions: { type: Boolean, required: true },
-    guestAddedAvailability: { type: Boolean, required: true },
-    addingAvailabilityAsGuest: { type: Boolean, required: true },
-  },
-
-  data() {
-    return {
-      deleteAvailabilityDialog: false,
-      exportCsvDialog: {
-        visible: false,
-        loading: false,
-        type: "datesToAvailable",
-        types: [
-          {
-            text: "Dates <> people available",
-            value: "datesToAvailable",
-          },
-          { text: "Name <> dates available", value: "nameToDates" },
-        ],
-      },
-      userToDelete: null,
-      desktopMaxHeight: 0,
-      respondentsListMinHeight: 400,
-
-      oldCurRespondents: [],
-      curRespondentsAddedTime: {}, // Map of respondent id to time they were added
-
-      hasMounted: false,
-    }
-  },
-
-  computed: {
-    ...mapState(["authUser"]),
-    allowExportCsv() {
-      if (this.isGroup || this.isPhone) return false
-
-      return this.event.blindAvailabilityEnabled
-        ? this.isOwner && this.respondents.length > 0
-        : this.respondents.length > 0
-    },
-    curRespondentsSet() {
-      return new Set(this.curRespondents)
-    },
-    isCurTimeslotSelected() {
-      return (
-        this.curTimeslot.dayIndex !== -1 && this.curTimeslot.timeIndex !== -1
-      )
-    },
-    numUsersAvailable() {
-      this.curTimeslot
-      let numUsers = 0
-      for (const key in this.curTimeslotAvailability) {
-        if (this.curTimeslotAvailability[key]) numUsers++
-      }
-      return numUsers
-    },
-    numCurRespondentsAvailable() {
-      this.curTimeslot
-      let numUsers = 0
-      for (const key in this.curTimeslotAvailability) {
-        if (
-          this.curTimeslotAvailability[key] &&
-          this.curRespondentsSet.has(key)
-        )
-          numUsers++
-      }
-      return numUsers
-    },
-    pendingUsers() {
-      if (!this.isGroup) return []
-
-      const respondentEmailsSet = new Set(
-        this.respondents.map((r) => r.email.toLowerCase())
-      )
-
-      return this.attendees.filter((a) => {
-        if (!a.declined && !respondentEmailsSet.has(a.email.toLowerCase())) {
-          return true
-        }
-        return false
-      })
-    },
-    showIfNeededStar() {
-      if (this.hideIfNeeded) {
-        return false
-      }
-
-      for (const user of this.respondents) {
-        if (this.respondentIfNeeded(user._id)) {
-          return true
-        }
-      }
-      return false
-    },
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-    orderedRespondents() {
-      const orderedRespondents = [...this.respondents]
-      orderedRespondents.sort((a, b) => {
-        // Sort by added time if both are in curRespondents
-        // Sort curRespondents before others
-        if (
-          this.curRespondentsSet.has(a._id) &&
-          this.curRespondentsSet.has(b._id)
-        ) {
-          return (
-            this.curRespondentsAddedTime[a._id] -
-            this.curRespondentsAddedTime[b._id]
-          )
-        } else if (
-          this.curRespondentsSet.has(a._id) &&
-          !this.curRespondentsSet.has(b._id)
-        ) {
-          return -1
-        } else if (
-          !this.curRespondentsSet.has(a._id) &&
-          this.curRespondentsSet.has(b._id)
-        ) {
-          return 1
-        }
-
-        // Otherwise, sort by first name
-        return (a.firstName || "").localeCompare(b.firstName || "")
-      })
-      return orderedRespondents
-    },
-    respondentsListMaxHeight() {
-      return Math.max(this.desktopMaxHeight, this.respondentsListMinHeight)
-    },
-  },
-
-  methods: {
-    ...mapActions(["showError", "showInfo"]),
-    /** Emit clickRespondent event */
-    clickRespondent(e, userId) {
-      e.stopImmediatePropagation()
-      this.$emit("clickRespondent", e, userId)
-    },
-    /** Returns the class of the given respondent */
-    respondentClass(id) {
-      const c = []
-      if (/*this.curRespondent == id ||*/ this.curRespondentsSet.has(id)) {
-        // c.push("tw-font-bold")
-      } else if (this.curRespondents.length > 0) {
-        c.push("tw-text-gray")
-      }
-
-      if (
-        (this.curRespondentsSet.has(id) || this.curRespondents.length === 0) &&
-        this.respondentIfNeeded(id)
-      ) {
-        c.push("tw-bg-yellow")
-      }
-
-      if (!this.curTimeslotAvailability[id]) {
-        c.push("tw-line-through")
-        c.push("tw-text-gray")
-      }
-      return c
-    },
-    /** Returns whether the respondent has "ifNeeded" availability for the current timeslot */
-    respondentIfNeeded(id) {
-      if (!this.curDate || this.hideIfNeeded) return false
-
-      return Boolean(
-        this.parsedResponses[id]?.ifNeeded?.has(this.curDate.getTime())
-      )
-    },
-    /** Returns whether the current respondent is selected (for subset avail) */
-    respondentSelected(id) {
-      return this.curRespondentsSet.has(id)
-    },
-    /** Returns whether the user is a guest */
-    isGuest(user) {
-      return user._id == user.firstName
-    },
-    /** Shows the delete availability dialog */
-    showDeleteAvailabilityDialog(user) {
-      this.deleteAvailabilityDialog = true
-      this.userToDelete = user
-    },
-    /** Deletes the user's availability on the server */
-    async deleteAvailability(user) {
-      try {
-        await _delete(`/events/${this.eventId}/response`, {
-          guest: this.isGuest(user),
-          userId: user._id,
-          name: user._id,
-        })
-        this.$emit("refreshEvent")
-        this.showInfo("Availability successfully deleted!")
-
-        this.$posthog?.capture("Deleted availability of another user", {
-          eventId: this.eventId,
-          userId: user._id,
-        })
-      } catch (e) {
-        console.error(e)
-        this.showError(
-          "There was an error deleting that person's availability!"
-        )
-      }
-    },
-    getDateString(date) {
-      const locale = getLocale()
-
-      if (this.event.daysOnly) {
-        return date.toISOString().substring(0, 10)
-      }
-      return (
-        '"' +
-        date.toLocaleString(locale, { timeZone: this.timezone.value }) +
-        '"'
-      )
-    },
-    async exportCsv() {
-      const csv = []
-      const increment = 15
-      const numIterations = this.event.daysOnly
-        ? 1
-        : (this.event.duration * 60) / increment
-
-      // Get responses sorted by first name
-      const responses = Object.values(this.parsedResponses).sort((a, b) =>
-        a.user.firstName.localeCompare(b.user.firstName)
-      )
-
-      if (this.exportCsvDialog.type === "datesToAvailable") {
-        // Write CSV header
-        const header = ["Date / Time"]
-        header.push(
-          ...responses.map((r) => r.user.firstName + " " + r.user.lastName)
-        )
-        csv.push(header)
-
-        // Iterate through the dates
-        for (const date of this.event.dates) {
-          const curDate = new Date(date)
-
-          // Iterate through the timeslots for the current date
-          for (let i = 0; i < numIterations; ++i) {
-            const row = [this.getDateString(curDate)]
-
-            // Iterate through the responses and mark whether they are available or not
-            for (const response of responses) {
-              if (response.availability.has(curDate.getTime())) {
-                row.push("Available")
-              } else if (response.ifNeeded.has(curDate.getTime())) {
-                row.push("If needed")
-              } else {
-                row.push("")
-              }
-            }
-
-            // Add row to CSV
-            csv.push(row)
-
-            // Increment curDate by the selected amount
-            curDate.setMinutes(curDate.getMinutes() + increment)
-          }
-        }
-      } else if (this.exportCsvDialog.type === "nameToDates") {
-        // Write CSV header
-        csv.push(["Name", "Date / Times available"])
-
-        // Iterate through the responses
-        for (const response of responses) {
-          // The first row is the name
-          const row = [`${response.user.firstName} ${response.user.lastName}`]
-
-          // Iterate through the dates
-          for (const date of this.event.dates) {
-            const curDate = new Date(date)
-
-            // Iterate through the timeslots for the current date
-            for (let i = 0; i < numIterations; ++i) {
-              // If the user is available for the current timeslot, add the date to the row
-              if (
-                response.availability.has(curDate.getTime()) ||
-                response.ifNeeded.has(curDate.getTime())
-              ) {
-                row.push(this.getDateString(curDate))
-              } else {
-                row.push("")
-              }
-
-              // Increment curDate by the selected amount
-              curDate.setMinutes(curDate.getMinutes() + increment)
-            }
-          }
-          csv.push(row)
-        }
-      }
-
-      // Create CSV uri
-      // Source: https://stackoverflow.com/questions/14964035/how-to-export-javascript-array-info-to-csv-on-client-side
-      const csvString =
-        "data:text/csv;charset=utf-8," + csv.map((e) => e.join(",")).join("\n")
-      const encodedUri = encodeURI(csvString)
-
-      // Set CSV filename and download
-      // Source: https://stackoverflow.com/questions/7034754/how-to-set-a-file-name-using-window-open
-      const downloadLink = document.createElement("a")
-      downloadLink.href = encodedUri
-      downloadLink.download = `${this.event.name}.csv`
-      document.body.appendChild(downloadLink)
-      downloadLink.click()
-      document.body.removeChild(downloadLink)
-    },
-    trackExportCsvClick() {
-      this.$posthog.capture("export_csv_clicked", {
-        eventId: this.eventId,
-        numRespondents: this.respondents.length,
-      })
-    },
-    setDesktopMaxHeight() {
-      const el = this.$refs.scrollableSection
-      if (el) {
-        const { top } = el.getBoundingClientRect()
-        this.desktopMaxHeight = window.innerHeight - top - 32
-      } else {
-        this.desktopMaxHeight = 0
-      }
-    },
-    /** Copies the given email to the clipboard */
-    async copyEmailToClipboard(email) {
-      try {
-        await navigator.clipboard.writeText(email)
-        this.showInfo("Email copied to clipboard!")
-      } catch (err) {
-        console.error("Failed to copy email: ", err)
-        this.showError("Failed to copy email.")
-      }
-    },
-  },
-
-  mounted() {
-    this.setDesktopMaxHeight()
-
-    addEventListener("resize", this.setDesktopMaxHeight)
-    // addEventListener("scroll", this.setDesktopMaxHeight)
-
-    this.$nextTick(() => {
-      this.hasMounted = true
-    })
-  },
-
-  beforeDestroy() {
-    removeEventListener("resize", this.setDesktopMaxHeight)
-    // removeEventListener("scroll", this.setDesktopMaxHeight)
-  },
-
-  watch: {
-    curRespondents: {
-      deep: true,
-      handler() {
-        const oldSet = new Set(this.oldCurRespondents)
-        const newSet = new Set(this.curRespondents)
-
-        // Get added respondents (in newSet but not in oldSet)
-        const addedRespondents = this.curRespondents.filter(
-          (id) => !oldSet.has(id)
-        )
-
-        // Get removed respondents (in oldSet but not in newSet)
-        const removedRespondents = this.oldCurRespondents.filter(
-          (id) => !newSet.has(id)
-        )
-
-        // Update curRespondentsAddedTime
-        for (const id of addedRespondents) {
-          this.$set(this.curRespondentsAddedTime, id, new Date().getTime())
-        }
-        for (const id of removedRespondents) {
-          this.$delete(this.curRespondentsAddedTime, id)
-        }
-
-        this.oldCurRespondents = [...this.curRespondents]
-      },
-    },
-  },
+.respondent-control {
+  position: relative;
+  width: 20px;
+  height: 20px;
 }
-</script>
+
+.respondent-control__checkbox,
+.respondent-control__avatar {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.respondent-control__checkbox {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.respondent-control__avatar {
+  opacity: 1;
+  visibility: visible;
+}
+
+.respondent-row:hover .respondent-control__checkbox,
+.respondent-control[aria-pressed="true"] .respondent-control__checkbox {
+  opacity: 1;
+  visibility: visible;
+}
+
+.respondent-row:hover .respondent-control__avatar,
+.respondent-control[aria-pressed="true"] .respondent-control__avatar {
+  opacity: 0;
+  visibility: hidden;
+}
+</style>

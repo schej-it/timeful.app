@@ -1,6 +1,6 @@
 # Timeful Deployment Guide
 
-Production deployment using Docker Compose behind a Caddy reverse proxy.
+Production and staging deployment using Docker Compose behind a Caddy reverse proxy.
 
 ## Prerequisites
 
@@ -15,12 +15,17 @@ Production deployment using Docker Compose behind a Caddy reverse proxy.
 git clone https://github.com/schej-it/timeful.app
 cd timeful.app
 
-# 2. Create server environment file
-cp server/.env.template server/.env
-# Edit server/.env with your values (see Configuration below)
+# 2. Create the root deployment environment file
+cp .env.production.example .env.production
+# Or for staging:
+# cp .env.staging.example .env.staging
+
+# Edit the selected env file with your values (see Configuration below)
 
 # 3. Build and start services
-docker compose up -d --build
+docker compose --env-file .env.production up -d --build
+# Or for staging:
+# docker compose --env-file .env.staging -f compose.yaml -f compose.staging.yaml up -d --build
 
 # 4. Configure Caddy
 sudo cp Caddyfile.example /etc/caddy/Caddyfile
@@ -30,11 +35,13 @@ sudo systemctl reload caddy
 
 ## Services
 
-| Service    | Description                             | Port           |
-| ---------- | --------------------------------------- | -------------- |
-| `mongo`    | MongoDB 7 database                      | Internal only  |
-| `frontend` | Vue.js build (outputs to shared volume) | N/A            |
-| `server`   | Go backend                              | 127.0.0.1:3002 |
+| Service              | Description                                                   | Port           |
+| -------------------- | ------------------------------------------------------------- | -------------- |
+| `mongo`              | MongoDB 7 database                                            | Internal only  |
+| `frontend-artifacts` | Vue.js artifact export (outputs to shared volume, then exits) | N/A            |
+| `server`             | Go backend                                                    | 127.0.0.1:3002 |
+
+For staging, use `.env.staging` together with `compose.staging.yaml`; the server binds `127.0.0.1:3003`.
 
 ## Caddy
 
@@ -50,43 +57,61 @@ Edit `/etc/caddy/Caddyfile` with your domain before reloading.
 
 ## Commands
 
+> [!CAUTION]
+> Use `down -v` only when intentionally discarding the Docker-managed data volumes for the selected environment.
+>
+> For production, this deletes the MongoDB data volume unless a backup is restored afterward.
+
 ```bash
-docker compose up -d              # Start services
-docker compose logs -f            # View logs
-docker compose logs -f server     # View specific service logs
-docker compose up -d --build      # Rebuild after code changes
-docker compose down               # Stop services
-docker compose down -v            # Stop and remove volumes (deletes data!)
+docker compose --env-file .env.production up -d              # Start services
+docker compose --env-file .env.production logs -f            # View logs
+docker compose --env-file .env.production logs -f server     # View specific service logs
+docker compose --env-file .env.production up -d --build      # Rebuild after code changes
+docker compose --env-file .env.production down               # Stop services
+docker compose --env-file .env.production down -v            # Stop and remove volumes (deletes data!)
+```
+
+Staging uses the same base commands with the staging env file and override:
+
+```bash
+docker compose --env-file .env.staging -f compose.yaml -f compose.staging.yaml up -d --build
+docker compose --env-file .env.staging -f compose.yaml -f compose.staging.yaml logs -f
+docker compose --env-file .env.staging -f compose.yaml -f compose.staging.yaml down
 ```
 
 ## Data & Backup
 
 Data is persisted in Docker volumes: `mongo_data`, `frontend_dist`, `server_logs`.
 
+The restore command below uses `--drop`.
+
+> [!CAUTION]
+> Run it only when you intend to replace the current `schej-it` database with the backup archive.
+
 ```bash
 # Backup MongoDB
-docker compose exec mongo mongodump --db=schej-it --archive=/data/db/backup.archive
-docker compose cp mongo:/data/db/backup.archive ./backup.archive
+docker compose --env-file .env.production exec mongo mongodump --db=schej-it --archive=/data/db/backup.archive
+docker compose --env-file .env.production cp mongo:/data/db/backup.archive ./backup.archive
 
 # Restore MongoDB
-docker compose cp ./backup.archive mongo:/data/db/backup.archive
-docker compose exec mongo mongorestore --drop --db=schej-it --archive=/data/db/backup.archive
+docker compose --env-file .env.production cp ./backup.archive mongo:/data/db/backup.archive
+docker compose --env-file .env.production exec mongo mongorestore --drop --db=schej-it --archive=/data/db/backup.archive
 ```
 
 ## Troubleshooting
 
 ```bash
 # Container won't start
-docker compose logs server
-ls -la server/.env
+docker compose --env-file .env.production logs server
+ls -la .env.production
 
 # MongoDB connection issues
-docker compose ps
-docker compose exec mongo mongosh --eval "db.adminCommand('ping')"
+docker compose --env-file .env.production ps
+docker compose --env-file .env.production exec mongo mongosh --eval "db.adminCommand('ping')"
 
 # Frontend not loading
-docker compose logs frontend
-docker compose exec server ls -la /app/frontend/dist
+docker compose --env-file .env.production logs frontend-artifacts
+docker compose --env-file .env.production exec server ls -la /app/frontend/dist
 ```
 
 ---
@@ -95,7 +120,15 @@ docker compose exec server ls -la /app/frontend/dist
 
 ### Required Environment Variables
 
-Create `server/.env` from the template (`server/.env.template`).
+Create `.env.production` from `.env.production.example` for production, or `.env.staging` from `.env.staging.example` for staging.
+
+The selected root env file is the single source of truth for:
+
+- Docker Compose interpolation
+- frontend build args
+- backend runtime configuration
+
+See `docs/environments.md` for the full contract and development commands.
 
 #### Required
 
@@ -138,7 +171,7 @@ Create `server/.env` from the template (`server/.env.template`).
 | `LISTMONK_*`                                 | Listmonk email service configuration         |
 | `DISCORD_BOT_TOKEN` / `GUILD_ID`             | Discord bot integration                      |
 
-See `server/.env.template` for the complete list.
+See `.env.production.example` and `.env.staging.example` for the complete lists.
 
 ### Google OAuth Setup
 

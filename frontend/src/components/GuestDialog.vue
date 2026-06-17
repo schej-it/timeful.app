@@ -1,21 +1,21 @@
 <template>
   <v-dialog
-    :value="value"
-    @input="(e) => $emit('input', e)"
+    :model-value="modelValue"
     width="400"
     content-class="tw-m-0"
+    @update:model-value="(e) => emit('update:modelValue', e)"
   >
     <v-card>
       <v-card-title class="tw-flex">
         <div>Continue as guest</div>
         <v-spacer />
-        <v-btn icon @click="$emit('input', false)">
+        <v-btn icon @click="emit('update:modelValue', false)">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
       <v-card-text>
         <v-form
-          ref="form"
+          ref="formRef"
           v-model="formValid"
           lazy-validation
           class="tw-flex tw-flex-col tw-gap-y-4"
@@ -23,31 +23,44 @@
         >
           <v-text-field
             v-model="name"
-            @keyup.enter="submit"
             :rules="nameRules"
+            class="timeful-solo-field"
+            variant="solo"
             placeholder="Enter your name..."
             autofocus
             hide-details="auto"
             autocomplete="off"
-            solo
+            @keyup.enter="submit"
           ></v-text-field>
           <v-text-field
             v-if="event.collectEmails"
             v-model="email"
-            @keyup.enter="submit"
             :rules="emailRules"
+            class="timeful-solo-field"
+            variant="solo"
             placeholder="Enter your email..."
             hint="The event creator has requested your email. It will only be visible to them."
             persistent-hint
-            solo
+            @keyup.enter="submit"
           ></v-text-field>
+          <v-checkbox v-model="allowOthersToEdit" color="primary" hide-details>
+            <template #label>
+              <span
+                class="tw-text-sm"
+                :class="
+                  allowOthersToEdit ? 'tw-text-black' : 'tw-text-very-dark-gray'
+                "
+              >
+                Allow others to edit this availability
+              </span>
+            </template>
+          </v-checkbox>
           <div class="tw-flex">
             <v-spacer />
             <v-btn
+              class="timeful-elevated-button tw-bg-green tw-text-white"
+              :disabled="!canSubmit"
               @click="submit"
-              class="tw-bg-green"
-              :dark="formValid"
-              :disabled="!formValid"
             >
               Continue
             </v-btn>
@@ -58,77 +71,95 @@
   </v-dialog>
 </template>
 
-<script>
-import { isPhone, validateEmail } from "@/utils"
+<script setup lang="ts">
+import { computed, ref, watch } from "vue"
+import { validateEmail } from "@/utils"
+import type { Event } from "@/types"
+import {
+  getGuestNameValidationMessage,
+  normalizeGuestName,
+  validateGuestName,
+} from "@/utils/guestName"
 
-export default {
-  name: "GuestDialog",
+type Rule = (val: string) => true | string
 
-  emits: ["input", "submit"],
-
-  props: {
-    value: { type: Boolean, required: true },
-    event: { type: Object, required: true },
-    respondents: { type: Array, required: true },
-  },
-
-  data() {
-    return {
-      formValid: false,
-      name: "",
-      email: "",
-      nameRules: [],
-      emailRules: [],
-    }
-  },
-
-  computed: {
-    isPhone() {
-      return isPhone(this.$vuetify)
-    },
-  },
-
-  methods: {
-    submit() {
-      // Set rules only on submit
-      this.nameRules = [
-        (name) => !!name || "Name is required",
-        (name) => !this.respondents.includes(name) || "Name already taken",
-      ]
-      this.emailRules = [
-        (email) => !!email || "Email is required",
-        (email) => !!validateEmail(email) || "Invalid email",
-      ]
-
-      this.$nextTick(() => {
-        if (!this.$refs.form.validate()) return
-
-        this.$emit("submit", { name: this.name, email: this.email })
-      })
-    },
-  },
-
-  watch: {
-    value() {
-      if (this.value) {
-        this.name = ""
-        this.email = ""
-        this.nameRules = []
-        this.emailRules = []
-
-        this.$refs.form?.resetValidation()
-      }
-    },
-    name() {
-      // Default rules before submitting
-      this.nameRules = [
-        (name) => !this.respondents.includes(name) || "Name already taken",
-      ]
-    },
-    email() {
-      // Default rules before submitting
-      this.emailRules = []
-    },
-  },
+interface FormRef {
+  validate: () => Promise<{ valid: boolean }> | boolean
+  resetValidation: () => void
 }
+
+const props = defineProps<{
+  modelValue: boolean
+  event: Event
+  respondents: string[]
+}>()
+
+const emit = defineEmits<{
+  "update:modelValue": [value: boolean]
+  submit: [payload: { name: string; email: string; allowOthersToEdit: boolean }]
+}>()
+
+const formValid = ref(false)
+const name = ref("")
+const email = ref("")
+const allowOthersToEdit = ref(false)
+const validationRequested = ref(false)
+const formRef = ref<FormRef | null>(null)
+const validatedName = computed(() => validateGuestName(name.value))
+const normalizedName = computed(() => validatedName.value.normalizedName)
+const trimmedEmail = computed(() => email.value.trim())
+const isNameAvailable = (candidate: string) =>
+  !props.respondents.includes(normalizeGuestName(candidate) ?? "")
+const nameRules = computed<Rule[]>(() => [
+  (candidate) =>
+    (!validationRequested.value ||
+      getGuestNameValidationMessage(validateGuestName(candidate).code)) ??
+    true,
+  (candidate) =>
+    !validationRequested.value ||
+    isNameAvailable(candidate) ||
+    "Name already taken",
+])
+const emailRules = computed<Rule[]>(() => [
+  (candidate) =>
+    !validationRequested.value ||
+    candidate.trim().length > 0 ||
+    "Email is required",
+  (candidate) =>
+    !validationRequested.value || !!validateEmail(candidate) || "Invalid email",
+])
+const canSubmit = computed(
+  () =>
+    normalizedName.value != null &&
+    (!props.event.collectEmails || trimmedEmail.value.length > 0)
+)
+
+const initializeForm = () => {
+  name.value = ""
+  email.value = ""
+  allowOthersToEdit.value = false
+  validationRequested.value = false
+  formRef.value?.resetValidation()
+}
+
+const submit = async () => {
+  validationRequested.value = true
+  const result = await formRef.value?.validate()
+  const valid = typeof result === "boolean" ? result : result?.valid
+  if (!valid) return
+  emit("submit", {
+    name: normalizedName.value ?? "",
+    email: trimmedEmail.value,
+    allowOthersToEdit: allowOthersToEdit.value,
+  })
+}
+
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (val) {
+      initializeForm()
+    }
+  }
+)
 </script>
