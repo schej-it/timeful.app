@@ -58,7 +58,7 @@
     "happy-dom": "^20.9.0",
     "jiti": "^2.6.1",
     "openapi-typescript": "^7.4.4",
-    "postcss": "^8.4.33",
+    "postcss": "^8.5.14",
     "prettier": "^2.8.8",
     "prettier-plugin-tailwindcss": "^0.3.0",
     "sass": "^1.81.0",

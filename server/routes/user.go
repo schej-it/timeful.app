@@ -4,6 +4,7 @@ package routes
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -515,11 +516,18 @@ func addCalendarAccount(c *gin.Context, args addCalendarAccountArgs) {
 	// Get auth user
 	authUser := utils.GetAuthUser(c)
 
+	ident := args.email
+	if args.calendarType != models.ICSCalendarType {
+		ident = utils.NormalizeEmail(args.email)
+	} else {
+		ident = strings.TrimSpace(args.email)
+	}
+
 	// Create calendar account object
 	calendarAccount := models.CalendarAccount{
 		CalendarType: args.calendarType,
 
-		Email:   args.email,
+		Email:   ident,
 		Picture: args.picture,
 		Enabled: utils.TruePtr(), // Workaround to pass a boolean pointer
 	}
@@ -533,11 +541,20 @@ func addCalendarAccount(c *gin.Context, args addCalendarAccountArgs) {
 	case models.ICSCalendarType:
 		calendarAccount.ICSCalendarAuth = args.icsCalendarAuth
 	}
-	calendarAccountKey := utils.GetCalendarAccountKey(args.email, args.calendarType)
+	canonicalKey := utils.GetCalendarAccountKey(ident, args.calendarType)
+	legacyKey := utils.ActualCalendarAccountMapKey(authUser, ident, args.calendarType)
 
 	// Set subcalendars map based on whether calendar account already exists
-	if oldCalendarAccount, ok := authUser.CalendarAccounts[calendarAccountKey]; ok && oldCalendarAccount.SubCalendars != nil {
-		calendarAccount.SubCalendars = oldCalendarAccount.SubCalendars
+	var oldForSub *models.CalendarAccount
+	if legacyKey != "" {
+		if acc, ok := authUser.CalendarAccounts[legacyKey]; ok {
+			oldForSub = &acc
+		}
+	} else if acc, ok := authUser.CalendarAccounts[canonicalKey]; ok {
+		oldForSub = &acc
+	}
+	if oldForSub != nil && oldForSub.SubCalendars != nil {
+		calendarAccount.SubCalendars = oldForSub.SubCalendars
 	} else {
 		subCalendars, err := calendar.GetCalendarProvider(calendarAccount).GetCalendarList()
 		if err == nil {
@@ -545,8 +562,13 @@ func addCalendarAccount(c *gin.Context, args addCalendarAccountArgs) {
 		}
 	}
 
-	// Set calendar account
-	authUser.CalendarAccounts[calendarAccountKey] = calendarAccount
+	if authUser.CalendarAccounts == nil {
+		authUser.CalendarAccounts = make(map[string]models.CalendarAccount)
+	}
+	if legacyKey != "" && legacyKey != canonicalKey {
+		delete(authUser.CalendarAccounts, legacyKey)
+	}
+	authUser.CalendarAccounts[canonicalKey] = calendarAccount
 
 	// Perform mongo update
 	db.UsersCollection.FindOneAndUpdate(
@@ -572,9 +594,12 @@ func removeCalendarAccount(c *gin.Context) {
 		return
 	}
 
-	calendarAccountKey := utils.GetCalendarAccountKey(payload.Email, payload.CalendarType)
-
 	authUser := utils.GetAuthUser(c)
+	calendarAccountKey := utils.ActualCalendarAccountMapKey(authUser, payload.Email, payload.CalendarType)
+	if calendarAccountKey == "" {
+		calendarAccountKey = utils.GetCalendarAccountKey(payload.Email, payload.CalendarType)
+	}
+
 	db.UsersCollection.UpdateByID(context.Background(), authUser.Id, bson.A{
 		bson.M{"$set": bson.M{
 			"calendarAccounts": bson.M{
@@ -610,7 +635,10 @@ func toggleCalendar(c *gin.Context) {
 
 	// Update enabled status for the specified account
 	authUser := utils.GetAuthUser(c)
-	calendarAccountKey := utils.GetCalendarAccountKey(payload.Email, payload.CalendarType)
+	calendarAccountKey := utils.ActualCalendarAccountMapKey(authUser, payload.Email, payload.CalendarType)
+	if calendarAccountKey == "" {
+		calendarAccountKey = utils.GetCalendarAccountKey(payload.Email, payload.CalendarType)
+	}
 	if account, ok := authUser.CalendarAccounts[calendarAccountKey]; ok {
 		account.Enabled = payload.Enabled
 		authUser.CalendarAccounts[calendarAccountKey] = account
@@ -650,7 +678,10 @@ func toggleSubCalendar(c *gin.Context) {
 
 	// Update enabled status for the specified sub calendar
 	authUser := utils.GetAuthUser(c)
-	calendarAccountKey := utils.GetCalendarAccountKey(payload.Email, payload.CalendarType)
+	calendarAccountKey := utils.ActualCalendarAccountMapKey(authUser, payload.Email, payload.CalendarType)
+	if calendarAccountKey == "" {
+		calendarAccountKey = utils.GetCalendarAccountKey(payload.Email, payload.CalendarType)
+	}
 	if account, ok := authUser.CalendarAccounts[calendarAccountKey]; ok {
 		if subCalendar, ok := (*account.SubCalendars)[payload.SubCalendarId]; ok {
 			subCalendar.Enabled = payload.Enabled

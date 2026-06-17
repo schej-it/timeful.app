@@ -65,7 +65,11 @@ func signIn(c *gin.Context) {
 
 	tokens := auth.GetTokensFromAuthCode(payload.Code, payload.Scope, utils.GetOrigin(c), payload.CalendarType)
 
-	user := signInHelper(c, tokens, models.WEB, payload.CalendarType, *payload.TimezoneOffset)
+	user, err := signInHelper(c, tokens, models.WEB, payload.CalendarType, *payload.TimezoneOffset)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, responses.Error{Error: errs.InvalidIdToken})
+		return
+	}
 
 	// Link events to user
 	for _, eventIdString := range payload.EventsToLink {
@@ -101,7 +105,7 @@ func signInMobile(c *gin.Context) {
 		return
 	}
 
-	signInHelper(
+	_, err := signInHelper(
 		c,
 		auth.TokenResponse{
 			AccessToken:  payload.AccessToken,
@@ -114,12 +118,16 @@ func signInMobile(c *gin.Context) {
 		payload.CalendarType,
 		payload.TimezoneOffset,
 	)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, responses.Error{Error: errs.InvalidIdToken})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{})
 }
 
 // Helper function to sign user in with the given parameters from the google oauth route
-func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.TokenOriginType, calendarType models.CalendarType, timezoneOffset int) models.User {
+func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.TokenOriginType, calendarType models.CalendarType, timezoneOffset int) (models.User, error) {
 	// Get access token expire time
 	accessTokenExpireDate := utils.GetAccessTokenExpireDate(token.ExpiresIn)
 
@@ -133,12 +141,26 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 
 	var email, firstName, lastName, picture string
 	if calendarType == models.GoogleCalendarType {
-		// Get user info from JWT
-		claims := utils.ParseJWT(token.IdToken)
-		email, _ = claims.GetStr("email")
-		firstName, _ = claims.GetStr("given_name")
-		lastName, _ = claims.GetStr("family_name")
-		picture, _ = claims.GetStr("picture")
+		// Verify the ID token before trusting any of its claims. The id token
+		// can be supplied directly by the client (e.g. the mobile sign-in
+		// endpoint), so decoding it without verifying the signature, audience,
+		// and issuer would let an attacker forge an identity and sign in as
+		// any user. We accept any of our configured client IDs (web/iOS/
+		// Android) as a valid audience.
+		allowedAuds := []string{
+			os.Getenv("CLIENT_ID"),
+			os.Getenv("IOS_CLIENT_ID"),
+			os.Getenv("ANDROID_CLIENT_ID"),
+		}
+		info, err := auth.VerifyGoogleIdToken(token.IdToken, allowedAuds)
+		if err != nil {
+			logger.StdErr.Printf("Failed to verify Google ID token: %v", err)
+			return models.User{}, err
+		}
+		email = info.Email
+		firstName = info.GivenName
+		lastName = info.FamilyName
+		picture = info.Picture
 	} else if calendarType == models.OutlookCalendarType {
 		// Get user info from microsoft graph
 		userInfo := microsoftgraph.GetUserInfo(nil, &calendarAuth)
@@ -147,6 +169,7 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 		lastName = userInfo.LastName
 		picture = ""
 	}
+	email = utils.NormalizeEmail(email)
 
 	primaryAccountKey := utils.GetCalendarAccountKey(email, calendarType)
 
@@ -171,12 +194,12 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 		Picture: picture,
 		Enabled: utils.TruePtr(), // Workaround to pass a boolean pointer
 	}
-	calendarAccountKey := utils.GetCalendarAccountKey(email, calendarType)
+	canonicalKey := utils.GetCalendarAccountKey(email, calendarType)
 
 	var userId primitive.ObjectID
-	findResult := db.UsersCollection.FindOne(context.Background(), bson.M{"email": email})
+	existing := db.GetUserByEmail(email)
 	// If user doesn't exist, create a new user
-	if findResult.Err() == mongo.ErrNoDocuments {
+	if existing == nil {
 		// Fetch subcalendars
 		subCalendars, err := calendar.GetCalendarProvider(calendarAccount).GetCalendarList()
 		if err == nil {
@@ -185,7 +208,7 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 
 		// Set calendar accounts
 		userData.CalendarAccounts = map[string]models.CalendarAccount{
-			calendarAccountKey: calendarAccount,
+			canonicalKey: calendarAccount,
 		}
 
 		// Create user
@@ -198,10 +221,7 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 
 		// slackbot.SendTextMessage(fmt.Sprintf(":wave: %s %s (%s) has joined schej.it!", firstName, lastName, email))
 	} else {
-		var user models.User
-		if err := findResult.Decode(&user); err != nil {
-			logger.StdErr.Panicln(err)
-		}
+		user := existing
 		userId = user.Id
 
 		// If user has custom name, do not override first name and last name
@@ -210,9 +230,34 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 			userData.LastName = ""
 		}
 
-		// Set subcalendars map based on whether calendar account already exists
-		if oldCalendarAccount, ok := user.CalendarAccounts[calendarAccountKey]; ok && oldCalendarAccount.SubCalendars != nil {
-			calendarAccount.SubCalendars = oldCalendarAccount.SubCalendars
+		legacyKey := utils.ActualCalendarAccountMapKey(user, email, calendarType)
+
+		var oldSubCalendars *map[string]models.SubCalendar
+		if legacyKey != "" {
+			if oldAcc, ok := user.CalendarAccounts[legacyKey]; ok && oldAcc.SubCalendars != nil {
+				oldSubCalendars = oldAcc.SubCalendars
+			}
+		} else if user.CalendarAccounts != nil {
+			if existingAcc, ok := user.CalendarAccounts[canonicalKey]; ok && existingAcc.SubCalendars != nil {
+				oldSubCalendars = existingAcc.SubCalendars
+			}
+		}
+
+		var calAccounts map[string]models.CalendarAccount
+		if user.CalendarAccounts == nil {
+			calAccounts = make(map[string]models.CalendarAccount)
+		} else {
+			calAccounts = make(map[string]models.CalendarAccount, len(user.CalendarAccounts))
+			for k, v := range user.CalendarAccounts {
+				calAccounts[k] = v
+			}
+		}
+		if legacyKey != "" && legacyKey != canonicalKey {
+			delete(calAccounts, legacyKey)
+		}
+
+		if oldSubCalendars != nil {
+			calendarAccount.SubCalendars = oldSubCalendars
 		} else {
 			subCalendars, err := calendar.GetCalendarProvider(calendarAccount).GetCalendarList()
 			if err == nil {
@@ -220,15 +265,9 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 			}
 		}
 
-		// Set calendar account (nil map if user predates calendarAccounts or field missing)
-		if user.CalendarAccounts == nil {
-			userData.CalendarAccounts = map[string]models.CalendarAccount{
-				calendarAccountKey: calendarAccount,
-			}
-		} else {
-			userData.CalendarAccounts = user.CalendarAccounts
-			userData.CalendarAccounts[calendarAccountKey] = calendarAccount
-		}
+		calAccounts[canonicalKey] = calendarAccount
+		userData.CalendarAccounts = calAccounts
+		userData.Email = email
 
 		// Update user if exists
 		_, err := db.UsersCollection.UpdateByID(
@@ -253,7 +292,7 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 	session.Save()
 
 	userData.Id = userId
-	return userData
+	return userData, nil
 }
 
 // @Summary Signs user out
@@ -413,9 +452,9 @@ func verifyOtp(c *gin.Context) {
 
 	// Find or create user
 	var userId primitive.ObjectID
-	findResult := db.UsersCollection.FindOne(context.Background(), bson.M{"email": email})
+	existing := db.GetUserByEmail(email)
 
-	if findResult.Err() == mongo.ErrNoDocuments {
+	if existing == nil {
 		firstName := strings.TrimSpace(payload.FirstName)
 		lastName := strings.TrimSpace(payload.LastName)
 
@@ -439,11 +478,7 @@ func verifyOtp(c *gin.Context) {
 			listmonk.AddUserToListmonk(email, firstName, lastName, "", nil, true)
 		}
 	} else {
-		var user models.User
-		if err := findResult.Decode(&user); err != nil {
-			logger.StdErr.Panicln(err)
-		}
-		userId = user.Id
+		userId = existing.Id
 	}
 
 	// Set session — same mechanism as OAuth sign-in
