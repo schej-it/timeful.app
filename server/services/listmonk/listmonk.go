@@ -146,6 +146,7 @@ func SendEmail(email string, templateId int, data bson.M, fromEmail ...string) {
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
 		logger.StdErr.Println(err)
+		return
 	}
 	defer response.Body.Close()
 }
