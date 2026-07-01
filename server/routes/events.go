@@ -70,6 +70,9 @@ func createEvent(c *gin.Context) {
 		// PostHog ID for the event creator
 		CreatorPosthogId *string `json:"creatorPosthogId"`
 
+		// When set, creates the event within an organization (all org members get admin access)
+		OrganizationId *string `json:"organizationId"`
+
 		// Only for sign up form events
 		IsSignUpForm *bool                 `json:"isSignUpForm"`
 		SignUpBlocks *[]models.SignUpBlock `json:"signUpBlocks"`
@@ -111,11 +114,27 @@ func createEvent(c *gin.Context) {
 		ownerId = primitive.NilObjectID
 	}
 
+	// If creating in an organization context, require the user to be a member of that org
+	var organizationId *primitive.ObjectID
+	if payload.OrganizationId != nil && *payload.OrganizationId != "" {
+		orgObjId, err := primitive.ObjectIDFromHex(*payload.OrganizationId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, responses.Error{Error: errs.OrganizationNotFound})
+			return
+		}
+		if !signedIn || !db.IsOrgMember(ownerId, orgObjId) {
+			c.JSON(http.StatusForbidden, responses.Error{Error: errs.UserNotInOrganization})
+			return
+		}
+		organizationId = &orgObjId
+	}
+
 	// Construct event object
 	numResponses := 0
 	event := models.Event{
 		Id:                       primitive.NewObjectID(),
 		OwnerId:                  ownerId,
+		OrganizationId:           organizationId,
 		CreatorPosthogId:         payload.CreatorPosthogId,
 		Name:                     payload.Name,
 		Duration:                 payload.Duration,
@@ -228,8 +247,9 @@ func createEvent(c *gin.Context) {
 
 	// Send slackbot message
 	// var creator string
-	if signedIn {
+	if signedIn && organizationId == nil {
 		// creator = fmt.Sprintf("%s %s (%s)", user.FirstName, user.LastName, user.Email)
+		// Only personal events count toward the personal free-event quota
 		db.UsersCollection.UpdateOne(context.Background(), bson.M{"_id": ownerId}, bson.M{"$inc": bson.M{"numEventsCreated": 1}})
 	} else {
 		// creator = "Guest :face_with_open_eyes_and_hand_over_mouth:"
@@ -288,20 +308,19 @@ func editEvent(c *gin.Context) {
 		return
 	}
 
-	// If user logged in, set owner id to their user id, otherwise set owner id to nil
+	// If user logged in, load their user object
 	session := sessions.Default(c)
 	userIdInterface := session.Get("userId")
 	userId, signedIn := userIdInterface.(string)
-	var ownerId primitive.ObjectID
+	var user *models.User
 	if signedIn {
-		ownerId = utils.StringToObjectID(userId)
-	} else {
-		ownerId = primitive.NilObjectID
+		user = db.GetUserById(userId)
 	}
 
-	// If event has an owner id, check if user has permissions to edit event
-	if event.OwnerId != primitive.NilObjectID {
-		if event.OwnerId != ownerId {
+	// Check if user has permissions to edit event. Org events require an org member;
+	// personal events with an owner require that owner (guest-owned events are open).
+	if event.OrganizationId != nil || event.OwnerId != primitive.NilObjectID {
+		if !db.CanEditEvent(user, event) {
 			c.JSON(http.StatusForbidden, responses.Error{Error: errs.UserNotEventOwner})
 			return
 		}
@@ -559,8 +578,7 @@ func getEvent(c *gin.Context) {
 		event.Attendees = &attendees
 	}
 
-	// Determine if the requester is the event owner
-	ownerSesh := event.OwnerId.Hex()
+	// Determine if the requester can view all responses
 	session := sessions.Default(c)
 	userIdInterface := session.Get("userId")
 	var userSesh string
@@ -568,7 +586,12 @@ func getEvent(c *gin.Context) {
 		userSesh = userIdInterface.(string)
 	}
 	guestName := c.Query("guestName")
-	isOwner := userSesh != "" && ownerSesh == userSesh
+	var userObjId primitive.ObjectID
+	if userSesh != "" {
+		userObjId, _ = primitive.ObjectIDFromHex(userSesh)
+	}
+	// Personal owner or any org member can view all responses
+	isOwner := db.CanViewAllResponses(userObjId, event)
 
 	// Strip sensitive user info from all responses
 	showEmails := isOwner && utils.Coalesce(event.CollectEmails)
@@ -610,8 +633,8 @@ func getEvent(c *gin.Context) {
 
 	if userSesh != "" {
 		// User session exists (user is logged in)
-		if ownerSesh == userSesh {
-			// User is the owner - return response as-is
+		if isOwner {
+			// User can view all responses - return response as-is
 			privatizedResponse, err = utils.PrivatizeEventResponse(event, []string{}, []utils.PartialOmission{})
 		} else {
 			// User is NOT the owner - privatize response
@@ -715,8 +738,7 @@ func getResponses(c *gin.Context) {
 		responsesMap[userId] = response
 	}
 
-	// Determine if the requester is the event owner
-	ownerSesh := event.OwnerId.Hex()
+	// Determine if the requester can view all responses
 	session := sessions.Default(c)
 	userIdInterface := session.Get("userId")
 	var userSesh string
@@ -724,7 +746,12 @@ func getResponses(c *gin.Context) {
 		userSesh = userIdInterface.(string)
 	}
 	guestName := c.Query("guestName")
-	isOwner := userSesh != "" && ownerSesh == userSesh
+	var userObjId primitive.ObjectID
+	if userSesh != "" {
+		userObjId, _ = primitive.ObjectIDFromHex(userSesh)
+	}
+	// Personal owner or any org member can view all responses
+	isOwner := db.CanViewAllResponses(userObjId, event)
 
 	// Strip sensitive user info from all responses
 	showEmails := isOwner && utils.Coalesce(event.CollectEmails)
@@ -749,8 +776,8 @@ func getResponses(c *gin.Context) {
 	// Blind availability IS enabled - apply privacy filtering
 	if userSesh != "" {
 		// User session exists (user is logged in)
-		if ownerSesh == userSesh {
-			// User is the owner - return response as-is
+		if isOwner {
+			// User can view all responses - return response as-is
 			c.JSON(http.StatusOK, responsesMap)
 			return
 		} else {
@@ -819,15 +846,19 @@ func updateEventResponse(c *gin.Context) {
 	//NOTE: this ONLY stops a user from setting guest availability from their account (via setSlots), somebody could still
 	// go on incognito and set guest availability.
 	if utils.Coalesce(event.BlindAvailabilityEnabled) {
-		ownerSesh := event.OwnerId.Hex()
 		userIdInterface := session.Get("userId")
 		var userSesh string
 		if userIdInterface != nil {
 			userSesh = userIdInterface.(string)
 		}
+		var userObjId primitive.ObjectID
+		if userSesh != "" {
+			userObjId, _ = primitive.ObjectIDFromHex(userSesh)
+		}
 
-		// If user is logged in and NOT the owner, and they're trying to set guest availability, block it
-		if userSesh != "" && ownerSesh != userSesh && *payload.Guest {
+		// If user is logged in but cannot view all responses (not owner / not an org
+		// member), and they're trying to set guest availability, block it
+		if userSesh != "" && !db.CanViewAllResponses(userObjId, event) && *payload.Guest {
 			c.JSON(http.StatusForbidden, responses.Error{Error: errs.UserNotEventOwner})
 			c.Abort()
 			return
@@ -1478,6 +1509,17 @@ func deleteEvent(c *gin.Context) {
 	userInterface, _ := c.Get("authUser")
 	user := userInterface.(*models.User)
 
+	// Check if user has permission to delete this event (owner or org member)
+	existingEvent := db.GetEventByEitherId(eventId)
+	if existingEvent == nil {
+		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
+		return
+	}
+	if !db.CanEditEvent(user, existingEvent) {
+		c.JSON(http.StatusForbidden, responses.Error{Error: errs.UserNotEventOwner})
+		return
+	}
+
 	// Check if the current user responded
 	eventResponses := db.GetEventResponses(eventId)
 	hasCurrentUserResponded := false
@@ -1498,8 +1540,7 @@ func deleteEvent(c *gin.Context) {
 	if hasResponses {
 		// If event has responses, just set isDeleted flag
 		result := db.EventsCollection.FindOneAndUpdate(context.Background(), bson.M{
-			"_id":     objectId,
-			"ownerId": user.Id,
+			"_id": objectId,
 		}, bson.M{
 			"$set": bson.M{
 				"isDeleted": true,
@@ -1512,8 +1553,7 @@ func deleteEvent(c *gin.Context) {
 	} else {
 		// If event has no responses, actually delete the event object
 		result := db.EventsCollection.FindOneAndDelete(context.Background(), bson.M{
-			"_id":     objectId,
-			"ownerId": user.Id,
+			"_id": objectId,
 		})
 		err = result.Decode(&event)
 		if err != nil {
@@ -1570,13 +1610,15 @@ func duplicateEvent(c *gin.Context) {
 	}
 
 	// Make sure user has permission to duplicate this event
-	if event.OwnerId != user.Id {
+	if !db.CanEditEvent(user, event) {
 		c.Status(http.StatusForbidden)
 		return
 	}
 
-	// Update event
+	// Update event. The duplicate keeps OrganizationId (stays in the same org) but the
+	// current user becomes the creator.
 	event.Id = primitive.NewObjectID()
+	event.OwnerId = user.Id
 	event.Name = payload.EventName
 	numResponses := 0
 	event.NumResponses = &numResponses
@@ -1636,9 +1678,19 @@ func archiveEvent(c *gin.Context) {
 	userInterface, _ := c.Get("authUser")
 	user := userInterface.(*models.User)
 
+	// Check if user has permission to archive this event (owner or org member)
+	existingEvent := db.GetEventByEitherId(eventId)
+	if existingEvent == nil {
+		c.JSON(http.StatusNotFound, responses.Error{Error: errs.EventNotFound})
+		return
+	}
+	if !db.CanEditEvent(user, existingEvent) {
+		c.JSON(http.StatusForbidden, responses.Error{Error: errs.UserNotEventOwner})
+		return
+	}
+
 	result := db.EventsCollection.FindOneAndUpdate(context.Background(), bson.M{
-		"_id":     objectId,
-		"ownerId": user.Id,
+		"_id": objectId,
 	}, bson.M{
 		"$set": bson.M{
 			"isArchived": payload.Archive,

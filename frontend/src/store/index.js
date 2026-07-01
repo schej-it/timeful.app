@@ -9,6 +9,9 @@ import {
   updateFolder,
 } from "../utils/services/FolderService"
 import { archiveEvent } from "../utils/services/EventService"
+import { listOrgs } from "../utils/services/OrganizationService"
+
+const ACTIVE_ORG_ID_KEY = "activeOrgId"
 
 Vue.use(Vuex)
 
@@ -21,6 +24,10 @@ export default new Vuex.Store({
 
     events: [],
     folders: [],
+
+    // Organizations (teams)
+    orgs: [],
+    activeOrgId: localStorage.getItem(ACTIVE_ORG_ID_KEY) || null,
 
     featureFlagsLoaded: false,
 
@@ -52,6 +59,26 @@ export default new Vuex.Store({
     isPremiumUser(state) {
       return isPremiumUser(state.authUser)
     },
+    activeOrg(state) {
+      if (!state.activeOrgId) return null
+      return state.orgs.find((o) => o._id === state.activeOrgId) || null
+    },
+    isOrgContext(state) {
+      return !!state.activeOrgId
+    },
+    // Premium for the currently active context: org subscription if in an org,
+    // otherwise the user's personal premium status.
+    isContextPremium(state, getters) {
+      if (state.activeOrgId) {
+        const org = getters.activeOrg
+        return (
+          !!org &&
+          (org.subscriptionStatus === "active" ||
+            org.subscriptionStatus === "past_due")
+        )
+      }
+      return getters.isPremiumUser
+    },
   },
   mutations: {
     setError(state, error) {
@@ -70,6 +97,18 @@ export default new Vuex.Store({
     },
     setFolders(state, folders) {
       state.folders = folders
+    },
+
+    setOrgs(state, orgs) {
+      state.orgs = orgs
+    },
+    setActiveOrgId(state, orgId) {
+      state.activeOrgId = orgId
+      if (orgId) {
+        localStorage.setItem(ACTIVE_ORG_ID_KEY, orgId)
+      } else {
+        localStorage.removeItem(ACTIVE_ORG_ID_KEY)
+      }
     },
 
     setFeatureFlagsLoaded(state, loaded) {
@@ -167,7 +206,17 @@ export default new Vuex.Store({
       { state, getters, commit, dispatch },
       { eventOnly = false, folderId = null }
     ) {
-      if (
+      if (state.activeOrgId) {
+        // Org context: org events aren't quota-limited, but the org needs an active
+        // subscription to use team functionality.
+        if (state.enablePaywall && !getters.isContextPremium) {
+          dispatch(
+            "showError",
+            "Your organization needs an active subscription to create events. Visit organization settings to subscribe."
+          )
+          return
+        }
+      } else if (
         state.enablePaywall &&
         !getters.isPremiumUser &&
         state.authUser?.numEventsCreated >= numFreeEvents
@@ -187,9 +236,44 @@ export default new Vuex.Store({
       })
     },
 
+    // Organizations
+    async getOrgs({ commit, dispatch, state }) {
+      if (!state.authUser) return null
+      try {
+        const orgs = await listOrgs()
+        commit("setOrgs", orgs)
+        // If the persisted active org no longer exists, fall back to personal context
+        if (
+          state.activeOrgId &&
+          !orgs.find((o) => o._id === state.activeOrgId)
+        ) {
+          commit("setActiveOrgId", null)
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    },
+    switchContext({ commit, dispatch }, orgId) {
+      commit("setActiveOrgId", orgId || null)
+      return dispatch("getEvents")
+    },
+
     // Events
     getEvents({ commit, dispatch, state }) {
       if (state.authUser) {
+        // Org context: fetch all org events (no personal folders)
+        if (state.activeOrgId) {
+          return get(`/user/events?organizationId=${state.activeOrgId}`)
+            .then((events) => {
+              commit("setFolders", [])
+              commit("setEvents", events)
+            })
+            .catch((err) => {
+              dispatch("showError", "There was a problem fetching events!")
+              console.error(err)
+            })
+        }
+
         return Promise.allSettled([get("/user/folders"), get("/user/events")])
           .then(([folders, events]) => {
             if (

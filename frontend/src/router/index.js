@@ -23,6 +23,18 @@ const routes = [
     component: () => import("@/views/Settings.vue"),
   },
   {
+    path: "/settings/organizations/:orgId",
+    name: "organizationSettings",
+    component: () => import("@/views/OrganizationSettings.vue"),
+    props: true,
+  },
+  {
+    path: "/org-invite/:token",
+    name: "orgInvite",
+    component: () => import("@/views/OrgInvite.vue"),
+    props: true,
+  },
+  {
     path: "/e/:eventId",
     name: "event",
     component: () => import("@/views/Event.vue"),
@@ -96,7 +108,7 @@ const router = new VueRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
-  const authRoutes = ["home", "settings"]
+  const authRoutes = ["home", "settings", "organizationSettings"]
   const noAuthRoutes = ["sign-in", "sign-up"]
   try {
     await get("/auth/status")

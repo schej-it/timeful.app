@@ -139,6 +139,8 @@ func GetEventsCreatedThisMonth(userId primitive.ObjectID) int {
 
 	result, err := EventsCollection.CountDocuments(context.Background(), bson.M{
 		"ownerId": userId,
+		// Only personal events count toward the personal free-event quota
+		"organizationId": bson.M{"$exists": false},
 		"_id": bson.M{
 			"$gte": primitive.NewObjectIDFromTimestamp(startOfMonth),
 		},

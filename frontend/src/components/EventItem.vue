@@ -231,11 +231,18 @@ export default {
   }),
 
   computed: {
-    ...mapState(["authUser", "folders"]),
+    ...mapState(["authUser", "folders", "orgs"]),
     dateString() {
       return getDateRangeStringForEvent(this.event)
     },
     isOwner() {
+      // Org events: any member of the owning org has admin access
+      if (
+        this.event.organizationId &&
+        this.orgs.some((o) => o._id === this.event.organizationId)
+      ) {
+        return true
+      }
       return this.event.ownerId === this.authUser._id
     },
     isGroup() {

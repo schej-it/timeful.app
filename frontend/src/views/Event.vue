@@ -635,7 +635,7 @@ export default {
   },
 
   computed: {
-    ...mapState(["authUser", "events"]),
+    ...mapState(["authUser", "events", "orgs"]),
     ...mapGetters(["isPremiumUser"]),
     showAds() {
       return (
@@ -660,6 +660,13 @@ export default {
       return this.scheduleOverlapComponent?.scheduling
     },
     canEdit() {
+      // Org events: any member of the owning org can edit
+      if (
+        this.event.organizationId &&
+        this.orgs.some((o) => o._id === this.event.organizationId)
+      ) {
+        return true
+      }
       return (
         this.event.ownerId == 0 || this.authUser?._id === this.event.ownerId
       )

@@ -15,13 +15,17 @@ import (
 	portalsession "github.com/stripe/stripe-go/v82/billingportal/session"
 	"github.com/stripe/stripe-go/v82/checkout/session"
 	"github.com/stripe/stripe-go/v82/price"
+	"github.com/stripe/stripe-go/v82/subscription"
+	"github.com/stripe/stripe-go/v82/subscriptionitem"
 	"github.com/stripe/stripe-go/v82/webhook"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"schej.it/server/db"
+	"schej.it/server/errs"
 	"schej.it/server/logger"
 	"schej.it/server/middleware"
 	"schej.it/server/models"
+	"schej.it/server/responses"
 	"schej.it/server/slackbot"
 	"schej.it/server/utils"
 )
@@ -217,6 +221,13 @@ func _fulfillCheckout(sessionId string) {
 	// to determine if fulfillment should be performed
 	if cs.PaymentStatus != stripe.CheckoutSessionPaymentStatusUnpaid {
 		logger.StdOut.Println("Fulfilling Checkout Session " + sessionId)
+
+		// Team (organization) per-seat subscriptions are identified by session metadata
+		if cs.Metadata != nil && cs.Metadata["type"] == "team" {
+			fulfillTeamCheckout(cs)
+			return
+		}
+
 		if cs.Customer != nil {
 			logger.StdOut.Println("Setting stripe customer ID", cs.Customer.ID)
 
@@ -310,8 +321,13 @@ func stripeWebhook(c *gin.Context) {
 			c.AbortWithStatus(http.StatusBadRequest)
 			return
 		}
-		db.UsersCollection.UpdateOne(context.Background(), bson.M{"stripeCustomerId": inv.Customer.ID}, bson.M{"$set": bson.M{"isPremium": true}})
-		logger.StdOut.Printf("Customer %s renewed Schej!\n", inv.Customer.ID)
+		if user := db.GetUserByStripeCustomerId(inv.Customer.ID); user != nil {
+			db.UsersCollection.UpdateOne(context.Background(), bson.M{"stripeCustomerId": inv.Customer.ID}, bson.M{"$set": bson.M{"isPremium": true}})
+			logger.StdOut.Printf("Customer %s renewed Schej!\n", inv.Customer.ID)
+		} else if org := db.GetOrgByStripeCustomerId(inv.Customer.ID); org != nil {
+			db.UpdateOrg(org.Id, bson.M{"subscriptionStatus": models.OrgSubActive})
+			logger.StdOut.Printf("Organization %s (%s) renewed their team subscription!\n", org.Name, inv.Customer.ID)
+		}
 	} else if event.Type == stripe.EventTypeInvoicePaymentFailed {
 		var inv stripe.Invoice
 		err := json.Unmarshal(event.Data.Raw, &inv)
@@ -320,16 +336,20 @@ func stripeWebhook(c *gin.Context) {
 			c.AbortWithStatus(http.StatusBadRequest)
 			return
 		}
-		user := db.GetUserByStripeCustomerId(inv.Customer.ID)
-		if user == nil {
-			logger.StdErr.Printf("Error getting user: %v", err)
-			return
-		}
-		db.UsersCollection.UpdateOne(context.Background(), bson.M{"stripeCustomerId": inv.Customer.ID}, bson.M{"$set": bson.M{"isPremium": false}})
-		logger.StdOut.Printf("Customer %s failed to pay for Schej!\n", inv.Customer.ID)
+		if user := db.GetUserByStripeCustomerId(inv.Customer.ID); user != nil {
+			db.UsersCollection.UpdateOne(context.Background(), bson.M{"stripeCustomerId": inv.Customer.ID}, bson.M{"$set": bson.M{"isPremium": false}})
+			logger.StdOut.Printf("Customer %s failed to pay for Schej!\n", inv.Customer.ID)
 
-		message := fmt.Sprintf(":x: %s %s (%s) failed to pay for Schej :x:", user.FirstName, user.LastName, user.Email)
-		slackbot.SendTextMessageWithType(message, slackbot.MONETIZATION)
+			message := fmt.Sprintf(":x: %s %s (%s) failed to pay for Schej :x:", user.FirstName, user.LastName, user.Email)
+			slackbot.SendTextMessageWithType(message, slackbot.MONETIZATION)
+		} else if org := db.GetOrgByStripeCustomerId(inv.Customer.ID); org != nil {
+			// Keep org premium during the grace period (past_due); revoked only on subscription.deleted
+			db.UpdateOrg(org.Id, bson.M{"subscriptionStatus": models.OrgSubPastDue})
+			logger.StdOut.Printf("Organization %s (%s) failed to pay for their team subscription!\n", org.Name, inv.Customer.ID)
+
+			message := fmt.Sprintf(":x: Organization %s failed to pay for their Timeful team subscription :x:", org.Name)
+			slackbot.SendTextMessageWithType(message, slackbot.MONETIZATION)
+		}
 	} else if event.Type == stripe.EventTypeCustomerSubscriptionDeleted {
 		var sub stripe.Subscription
 		err := json.Unmarshal(event.Data.Raw, &sub)
@@ -338,19 +358,214 @@ func stripeWebhook(c *gin.Context) {
 			c.AbortWithStatus(http.StatusBadRequest)
 			return
 		}
-		user := db.GetUserByStripeCustomerId(sub.Customer.ID)
-		if user == nil {
-			logger.StdErr.Printf("Error getting user: %v", err)
-			return
-		}
-		db.UsersCollection.UpdateOne(context.Background(), bson.M{"stripeCustomerId": sub.Customer.ID}, bson.M{"$set": bson.M{"isPremium": false}})
-		logger.StdOut.Printf("Customer %s cancelled their subscription!\n", sub.Customer.ID)
+		if user := db.GetUserByStripeCustomerId(sub.Customer.ID); user != nil {
+			db.UsersCollection.UpdateOne(context.Background(), bson.M{"stripeCustomerId": sub.Customer.ID}, bson.M{"$set": bson.M{"isPremium": false}})
+			logger.StdOut.Printf("Customer %s cancelled their subscription!\n", sub.Customer.ID)
 
-		message := fmt.Sprintf(":x: %s %s (%s) cancelled their subscription :x:", user.FirstName, user.LastName, user.Email)
-		slackbot.SendTextMessageWithType(message, slackbot.MONETIZATION)
+			message := fmt.Sprintf(":x: %s %s (%s) cancelled their subscription :x:", user.FirstName, user.LastName, user.Email)
+			slackbot.SendTextMessageWithType(message, slackbot.MONETIZATION)
+		} else if org := db.GetOrgByStripeCustomerId(sub.Customer.ID); org != nil {
+			db.UpdateOrg(org.Id, bson.M{"subscriptionStatus": models.OrgSubCanceled})
+			logger.StdOut.Printf("Organization %s (%s) cancelled their team subscription!\n", org.Name, sub.Customer.ID)
+
+			message := fmt.Sprintf(":x: Organization %s cancelled their Timeful team subscription :x:", org.Name)
+			slackbot.SendTextMessageWithType(message, slackbot.MONETIZATION)
+		}
 	}
 
 	c.Status(http.StatusOK) // Return 200 OK to acknowledge receipt of the event
+}
+
+// fulfillTeamCheckout records the org's Stripe subscription details after a successful
+// team checkout. It never touches any user's personal premium.
+func fulfillTeamCheckout(cs *stripe.CheckoutSession) {
+	orgIdHex := cs.Metadata["organizationId"]
+	orgId, err := primitive.ObjectIDFromHex(orgIdHex)
+	if err != nil {
+		logger.StdErr.Printf("fulfillTeamCheckout: invalid organizationId %q: %v", orgIdHex, err)
+		return
+	}
+	if cs.Customer == nil || cs.Subscription == nil {
+		logger.StdErr.Printf("fulfillTeamCheckout: missing customer or subscription on session %s", cs.ID)
+		return
+	}
+
+	updates := bson.M{
+		"stripeCustomerId":     cs.Customer.ID,
+		"stripeSubscriptionId": cs.Subscription.ID,
+		"subscriptionStatus":   models.OrgSubActive,
+	}
+
+	// Fetch the subscription to capture the item id (needed to update quantity later) + seat count
+	sub, err := subscription.Get(cs.Subscription.ID, nil)
+	if err == nil && sub.Items != nil && len(sub.Items.Data) > 0 {
+		updates["stripeSubscriptionItemId"] = sub.Items.Data[0].ID
+		updates["seatCount"] = int(sub.Items.Data[0].Quantity)
+	}
+
+	if err := db.UpdateOrg(orgId, updates); err != nil {
+		logger.StdErr.Printf("fulfillTeamCheckout: failed to update org %s: %v", orgIdHex, err)
+		return
+	}
+	logger.StdOut.Printf("Organization %s subscribed to Timeful teams!\n", orgIdHex)
+}
+
+// syncOrgSeats updates the org's Stripe subscription quantity to match the number of
+// seats currently in use (members + pending invitations), creating prorations. It is a
+// no-op if the org has no active subscription yet.
+func syncOrgSeats(org *models.Organization) {
+	if org.StripeSubscriptionItemId == nil || *org.StripeSubscriptionItemId == "" {
+		return
+	}
+	desired := db.CountOrgSeatsInUse(org.Id)
+	if desired < 1 {
+		desired = 1
+	}
+	_, err := subscriptionitem.Update(*org.StripeSubscriptionItemId, &stripe.SubscriptionItemParams{
+		Quantity:          stripe.Int64(int64(desired)),
+		ProrationBehavior: stripe.String("create_prorations"),
+	})
+	if err != nil {
+		logger.StdErr.Printf("syncOrgSeats: failed to update quantity for org %s: %v", org.Id.Hex(), err)
+		return
+	}
+	db.UpdateOrg(org.Id, bson.M{"seatCount": desired})
+}
+
+// cancelOrgSubscription cancels the org's Stripe subscription (best-effort).
+func cancelOrgSubscription(org *models.Organization) {
+	if org.StripeSubscriptionId == nil || *org.StripeSubscriptionId == "" {
+		return
+	}
+	if _, err := subscription.Cancel(*org.StripeSubscriptionId, nil); err != nil {
+		logger.StdErr.Printf("cancelOrgSubscription: failed to cancel subscription for org %s: %v", org.Id.Hex(), err)
+	}
+}
+
+// @Summary Create a Stripe checkout session for an org's per-seat team subscription
+// @Tags organizations
+// @Accept json
+// @Produce json
+// @Param orgId path string true "Organization ID"
+// @Param payload body object{originUrl=string} false "Where to return after checkout"
+// @Success 200 {object} object{url=string}
+// @Router /organizations/{orgId}/checkout-session [post]
+func createTeamCheckoutSession(c *gin.Context) {
+	org, ok := getOrgFromParam(c)
+	if !ok {
+		return
+	}
+	if _, ok := requireOrgRole(c, org, models.OrgRoleOwner); !ok {
+		return
+	}
+
+	var payload struct {
+		OriginURL string `json:"originUrl"`
+	}
+	c.ShouldBindJSON(&payload)
+
+	priceId := os.Getenv("STRIPE_TEAM_SEAT_PRICE_ID")
+	if priceId == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Team pricing is not configured"})
+		return
+	}
+
+	seats := db.CountOrgSeatsInUse(org.Id)
+	if seats < 1 {
+		seats = 1
+	}
+
+	// Build the intermediate /stripe-redirect URLs (same pattern as createCheckoutSession)
+	finalRedirectURL := payload.OriginURL
+	if finalRedirectURL == "" {
+		finalRedirectURL = utils.GetBaseUrl()
+	}
+	intermediateRedirectBase, err := url.Parse(utils.GetBaseUrl())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error configuring redirect"})
+		return
+	}
+	successURL := *intermediateRedirectBase
+	successURL.Path = "/stripe-redirect"
+	sq := url.Values{}
+	sq.Set("upgrade", "success")
+	sq.Set("redirect_url", finalRedirectURL)
+	successURL.RawQuery = sq.Encode()
+
+	cancelURL := *intermediateRedirectBase
+	cancelURL.Path = "/stripe-redirect"
+	cq := url.Values{}
+	cq.Set("upgrade", "cancel")
+	cq.Set("redirect_url", finalRedirectURL)
+	cancelURL.RawQuery = cq.Encode()
+
+	params := &stripe.CheckoutSessionParams{
+		Mode: stripe.String(string(stripe.CheckoutSessionModeSubscription)),
+		LineItems: []*stripe.CheckoutSessionLineItemParams{
+			{
+				Price:    stripe.String(priceId),
+				Quantity: stripe.Int64(int64(seats)),
+			},
+		},
+		SuccessURL:   stripe.String(successURL.String() + "&session_id={CHECKOUT_SESSION_ID}"),
+		CancelURL:    stripe.String(cancelURL.String()),
+		AutomaticTax: &stripe.CheckoutSessionAutomaticTaxParams{Enabled: stripe.Bool(true)},
+		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
+			Metadata: map[string]string{
+				"type":           "team",
+				"organizationId": org.Id.Hex(),
+			},
+		},
+		Metadata: map[string]string{
+			"type":           "team",
+			"organizationId": org.Id.Hex(),
+		},
+	}
+	// Reuse the org's existing Stripe customer if it already has one
+	if org.StripeCustomerId != nil && *org.StripeCustomerId != "" {
+		params.Customer = stripe.String(*org.StripeCustomerId)
+	}
+
+	s, err := session.New(params)
+	if err != nil {
+		log.Printf("session.New (team): %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create checkout session"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"url": s.URL})
+}
+
+// @Summary Get a Stripe billing portal URL for an organization
+// @Tags organizations
+// @Produce json
+// @Param orgId path string true "Organization ID"
+// @Success 200 {object} object{url=string}
+// @Router /organizations/{orgId}/billing-portal [get]
+func getOrgBillingPortalUrl(c *gin.Context) {
+	org, ok := getOrgFromParam(c)
+	if !ok {
+		return
+	}
+	if _, ok := requireOrgRole(c, org, models.OrgRoleOwner); !ok {
+		return
+	}
+	if org.StripeCustomerId == nil || *org.StripeCustomerId == "" {
+		c.JSON(http.StatusBadRequest, responses.Error{Error: errs.OrgNoSubscription})
+		return
+	}
+	returnURL := c.Query("returnUrl")
+	if returnURL == "" {
+		returnURL = utils.GetBaseUrl()
+	}
+	ps, err := portalsession.New(&stripe.BillingPortalSessionParams{
+		Customer:  stripe.String(*org.StripeCustomerId),
+		ReturnURL: stripe.String(returnURL),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create billing portal session"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"url": ps.URL})
 }
 
 func getBillingPortalUrl(c *gin.Context) {

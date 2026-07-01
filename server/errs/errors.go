@@ -22,6 +22,17 @@ const (
 	OtpInvalidCode        string = "otp-invalid-code"
 	OtpTooManyAttempts    string = "otp-too-many-attempts"
 	InvalidIdToken        string = "invalid-id-token"
+
+	// Organizations
+	OrganizationNotFound      string = "organization-not-found"
+	UserNotInOrganization     string = "user-not-in-organization"
+	InsufficientOrgPermission string = "insufficient-org-permission"
+	InvitationNotFound        string = "invitation-not-found"
+	AlreadyOrgMember          string = "already-org-member"
+	AlreadyInvited            string = "already-invited"
+	CannotModifyOwner         string = "cannot-modify-owner"
+	OwnerCannotLeave          string = "owner-cannot-leave"
+	OrgNoSubscription         string = "org-no-subscription"
 )
 
 type GoogleAPIError struct {

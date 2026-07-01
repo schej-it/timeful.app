@@ -1247,7 +1247,7 @@ export default {
     }
   },
   computed: {
-    ...mapState(["authUser", "overlayAvailabilitiesEnabled"]),
+    ...mapState(["authUser", "overlayAvailabilitiesEnabled", "orgs"]),
     ...mapGetters(["isPremiumUser"]),
     showAds() {
       return (
@@ -1678,6 +1678,13 @@ export default {
       return isPhone(this.$vuetify)
     },
     isOwner() {
+      // Org events: any member of the owning org has admin access (sees all responses)
+      if (
+        this.event.organizationId &&
+        this.orgs.some((o) => o._id === this.event.organizationId)
+      ) {
+        return true
+      }
       return this.authUser?._id === this.event.ownerId
     },
     isGuestEvent() {

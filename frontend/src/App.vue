@@ -80,6 +80,7 @@
         >
           + Create new
         </v-btn>
+        <WorkspaceSwitcher v-if="authUser" class="tw-mr-2" />
         <div v-if="authUser" class="sm:tw-ml-4">
           <AuthUserMenu />
         </div>
@@ -248,6 +249,7 @@ import {
 } from "@/constants"
 import AutoSnackbar from "@/components/AutoSnackbar"
 import AuthUserMenu from "@/components/AuthUserMenu.vue"
+import WorkspaceSwitcher from "@/components/WorkspaceSwitcher.vue"
 import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
 import UpvoteRedditSnackbar from "@/components/UpvoteRedditSnackbar.vue"
 import Logo from "@/components/Logo.vue"
@@ -269,6 +271,7 @@ export default {
   components: {
     AutoSnackbar,
     AuthUserMenu,
+    WorkspaceSwitcher,
     SignInNotSupportedDialog,
     NewDialog,
     UpvoteRedditSnackbar,
@@ -334,6 +337,7 @@ export default {
     ]),
     ...mapActions([
       "getEvents",
+      "getOrgs",
       "showUpgradeDialog",
       "hideUpgradeDialog",
       "createNew",
@@ -447,6 +451,8 @@ export default {
     // Event listeners
     window.addEventListener("scroll", this.handleScroll)
 
+    // Load orgs first so the active context is valid before fetching events
+    await this.getOrgs()
     this.getEvents()
   },
 

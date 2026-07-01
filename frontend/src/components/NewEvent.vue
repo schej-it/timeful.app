@@ -735,6 +735,8 @@ export default {
         startOnMonday: this.startOnMonday,
         timeIncrement: this.timeIncrement,
         creatorPosthogId: this.$posthog?.get_distinct_id(),
+        // When in an org context, create the event within that organization
+        organizationId: this.$store.state.activeOrgId || undefined,
       }
 
       const posthogPayload = {
@@ -761,7 +763,8 @@ export default {
         // Create new event on backend
         post("/events", payload)
           .then(async ({ eventId, shortId }) => {
-            if (this.authUser) {
+            // Folders are personal-only; skip when creating an org event
+            if (this.authUser && !this.$store.state.activeOrgId) {
               await this.setEventFolder({ eventId, folderId: this.folderId })
             }
             this.$router.push({

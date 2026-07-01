@@ -22,6 +22,9 @@ var AttendeesCollection *mongo.Collection
 var FoldersCollection *mongo.Collection
 var FolderEventsCollection *mongo.Collection
 var OtpCodesCollection *mongo.Collection
+var OrganizationsCollection *mongo.Collection
+var OrganizationMembersCollection *mongo.Collection
+var OrganizationInvitationsCollection *mongo.Collection
 
 func Init() func() {
 	// Establish mongodb connection
@@ -49,6 +52,9 @@ func Init() func() {
 	FoldersCollection = Db.Collection("folders")
 	FolderEventsCollection = Db.Collection("folderEvents")
 	OtpCodesCollection = Db.Collection("otpCodes")
+	OrganizationsCollection = Db.Collection("organizations")
+	OrganizationMembersCollection = Db.Collection("organizationMembers")
+	OrganizationInvitationsCollection = Db.Collection("organizationInvitations")
 
 	// Create TTL index so expired OTP docs are auto-deleted
 	otpIndexModel := mongo.IndexModel{

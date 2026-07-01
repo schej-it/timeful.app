@@ -42,10 +42,13 @@ type SignUpResponse struct {
 
 // Representation of an Event in the mongoDB database
 type Event struct {
-	Id          primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
-	ShortId     *string            `json:"shortId" bson:"shortId,omitempty"`
-	OwnerId     primitive.ObjectID `json:"ownerId" bson:"ownerId,omitempty"`
-	Name        string             `json:"name" bson:"name,omitempty"`
+	Id      primitive.ObjectID `json:"_id" bson:"_id,omitempty"`
+	ShortId *string            `json:"shortId" bson:"shortId,omitempty"`
+	OwnerId primitive.ObjectID `json:"ownerId" bson:"ownerId,omitempty"`
+	// OrganizationId, when set, marks this as an org event: all org members have admin
+	// access. Nil = personal event (governed by OwnerId, the existing behavior).
+	OrganizationId *primitive.ObjectID `json:"organizationId" bson:"organizationId,omitempty"`
+	Name           string              `json:"name" bson:"name,omitempty"`
 	Description *string            `json:"description" bson:"description,omitempty"`
 	IsArchived  *bool              `json:"isArchived" bson:"isArchived,omitempty"`
 	IsDeleted   *bool              `json:"isDeleted" bson:"isDeleted,omitempty"`

@@ -8,7 +8,7 @@
           Dashboard
         </div>
         <div
-          v-if="!isPremiumUser"
+          v-if="!isPremiumUser && !isOrgContext"
           class="tw-flex tw-items-baseline tw-gap-2 tw-text-sm tw-font-normal tw-text-very-dark-gray"
         >
           <div>
@@ -239,7 +239,7 @@ export default {
     }
   },
   computed: {
-    ...mapGetters(["isPremiumUser"]),
+    ...mapGetters(["isPremiumUser", "isOrgContext"]),
     ...mapState(["authUser", "events", "groupsEnabled", "folders"]),
     orderedFolders() {
       return this.folders.sort((a, b) => {

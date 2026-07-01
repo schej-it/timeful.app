@@ -158,6 +158,41 @@ func getEvents(c *gin.Context) {
 	events := make([]models.Event, 0)
 	opts := options.Find().SetSort(bson.M{"_id": -1})
 
+	// Org context: if an organizationId is provided, return ALL events for that org
+	// (every member has admin access), provided the user is a member.
+	orgIdParam := c.Query("organizationId")
+	if orgIdParam != "" {
+		orgObjId, err := primitive.ObjectIDFromHex(orgIdParam)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, responses.Error{Error: errs.OrganizationNotFound})
+			return
+		}
+		if !db.IsOrgMember(userId, orgObjId) {
+			c.JSON(http.StatusForbidden, responses.Error{Error: errs.UserNotInOrganization})
+			return
+		}
+		cursor, err := db.EventsCollection.Find(context.Background(), bson.M{
+			"organizationId": orgObjId,
+			"$or": bson.A{
+				bson.M{"isDeleted": bson.M{"$exists": false}},
+				bson.M{"isDeleted": false},
+			},
+		}, opts)
+		if err != nil {
+			logger.StdErr.Panicln(err)
+		}
+		if err := cursor.All(context.Background(), &events); err != nil {
+			logger.StdErr.Panicln(err)
+		}
+		for i, event := range events {
+			if event.Type == models.GROUP {
+				events[i].HasResponded = utils.FalsePtr()
+			}
+		}
+		c.JSON(http.StatusOK, events)
+		return
+	}
+
 	// Get all the event ids that the user has responded to
 	cursor, err := db.EventResponsesCollection.Find(context.Background(), bson.M{"userId": userId.Hex()})
 	if err != nil {
@@ -199,7 +234,8 @@ func getEvents(c *gin.Context) {
 				bson.M{
 					"$or": bson.A{
 						bson.M{"_id": bson.M{"$in": eventIds}},
-						bson.M{"ownerId": userId},
+						// Personal events only (exclude org events from the personal list)
+						bson.M{"ownerId": userId, "organizationId": bson.M{"$exists": false}},
 					},
 				},
 				bson.M{
