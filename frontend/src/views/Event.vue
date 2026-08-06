@@ -67,30 +67,55 @@
         v-model="pagesNotVisitedDialog"
         max-width="400"
         content-class="tw-m-0"
+        @input="pagesNotVisitedUnderstood = false"
       >
         <v-card>
           <v-card-title>Are you sure?</v-card-title>
-          <v-card-text
-            ><span class="tw-font-medium"
-              >You're about to add your availability without filling out all
-              pages of this Timeful.</span
+          <v-card-text>
+            <p>
+              <span class="tw-font-bold"
+                >You haven't filled out all pages of this Timeful.</span
+              >
+              Availability for the pages you didn't visit won't be saved.
+            </p>
+            <p>
+              Click the left and right arrows at the top to switch between
+              pages.
+            </p>
+
+            <v-checkbox
+              v-model="pagesNotVisitedUnderstood"
+              class="tw-mt-3"
+              dense
+              messages="Not recommended"
             >
-            Click the left and right arrows at the top to switch between
-            pages.</v-card-text
-          >
+              <template v-slot:label>
+                <span class="tw-text-sm tw-text-black">I understand</span>
+              </template>
+              <template v-slot:message="{ message }">
+                <div
+                  class="tw-pointer-events-auto -tw-mt-1 tw-ml-[32px] tw-text-xs tw-italic tw-text-dark-gray"
+                >
+                  {{ message }}
+                </div>
+              </template>
+            </v-checkbox>
+          </v-card-text>
           <v-card-actions>
             <v-spacer />
             <v-btn text @click="pagesNotVisitedDialog = false">Cancel</v-btn>
             <v-btn
-              text
-              color="primary"
+              depressed
+              color="error"
+              class="tw-text-white"
+              :disabled="!pagesNotVisitedUnderstood"
               @click="
                 () => {
                   saveChanges(true)
                   this.pagesNotVisitedDialog = false
                 }
               "
-              >Add anyways</v-btn
+              >Save anyways</v-btn
             >
           </v-card-actions>
         </v-card>
@@ -567,6 +592,7 @@ export default {
     editEventDialog: false,
     invitationDialog: false,
     pagesNotVisitedDialog: false,
+    pagesNotVisitedUnderstood: false,
     helpDialog: false,
 
     loading: true,

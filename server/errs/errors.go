@@ -21,6 +21,7 @@ const (
 	OtpExpired            string = "otp-expired"
 	OtpInvalidCode        string = "otp-invalid-code"
 	OtpTooManyAttempts    string = "otp-too-many-attempts"
+	InvalidIdToken        string = "invalid-id-token"
 )
 
 type GoogleAPIError struct {

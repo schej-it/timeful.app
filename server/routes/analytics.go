@@ -14,6 +14,7 @@ import (
 	"schej.it/server/db"
 	"schej.it/server/models"
 	"schej.it/server/slackbot"
+	"schej.it/server/utils"
 )
 
 // BasicAuth middleware for analytics routes
@@ -41,6 +42,7 @@ func InitAnalytics(router *gin.RouterGroup) {
 	analyticsRouter.GET("/monthly-active-event-creators-with-more-than-x-events", AnalyticsBasicAuth(), getMonthlyActiveEventCreatorsWithMoreThanXEvents)
 	analyticsRouter.POST("/upgrade-user", AnalyticsBasicAuth(), upgradeUser)
 	analyticsRouter.POST("/downgrade-user", AnalyticsBasicAuth(), downgradeUser)
+	analyticsRouter.POST("/change-email", AnalyticsBasicAuth(), changeUserEmail)
 	analyticsRouter.GET("/user/:email", AnalyticsBasicAuth(), getUserByEmail)
 }
 
@@ -312,6 +314,46 @@ func downgradeUser(c *gin.Context) {
 	db.UsersCollection.UpdateOne(context.Background(), bson.M{"_id": user.Id}, bson.M{"$unset": bson.M{"stripeCustomerId": ""}})
 
 	c.JSON(http.StatusOK, gin.H{})
+}
+
+// @Summary Changes the email address of the specified user
+// @Tags analytics
+// @Accept json
+// @Produce json
+// @Param payload body object{email=string,newEmail=string} true "Object containing the current and new user email"
+// @Success 200 {object} models.User
+// @Router /analytics/change-email [post]
+func changeUserEmail(c *gin.Context) {
+	payload := struct {
+		Email    string `json:"email" binding:"required"`
+		NewEmail string `json:"newEmail" binding:"required"`
+	}{}
+	if err := c.BindJSON(&payload); err != nil {
+		return
+	}
+
+	newEmail := utils.NormalizeEmail(payload.NewEmail)
+	if newEmail == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "New email cannot be empty"})
+		return
+	}
+
+	user := db.GetUserByEmail(payload.Email)
+	if user == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Make sure the new email isn't already taken by a different account
+	if existing := db.GetUserByEmail(newEmail); existing != nil && existing.Id != user.Id {
+		c.JSON(http.StatusConflict, gin.H{"error": "Another account already uses that email"})
+		return
+	}
+
+	db.UsersCollection.UpdateOne(context.Background(), bson.M{"_id": user.Id}, bson.M{"$set": bson.M{"email": newEmail}})
+
+	user.Email = newEmail
+	c.JSON(http.StatusOK, user)
 }
 
 // @Summary Gets the user by email
