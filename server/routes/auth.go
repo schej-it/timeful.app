@@ -128,10 +128,14 @@ func signInMobile(c *gin.Context) {
 
 // Helper function to sign user in with the given parameters from the google oauth route
 func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.TokenOriginType, calendarType models.CalendarType, timezoneOffset int) (models.User, error) {
+	// OIDC is authentication-only: we don't get calendar access from it, so all of the CalendarAccounts/subcalendar bookkeeping
+	// below is skipped for it.
+	isOidc := calendarType == models.OidcCalendarType
+
 	// Get access token expire time
 	accessTokenExpireDate := utils.GetAccessTokenExpireDate(token.ExpiresIn)
 
-	// Construct calendar auth object
+	// Construct calendar auth object (unused for OIDC)
 	calendarAuth := models.OAuth2CalendarAuth{
 		AccessToken:           token.AccessToken,
 		AccessTokenExpireDate: primitive.NewDateTimeFromTime(accessTokenExpireDate),
@@ -168,6 +172,28 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 		firstName = userInfo.FirstName
 		lastName = userInfo.LastName
 		picture = ""
+	} else if isOidc {
+		// Verify the ID token returned by the OIDC provider.
+		// As with Google above, we never trust claims from a token we
+		// haven't verified ourselves, before using any of its claims.
+		claims, err := auth.VerifyOidcIdToken(token.IdToken)
+		if err != nil {
+			logger.StdErr.Printf("Failed to verify OIDC ID token: %v", err)
+			return models.User{}, err
+		}
+		email = claims.Email
+		firstName = claims.GivenName
+		lastName = claims.FamilyName
+		if firstName == "" && claims.Name != "" {
+			// Fall back to splitting the "name" claim if the provider didn't
+			// send given_name/family_name
+			parts := strings.SplitN(claims.Name, " ", 2)
+			firstName = parts[0]
+			if len(parts) > 1 {
+				lastName = parts[1]
+			}
+		}
+		picture = claims.Picture
 	}
 	email = utils.NormalizeEmail(email)
 
@@ -186,29 +212,34 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 		TokenOrigin:    tokenOrigin,
 	}
 
-	calendarAccount := models.CalendarAccount{
-		CalendarType:       calendarType,
-		OAuth2CalendarAuth: &calendarAuth,
-
-		Email:   email,
-		Picture: picture,
-		Enabled: utils.TruePtr(), // Workaround to pass a boolean pointer
-	}
+	var calendarAccount models.CalendarAccount
 	canonicalKey := utils.GetCalendarAccountKey(email, calendarType)
+	if !isOidc {
+		calendarAccount = models.CalendarAccount{
+			CalendarType:       calendarType,
+			OAuth2CalendarAuth: &calendarAuth,
+
+			Email:   email,
+			Picture: picture,
+			Enabled: utils.TruePtr(), // Workaround to pass a boolean pointer
+		}
+	}
 
 	var userId primitive.ObjectID
 	existing := db.GetUserByEmail(email)
 	// If user doesn't exist, create a new user
 	if existing == nil {
-		// Fetch subcalendars
-		subCalendars, err := calendar.GetCalendarProvider(calendarAccount).GetCalendarList()
-		if err == nil {
-			calendarAccount.SubCalendars = &subCalendars
-		}
+		if !isOidc {
+			// Fetch subcalendars
+			subCalendars, err := calendar.GetCalendarProvider(calendarAccount).GetCalendarList()
+			if err == nil {
+				calendarAccount.SubCalendars = &subCalendars
+			}
 
-		// Set calendar accounts
-		userData.CalendarAccounts = map[string]models.CalendarAccount{
-			canonicalKey: calendarAccount,
+			// Set calendar accounts
+			userData.CalendarAccounts = map[string]models.CalendarAccount{
+				canonicalKey: calendarAccount,
+			}
 		}
 
 		// Create user
@@ -230,43 +261,49 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 			userData.LastName = ""
 		}
 
-		legacyKey := utils.ActualCalendarAccountMapKey(user, email, calendarType)
-
-		var oldSubCalendars *map[string]models.SubCalendar
-		if legacyKey != "" {
-			if oldAcc, ok := user.CalendarAccounts[legacyKey]; ok && oldAcc.SubCalendars != nil {
-				oldSubCalendars = oldAcc.SubCalendars
-			}
-		} else if user.CalendarAccounts != nil {
-			if existingAcc, ok := user.CalendarAccounts[canonicalKey]; ok && existingAcc.SubCalendars != nil {
-				oldSubCalendars = existingAcc.SubCalendars
-			}
-		}
-
-		var calAccounts map[string]models.CalendarAccount
-		if user.CalendarAccounts == nil {
-			calAccounts = make(map[string]models.CalendarAccount)
+		if isOidc {
+			// OIDC is authentication-only - leave any existing calendar
+			// accounts untouched, just refresh profile info below.
+			userData.CalendarAccounts = user.CalendarAccounts
 		} else {
-			calAccounts = make(map[string]models.CalendarAccount, len(user.CalendarAccounts))
-			for k, v := range user.CalendarAccounts {
-				calAccounts[k] = v
-			}
-		}
-		if legacyKey != "" && legacyKey != canonicalKey {
-			delete(calAccounts, legacyKey)
-		}
+			legacyKey := utils.ActualCalendarAccountMapKey(user, email, calendarType)
 
-		if oldSubCalendars != nil {
-			calendarAccount.SubCalendars = oldSubCalendars
-		} else {
-			subCalendars, err := calendar.GetCalendarProvider(calendarAccount).GetCalendarList()
-			if err == nil {
-				calendarAccount.SubCalendars = &subCalendars
+			var oldSubCalendars *map[string]models.SubCalendar
+			if legacyKey != "" {
+				if oldAcc, ok := user.CalendarAccounts[legacyKey]; ok && oldAcc.SubCalendars != nil {
+					oldSubCalendars = oldAcc.SubCalendars
+				}
+			} else if user.CalendarAccounts != nil {
+				if existingAcc, ok := user.CalendarAccounts[canonicalKey]; ok && existingAcc.SubCalendars != nil {
+					oldSubCalendars = existingAcc.SubCalendars
+				}
 			}
-		}
 
-		calAccounts[canonicalKey] = calendarAccount
-		userData.CalendarAccounts = calAccounts
+			var calAccounts map[string]models.CalendarAccount
+			if user.CalendarAccounts == nil {
+				calAccounts = make(map[string]models.CalendarAccount)
+			} else {
+				calAccounts = make(map[string]models.CalendarAccount, len(user.CalendarAccounts))
+				for k, v := range user.CalendarAccounts {
+					calAccounts[k] = v
+				}
+			}
+			if legacyKey != "" && legacyKey != canonicalKey {
+				delete(calAccounts, legacyKey)
+			}
+
+			if oldSubCalendars != nil {
+				calendarAccount.SubCalendars = oldSubCalendars
+			} else {
+				subCalendars, err := calendar.GetCalendarProvider(calendarAccount).GetCalendarList()
+				if err == nil {
+					calendarAccount.SubCalendars = &subCalendars
+				}
+			}
+
+			calAccounts[canonicalKey] = calendarAccount
+			userData.CalendarAccounts = calAccounts
+		}
 		userData.Email = email
 
 		// Update user if exists

@@ -45,6 +45,21 @@
                 <v-spacer />
               </div>
             </v-btn>
+            <v-btn
+              v-if="oidcEnabled"
+              block
+              @click="signIn(calendarTypes.OIDC)"
+              class="tw-bg-white"
+            >
+              <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
+                <v-icon class="tw-flex-initial" size="20"
+                  >mdi-shield-account-outline</v-icon
+                >
+                <v-spacer />
+                Continue with {{ oidcProviderName }}
+                <v-spacer />
+              </div>
+            </v-btn>
 
             <div class="tw-my-2 tw-flex tw-items-center tw-gap-3">
               <v-divider />
@@ -205,6 +220,17 @@ export default {
   name: "SignInDialog",
   props: {
     value: { type: Boolean, required: true },
+  },
+  computed: {
+    oidcEnabled() {
+      return !!(
+        process.env.VUE_APP_OIDC_CLIENT_ID &&
+        process.env.VUE_APP_OIDC_AUTHORIZATION_ENDPOINT
+      )
+    },
+    oidcProviderName() {
+      return process.env.VUE_APP_OIDC_PROVIDER_NAME || "SSO"
+    },
   },
   data() {
     return {
