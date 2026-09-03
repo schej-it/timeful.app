@@ -66,6 +66,22 @@
                   <v-spacer />
                 </div>
               </v-btn>
+              <v-btn
+                v-if="oidcEnabled"
+                block
+                @click="signIn(calendarTypes.OIDC)"
+                class="tw-bg-white"
+              >
+                <div class="tw-flex tw-w-full tw-items-center tw-gap-2">
+                  <v-icon class="tw-flex-initial" size="20"
+                    >mdi-shield-account-outline</v-icon
+                  >
+                  <v-spacer />
+                  {{ isSignUp ? "Sign up with" : "Continue with" }}
+                  {{ oidcProviderName }}
+                  <v-spacer />
+                </div>
+              </v-btn>
 
               <div class="tw-my-2 tw-flex tw-items-center tw-gap-3">
                 <v-divider />
@@ -251,7 +267,7 @@
 
 <script>
 import { authTypes, calendarTypes } from "@/constants"
-import { post, signInGoogle, signInOutlook } from "@/utils"
+import { post, signInGoogle, signInOutlook, signInOidc } from "@/utils"
 import { mapMutations } from "vuex"
 import Logo from "@/components/Logo.vue"
 
@@ -275,6 +291,17 @@ export default {
   computed: {
     upgradeRedirect() {
       return this.$route.query.redirect === "upgrade"
+    },
+    // Only show the OIDC button if the frontend was built with an OIDC
+    // client id/authorization endpoint configured
+    oidcEnabled() {
+      return !!(
+        process.env.VUE_APP_OIDC_CLIENT_ID &&
+        process.env.VUE_APP_OIDC_AUTHORIZATION_ENDPOINT
+      )
+    },
+    oidcProviderName() {
+      return process.env.VUE_APP_OIDC_PROVIDER_NAME || "SSO"
     },
   },
 
@@ -307,6 +334,8 @@ export default {
         signInGoogle({ state, selectAccount: true })
       } else if (provider === calendarTypes.OUTLOOK) {
         signInOutlook({ state, selectAccount: true })
+      } else if (provider === calendarTypes.OIDC) {
+        signInOidc({ state })
       }
     },
     validateEmail() {
