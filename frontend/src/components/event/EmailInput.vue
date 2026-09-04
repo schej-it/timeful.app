@@ -138,7 +138,7 @@ export default {
       }
     },
     /**
-     * Check if the contact is an object and not a user inputed string.
+     * Check if the contact is an object and not a user inputted string.
      */
     isContact(contact) {
       return typeof contact === "object"
