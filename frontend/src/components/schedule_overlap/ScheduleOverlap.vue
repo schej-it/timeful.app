@@ -674,6 +674,23 @@
                   "
                 ></CalendarAccounts>
 
+                <v-btn
+                  v-if="
+                    calendarPermissionGranted &&
+                    !event.daysOnly &&
+                    !addingAvailabilityAsGuest
+                  "
+                  text
+                  color="primary"
+                  class="-tw-ml-2 tw-mt-1 tw-w-fit tw-px-2"
+                  :loading="loadingCalendarEvents"
+                  :disabled="loadingCalendarEvents || availabilityAnimEnabled"
+                  @click="setAvailabilityAutomatically"
+                >
+                  <v-icon left small>mdi-calendar-sync</v-icon>
+                  Sync from calendar
+                </v-btn>
+
                 <div v-if="showOverlayAvailabilityToggle">
                   <v-switch
                     id="overlay-availabilities-toggle"
