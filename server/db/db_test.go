@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"schej.it/server/db"
-
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestGetDailyUserLogByDate(t *testing.T) {
@@ -17,7 +15,6 @@ func TestGetDailyUserLogByDate(t *testing.T) {
 func TestGenerateShortEventId(t *testing.T) {
 	db.Init()
 
-	objectId, _ := primitive.ObjectIDFromHex("6607d6409f96021811c0a55f")
-	id := db.GenerateShortEventId(objectId)
+	id := db.GenerateShortEventId()
 	fmt.Println(id)
 }

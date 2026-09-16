@@ -138,7 +138,7 @@ func createEvent(c *gin.Context) {
 	}
 
 	// Generate short id
-	shortId := db.GenerateShortEventId(event.Id)
+	shortId := db.GenerateShortEventId()
 	event.ShortId = &shortId
 
 	// Schedule reminder emails if remindees array is not empty
@@ -1594,7 +1594,7 @@ func duplicateEvent(c *gin.Context) {
 	}
 
 	// Generate short id
-	shortId := db.GenerateShortEventId(event.Id)
+	shortId := db.GenerateShortEventId()
 	event.ShortId = &shortId
 
 	// Insert new event
@@ -1785,7 +1785,7 @@ func importEvent(c *gin.Context) {
 
 	// Create local event with new identity
 	newId := primitive.NewObjectID()
-	shortId := db.GenerateShortEventId(newId)
+	shortId := db.GenerateShortEventId()
 	numResponses := 0
 
 	remoteEvent.Id = newId
