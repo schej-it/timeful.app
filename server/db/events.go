@@ -167,9 +167,10 @@ func GenerateShortEventId() string {
 }
 
 func randomShortId() string {
-	letters := "23456789ABCDEFabcdef"
+	// All alphanumerics except I, i, L, l, O, o, 0 and 1
+	letters := "23456789ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz"
 	// Must stay <= 10. GetEventByEitherId treats longer ids as ObjectIDs
-	shortIdLen := 10
+	shortIdLen := 6
 	alphabetLen := big.NewInt(int64(len(letters)))
 	b := make([]byte, shortIdLen)
 	for i := range b {
