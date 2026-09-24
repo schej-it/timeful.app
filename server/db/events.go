@@ -2,7 +2,8 @@ package db
 
 import (
 	"context"
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -150,35 +151,36 @@ func GetEventsCreatedThisMonth(userId primitive.ObjectID) int {
 	return int(result)
 }
 
-// Returns a random unique short event id seeded by the actual event id
-func GenerateShortEventId(eventId primitive.ObjectID) string {
-	r := rand.New(rand.NewSource(eventId.Timestamp().Unix()))
+// Returns a cryptographically random short event id that is not already in use
+func GenerateShortEventId() string {
+	maxAttempts := 10
 
-	id := ""
-
-	letters := "23456789ABCDEFabcdef"
-	for i := 0; i < 5; i++ {
-		index := r.Intn(len(letters))
-		letter := letters[index : index+1]
-		id += letter
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		id := randomShortId()
+		if GetEventByShortId(id) == nil {
+			return id
+		}
 	}
 
-	i := 0
-	event := GetEventByShortId(id)
-	for event != nil && i < 5 {
-		// Event exists, keep on adding letters until event doesn't exist anymore, max of 5 more letters
-		index := r.Intn(len(letters))
-		letter := letters[index : index+1]
-		id += letter
-		event = GetEventByShortId(id)
-		i++
-	}
+	logger.StdErr.Panicln("Couldn't generate unique id")
+	return ""
+}
 
-	if event != nil {
-		logger.StdErr.Panicln("Couldn't generate unique id")
+func randomShortId() string {
+	// All alphanumerics except I, i, L, l, O, o, 0 and 1
+	letters := "23456789ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz"
+	// Must stay <= 10. GetEventByEitherId treats longer ids as ObjectIDs
+	shortIdLen := 6
+	alphabetLen := big.NewInt(int64(len(letters)))
+	b := make([]byte, shortIdLen)
+	for i := range b {
+		n, err := rand.Int(rand.Reader, alphabetLen)
+		if err != nil {
+			logger.StdErr.Panicln(err)
+		}
+		b[i] = letters[n.Int64()]
 	}
-
-	return id
+	return string(b)
 }
 
 // Updates the name of a guest response
@@ -215,7 +217,7 @@ func GuestNameExists(eventId string, guestName string) bool {
 
 	// Check if the name is a valid ObjectID that corresponds to an existing user
 	// If so, block it to prevent conflicts
-	//NOTE: we're checking against ALL logged in users because in case we allowed this, and a user with an account tried to 
+	//NOTE: we're checking against ALL logged in users because in case we allowed this, and a user with an account tried to
 	// submit their availability, overwriting would happen and we'd lose data.
 	objectId, err := primitive.ObjectIDFromHex(guestName)
 	if err == nil {
@@ -226,7 +228,6 @@ func GuestNameExists(eventId string, guestName string) bool {
 			return true
 		}
 	}
-
 
 	// For events, check EventResponsesCollection
 	eventObjectId, err := primitive.ObjectIDFromHex(event.Id.Hex())
