@@ -25,7 +25,20 @@ var OtpCodesCollection *mongo.Collection
 
 func Init() func() {
 	// Establish mongodb connection
-	var ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	mongoURI := os.Getenv("MONGODB_URI")
+	if mongoURI == "" {
+		mongoURI = "mongodb://localhost:27017"
+	}
+	// Guard against malformed URIs (e.g., accidental extra slashes). If parsing fails, fall back to localhost.
+	if !strings.HasPrefix(mongoURI, "mongodb://") {
+		logger.StdErr.Printf("MONGODB_URI malformed (%s); falling back to mongodb://localhost:27017\n", mongoURI)
+		mongoURI = "mongodb://localhost:27017"
+	}
+
+	var (
+		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+		err         error
+	)
 	defer cancel()
 
 	mongoURI := os.Getenv("MONGODB_URI")
@@ -35,7 +48,16 @@ func Init() func() {
 
 	Client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
 	if err != nil {
-		logger.StdErr.Panicln(err)
+		logger.StdErr.Printf("failed to connect to Mongo at %s: %v\n", connectURI, err)
+		// Always try a localhost fallback on any error (covers parse errors or host resolution failures)
+		fallback := "mongodb://localhost:27017"
+		if connectURI != fallback {
+			logger.StdErr.Printf("retrying Mongo connection with fallback %s\n", fallback)
+			Client, err = mongo.Connect(ctx, options.Client().ApplyURI(fallback))
+		}
+		if err != nil {
+			logger.StdErr.Panicln(err)
+		}
 	}
 
 	// Define mongodb database + collections
