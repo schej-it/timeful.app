@@ -1,6 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Applies dark mode before first paint to avoid a flash of the wrong theme -->
+    <script>
+      ;(function (d) {
+        var stored = localStorage["darkMode"]
+        var dark =
+          stored == undefined
+            ? window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches
+            : stored == "true"
+        if (dark) d.documentElement.classList.add("dark")
+      })(document)
+    </script>
     <!-- Google Tag Manager -->
     <script>
       ;(function (w, d, s, l, i) {

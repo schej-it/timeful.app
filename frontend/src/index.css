@@ -1,3 +1,30 @@
+:root {
+  --color-white: 255 255 255;
+  --color-off-white: 242 242 242;
+  --color-black: 0 0 0;
+  --color-gray: 189 189 189;
+  --color-dark-gray: 107 107 107;
+  --color-very-dark-gray: 79 79 79;
+  --color-light-gray: 243 244 246;
+  --color-light-gray-stroke: 223 223 223;
+}
+
+html.dark {
+  --color-white: 30 30 30;
+  --color-off-white: 42 42 42;
+  --color-black: 242 242 242;
+  --color-gray: 92 92 92;
+  --color-dark-gray: 168 168 168;
+  --color-very-dark-gray: 208 208 208;
+  --color-light-gray: 38 38 38;
+  --color-light-gray-stroke: 58 58 58;
+}
+
+html,
+body {
+  background-color: rgb(var(--color-white));
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

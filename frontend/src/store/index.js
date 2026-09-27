@@ -1,7 +1,7 @@
 import Vue from "vue"
 import Vuex from "vuex"
 import { upgradeDialogTypes } from "@/constants"
-import { get, isPremiumUser } from "@/utils"
+import { get, isPremiumUser, prefersDarkMode } from "@/utils"
 import {
   createFolder,
   deleteFolder,
@@ -18,6 +18,8 @@ export default new Vuex.Store({
     info: "",
 
     authUser: null,
+
+    darkMode: prefersDarkMode(),
 
     events: [],
     folders: [],
@@ -59,6 +61,10 @@ export default new Vuex.Store({
     },
     setInfo(state, info) {
       state.info = info
+    },
+
+    setDarkMode(state, darkMode) {
+      state.darkMode = darkMode
     },
 
     setAuthUser(state, authUser) {

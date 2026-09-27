@@ -70,6 +70,16 @@
           Donate
         </v-btn> -->
         <v-btn
+          id="dark-mode-toggle-btn"
+          icon
+          :aria-label="darkMode ? 'Switch to light mode' : 'Switch to dark mode'"
+          @click="toggleDarkMode"
+        >
+          <v-icon>{{
+            darkMode ? "mdi-white-balance-sunny" : "mdi-weather-night"
+          }}</v-icon>
+        </v-btn>
+        <v-btn
           v-if="$route.name === 'home' && !isPhone"
           color="primary"
           class="tw-mx-2 tw-rounded-md"
@@ -238,6 +248,7 @@ import {
   signInGoogle,
   signInOutlook,
   isPremiumUser,
+  setDarkModePreference,
 } from "@/utils"
 import {
   authTypes,
@@ -295,6 +306,7 @@ export default {
       "enablePaywall",
       "upgradeDialogVisible",
       "newDialogOptions",
+      "darkMode",
     ]),
     isPhone() {
       return isPhone(this.$vuetify)
@@ -331,6 +343,7 @@ export default {
       "setPricingPageConversion",
       "setEnablePaywall",
       "setFeatureFlagsLoaded",
+      "setDarkMode",
     ]),
     ...mapActions([
       "getEvents",
@@ -340,6 +353,12 @@ export default {
     ]),
     handleScroll(e) {
       this.scrollY = window.scrollY
+    },
+    toggleDarkMode() {
+      const darkMode = !this.darkMode
+      this.setDarkMode(darkMode)
+      setDarkModePreference(darkMode)
+      this.$posthog?.capture("dark_mode_toggled", { darkMode })
     },
     _createNew(eventOnly = false) {
       this.$posthog.capture("create_new_button_clicked", {
@@ -460,6 +479,13 @@ export default {
   },
 
   watch: {
+    darkMode: {
+      immediate: true,
+      handler(darkMode) {
+        document.documentElement.classList.toggle("dark", darkMode)
+        this.$vuetify.theme.dark = darkMode
+      },
+    },
     $route: {
       immediate: true,
       async handler() {

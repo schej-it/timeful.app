@@ -7,6 +7,7 @@ module.exports = {
     "./src/**/*.{vue,js,ts,jsx,tsx}",
   ],
   important: true,
+  darkMode: "class",
   theme: {
     extend: {
       fontSize: {
@@ -27,14 +28,19 @@ module.exports = {
       orange: "#E5A800",
       yellow: "#FFE8B8",
       "dark-yellow": "#997700",
-      white: "#FFFFFF",
-      "off-white": "#F2F2F2",
-      black: "#000000",
-      gray: "#BDBDBD",
-      "dark-gray": "#6B6B6B",
-      "very-dark-gray": "#4F4F4F",
-      "light-gray": "#f3f4f6",
-      "light-gray-stroke": "#dfdfdf",
+      // Neutral/surface colors are backed by CSS variables (see index.css)
+      // so that they automatically flip when the `dark` class is toggled,
+      // without needing to touch every component that uses them. The
+      // variables hold "R G B" channel triplets so tw-*/opacity modifiers
+      // (e.g. tw-text-white/80) keep working via Tailwind's <alpha-value>.
+      white: "rgb(var(--color-white) / <alpha-value>)",
+      "off-white": "rgb(var(--color-off-white) / <alpha-value>)",
+      black: "rgb(var(--color-black) / <alpha-value>)",
+      gray: "rgb(var(--color-gray) / <alpha-value>)",
+      "dark-gray": "rgb(var(--color-dark-gray) / <alpha-value>)",
+      "very-dark-gray": "rgb(var(--color-very-dark-gray) / <alpha-value>)",
+      "light-gray": "rgb(var(--color-light-gray) / <alpha-value>)",
+      "light-gray-stroke": "rgb(var(--color-light-gray-stroke) / <alpha-value>)",
       "avail-green": colors.emerald, // The green used for marking availability
       red: "#DB1616",
     },

@@ -239,6 +239,19 @@ export const deleteEventsCreated = () => {
   localStorage.removeItem("eventsCreated")
 }
 
+/** Returns whether dark mode should be enabled, checking localStorage first
+ * and falling back to the OS/browser's preferred color scheme */
+export const prefersDarkMode = () => {
+  return localStorage["darkMode"] == undefined
+    ? window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false
+    : localStorage["darkMode"] == "true"
+}
+
+/** Persists the user's dark mode preference to localStorage */
+export const setDarkModePreference = (darkMode) => {
+  localStorage["darkMode"] = darkMode
+}
+
 export const prefersStartOnMonday = () => {
   let defaultStartOnMonday = false
   try {
