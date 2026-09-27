@@ -8,7 +8,7 @@ func resetAllowedEmailStateForTests() {
 	allowedEmailState.rawEmails = ""
 	allowedEmailState.rawDomains = ""
 	allowedEmailState.allowedEmails = map[string]struct{}{}
-	allowedEmailState.allowedEmailTlds = map[string]struct{}{}
+	allowedEmailState.allowedDomains = map[string]struct{}{}
 }
 
 func TestIsAllowedEmail_Unrestricted(t *testing.T) {

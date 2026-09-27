@@ -36,13 +36,13 @@ var errEmailNotAllowed = errors.New("email is not allowed for this deployment")
 
 var allowedEmailState = struct {
 	sync.RWMutex
-	rawEmails        string
-	rawDomains       string
-	allowedEmails    map[string]struct{}
-	allowedEmailTlds map[string]struct{}
+	rawEmails      string
+	rawDomains     string
+	allowedEmails  map[string]struct{}
+	allowedDomains map[string]struct{}
 }{
-	allowedEmails:    map[string]struct{}{},
-	allowedEmailTlds: map[string]struct{}{},
+	allowedEmails:  map[string]struct{}{},
+	allowedDomains: map[string]struct{}{},
 }
 
 func InitAuth(router *gin.RouterGroup) {
@@ -68,7 +68,7 @@ func isAllowedEmail(email string) bool {
 	allowedEmailState.RLock()
 	defer allowedEmailState.RUnlock()
 
-	if len(allowedEmailState.allowedEmails) == 0 && len(allowedEmailState.allowedEmailTlds) == 0 {
+	if len(allowedEmailState.allowedEmails) == 0 && len(allowedEmailState.allowedDomains) == 0 {
 		// Empty means unrestricted.
 		return true
 	}
@@ -82,7 +82,7 @@ func isAllowedEmail(email string) bool {
 		return false
 	}
 	emailDomain := email[atIdx+1:]
-	_, ok := allowedEmailState.allowedEmailTlds[emailDomain]
+	_, ok := allowedEmailState.allowedDomains[emailDomain]
 	return ok
 }
 
@@ -104,7 +104,7 @@ func refreshAllowlistCache(rawEmails string, rawDomains string) {
 	allowedEmailState.rawEmails = rawEmails
 	allowedEmailState.rawDomains = rawDomains
 	allowedEmailState.allowedEmails = parseAllowlist(rawEmails)
-	allowedEmailState.allowedEmailTlds = parseAllowlist(rawDomains)
+	allowedEmailState.allowedDomains = parseAllowlist(rawDomains)
 }
 
 func parseAllowlist(raw string) map[string]struct{} {
