@@ -21,7 +21,7 @@ require (
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 )
 
-require github.com/stripe/stripe-go/v82 v82.0.0 // indirect
+require github.com/stripe/stripe-go/v82 v82.0.0
 
 require (
 	cloud.google.com/go/compute v1.23.3 // indirect
