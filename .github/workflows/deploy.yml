@@ -1,13 +1,18 @@
-name: Deploy Schej
+name: Deploy Timeful
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      target:
-        description: "What to deploy?"
-        required: true
-        type: choice
-        options: [server, frontend, both]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: timeful-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -15,47 +20,102 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      # -----------------------------
+      # Frontend
+      # -----------------------------
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
-          ref: ${{ github.ref_name }}
+          node-version: "18"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Prepare SSH
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > aws-key
-          chmod 600 aws-key
-          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
-
-      - name: Ensure deploy scripts are executable
-        run: chmod +x ./deploy_scripts/*.sh
-
-      - name: Deploy
-        shell: bash
+      - name: Build frontend
+        working-directory: frontend
         env:
-          TARGET: ${{ github.event.inputs.target }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_HOST: ${{ secrets.SSH_HOST }}
+          VUE_APP_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          VUE_APP_POSTHOG_API_KEY: ""
+          VUE_APP_MICROSOFT_CLIENT_ID: ""
         run: |
-          set -euo pipefail
-          DEPLOY_SCRIPT_DIRECTORY="./deploy_scripts/"
-          HOST="${SSH_USER}@${SSH_HOST}"
+          npm ci
+          npm run build
 
-          if [ "$TARGET" = "server" ]; then
-            DEPLOY_SCRIPT="deploy_server.sh"
-          elif [ "$TARGET" = "frontend" ]; then
-            DEPLOY_SCRIPT="deploy_frontend.sh"
-          elif [ "$TARGET" = "both" ]; then
-            for DEPLOY_SCRIPT in deploy_frontend.sh deploy_server.sh; do
-              echo "${DEPLOY_SCRIPT_DIRECTORY}${DEPLOY_SCRIPT}"
-              /bin/bash "${DEPLOY_SCRIPT_DIRECTORY}${DEPLOY_SCRIPT}" "$HOST" "./aws-key"
-            done
-            exit 0
-          else
-            echo "Invalid script name!"
-            exit 1
-          fi
+      # -----------------------------
+      # Backend
+      # -----------------------------
 
-          echo "${DEPLOY_SCRIPT_DIRECTORY}${DEPLOY_SCRIPT}"
-          /bin/bash "${DEPLOY_SCRIPT_DIRECTORY}${DEPLOY_SCRIPT}" "$HOST" "./aws-key"
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25"
+          cache-dependency-path: server/go.sum
+
+      - name: Build backend
+        working-directory: server
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          go build \
+            -buildvcs=false \
+            -trimpath \
+            -ldflags="-s -w" \
+            -o ../timeful-server \
+            .
+
+      # -----------------------------
+      # Release archive
+      # -----------------------------
+
+      - name: Package release
+        run: |
+          mkdir -p release/frontend
+
+          cp timeful-server release/timeful-server
+          cp -a frontend/dist release/frontend/dist
+
+          chmod +x release/timeful-server
+
+          tar -C release -czf timeful-release.tar.gz .
+
+      # -----------------------------
+      # Authenticate to Google Cloud
+      # -----------------------------
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v3
+
+      # -----------------------------
+      # Deploy through IAP
+      # -----------------------------
+
+      - name: Upload release
+        run: |
+          gcloud compute scp \
+            timeful-release.tar.gz \
+            "${{ vars.GCP_VM }}:/tmp/timeful-release.tar.gz" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --zone="${{ vars.GCP_ZONE }}" \
+            --tunnel-through-iap \
+            --quiet
+
+      - name: Activate release
+        run: |
+          gcloud compute ssh \
+            "${{ vars.GCP_VM }}" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --zone="${{ vars.GCP_ZONE }}" \
+            --tunnel-through-iap \
+            --quiet \
+            --command="sudo /usr/local/sbin/deploy-timeful /tmp/timeful-release.tar.gz && rm -f /tmp/timeful-release.tar.gz"
