@@ -215,15 +215,7 @@ export const lightOrDark = (color) => {
 
 /** Returns whether the given user is a premium user */
 export const isPremiumUser = (authUser) => {
-  if (!authUser) return false
-
-  if (authUser.stripeCustomerId) {
-    if (authUser.isPremium !== null) {
-      return authUser.isPremium
-    }
-    return true
-  }
-  return false
+  return !!authUser
 }
 
 /** Adds an event ID to the 'eventsCreated' list in localStorage */

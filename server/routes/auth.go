@@ -4,6 +4,7 @@ package routes
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -30,6 +31,8 @@ import (
 	"schej.it/server/utils"
 )
 
+var errEmailNotAllowed = errors.New("email-not-allowed")
+
 func InitAuth(router *gin.RouterGroup) {
 	authRouter := router.Group("/auth")
 
@@ -41,6 +44,36 @@ func InitAuth(router *gin.RouterGroup) {
 	authRouter.POST("/otp/check-email", checkEmail)
 	authRouter.POST("/otp/send", sendOtp)
 	authRouter.POST("/otp/verify", verifyOtp)
+}
+
+func isAllowedEmail(email string) bool {
+	email = utils.NormalizeEmail(email)
+
+	rawEmails := os.Getenv("ALLOWED_EMAILS")
+	rawDomains := os.Getenv("ALLOWED_EMAIL_DOMAINS")
+	if rawEmails == "" && rawDomains == "" {
+		// Empty means unrestricted.
+		return true
+	}
+
+	for _, allowed := range strings.Split(rawEmails, ",") {
+		if email == utils.NormalizeEmail(allowed) {
+			return true
+		}
+	}
+
+	atIdx := strings.LastIndex(email, "@")
+	if atIdx == -1 || atIdx == len(email)-1 {
+		return false
+	}
+	emailDomain := email[atIdx+1:]
+	for _, allowedDomain := range strings.Split(rawDomains, ",") {
+		if emailDomain == utils.NormalizeEmail(allowedDomain) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // @Summary Signs user in
@@ -67,6 +100,10 @@ func signIn(c *gin.Context) {
 
 	user, err := signInHelper(c, tokens, models.WEB, payload.CalendarType, *payload.TimezoneOffset)
 	if err != nil {
+		if errors.Is(err, errEmailNotAllowed) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "email-not-allowed"})
+			return
+		}
 		c.JSON(http.StatusUnauthorized, responses.Error{Error: errs.InvalidIdToken})
 		return
 	}
@@ -119,6 +156,10 @@ func signInMobile(c *gin.Context) {
 		payload.TimezoneOffset,
 	)
 	if err != nil {
+		if errors.Is(err, errEmailNotAllowed) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "email-not-allowed"})
+			return
+		}
 		c.JSON(http.StatusUnauthorized, responses.Error{Error: errs.InvalidIdToken})
 		return
 	}
@@ -170,6 +211,9 @@ func signInHelper(c *gin.Context, token auth.TokenResponse, tokenOrigin models.T
 		picture = ""
 	}
 	email = utils.NormalizeEmail(email)
+	if !isAllowedEmail(email) {
+		return models.User{}, errEmailNotAllowed
+	}
 
 	primaryAccountKey := utils.GetCalendarAccountKey(email, calendarType)
 
@@ -344,7 +388,11 @@ func checkEmail(c *gin.Context) {
 		return
 	}
 
-	email := strings.ToLower(strings.TrimSpace(payload.Email))
+	email := utils.NormalizeEmail(payload.Email)
+	if !isAllowedEmail(email) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "email-not-allowed"})
+		return
+	}
 	isNewUser := db.GetUserByEmail(email) == nil
 
 	c.JSON(http.StatusOK, gin.H{"isNewUser": isNewUser})
@@ -365,7 +413,11 @@ func sendOtp(c *gin.Context) {
 		return
 	}
 
-	email := strings.ToLower(strings.TrimSpace(payload.Email))
+	email := utils.NormalizeEmail(payload.Email)
+	if !isAllowedEmail(email) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "email-not-allowed"})
+		return
+	}
 
 	// Delete any existing OTP codes for this email
 	db.OtpCodesCollection.DeleteMany(context.Background(), bson.M{"email": email})
@@ -414,7 +466,11 @@ func verifyOtp(c *gin.Context) {
 		return
 	}
 
-	email := strings.ToLower(strings.TrimSpace(payload.Email))
+	email := utils.NormalizeEmail(payload.Email)
+	if !isAllowedEmail(email) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "email-not-allowed"})
+		return
+	}
 
 	// Find the OTP document
 	var otpDoc models.OtpCode
