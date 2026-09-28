@@ -390,7 +390,7 @@ func sendOtp(c *gin.Context) {
 
 	listmonk.SendEmailAddSubscriberIfNotExist(email, otpTemplateId, bson.M{
 		"code": code,
-	}, false, "Timeful <noreply@timeful.app>")
+	}, false, listmonk.EmailOptions{FromEmail: "Timeful <noreply@timeful.app>"})
 
 	c.JSON(http.StatusOK, gin.H{})
 }

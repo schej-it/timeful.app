@@ -28,7 +28,7 @@ func TestCreateEmailTask(t *testing.T) {
 	}
 
 	InitTasks()
-	CreateEmailTask("schej.team@gmail.com", "Jonathan", "casablanca", "65e636bb760d3ea2e113e161")
+	CreateEmailTask("schej.team@gmail.com", "Jonathan", "casablanca", "65e636bb760d3ea2e113e161", "")
 }
 
 func TestDeleteEmailTask(t *testing.T) {
@@ -56,7 +56,7 @@ func TestDeleteEmailTask(t *testing.T) {
 
 	// Should succeed
 	fmt.Println("Creating email task...")
-	taskIds := CreateEmailTask("schej.team@gmail.com", "Jonathan", "casablanca", "65e636bb760d3ea2e113e161")
+	taskIds := CreateEmailTask("schej.team@gmail.com", "Jonathan", "casablanca", "65e636bb760d3ea2e113e161", "")
 	fmt.Println("Email task created")
 
 	time.Sleep(10 * time.Second)

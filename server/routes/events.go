@@ -154,7 +154,7 @@ func createEvent(c *gin.Context) {
 		// Schedule email reminders for each of the remindees' emails
 		remindees := make([]models.Remindee, 0)
 		for _, email := range payload.Remindees {
-			taskIds := gcloud.CreateEmailTask(email, ownerName, payload.Name, event.GetId())
+			taskIds := gcloud.CreateEmailTask(email, ownerName, payload.Name, event.GetId(), listmonk.ReplyToForUser(user))
 			remindees = append(remindees, models.Remindee{
 				Email:     email,
 				TaskIds:   taskIds,
@@ -208,7 +208,7 @@ func createEvent(c *gin.Context) {
 					"ownerName": ownerName,
 					"groupName": event.Name,
 					"groupUrl":  fmt.Sprintf("%s/g/%s", utils.GetBaseUrl(), event.GetId()),
-				}, false)
+				}, false, listmonk.EmailOptions{ReplyTo: listmonk.ReplyToForUser(user)})
 				attendees = append(attendees, models.Attendee{Email: email, Declined: utils.FalsePtr(), EventId: event.Id})
 			}
 
@@ -331,10 +331,11 @@ func editEvent(c *gin.Context) {
 
 		// Determine owner name
 		var ownerName string
+		var owner *models.User
 		if event.OwnerId == primitive.NilObjectID {
 			ownerName = "Somebody"
 		} else {
-			owner := db.GetUserById(event.OwnerId.Hex())
+			owner = db.GetUserById(event.OwnerId.Hex())
 			ownerName = owner.FirstName
 		}
 
@@ -344,7 +345,7 @@ func editEvent(c *gin.Context) {
 
 		for _, addedEmail := range added {
 			// Schedule email tasks
-			taskIds := gcloud.CreateEmailTask(addedEmail.Value, ownerName, event.Name, event.GetId())
+			taskIds := gcloud.CreateEmailTask(addedEmail.Value, ownerName, event.Name, event.GetId(), listmonk.ReplyToForUser(owner))
 			updatedRemindees = append(updatedRemindees, models.Remindee{
 				Email:     addedEmail.Value,
 				TaskIds:   taskIds,
@@ -414,7 +415,7 @@ func editEvent(c *gin.Context) {
 				"ownerName": ownerName,
 				"groupName": event.Name,
 				"groupUrl":  fmt.Sprintf("%s/g/%s", utils.GetBaseUrl(), event.GetId()),
-			}, false)
+			}, false, listmonk.EmailOptions{ReplyTo: listmonk.ReplyToForUser(owner)})
 			db.AttendeesCollection.InsertOne(context.Background(), models.Attendee{
 				Email:    addedEmail.Value,
 				Declined: utils.FalsePtr(),
@@ -433,7 +434,7 @@ func editEvent(c *gin.Context) {
 					"groupName": event.Name,
 					"groupUrl":  fmt.Sprintf("%s/g/%s", utils.GetBaseUrl(), event.GetId()),
 					"emails":    emails,
-				}, false)
+				}, false, listmonk.EmailOptions{ReplyTo: listmonk.ReplyToForUser(owner)})
 			}
 		}
 	}

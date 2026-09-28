@@ -42,7 +42,8 @@ func InitTasks() func() {
 	}
 }
 
-func CreateEmailTask(email string, ownerName string, eventName string, eventId string) []string {
+// replyTo is optional; if non-empty, sets the Reply-To header on the reminder emails
+func CreateEmailTask(email string, ownerName string, eventName string, eventId string, replyTo string) []string {
 	if TasksClient == nil {
 		logger.StdErr.Println("WARNING: Cloud Tasks is disabled, skipping CreateEmailTask")
 		return []string{}
@@ -91,17 +92,12 @@ func CreateEmailTask(email string, ownerName string, eventName string, eventId s
 
 	for templateId, scheduleTime := range tasksToCreate {
 		// Create JSON object
-		body, err := json.Marshal(bson.M{
-			"subscriber_email": email,
-			"template_id":      templateId,
-			"data": bson.M{
-				"ownerName":   ownerName,
-				"eventName":   eventName,
-				"eventUrl":    eventUrl,
-				"finishedUrl": finishedUrl,
-			},
-			"content_type": "html",
-		})
+		body, err := json.Marshal(listmonk.TxPayload(email, templateId, bson.M{
+			"ownerName":   ownerName,
+			"eventName":   eventName,
+			"eventUrl":    eventUrl,
+			"finishedUrl": finishedUrl,
+		}, listmonk.EmailOptions{ReplyTo: replyTo}))
 		if err != nil {
 			logger.StdErr.Panicln(err)
 		}

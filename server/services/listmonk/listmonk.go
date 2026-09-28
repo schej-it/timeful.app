@@ -6,12 +6,49 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/mail"
 	"os"
 	"strconv"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"schej.it/server/logger"
+	"schej.it/server/models"
 )
+
+// Optional overrides for a transactional email
+type EmailOptions struct {
+	FromEmail string // Overrides the default sender address
+	ReplyTo   string // Sets the Reply-To header
+}
+
+// Returns a Reply-To address (e.g. "Jane Doe <jane@example.com>") for the given user, or "" if user is nil
+func ReplyToForUser(user *models.User) string {
+	if user == nil || user.Email == "" {
+		return ""
+	}
+	name := strings.TrimSpace(user.FirstName + " " + user.LastName)
+	return (&mail.Address{Name: name, Address: user.Email}).String()
+}
+
+// Returns the body for a POST /api/tx request
+func TxPayload(email string, templateId int, data bson.M, opts ...EmailOptions) bson.M {
+	payload := bson.M{
+		"subscriber_email": email,
+		"template_id":      templateId,
+		"data":             data,
+		"content_type":     "html",
+	}
+	if len(opts) > 0 {
+		if opts[0].FromEmail != "" {
+			payload["from_email"] = opts[0].FromEmail
+		}
+		if opts[0].ReplyTo != "" {
+			payload["headers"] = []map[string]string{{"Reply-To": opts[0].ReplyTo}}
+		}
+	}
+	return payload
+}
 
 // Adds the given user to the Listmonk contact list
 // If subscriberId is not nil, then UPDATE the user instead of adding user
@@ -123,9 +160,8 @@ func DoesUserExist(email string) (bool, *int) {
 	}
 }
 
-// Send a transactional email using the specified template and data.
-// fromEmail is optional; if non-empty, overrides the default sender address.
-func SendEmail(email string, templateId int, data bson.M, fromEmail ...string) {
+// Send a transactional email using the specified template and data
+func SendEmail(email string, templateId int, data bson.M, opts ...EmailOptions) {
 	if os.Getenv("LISTMONK_ENABLED") == "false" {
 		return
 	}
@@ -136,16 +172,7 @@ func SendEmail(email string, templateId int, data bson.M, fromEmail ...string) {
 	listmonkPassword := os.Getenv("LISTMONK_PASSWORD")
 
 	// Construct body
-	payload := bson.M{
-		"subscriber_email": email,
-		"template_id":      templateId,
-		"data":             data,
-		"content_type":     "html",
-	}
-	if len(fromEmail) > 0 && fromEmail[0] != "" {
-		payload["from_email"] = fromEmail[0]
-	}
-	body, err := json.Marshal(payload)
+	body, err := json.Marshal(TxPayload(email, templateId, data, opts...))
 	if err != nil {
 		logger.StdErr.Println(err)
 		return
@@ -166,7 +193,7 @@ func SendEmail(email string, templateId int, data bson.M, fromEmail ...string) {
 }
 
 // Send a transactional email using the specified template and data. Adds subscriber if they don't exist
-func SendEmailAddSubscriberIfNotExist(email string, templateId int, data bson.M, sendMarketingEmails bool, fromEmail ...string) {
+func SendEmailAddSubscriberIfNotExist(email string, templateId int, data bson.M, sendMarketingEmails bool, opts ...EmailOptions) {
 	if os.Getenv("LISTMONK_ENABLED") == "false" {
 		return
 	}
@@ -175,5 +202,5 @@ func SendEmailAddSubscriberIfNotExist(email string, templateId int, data bson.M,
 		AddUserToListmonk(email, "", "", "", nil, sendMarketingEmails)
 	}
 
-	SendEmail(email, templateId, data, fromEmail...)
+	SendEmail(email, templateId, data, opts...)
 }
