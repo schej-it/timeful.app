@@ -12,6 +12,7 @@ const (
 	GoogleCalendarType  CalendarType = "google"
 	OutlookCalendarType CalendarType = "outlook"
 	ICSCalendarType     CalendarType = "ics"
+	OidcCalendarType    CalendarType = "oidc"
 )
 
 // OAuth2CalendarAuth contains necessary auth info for the user's google calendar account

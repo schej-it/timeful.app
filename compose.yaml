@@ -21,6 +21,9 @@ services:
         VUE_APP_POSTHOG_API_KEY: ${VUE_APP_POSTHOG_API_KEY:-}
         VUE_APP_GOOGLE_CLIENT_ID: ${CLIENT_ID:-}
         VUE_APP_MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+        VUE_APP_OIDC_PROVIDER_NAME: ${OIDC_PROVIDER_NAME:-}
+        VUE_APP_OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+        VUE_APP_OIDC_AUTHORIZATION_ENDPOINT: ${OIDC_ISSUER_URL:-}/authorize
     volumes:
       - frontend_dist:/app/dist
     command:

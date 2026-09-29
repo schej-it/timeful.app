@@ -69,3 +69,30 @@ export const signInOutlook = ({
   const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=${scope}${stateString}`
   window.location.href = url
 }
+
+/**
+ * Redirects the user to the configured OIDC provider's authorization
+ * endpoint to sign in / create an account. This is authentication-only.
+ *
+ * Requires VUE_APP_OIDC_CLIENT_ID and VUE_APP_OIDC_AUTHORIZATION_ENDPOINT to
+ * be set at frontend build time.
+ */
+export const signInOidc = ({ state = {} } = {}) => {
+  const clientId = process.env.VUE_APP_OIDC_CLIENT_ID
+  const authorizationEndpoint = process.env.VUE_APP_OIDC_AUTHORIZATION_ENDPOINT
+  const redirectUri = encodeURIComponent(`${window.location.origin}/auth`)
+
+  // We put scope on `state` because not every OIDC provider echoes `scope`
+  // back on the callback. Auth.vue reads `scope ?? state.scope`.
+  const scope = "openid email profile"
+
+  if (!state) state = {}
+  state.calendarType = calendarTypes.OIDC
+  state.scope = scope
+  const stateString = `&state=${encodeURIComponent(JSON.stringify(state))}`
+
+  const url = `${authorizationEndpoint}?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${encodeURIComponent(
+    scope,
+  )}${stateString}`
+  window.location.href = url
+}
