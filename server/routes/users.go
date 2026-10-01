@@ -33,16 +33,7 @@ func getIsUserPremium(c *gin.Context) {
 		return
 	}
 
-	isPremium := false
-	if user.StripeCustomerId != nil {
-		if user.IsPremium != nil {
-			isPremium = *user.IsPremium
-		} else {
-			isPremium = true
-		}
-	}
-
-	c.JSON(http.StatusOK, gin.H{"isPremium": isPremium})
+	c.JSON(http.StatusOK, gin.H{"isPremium": user.HasPremium()})
 }
 
 // @Summary Returns a minimal public user profile (safe for unauthenticated clients)

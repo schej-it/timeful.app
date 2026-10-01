@@ -1901,6 +1901,7 @@ func stripSensitiveUserFields(user *models.User) {
 	user.CalendarAccounts = nil
 	user.CalendarOptions = nil
 	user.StripeCustomerId = nil
+	user.PolarCustomerId = nil
 	user.PrimaryAccountKey = nil
 }
 

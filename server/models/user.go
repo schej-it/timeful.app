@@ -33,8 +33,23 @@ type User struct {
 
 	// Stripe customer ID
 	StripeCustomerId *string `json:"stripeCustomerId" bson:"stripeCustomerId,omitempty"`
+	// Polar customer ID
+	PolarCustomerId  *string `json:"polarCustomerId" bson:"polarCustomerId,omitempty"`
 	IsPremium        *bool   `json:"isPremium" bson:"isPremium,omitempty"`
 	NumEventsCreated int     `json:"numEventsCreated" bson:"numEventsCreated,omitempty"`
+}
+
+// HasPremium returns whether the user has an active premium purchase through
+// either billing provider. Users with a customer ID but no explicit isPremium
+// value are treated as premium (e.g. lifetime purchases predating isPremium).
+func (u *User) HasPremium() bool {
+	if u.StripeCustomerId == nil && u.PolarCustomerId == nil {
+		return false
+	}
+	if u.IsPremium != nil {
+		return *u.IsPremium
+	}
+	return true
 }
 
 // Declare the possible types of TokenOrigin

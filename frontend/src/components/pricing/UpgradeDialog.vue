@@ -640,7 +640,7 @@ export default {
     },
     async fetchPrice() {
       let res;
-      // Mock stripe price results in development mode as the Stripe API won't be accessible
+      // Mock price results in development mode as the Polar API won't be accessible
       if (process.env.NODE_ENV === "development") {
         res = {
           lifetime: { id: "price_dev_lifetime", unit_amount: 9999, recurring: null },
@@ -651,7 +651,7 @@ export default {
           yearlyStudent: { id: "price_dev_yearly_student", unit_amount: 3999, recurring: { interval: "year" } },
         }
       } else {
-        res = await get("/stripe/price?exp=" + this.pricingPageConversion)
+        res = await get("/polar/price?exp=" + this.pricingPageConversion)
       }
 
       const {
@@ -683,8 +683,7 @@ export default {
 
       if (!this.authUser) {
         const upgradeParams = {
-          priceId: price.id,
-          isSubscription: price.recurring !== null,
+          productId: price.id,
           originUrl: window.location.href,
         }
         this.$emit("input", false)
@@ -708,10 +707,8 @@ export default {
             )}`
           }
         }
-        const res = await post("/stripe/create-checkout-session", {
-          priceId: price.id,
-          userId: this.authUser._id,
-          isSubscription: price.recurring !== null,
+        const res = await post("/polar/create-checkout-session", {
+          productId: price.id,
           originUrl: originUrl,
         })
         window.location.href = res.url
