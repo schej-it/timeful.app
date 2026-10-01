@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stripe/stripe-go/v82"
@@ -183,6 +184,13 @@ func stripeWebhook(c *gin.Context) {
 		if err != nil {
 			logger.StdErr.Printf("Error parsing webhook JSON: %v\n", err)
 			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+		// Polar cancels Stripe subscriptions it takes over billing for. Premium
+		// continues on Polar (see the subscription.migrated handler in polar.go)
+		if sub.CancellationDetails != nil && strings.HasPrefix(sub.CancellationDetails.Comment, "Migrated to Polar") {
+			logger.StdOut.Printf("Stripe subscription %s migrated to Polar, keeping premium\n", sub.ID)
+			c.Status(http.StatusOK)
 			return
 		}
 		user := db.GetUserByStripeCustomerId(sub.Customer.ID)

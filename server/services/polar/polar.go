@@ -149,6 +149,10 @@ type Subscription struct {
 	Status     string   `json:"status"`
 	CustomerId string   `json:"customer_id"`
 	Customer   Customer `json:"customer"`
+	// Set on subscription.migrated: the billing provider the subscription
+	// was migrated from (e.g. "stripe") and its ID there
+	Provider               string `json:"provider"`
+	ProviderSubscriptionId string `json:"provider_subscription_id"`
 }
 
 func CreateCheckout(params CheckoutCreate) (*Checkout, error) {
