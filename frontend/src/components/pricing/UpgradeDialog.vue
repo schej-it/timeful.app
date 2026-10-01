@@ -642,8 +642,13 @@ export default {
     },
     async fetchPrice() {
       let res;
-      // Mock price results in development mode as the Polar API won't be accessible
-      if (process.env.NODE_ENV === "development") {
+      try {
+        res = await get("/polar/price?exp=" + this.pricingPageConversion)
+      } catch (e) {
+        // In development, fall back to mock prices so the dialog still renders
+        // without Polar configured (checkout won't work with these IDs)
+        if (process.env.NODE_ENV !== "development") throw e
+        console.warn("Failed to fetch Polar prices, using mock prices", e)
         res = {
           // lifetime: { id: "price_dev_lifetime", unit_amount: 9999, recurring: null },
           monthly: { id: "price_dev_monthly", unit_amount: 999, recurring: { interval: "month" } },
@@ -652,8 +657,6 @@ export default {
           monthlyStudent: { id: "price_dev_monthly_student", unit_amount: 499, recurring: { interval: "month" } },
           yearlyStudent: { id: "price_dev_yearly_student", unit_amount: 3999, recurring: { interval: "year" } },
         }
-      } else {
-        res = await get("/polar/price?exp=" + this.pricingPageConversion)
       }
 
       const {
