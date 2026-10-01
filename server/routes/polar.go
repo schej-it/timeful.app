@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	stripesubscription "github.com/stripe/stripe-go/v82/subscription"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"schej.it/server/db"
@@ -304,6 +305,38 @@ func setPolarCustomerPremium(polarCustomerId string, isPremium bool) *models.Use
 	return user
 }
 
+// linkMigratedSubscription links a subscription migrated from Stripe to the
+// user that owned it, so later Polar events (renewals, failed payments,
+// cancellations) find the user by their Polar customer ID.
+func linkMigratedSubscription(sub *polar.Subscription) error {
+	var user *models.User
+	if sub.Provider == "stripe" && sub.ProviderSubscriptionId != "" {
+		stripeSub, err := stripesubscription.Get(sub.ProviderSubscriptionId, nil)
+		if err != nil {
+			return fmt.Errorf("getting Stripe subscription %s: %w", sub.ProviderSubscriptionId, err)
+		}
+		if stripeSub.Customer != nil {
+			user = db.GetUserByStripeCustomerId(stripeSub.Customer.ID)
+		}
+	}
+	if user == nil && sub.Customer.Email != "" {
+		// Fall back to the email the Stripe customer was imported with
+		user = db.GetUserByEmail(sub.Customer.Email)
+	}
+	if user == nil {
+		logger.StdErr.Printf("No user found for migrated subscription %s (%s %s, %s)", sub.Id, sub.Provider, sub.ProviderSubscriptionId, sub.Customer.Email)
+		slackbot.SendTextMessageWithType(fmt.Sprintf(":warning: Could not find user for subscription migrated to Polar (%s, %s). Link polarCustomerId %s manually.", sub.ProviderSubscriptionId, sub.Customer.Email, sub.CustomerId), slackbot.MONETIZATION)
+		return nil
+	}
+
+	_, err := db.UsersCollection.UpdateOne(context.Background(), bson.M{"_id": user.Id}, bson.M{"$set": bson.M{"polarCustomerId": sub.CustomerId, "isPremium": true}})
+	if err != nil {
+		return err
+	}
+	logger.StdOut.Printf("Linked migrated subscription %s to user %s (Polar customer %s)\n", sub.Id, user.Id.Hex(), sub.CustomerId)
+	return nil
+}
+
 // @Summary Receives Polar webhook events
 // @Tags polar
 // @Accept json
@@ -351,7 +384,28 @@ func polarWebhook(c *gin.Context) {
 		if userId == "" {
 			userId = metadataString(order.Metadata, "userId")
 		}
+		if userId == "" {
+			// Customers migrated from Stripe have no external ID, but were linked
+			// to a user by the subscription.migrated handler
+			if user := db.GetUserByPolarCustomerId(order.CustomerId); user != nil {
+				userId = user.Id.Hex()
+			}
+		}
 		fulfillPolarPurchase(userId, order.CustomerId, utils.Coalesce(order.ProductId), order.TotalAmount)
+
+	case "subscription.migrated":
+		var sub polar.Subscription
+		if err := json.Unmarshal(event.Data, &sub); err != nil {
+			logger.StdErr.Printf("Error parsing Polar subscription: %v", err)
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+		if err := linkMigratedSubscription(&sub); err != nil {
+			// Return an error so Polar retries the delivery
+			logger.StdErr.Printf("Error linking migrated Polar subscription %s: %v", sub.Id, err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
 
 	case "subscription.active", "subscription.past_due", "subscription.revoked":
 		var sub polar.Subscription
