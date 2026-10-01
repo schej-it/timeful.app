@@ -417,10 +417,9 @@ export default {
       if (this.upgradeRedirect) {
         try {
           const params = JSON.parse(this.$route.query.upgradeParams)
-          const res = await post("/stripe/create-checkout-session", {
-            priceId: params.priceId,
-            userId: user._id,
-            isSubscription: params.isSubscription,
+          const res = await post("/polar/create-checkout-session", {
+            // priceId is from upgrade params saved before the Polar migration
+            productId: params.productId ?? params.priceId,
             originUrl: params.originUrl,
           })
           window.location.href = res.url

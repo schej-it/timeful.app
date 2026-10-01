@@ -53,6 +53,7 @@ export default {
       const urlParams = new URLSearchParams(window.location.search)
       const upgradeStatus = urlParams.get("upgrade")
       const sessionId = urlParams.get("session_id")
+      const checkoutId = urlParams.get("checkout_id")
       this.redirectUrl = urlParams.get("redirect_url")
 
       if (!this.redirectUrl) {
@@ -61,9 +62,13 @@ export default {
       }
 
       try {
-        if (upgradeStatus === "success" && sessionId) {
+        if (upgradeStatus === "success" && (checkoutId || sessionId)) {
           // Fulfill checkout
-          await post("/stripe/fulfill-checkout", { sessionId })
+          if (checkoutId) {
+            await this.fulfillPolarCheckout(checkoutId)
+          } else {
+            await post("/stripe/fulfill-checkout", { sessionId })
+          }
           const user = await get("/user/profile")
           this.setAuthUser(user)
           this.fulfillmentComplete = true
@@ -75,9 +80,19 @@ export default {
         }
       } catch (err) {
         // Error during checkout fulfillment, navigate to redirect url
-        console.error("Error during Stripe redirect handling:", err)
+        console.error("Error during checkout redirect handling:", err)
         this.navigateToRedirectUrl()
       }
+    },
+    /** Fulfills a Polar checkout, retrying while the payment is still processing */
+    async fulfillPolarCheckout(checkoutId) {
+      const maxAttempts = 10
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const res = await post("/polar/fulfill-checkout", { checkoutId })
+        if (res.status === "fulfilled") return
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+      }
+      throw new Error("Timed out waiting for checkout to be fulfilled")
     },
     navigateToRedirectUrl() {
       window.location.replace(this.redirectUrl)

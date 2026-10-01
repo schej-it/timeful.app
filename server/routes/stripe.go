@@ -5,16 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
-	"net/url"
 	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stripe/stripe-go/v82"
 	portalsession "github.com/stripe/stripe-go/v82/billingportal/session"
 	"github.com/stripe/stripe-go/v82/checkout/session"
-	"github.com/stripe/stripe-go/v82/price"
 	"github.com/stripe/stripe-go/v82/webhook"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -26,164 +23,14 @@ import (
 	"schej.it/server/utils"
 )
 
+// Stripe is kept for legacy subscribers whose subscriptions still renew on
+// Stripe. New purchases go through Polar (see polar.go).
 func InitStripe(router *gin.RouterGroup) {
 	stripeRouter := router.Group("/stripe")
 
-	stripeRouter.POST("/create-checkout-session", createCheckoutSession)
-	stripeRouter.GET("/price", getPrice)
 	stripeRouter.POST("/fulfill-checkout", fulfillCheckout)
 	stripeRouter.POST("/webhook", stripeWebhook)
 	stripeRouter.GET("/billing-portal", middleware.AuthRequired(), getBillingPortalUrl)
-}
-
-type CheckoutSessionPayload struct {
-	PriceID        string `json:"priceId" binding:"required"`
-	UserID         string `json:"userId" binding:"required"`
-	IsSubscription *bool  `json:"isSubscription" binding:"required"`
-	OriginURL      string `json:"originUrl" binding:"required"`
-}
-
-func createCheckoutSession(c *gin.Context) {
-	var payload CheckoutSessionPayload
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload", "details": err.Error()})
-		return
-	}
-
-	originURL := payload.OriginURL
-	finalRedirectURL := originURL // This is where the user should end up AFTER the /stripe-redirect page
-
-	// Get the base URL for constructing the intermediate redirect path
-	baseURL := utils.GetBaseUrl()
-	intermediateRedirectBase, err := url.Parse(baseURL)
-	if err != nil {
-		logger.StdErr.Printf("Error parsing Base URL '%s': %v. Cannot construct redirect URLs.", baseURL, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error configuring redirect"})
-		return
-	}
-
-	// Create success URL (points to /stripe-redirect)
-	successURL := *intermediateRedirectBase // Start with base URL
-	successURL.Path = "/stripe-redirect"    // Set path
-	successQuery := url.Values{}
-	successQuery.Set("upgrade", "success")
-	successQuery.Set("redirect_url", finalRedirectURL) // Add the final destination
-	successURL.RawQuery = successQuery.Encode()
-	successURLStr := successURL.String()
-
-	// Create cancel URL (points to /stripe-redirect)
-	cancelURL := *intermediateRedirectBase // Start with base URL
-	cancelURL.Path = "/stripe-redirect"    // Set path
-	cancelQuery := url.Values{}
-	cancelQuery.Set("upgrade", "cancel")
-	cancelQuery.Set("redirect_url", finalRedirectURL) // Add the final destination
-	cancelURL.RawQuery = cancelQuery.Encode()
-	cancelURLStr := cancelURL.String()
-
-	params := &stripe.CheckoutSessionParams{
-		ClientReferenceID: stripe.String(payload.UserID),
-		LineItems: []*stripe.CheckoutSessionLineItemParams{
-			{
-				// Provide the exact Price ID (for example, price_1234) of the product you want to sell
-				Price:    stripe.String(payload.PriceID),
-				Quantity: stripe.Int64(1),
-			},
-		},
-		SuccessURL:   stripe.String(successURLStr + "&session_id={CHECKOUT_SESSION_ID}"),
-		CancelURL:    stripe.String(cancelURLStr),
-		AutomaticTax: &stripe.CheckoutSessionAutomaticTaxParams{Enabled: stripe.Bool(true)},
-		// Provide the Customer ID (for example, cus_1234) for an existing customer to associate it with this session
-		// Customer: "cus_RnhPlBnbBbXapY",
-	}
-	if *payload.IsSubscription {
-		params.Mode = stripe.String(string(stripe.CheckoutSessionModeSubscription))
-	} else {
-		params.Mode = stripe.String(string(stripe.CheckoutSessionModePayment))
-		params.CustomerCreation = stripe.String(string(stripe.CheckoutSessionCustomerCreationAlways))
-		params.InvoiceCreation = &stripe.CheckoutSessionInvoiceCreationParams{Enabled: stripe.Bool(true)}
-	}
-
-	s, err := session.New(params)
-
-	if err != nil {
-		log.Printf("session.New: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create checkout session"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"url": s.URL})
-}
-
-func getPrice(c *gin.Context) {
-	// Get the experiment query parameter
-	exp := c.Query("exp")
-
-	monthlyPriceId := os.Getenv("STRIPE_MONTHLY_PRICE_ID")
-	monthlyStudentPriceId := os.Getenv("STRIPE_MONTHLY_STUDENT_PRICE_ID")
-	lifetimeStudentPriceId := os.Getenv("STRIPE_LIFETIME_STUDENT_PRICE_ID")
-	yearlyPriceId := os.Getenv("STRIPE_YEARLY_PRICE_ID")
-	yearlyStudentPriceId := os.Getenv("STRIPE_YEARLY_STUDENT_PRICE_ID")
-
-	var lifetimePriceId string
-	switch exp {
-	case "test":
-		// lifetimePriceId = os.Getenv("STRIPE_LIFETIME_PRICE_ID_2")
-		lifetimePriceId = os.Getenv("STRIPE_LIFETIME_PRICE_ID")
-	default:
-		lifetimePriceId = os.Getenv("STRIPE_LIFETIME_PRICE_ID")
-	}
-
-	params := &stripe.PriceParams{}
-	monthlyResult, err := price.Get(monthlyPriceId, params)
-	if err != nil {
-		log.Printf("price.Get error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch price"})
-		return
-	}
-
-	lifetimeResult, err := price.Get(lifetimePriceId, params)
-	if err != nil {
-		log.Printf("price.Get error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch price"})
-		return
-	}
-
-	monthlyStudentResult, err := price.Get(monthlyStudentPriceId, params)
-	if err != nil {
-		log.Printf("price.Get error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch price"})
-		return
-	}
-
-	lifetimeStudentResult, err := price.Get(lifetimeStudentPriceId, params)
-	if err != nil {
-		log.Printf("price.Get error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch price"})
-		return
-	}
-
-	yearlyResult, err := price.Get(yearlyPriceId, params)
-	if err != nil {
-		log.Printf("price.Get error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch price"})
-		return
-	}
-
-	yearlyStudentResult, err := price.Get(yearlyStudentPriceId, params)
-	if err != nil {
-		log.Printf("price.Get error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch price"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"lifetime":        lifetimeResult,
-		"monthly":         monthlyResult,
-		"yearly":          yearlyResult,
-		"lifetimeStudent": lifetimeStudentResult,
-		"monthlyStudent":  monthlyStudentResult,
-		"yearlyStudent":   yearlyStudentResult,
-	})
 }
 
 type FulfillCheckoutPayload struct {

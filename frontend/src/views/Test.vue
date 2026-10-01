@@ -15,7 +15,7 @@ export default {
   },
   methods: {
     createCheckoutSession() {
-      post("/stripe/create-checkout-session").then((res) => {
+      post("/polar/create-checkout-session").then((res) => {
         console.log(res)
       })
     },

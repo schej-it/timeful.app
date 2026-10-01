@@ -45,7 +45,7 @@
 
       <!-- Billing Section -->
       <div
-        v-if="authUser.stripeCustomerId"
+        v-if="authUser.stripeCustomerId || authUser.polarCustomerId"
         class="tw-flex tw-flex-col tw-gap-5"
       >
         <div
@@ -244,10 +244,12 @@ export default {
   methods: {
     ...mapActions(["showError"]),
     openBillingPortal() {
+      // Legacy subscribers are still billed through Stripe
+      const provider = this.authUser.polarCustomerId ? "polar" : "stripe"
       get(
-        `/stripe/billing-portal?customerId=${encodeURIComponent(
-          this.authUser.stripeCustomerId
-        )}&returnUrl=${encodeURIComponent(window.location.href)}`
+        `/${provider}/billing-portal?returnUrl=${encodeURIComponent(
+          window.location.href
+        )}`
       )
         .then((res) => {
           window.location.href = res.url
