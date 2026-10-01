@@ -1545,12 +1545,6 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "properties": {
-                                "lifetime": {
-                                    "type": "object"
-                                },
-                                "lifetimeStudent": {
-                                    "type": "object"
-                                },
                                 "monthly": {
                                     "type": "object"
                                 },

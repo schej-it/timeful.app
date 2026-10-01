@@ -1401,10 +1401,6 @@ paths:
           description: OK
           schema:
             properties:
-              lifetime:
-                type: object
-              lifetimeStudent:
-                type: object
               monthly:
                 type: object
               monthlyStudent:

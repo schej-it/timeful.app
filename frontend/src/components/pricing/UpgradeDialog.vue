@@ -171,6 +171,7 @@
             Upgrade
           </v-btn>
         </div>
+        <!-- Lifetime plan disabled
         <div
           v-if="showLifetime"
           class="tw-relative tw-flex tw-flex-1 tw-flex-col tw-items-center tw-gap-2 tw-rounded-lg tw-border tw-border-light-green tw-bg-white tw-p-4 tw-shadow-lg"
@@ -235,6 +236,7 @@
             Upgrade
           </v-btn>
         </div>
+        -->
       </div>
       <div
         class="tw-flex tw-h-8 tw-w-full tw-items-center tw-justify-start tw-pb-4"
@@ -602,20 +604,20 @@ export default {
           )
         }
       }
-      // Lifetime
-      if (this.showLifetime) {
-        if (this.isStudent && this.lifetimeStudentPrice) {
-          pricesShown.push(
-            `LIFETIME (Student): ${this.formattedPrice(
-              this.lifetimeStudentPrice
-            )}`
-          )
-        } else {
-          pricesShown.push(
-            `LIFETIME: ${this.formattedPrice(this.lifetimePrice)}`
-          )
-        }
-      }
+      // Lifetime plan disabled
+      // if (this.showLifetime) {
+      //   if (this.isStudent && this.lifetimeStudentPrice) {
+      //     pricesShown.push(
+      //       `LIFETIME (Student): ${this.formattedPrice(
+      //         this.lifetimeStudentPrice
+      //       )}`
+      //     )
+      //   } else {
+      //     pricesShown.push(
+      //       `LIFETIME: ${this.formattedPrice(this.lifetimePrice)}`
+      //     )
+      //   }
+      // }
       return pricesShown.join(", ")
     },
   },
@@ -634,7 +636,7 @@ export default {
       )
     },
     async init() {
-      if (!this.lifetimePrice || !this.monthlyPrice) {
+      if (!this.monthlyPrice) {
         await this.fetchPrice()
       }
     },
@@ -643,10 +645,10 @@ export default {
       // Mock price results in development mode as the Polar API won't be accessible
       if (process.env.NODE_ENV === "development") {
         res = {
-          lifetime: { id: "price_dev_lifetime", unit_amount: 9999, recurring: null },
+          // lifetime: { id: "price_dev_lifetime", unit_amount: 9999, recurring: null },
           monthly: { id: "price_dev_monthly", unit_amount: 999, recurring: { interval: "month" } },
           yearly: { id: "price_dev_yearly", unit_amount: 7999, recurring: { interval: "year" } },
-          lifetimeStudent: { id: "price_dev_lifetime_student", unit_amount: 4999, recurring: null },
+          // lifetimeStudent: { id: "price_dev_lifetime_student", unit_amount: 4999, recurring: null },
           monthlyStudent: { id: "price_dev_monthly_student", unit_amount: 499, recurring: { interval: "month" } },
           yearlyStudent: { id: "price_dev_yearly_student", unit_amount: 3999, recurring: { interval: "year" } },
         }

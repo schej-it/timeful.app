@@ -115,7 +115,7 @@ New purchases go through [Polar](https://polar.sh). Stripe is only kept for subs
 | `POLAR_ACCESS_TOKEN`    | Polar Organization Access Token                                    |
 | `POLAR_WEBHOOK_SECRET`  | Polar webhook endpoint secret                                      |
 | `POLAR_SERVER`          | `sandbox` or `production` (default: `production`)                  |
-| `POLAR_*_PRODUCT_ID`    | Polar product IDs for each plan (monthly, yearly, lifetime, and student variants) |
+| `POLAR_*_PRODUCT_ID`    | Polar product IDs for each plan (monthly, yearly, and student variants; lifetime is disabled) |
 | `STRIPE_API_KEY`        | Stripe API key (legacy subscribers only)                           |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (legacy subscribers only)            |
 

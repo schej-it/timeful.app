@@ -37,12 +37,13 @@ func InitPolar(router *gin.RouterGroup) {
 
 // Maps each plan key returned by /polar/price to the env var holding its Polar product ID
 var polarPlanProductEnvVars = map[string]string{
-	"lifetime":        "POLAR_LIFETIME_PRODUCT_ID",
-	"monthly":         "POLAR_MONTHLY_PRODUCT_ID",
-	"yearly":          "POLAR_YEARLY_PRODUCT_ID",
-	"lifetimeStudent": "POLAR_LIFETIME_STUDENT_PRODUCT_ID",
-	"monthlyStudent":  "POLAR_MONTHLY_STUDENT_PRODUCT_ID",
-	"yearlyStudent":   "POLAR_YEARLY_STUDENT_PRODUCT_ID",
+	// Lifetime plans are disabled
+	// "lifetime":        "POLAR_LIFETIME_PRODUCT_ID",
+	// "lifetimeStudent": "POLAR_LIFETIME_STUDENT_PRODUCT_ID",
+	"monthly":        "POLAR_MONTHLY_PRODUCT_ID",
+	"yearly":         "POLAR_YEARLY_PRODUCT_ID",
+	"monthlyStudent": "POLAR_MONTHLY_STUDENT_PRODUCT_ID",
+	"yearlyStudent":  "POLAR_YEARLY_STUDENT_PRODUCT_ID",
 }
 
 // Human-readable plan names used in Slack messages
@@ -117,7 +118,7 @@ func fetchPolarPrices() (map[string]polarPriceResponse, error) {
 // @Tags polar
 // @Produce json
 // @Param exp query string false "Pricing experiment variant"
-// @Success 200 {object} object{lifetime=object,monthly=object,yearly=object,lifetimeStudent=object,monthlyStudent=object,yearlyStudent=object}
+// @Success 200 {object} object{monthly=object,yearly=object,monthlyStudent=object,yearlyStudent=object}
 // @Router /polar/price [get]
 func getPolarPrice(c *gin.Context) {
 	prices, err := fetchPolarPrices()
