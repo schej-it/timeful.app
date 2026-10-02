@@ -30,6 +30,17 @@ func InitTasks() func() {
 
 	ctx := context.Background()
 	var err error
+	credsFile := os.Getenv("SERVICE_ACCOUNT_KEY_PATH")
+	if credsFile == "" {
+		logger.StdOut.Println("SERVICE_ACCOUNT_KEY_PATH not set; skipping Cloud Tasks init")
+		return func() {}
+	}
+
+	if _, statErr := os.Stat(credsFile); statErr != nil {
+		logger.StdOut.Printf("SERVICE_ACCOUNT_KEY_PATH not readable (%v); skipping Cloud Tasks init\n", statErr)
+		return func() {}
+	}
+
 	TasksClient, err = cloudtasks.NewClient(ctx, option.WithCredentialsFile(credsFile))
 	if err != nil {
 		logger.StdErr.Println("Failed to initialize Cloud Tasks:", err)
@@ -45,7 +56,7 @@ func InitTasks() func() {
 // replyTo is optional; if non-empty, sets the Reply-To header on the reminder emails
 func CreateEmailTask(email string, ownerName string, eventName string, eventId string, replyTo string) []string {
 	if TasksClient == nil {
-		logger.StdErr.Println("WARNING: Cloud Tasks is disabled, skipping CreateEmailTask")
+		logger.StdOut.Println("Cloud Tasks client not initialized; skipping email task creation")
 		return []string{}
 	}
 
@@ -133,7 +144,7 @@ func CreateEmailTask(email string, ownerName string, eventName string, eventId s
 
 func DeleteEmailTask(taskId string) {
 	if TasksClient == nil {
-		logger.StdErr.Println("WARNING: Cloud Tasks is disabled, skipping DeleteEmailTask")
+		logger.StdOut.Println("Cloud Tasks client not initialized; skipping email task deletion")
 		return
 	}
 
