@@ -10,7 +10,16 @@ import (
 	"schej.it/server/logger"
 )
 
+func requireIntegrationTests(t *testing.T) {
+	t.Helper()
+	if os.Getenv("RUN_INTEGRATION_TESTS") != "1" {
+		t.Skip("set RUN_INTEGRATION_TESTS=1 to run Listmonk integration tests")
+	}
+}
+
 func TestSendEmail(t *testing.T) {
+	requireIntegrationTests(t)
+
 	// Init logfile
 	logFile, err := os.OpenFile("logs.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
