@@ -1,27 +1,8 @@
 <template>
   <div class="tw-rounded-md tw-px-6 tw-py-4 sm:tw-mx-4 sm:tw-bg-[#f3f3f366]">
     <div class="tw-mb-3 tw-flex tw-items-center tw-justify-between">
-      <div class="tw-flex tw-flex-col">
-        <div
-          class="tw-text-xl tw-font-medium tw-text-dark-green sm:tw-text-2xl"
-        >
-          Dashboard
-        </div>
-        <div
-          v-if="!isPremiumUser"
-          class="tw-flex tw-items-baseline tw-gap-2 tw-text-sm tw-font-normal tw-text-very-dark-gray"
-        >
-          <div>
-            {{ authUser?.numEventsCreated }} / {{ numFreeEvents }} free events
-            created this month
-          </div>
-          <div
-            class="tw-cursor-pointer tw-select-none tw-text-xs tw-font-medium tw-text-green tw-underline"
-            @click="openUpgradeDialog"
-          >
-            Upgrade
-          </div>
-        </div>
+      <div class="tw-text-xl tw-font-medium tw-text-dark-green sm:tw-text-2xl">
+        Dashboard
       </div>
       <v-btn
         text
@@ -207,14 +188,9 @@
 </template>
 
 <script>
-import { mapState, mapActions, mapGetters } from "vuex"
+import { mapState, mapActions } from "vuex"
 import draggable from "vuedraggable"
-import {
-  eventTypes,
-  folderColors,
-  numFreeEvents,
-  upgradeDialogTypes,
-} from "@/constants"
+import { eventTypes, folderColors } from "@/constants"
 import EventItem from "@/components/EventItem.vue"
 import ObjectID from "bson-objectid"
 
@@ -239,15 +215,11 @@ export default {
     }
   },
   computed: {
-    ...mapGetters(["isPremiumUser"]),
     ...mapState(["authUser", "events", "groupsEnabled", "folders"]),
     orderedFolders() {
       return this.folders.sort((a, b) => {
         return a.name.localeCompare(b.name)
       })
-    },
-    numFreeEvents() {
-      return numFreeEvents
     },
     folderColors() {
       return folderColors
@@ -360,7 +332,6 @@ export default {
   methods: {
     ...mapActions([
       "createFolder",
-      "showUpgradeDialog",
       "deleteFolder",
       "setEventFolder",
       "updateFolder",
@@ -473,11 +444,6 @@ export default {
     confirmDelete() {
       this.$store.dispatch("deleteFolder", this.folderToDelete._id)
       this.deleteDialog = false
-    },
-    openUpgradeDialog() {
-      this.showUpgradeDialog({
-        type: upgradeDialogTypes.UPGRADE_MANUALLY,
-      })
     },
   },
   created() {

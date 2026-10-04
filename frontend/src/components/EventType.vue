@@ -6,25 +6,6 @@
     >
       <div class="tw-flex tw-flex-col">
         {{ eventType.header }}
-        <div
-          v-if="
-            eventType.header === 'Events I created' &&
-            enablePaywall &&
-            !isPremiumUser
-          "
-          class="tw-flex tw-items-baseline tw-gap-2 tw-text-sm tw-font-normal tw-text-very-dark-gray"
-        >
-          <div>
-            {{ authUser?.numEventsCreated }} / {{ numFreeEvents }} free events
-            created
-          </div>
-          <div
-            class="tw-cursor-pointer tw-select-none tw-text-xs tw-font-medium tw-text-green tw-underline"
-            @click="openUpgradeDialog"
-          >
-            Upgrade
-          </div>
-        </div>
       </div>
       <v-btn
         v-if="eventType.header === 'Events I created'"
@@ -96,9 +77,6 @@
 <script>
 import EventItem from "@/components/EventItem.vue"
 import FeatureNotReadyDialog from "@/components/FeatureNotReadyDialog.vue"
-import { numFreeEvents, upgradeDialogTypes } from "@/constants"
-import { mapState, mapActions } from "vuex"
-import { isPremiumUser } from "@/utils"
 
 export default {
   name: "EventType",
@@ -121,7 +99,6 @@ export default {
   },
 
   computed: {
-    ...mapState(["authUser", "enablePaywall"]),
     defaultNumEventsToShow() {
       return this.$vuetify.breakpoint.lgAndUp ? 6 : 4
     },
@@ -134,23 +111,11 @@ export default {
       // Events are sorted serverside, so no need to sort here
       return this.eventType.events
     },
-    numFreeEvents() {
-      return numFreeEvents
-    },
-    isPremiumUser() {
-      return isPremiumUser(this.authUser)
-    },
   },
 
   methods: {
-    ...mapActions(["showUpgradeDialog"]),
     toggleShowAll() {
       this.showAll = !this.showAll
-    },
-    openUpgradeDialog() {
-      this.showUpgradeDialog({
-        type: upgradeDialogTypes.UPGRADE_MANUALLY,
-      })
     },
     createFolder() {
       this.showFeatureNotReadyDialog = true

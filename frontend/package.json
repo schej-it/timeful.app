@@ -12,7 +12,6 @@
     "@gtm-support/vue2-gtm": "^2.0.0",
     "@rive-app/canvas": "^2.10.0",
     "bson-objectid": "^2.0.4",
-    "canvas-confetti": "^1.9.3",
     "color": "^4.2.3",
     "copy-image-clipboard": "^2.1.2",
     "core-js": "^3.35.1",

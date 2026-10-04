@@ -1,7 +1,6 @@
 import Vue from "vue"
 import Vuex from "vuex"
-import { numFreeEvents, upgradeDialogTypes } from "@/constants"
-import { get, isPremiumUser } from "@/utils"
+import { get } from "@/utils"
 import {
   createFolder,
   deleteFolder,
@@ -29,15 +28,6 @@ export default new Vuex.Store({
     signUpFormEnabled: false,
     daysOnlyEnabled: true,
     overlayAvailabilitiesEnabled: true,
-    enablePaywall: true,
-
-    // Experiments
-    pricingPageConversion: "control",
-
-    // Upgrade dialog
-    upgradeDialogVisible: false,
-    upgradeDialogType: null,
-    upgradeDialogData: null,
 
     // New dialog
     newDialogOptions: {
@@ -48,11 +38,7 @@ export default new Vuex.Store({
       folderId: null,
     },
   },
-  getters: {
-    isPremiumUser(state) {
-      return isPremiumUser(state.authUser)
-    },
-  },
+  getters: {},
   mutations: {
     setError(state, error) {
       state.error = error
@@ -86,21 +72,6 @@ export default new Vuex.Store({
     },
     setOverlayAvailabilitiesEnabled(state, enabled) {
       state.overlayAvailabilitiesEnabled = enabled
-    },
-    setPricingPageConversion(state, conversion) {
-      state.pricingPageConversion = conversion
-    },
-    setEnablePaywall(state, enabled) {
-      state.enablePaywall = enabled
-    },
-    setUpgradeDialogVisible(state, visible) {
-      state.upgradeDialogVisible = visible
-    },
-    setUpgradeDialogType(state, type) {
-      state.upgradeDialogType = type
-    },
-    setUpgradeDialogData(state, data) {
-      state.upgradeDialogData = data
     },
 
     addFolder(state, folder) {
@@ -163,21 +134,7 @@ export default new Vuex.Store({
       commit("setAuthUser", authUser)
     },
 
-    createNew(
-      { state, getters, commit, dispatch },
-      { eventOnly = false, folderId = null }
-    ) {
-      if (
-        state.enablePaywall &&
-        !getters.isPremiumUser &&
-        state.authUser?.numEventsCreated >= numFreeEvents
-      ) {
-        dispatch("showUpgradeDialog", {
-          type: upgradeDialogTypes.CREATE_EVENT,
-        })
-        return
-      }
-
+    createNew({ commit }, { eventOnly = false, folderId = null }) {
       commit("setNewDialogOptions", {
         show: true,
         contactsPayload: {},
@@ -268,16 +225,6 @@ export default new Vuex.Store({
     async refreshAuthUser({ commit }) {
       const authUser = await get("/user/profile")
       commit("setAuthUser", authUser)
-    },
-    showUpgradeDialog({ commit }, { type, data = null }) {
-      commit("setUpgradeDialogVisible", true)
-      commit("setUpgradeDialogType", type)
-      commit("setUpgradeDialogData", data)
-    },
-    hideUpgradeDialog({ commit }) {
-      commit("setUpgradeDialogVisible", false)
-      commit("setUpgradeDialogType", null)
-      commit("setUpgradeDialogData", null)
     },
   },
   modules: {},

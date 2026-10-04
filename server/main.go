@@ -19,7 +19,6 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"github.com/stripe/stripe-go/v82"
 	"schej.it/server/db"
 	"schej.it/server/logger"
 	"schej.it/server/routes"
@@ -132,8 +131,6 @@ func main() {
 	routes.InitUsers(apiRouter)
 	routes.InitEvents(apiRouter)
 	routes.InitAnalytics(apiRouter)
-	routes.InitStripe(apiRouter)
-	routes.InitPolar(apiRouter)
 	routes.InitFolders(apiRouter)
 	slackbot.InitSlackbot(apiRouter)
 
@@ -190,9 +187,6 @@ func loadDotEnv() {
 		logger.StdOut.Println("No .env file found, using environment variables")
 	}
 
-	// Load stripe key
-	stripe.Key = os.Getenv("STRIPE_API_KEY")
-
 	// Validate session secret
 	validateSessionSecret()
 }
@@ -222,8 +216,6 @@ func noRouteHandler() gin.HandlerFunc {
 			eventId := path[match[2]:match[3]]
 			event := db.GetEventByEitherId(eventId)
 
-			// params["enableStickyFooter"] = true
-
 			if event != nil {
 				title := fmt.Sprintf("%s - Timeful (formerly Schej)", event.Name)
 				params["title"] = title
@@ -233,9 +225,6 @@ func noRouteHandler() gin.HandlerFunc {
 					params["ogImage"] = "/img/when2meetOgImage2.png"
 				}
 			}
-		} else if regexp.MustCompile(`\/g\/`).MatchString(path) {
-			// /g/ routes
-			// params["enableStickyFooter"] = true
 		}
 
 		c.HTML(http.StatusOK, "index.html", params)

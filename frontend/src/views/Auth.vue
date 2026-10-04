@@ -2,15 +2,11 @@
 
 <script>
 import { get, post, getEventsCreated, deleteEventsCreated } from "@/utils"
-import { mapMutations, mapState } from "vuex"
+import { mapMutations } from "vuex"
 import { authTypes, calendarTypes } from "@/constants"
 
 export default {
   name: "Auth",
-
-  computed: {
-    ...mapState(["authUser"]),
-  },
 
   methods: {
     ...mapMutations(["setAuthUser"]),
@@ -133,20 +129,6 @@ export default {
                   contactsPayload: state.payload,
                 },
               })
-            }
-            break
-          case authTypes.UPGRADE:
-            try {
-              const params = JSON.parse(state.upgradeParams)
-              const res = await post("/polar/create-checkout-session", {
-                // priceId is from upgrade params saved before the Polar migration
-                productId: params.productId ?? params.priceId,
-                originUrl: params.originUrl,
-              })
-              window.location.href = res.url
-            } catch (e) {
-              console.error(e)
-              this.$router.replace({ name: "home" })
             }
             break
           default:
