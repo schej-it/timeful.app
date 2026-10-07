@@ -31,8 +31,9 @@
           >
             🎉 Timeful is now completely free to use!
             <span class="tw-hidden md:tw-inline"
-              >We got rid of the ugly banner ads + our premium subscription
-              tier.{{ " " }}</span
+              >We got rid of the banner ads + our premium subscription tier.{{
+                " "
+              }}</span
             >
             <span class="tw-whitespace-nowrap tw-font-medium tw-text-green"
               >Read more on our blog →</span
