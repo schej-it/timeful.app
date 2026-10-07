@@ -325,7 +325,7 @@ export default {
   name: "Landing",
 
   metaInfo: {
-    title: "Timeful (formerly Schej) - Find a time to meet",
+    title: "Timeful - Find a time to meet",
   },
 
   components: {

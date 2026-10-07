@@ -217,7 +217,7 @@ func noRouteHandler() gin.HandlerFunc {
 			event := db.GetEventByEitherId(eventId)
 
 			if event != nil {
-				title := fmt.Sprintf("%s - Timeful (formerly Schej)", event.Name)
+				title := fmt.Sprintf("%s - Timeful", event.Name)
 				params["title"] = title
 				params["ogTitle"] = title
 

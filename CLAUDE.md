@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository layout
 
-Monorepo for Timeful (formerly Schej.it), a group availability/scheduling app.
+Monorepo for Timeful, a group availability/scheduling app.
 
 - `frontend/` — Vue 2 + Vuetify + Tailwind single-page app (Vue CLI). Built output lands in `frontend/dist`.
 - `server/` — Go (Gin) HTTP API backed by MongoDB. Also serves the built frontend as static files at the root.
