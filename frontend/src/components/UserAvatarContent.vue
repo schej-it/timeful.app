@@ -1,5 +1,10 @@
 <template>
-  <v-avatar v-if="user" :size="size">
+  <v-avatar
+    v-if="user"
+    :size="size"
+    :class="{ 'supporter-glow': user.hasPaid }"
+    :style="user.hasPaid ? { '--glow-size': `${glowSize}px` } : {}"
+  >
     <img v-if="user.picture" :src="user.picture" referrerpolicy="no-referrer" />
     <v-icon
       class="-tw-mt-1"
@@ -40,6 +45,32 @@ export default {
     textSize() {
       return this.size <= 24 ? "xs" : "lg"
     },
+    glowSize() {
+      return Math.max(2, Math.round(this.size / 8))
+    },
   },
 }
 </script>
+
+<style scoped>
+/* Glowing ring for users who paid for Timeful back when it had a paid tier */
+.supporter-glow {
+  box-shadow: 0 0 0 calc(var(--glow-size) / 2) #29bc68,
+    0 0 var(--glow-size) var(--glow-size) rgba(41, 188, 104, 0.5);
+  animation: supporter-glow-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes supporter-glow-pulse {
+  50% {
+    box-shadow: 0 0 0 calc(var(--glow-size) / 2) #29bc68,
+      0 0 calc(var(--glow-size) * 1.75) calc(var(--glow-size) * 1.25)
+        rgba(41, 188, 104, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .supporter-glow {
+    animation: none;
+  }
+}
+</style>

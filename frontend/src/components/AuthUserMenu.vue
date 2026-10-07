@@ -4,9 +4,7 @@
     <v-menu v-if="authUser" offset-y left>
       <template v-slot:activator="{ on }">
         <v-btn id="user-menu-btn" icon :width="size" :height="size" v-on="on">
-          <v-avatar :size="size">
-            <UserAvatarContent :user="authUser" :size="size" />
-          </v-avatar>
+          <UserAvatarContent :user="authUser" :size="size" />
         </v-btn>
       </template>
       <v-list class="py-0" :dense="isPhone">
