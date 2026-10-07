@@ -31,7 +31,7 @@ Internal identifiers (Go module `schej.it/server`, Mongo DB `schej-it`, prod ema
 - MongoDB backup/restore: `mongodump --host=localhost:27017 --db=schej-it` / `mongorestore --uri mongodb://localhost:27017 ./dump --drop`.
 
 ### Required env vars for local server boot
-`SESSION_SECRET` (≥32 chars) is enforced at startup. `CLIENT_ID`/`CLIENT_SECRET` (Google OAuth) and `ENCRYPTION_KEY` are required for most flows. See `server/.env.template` and `DEPLOYMENT.md` for the full list (Stripe, Microsoft, Listmonk, Slack, Discord, Gmail, etc.).
+`SESSION_SECRET` (≥32 chars) is enforced at startup. `CLIENT_ID`/`CLIENT_SECRET` (Google OAuth) and `ENCRYPTION_KEY` are required for most flows. See `server/.env.template` and `DEPLOYMENT.md` for the full list (Microsoft, Listmonk, Slack, Discord, Gmail, etc.).
 
 For local frontend → local backend, set `CORS_ORIGINS=http://localhost:8080` in `server/.env`.
 
@@ -40,7 +40,7 @@ For local frontend → local backend, set `CORS_ORIGINS=http://localhost:8080` i
 ### Backend (Gin + MongoDB)
 `server/main.go` wires everything: CORS, cookie sessions, Mongo init (`db.Init`), Google Cloud Tasks init (`services/gcloud.InitTasks`), then mounts API groups under `/api` via `routes.Init*` and `slackbot.InitSlackbot`. After API routes, it walks `frontend/dist` and registers each file as a static route, loads `index.html` as a template, and falls back to a `NoRoute` handler that injects per-route OG meta tags (e.g. for `/e/:eventId` it looks up the event to set the title and OG image).
 
-- `routes/` — HTTP handlers grouped by domain: `auth.go`, `user.go`, `users.go`, `events.go`, `folders.go`, `analytics.go`, `stripe.go`. Route comments use Swag annotations; `swag init` regenerates `docs/`.
+- `routes/` — HTTP handlers grouped by domain: `auth.go`, `user.go`, `users.go`, `events.go`, `folders.go`, `analytics.go`. Route comments use Swag annotations; `swag init` regenerates `docs/`.
 - `models/` — Mongo document structs (`Event`, `User`, `Response`, `Folder`, `Attendee`, `Calendar`, `Set`, `Otp`, `FriendRequest`, `Location`, `DailyUserLog`).
 - `db/` — Mongo accessors per model (`events.go`, `users.go`, `folders.go`, `analytics.go`, `utils.go`) plus `init.go`. Treat this as the only layer that talks to Mongo.
 - `services/` — external integrations. Notable: `calendar/` (Google, Outlook/Graph, Apple CalDAV via `jonyTF/go-webdav`, generic ICS), `auth/`, `contacts/`, `gcloud/` (Cloud Tasks for scheduled jobs), `listmonk/`, `microsoftgraph/`.
@@ -51,7 +51,7 @@ For local frontend → local backend, set `CORS_ORIGINS=http://localhost:8080` i
 - `logger/` — wraps log file (`logs.log`) + stdout via `gin.DefaultWriter`.
 
 ### Frontend (Vue 2 SPA)
-- `src/router/index.js` — routes (`Landing`, `Home`, `Event`, `Group`, `Friends`, `Settings`, `SignIn`/`SignUp`/`Auth`, `StripeRedirect`, etc. — see `src/views/`).
+- `src/router/index.js` — routes (`Landing`, `Home`, `Event`, `Group`, `Friends`, `Settings`, `SignIn`/`SignUp`/`Auth`, etc. — see `src/views/`).
 - `src/store/index.js` — single Vuex store (auth user, events, snackbar, dialogs).
 - `src/components/` — organized by feature folder (`event/`, `groups/`, `home/`, `landing/`, `pricing/`, `settings/`, `schedule_overlap/`, `calendar_permission_dialogs/`, `sign_up_form/`, `general/`) plus top-level shared components.
 - `src/utils/` — date math (`date_utils.js`, uses `dayjs`/`moment`/`spacetime`), `fetch_utils.js` (API client), `plugin_utils.js` (handles the postMessage plugin API — see `PLUGIN_API_README.md`), `sign_in_utils.js`, `location_utils.js`, `services/` (calendar-provider abstractions on the client side).

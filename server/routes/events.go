@@ -1891,7 +1891,7 @@ func shouldKeepGroupResponseUserEmails(event *models.Event, userSesh string, isO
 }
 
 // stripSensitiveUserFields removes fields from a User that should never be
-// exposed in the event page API response (calendar accounts, billing info, etc.).
+// exposed in the event page API response (calendar accounts, etc.).
 // Email is NOT stripped here as callers handle email visibility separately based
 // on the collectEmails setting and owner status.
 func stripSensitiveUserFields(user *models.User) {
@@ -1900,8 +1900,6 @@ func stripSensitiveUserFields(user *models.User) {
 	}
 	user.CalendarAccounts = nil
 	user.CalendarOptions = nil
-	user.StripeCustomerId = nil
-	user.PolarCustomerId = nil
 	user.PrimaryAccountKey = nil
 }
 

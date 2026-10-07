@@ -280,6 +280,7 @@ definitions:
       manualAvailability:
         additionalProperties:
           items:
+            format: int64
             type: integer
           type: array
         description: Mapping from the start date of a day to the available times for
@@ -359,23 +360,15 @@ definitions:
         description: Whether the user has set a custom name for themselves, i.e. don't
           change their name when they sign in
         type: boolean
-      isPremium:
-        type: boolean
       lastName:
         type: string
       numEventsCreated:
         type: integer
       picture:
         type: string
-      polarCustomerId:
-        description: Polar customer ID
-        type: string
       primaryAccountKey:
         description: The calendarAccountKey of the account the user first signed in
           with
-        type: string
-      stripeCustomerId:
-        description: Stripe customer ID
         type: string
       timezoneOffset:
         type: integer
@@ -431,28 +424,6 @@ paths:
           schema:
             $ref: '#/definitions/models.User'
       summary: Changes the email address of the specified user
-      tags:
-      - analytics
-  /analytics/downgrade-user:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Object containing the user email
-        in: body
-        name: payload
-        required: true
-        schema:
-          properties:
-            email:
-              type: string
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-      summary: Downgrades the specified user to Schej Free
       tags:
       - analytics
   /analytics/monthly-active-event-creators:
@@ -583,50 +554,6 @@ paths:
         "200":
           description: OK
       summary: Notifies us when poster QR code has been scanned
-      tags:
-      - analytics
-  /analytics/upgrade-dialog-viewed:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Object containing the user id
-        in: body
-        name: payload
-        required: true
-        schema:
-          properties:
-            userId:
-              type: string
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-      summary: Notifies us when user has viewed the upgrade dialog
-      tags:
-      - analytics
-  /analytics/upgrade-user:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Object containing the user email
-        in: body
-        name: payload
-        required: true
-        schema:
-          properties:
-            email:
-              type: string
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-      summary: Upgrades the specified user to Schej Premium
       tags:
       - analytics
   /analytics/user/{email}:
@@ -837,6 +764,7 @@ paths:
             daysOnly:
               type: boolean
             duration:
+              format: float32
               type: number
             isSignUpForm:
               type: boolean
@@ -935,6 +863,7 @@ paths:
             description:
               type: string
             duration:
+              format: float32
               type: number
             name:
               type: string
@@ -1302,127 +1231,6 @@ paths:
       summary: Import a Timeful event from a remote instance
       tags:
       - events
-  /polar/billing-portal:
-    get:
-      parameters:
-      - description: URL to return to from the portal
-        in: query
-        name: returnUrl
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            properties:
-              url:
-                type: string
-            type: object
-      summary: Gets a Polar customer portal URL for the signed in user
-      tags:
-      - polar
-  /polar/create-checkout-session:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Product to purchase and URL to return to afterwards
-        in: body
-        name: payload
-        required: true
-        schema:
-          properties:
-            originUrl:
-              type: string
-            productId:
-              type: string
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            properties:
-              url:
-                type: string
-            type: object
-      summary: Creates a Polar checkout session for the signed in user
-      tags:
-      - polar
-  /polar/fulfill-checkout:
-    post:
-      consumes:
-      - application/json
-      description: Returns 202 if the payment is still being processed; the client
-        should retry.
-      parameters:
-      - description: Polar checkout ID
-        in: body
-        name: payload
-        required: true
-        schema:
-          properties:
-            checkoutId:
-              type: string
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: status is \"fulfilled\
-          schema:
-            properties:
-              status:
-                type: string
-            type: object
-        "202":
-          description: status is \"pending\
-          schema:
-            properties:
-              status:
-                type: string
-            type: object
-      summary: Fulfills a completed Polar checkout
-      tags:
-      - polar
-  /polar/price:
-    get:
-      parameters:
-      - description: Pricing experiment variant
-        in: query
-        name: exp
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            properties:
-              monthly:
-                type: object
-              monthlyStudent:
-                type: object
-              yearly:
-                type: object
-              yearlyStudent:
-                type: object
-            type: object
-      summary: Gets the prices of all premium plans
-      tags:
-      - polar
-  /polar/webhook:
-    post:
-      consumes:
-      - application/json
-      responses:
-        "200":
-          description: OK
-      summary: Receives Polar webhook events
-      tags:
-      - polar
   /slackbot:
     post:
       consumes:
@@ -1955,27 +1763,6 @@ paths:
           schema:
             $ref: '#/definitions/models.User'
       summary: Returns a minimal public user profile (safe for unauthenticated clients)
-      tags:
-      - users
-  /users/{userId}/is-premium:
-    get:
-      parameters:
-      - description: User ID
-        in: path
-        name: userId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            properties:
-              isPremium:
-                type: boolean
-            type: object
-      summary: Returns whether the given user is a premium user
       tags:
       - users
 swagger: "2.0"

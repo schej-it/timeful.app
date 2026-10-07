@@ -43,23 +43,6 @@
         </div>
       </div>
 
-      <!-- Billing Section -->
-      <div
-        v-if="authUser.stripeCustomerId || authUser.polarCustomerId"
-        class="tw-flex tw-flex-col tw-gap-5"
-      >
-        <div
-          class="tw-text-xl tw-font-medium tw-text-dark-green sm:tw-text-2xl"
-        >
-          Billing
-        </div>
-        <div class="tw-flex tw-flex-col tw-gap-5 sm:tw-flex-row sm:tw-gap-28">
-          <div class="tw-text-black">
-            <v-btn @click="openBillingPortal">Manage billing</v-btn>
-          </div>
-        </div>
-      </div>
-
       <!-- Calendar Access Section -->
       <div class="tw-flex tw-flex-col tw-gap-5">
         <div
@@ -190,7 +173,7 @@
 
 <script>
 import { mapState, mapActions } from "vuex"
-import { _delete, patch, isPhone, get } from "@/utils"
+import { _delete, patch, isPhone } from "@/utils"
 import CalendarAccounts from "@/components/settings/CalendarAccounts.vue"
 
 export default {
@@ -243,23 +226,6 @@ export default {
 
   methods: {
     ...mapActions(["showError"]),
-    openBillingPortal() {
-      // Legacy subscribers are still billed through Stripe
-      const provider = this.authUser.polarCustomerId ? "polar" : "stripe"
-      get(
-        `/${provider}/billing-portal?returnUrl=${encodeURIComponent(
-          window.location.href
-        )}`
-      )
-        .then((res) => {
-          window.location.href = res.url
-        })
-        .catch((err) => {
-          this.showError(
-            "There was a problem opening the billing portal! Please try again later."
-          )
-        })
-    },
     deleteAccount() {
       _delete(`/user`)
         .then(() => {

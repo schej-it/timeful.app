@@ -90,12 +90,12 @@
                   v-bind="attrs"
                   v-on="on"
                 >
-                  Support
+                  Contact us
                 </span>
               </template>
               <v-card class="tw-p-3">
                 <div class="tw-text-sm">
-                  Email support at
+                  Email us at
                   <span class="tw-text-green tw-underline"
                     >contact@timeful.app</span
                   >
@@ -111,10 +111,23 @@
               >Give Feedback</a
             >
           </div>
+          <div>
+            <a
+              href="https://www.paypal.com/donate/?hosted_button_id=KWCH6LGJCP6E6"
+              target="_blank"
+              class="tw-text-sm"
+              >Donate</a
+            >
+          </div>
         </div>
         <!-- Articles -->
         <div class="tw-flex tw-flex-col tw-gap-2">
           <div class="tw-mb-1 tw-font-bold">Articles</div>
+          <div>
+            <a href="/blog/timeful-is-now-free/" class="tw-text-sm"
+              >Timeful is now completely free</a
+            >
+          </div>
           <div>
             <a href="/blog/schej-is-now-timeful/" class="tw-text-sm"
               >Schej is now Timeful</a

@@ -106,27 +106,6 @@ Create `server/.env` from the template (`server/.env.template`).
 | `ENCRYPTION_KEY` | Key for encrypting sensitive data (generate with `openssl rand -base64 32`) |
 | `SESSION_SECRET` | Session cookie encryption key (generate with `openssl rand -base64 32`)     |
 
-#### Optional — Payments
-
-New purchases go through [Polar](https://polar.sh). Stripe is only kept for subscribers who signed up before the move, whose subscriptions still renew on Stripe.
-
-| Variable                | Description                                                        |
-| ----------------------- | ------------------------------------------------------------------ |
-| `POLAR_ACCESS_TOKEN`    | Polar Organization Access Token                                    |
-| `POLAR_WEBHOOK_SECRET`  | Polar webhook endpoint secret                                      |
-| `POLAR_SERVER`          | `sandbox` or `production` (default: `production`)                  |
-| `POLAR_*_PRODUCT_ID`    | Polar product IDs for each plan (monthly, yearly, and student variants; lifetime is disabled) |
-| `STRIPE_API_KEY`        | Stripe API key (legacy subscribers only)                           |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (legacy subscribers only)            |
-
-Polar setup:
-
-1. Create one product per plan. Each Polar product has a single pricing model, so monthly and yearly are separate products.
-2. Create an Organization Access Token with the `checkouts:write`, `products:read`, and `customer_sessions:write` scopes.
-3. Add a webhook endpoint at `https://<your-domain>/api/polar/webhook` with format **Raw** and API version **2026-10**, subscribed to `order.paid`, `subscription.active`, `subscription.past_due`, `subscription.revoked`, and `subscription.migrated`.
-
-For local development, `polar listen http://localhost:3002/api/polar/webhook` forwards webhooks and prints the secret to use for `POLAR_WEBHOOK_SECRET`.
-
 #### Optional — Additional Calendars
 
 | Variable                  | Description                             |

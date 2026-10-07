@@ -250,7 +250,7 @@
 </template>
 
 <script>
-import { authTypes, calendarTypes } from "@/constants"
+import { calendarTypes } from "@/constants"
 import { post, signInGoogle, signInOutlook } from "@/utils"
 import { mapMutations } from "vuex"
 import Logo from "@/components/Logo.vue"
@@ -270,12 +270,6 @@ export default {
 
   components: {
     Logo,
-  },
-
-  computed: {
-    upgradeRedirect() {
-      return this.$route.query.redirect === "upgrade"
-    },
   },
 
   data() {
@@ -300,13 +294,10 @@ export default {
   methods: {
     ...mapMutations(["setAuthUser"]),
     signIn(provider) {
-      const state = this.upgradeRedirect
-        ? { type: authTypes.UPGRADE, upgradeParams: this.$route.query.upgradeParams }
-        : null
       if (provider === calendarTypes.GOOGLE) {
-        signInGoogle({ state, selectAccount: true })
+        signInGoogle({ state: null, selectAccount: true })
       } else if (provider === calendarTypes.OUTLOOK) {
-        signInOutlook({ state, selectAccount: true })
+        signInOutlook({ state: null, selectAccount: true })
       }
     },
     validateEmail() {
@@ -399,7 +390,7 @@ export default {
           firstName: user.firstName,
           lastName: user.lastName,
         })
-        await this.handlePostAuthRedirect(user)
+        this.$router.replace({ name: "home" })
       } catch (err) {
         const errorCode = err?.parsed?.error
         if (errorCode === "otp-expired") {
@@ -412,23 +403,6 @@ export default {
       } finally {
         this.verifying = false
       }
-    },
-    async handlePostAuthRedirect(user) {
-      if (this.upgradeRedirect) {
-        try {
-          const params = JSON.parse(this.$route.query.upgradeParams)
-          const res = await post("/polar/create-checkout-session", {
-            // priceId is from upgrade params saved before the Polar migration
-            productId: params.productId ?? params.priceId,
-            originUrl: params.originUrl,
-          })
-          window.location.href = res.url
-          return
-        } catch (e) {
-          console.error(e)
-        }
-      }
-      this.$router.replace({ name: "home" })
     },
     startResendCooldown() {
       this.resendCooldown = 30

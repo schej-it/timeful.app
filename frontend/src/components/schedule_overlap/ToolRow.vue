@@ -145,22 +145,6 @@
         </template>
       </div>
     </div>
-
-    <!-- <Advertisement
-      class="tw-mt-5 sm:tw-mt-10"
-      :ownerId="event.ownerId"
-    ></Advertisement> -->
-
-    <!-- <div v-if="!isPremiumUser">
-      <ins
-        class="adsbygoogle"
-        style="display: block"
-        data-ad-client="ca-pub-4082178684015354"
-        data-ad-slot="7343574524"
-        data-ad-format="auto"
-        data-full-width-responsive="true"
-      ></ins>
-    </div> -->
   </div>
 </template>
 
@@ -168,11 +152,10 @@
 import TimezoneSelector from "./TimezoneSelector.vue"
 import GCalWeekSelector from "./GCalWeekSelector.vue"
 import { isPhone } from "@/utils"
-import Advertisement from "../event/Advertisement.vue"
 import ExpandableSection from "../ExpandableSection.vue"
 import EventOptions from "./EventOptions.vue"
 import { timeTypes, guestUserId } from "@/constants"
-import { mapState, mapGetters } from "vuex"
+import { mapState } from "vuex"
 
 export default {
   name: "ToolRow",
@@ -199,7 +182,6 @@ export default {
   components: {
     TimezoneSelector,
     GCalWeekSelector,
-    Advertisement,
     ExpandableSection,
     EventOptions,
   },
@@ -215,28 +197,8 @@ export default {
     ],
   }),
 
-  mounted() {
-    // Initialize Google Ads only for non-premium users
-    // if (!this.isPremiumUser) {
-    //   this.$nextTick(() => {
-    //     this.initializeAd()
-    //  })
-    // }
-  },
-
-  methods: {
-    initializeAd() {
-      try {
-        (window.adsbygoogle = window.adsbygoogle || []).push({})
-      } catch (e) {
-        console.error('AdSense error:', e)
-      }
-    }
-  },
-
   computed: {
     ...mapState(["authUser"]),
-    ...mapGetters(["isPremiumUser"]),
     isPhone() {
       return isPhone(this.$vuetify)
     },

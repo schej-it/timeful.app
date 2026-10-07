@@ -1,6 +1,8 @@
 package models
 
 import (
+	"encoding/json"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -31,25 +33,27 @@ type User struct {
 	// Calendar options
 	CalendarOptions *CalendarOptions `json:"calendarOptions" bson:"calendarOptions,omitempty"`
 
-	// Stripe customer ID
-	StripeCustomerId *string `json:"stripeCustomerId" bson:"stripeCustomerId,omitempty"`
-	// Polar customer ID
-	PolarCustomerId  *string `json:"polarCustomerId" bson:"polarCustomerId,omitempty"`
-	IsPremium        *bool   `json:"isPremium" bson:"isPremium,omitempty"`
-	NumEventsCreated int     `json:"numEventsCreated" bson:"numEventsCreated,omitempty"`
+	NumEventsCreated int `json:"numEventsCreated" bson:"numEventsCreated,omitempty"`
+
+	// Billing customer IDs from when Timeful had a paid tier. Kept so we can
+	// recognize past supporters; never sent to the client.
+	StripeCustomerId *string `json:"-" bson:"stripeCustomerId,omitempty"`
+	PolarCustomerId  *string `json:"-" bson:"polarCustomerId,omitempty"`
 }
 
-// HasPremium returns whether the user has an active premium purchase through
-// either billing provider. Users with a customer ID but no explicit isPremium
-// value are treated as premium (e.g. lifetime purchases predating isPremium).
-func (u *User) HasPremium() bool {
-	if u.StripeCustomerId == nil && u.PolarCustomerId == nil {
-		return false
-	}
-	if u.IsPremium != nil {
-		return *u.IsPremium
-	}
-	return true
+// HasPaid returns whether the user ever paid for Timeful
+func (u User) HasPaid() bool {
+	return (u.StripeCustomerId != nil && *u.StripeCustomerId != "") ||
+		(u.PolarCustomerId != nil && *u.PolarCustomerId != "")
+}
+
+// MarshalJSON adds the computed hasPaid field to the user's JSON
+func (u User) MarshalJSON() ([]byte, error) {
+	type userAlias User
+	return json.Marshal(struct {
+		userAlias
+		HasPaid bool `json:"hasPaid"`
+	}{userAlias(u), u.HasPaid()})
 }
 
 // Declare the possible types of TokenOrigin

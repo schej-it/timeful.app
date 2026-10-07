@@ -15,8 +15,7 @@ import (
 type SlackbotMessageType string
 
 const (
-	GENERAL      SlackbotMessageType = "general"
-	MONETIZATION SlackbotMessageType = "monetization"
+	GENERAL SlackbotMessageType = "general"
 )
 
 func SendTextMessage(message string) {
@@ -38,9 +37,6 @@ func SendMessageWithType(message *commands.Response, messageType SlackbotMessage
 		case GENERAL:
 			// schej-bot
 			webhookUrl = os.Getenv("SLACK_PROD_WEBHOOK_URL")
-		case MONETIZATION:
-			// monetization-bot
-			webhookUrl = os.Getenv("SLACK_MONETIZATION_WEBHOOK_URL")
 		}
 	} else {
 		// schej-bot-dev
