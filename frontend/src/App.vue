@@ -28,6 +28,14 @@
         <router-link :to="{ name: 'home' }">
           <Logo type="timeful" />
         </router-link>
+        <v-expand-x-transition>
+          <span
+            v-if="authUser?.hasPaid"
+            class="tw-ml-2 tw-cursor-default tw-rounded-md tw-bg-[linear-gradient(-25deg,#0a483d,#00994c,#126045,#0a483d)] tw-px-2 tw-py-1 tw-text-sm tw-font-semibold tw-text-white tw-opacity-80"
+          >
+            Supporter
+          </span>
+        </v-expand-x-transition>
 
         <v-spacer />
 
@@ -49,14 +57,14 @@
         >
           Give feedback
         </v-btn>
-        <!-- <v-btn
+        <v-btn
           v-if="!isPhone"
           text
           href="https://www.paypal.com/donate/?hosted_button_id=KWCH6LGJCP6E6"
           target="_blank"
         >
           Donate
-        </v-btn> -->
+        </v-btn>
         <v-btn
           v-if="$route.name === 'home' && !isPhone"
           color="primary"

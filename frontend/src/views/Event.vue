@@ -318,10 +318,10 @@
           >
             Give feedback to Timeful team
           </v-btn>
-          <!-- <div
+          <div
             class="tw-w-full tw-border-t tw-border-solid tw-border-gray"
-          ></div> -->
-          <!-- <v-btn
+          ></div>
+          <v-btn
             class="tw-h-16"
             block
             text
@@ -329,7 +329,7 @@
             target="_blank"
           >
             Donate
-          </v-btn> -->
+          </v-btn>
           <div
             class="tw-w-full tw-border-t tw-border-solid tw-border-gray"
           ></div>
