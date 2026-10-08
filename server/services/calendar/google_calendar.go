@@ -31,7 +31,7 @@ func (calendar GoogleCalendar) GetCalendarList() (map[string]models.SubCalendar,
 	}
 	defer resp.Body.Close()
 
-	// Define stucts to parse json response
+	// Define structs to parse json response
 	type Response struct {
 		Items []struct {
 			Id       string `json:"id" bson:"id,omitempty"`
