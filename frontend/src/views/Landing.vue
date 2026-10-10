@@ -101,7 +101,7 @@
               class="tw-relative tw-mx-4 tw-aspect-square md:tw-size-[700px] lg:tw-size-[800px]"
             >
               <v-img
-                class="tw-size-full"
+                class="tw-absolute tw-left-0 tw-top-0 tw-size-full"
                 src="@/assets/img/hero.jpg"
                 alt="An availability poll showing when everyone is free"
                 contain

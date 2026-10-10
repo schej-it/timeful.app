@@ -152,7 +152,8 @@ func main() {
 			if err != nil || relPath == "" || relPath == "." {
 				return nil
 			}
-			router.StaticFile(fmt.Sprintf("/%s", relPath), path)
+			// URL paths use forward slashes; on Windows relPath has backslashes
+			router.StaticFile(fmt.Sprintf("/%s", filepath.ToSlash(relPath)), path)
 		}
 		return nil
 	})
