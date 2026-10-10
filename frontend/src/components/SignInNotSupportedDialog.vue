@@ -5,7 +5,7 @@
       <v-card-title>Google sign in not supported</v-card-title>
       <v-card-text>
         <p>
-          This usually happens when you open a Timeful link from Instagram or
+          This usually happens when you open a 2bz2fill link from Instagram or
           Messenger.
         </p>
         <p>

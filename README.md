@@ -1,51 +1,63 @@
-<div align="center">
-  
-<img src="./.github/assets/images/logo.svg" width="200px" alt="Timeful logo" />
+<img src="./.github/assets/images/banner.png" alt="2bz2fill: too busy to fill out the grid? Let your calendar do it." />
 
-</div>
-<br />
 <div align="center">
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-orange.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Donate](https://img.shields.io/badge/-Donate%20with%20Paypal-blue?logo=paypal)](https://www.paypal.com/donate/?hosted_button_id=KWCH6LGJCP6E6)
-[![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/timeful_app?label=%40timeful_app&labelColor=white)](https://x.com/timeful_app)
-[![Discord](https://img.shields.io/badge/-Join%20Discord-7289DA?logo=discord&logoColor=white)](https://discord.gg/v6raNqYxx3)
-[![Subreddit subscribers](https://img.shields.io/reddit/subreddit-subscribers/schej?label=join%20r%2Fschej)](https://www.reddit.com/r/schej/)
 
 </div>
 
-<img src="./.github/assets/images/hero.jpg" alt="Timeful hero" />
+**2bz2fill** is a group availability poll for people who are too busy to fill out a long
+When2meet-style grid. Every feature is judged by one question: does it make responding take less
+effort?
 
-Timeful is a scheduling platform helps you find the best time for a group to meet. It is a free availability poll that is easy to use and integrates with your calendar.
+It is a fork of [Timeful](https://github.com/schej-it/timeful.app) (formerly Schej), an open-source
+scheduling app by Jonathan Liu and contributors. Thank you to them: the poll grid, calendar
+integrations, time zone handling and most of the code here are theirs.
 
-Hosted version of the site: https://timeful.app
+Built with [Vue 2](https://github.com/vuejs/vue), [MongoDB](https://github.com/mongodb/mongo),
+[Go](https://github.com/golang/go), and [TailwindCSS](https://github.com/tailwindlabs/tailwindcss).
 
-Built with [Vue 2](https://github.com/vuejs/vue), [MongoDB](https://github.com/mongodb/mongo), [Go](https://github.com/golang/go), and [TailwindCSS](https://github.com/tailwindlabs/tailwindcss)
+## How it differs from Timeful
 
-## Demo
+Timeful is a general scheduling poll. 2bz2fill keeps its features and focuses on cutting the work
+of responding. Planned, in order:
 
-[![demo video](http://markdown-videos-api.jorgenkh.no/youtube/vFkBC8BrkOk)](https://www.youtube.com/watch?v=vFkBC8BrkOk)
+1. Upload an `.ics` file to fill the grid from any calendar app, with no account or sign-in.
+2. Save "my usual week" once and have every new poll arrive pre-filled from it.
+3. Fast manual tools: mark busy times instead of free ones, fill or clear a whole day, copy a day,
+   reuse your last response.
+4. Pre-filled responses you only need to check and confirm.
+5. A grid that works well on a phone.
 
-## Features
+The Timeful-specific parts (their branding, blog, socials, analytics, donation links and the
+When2meet converter, which runs on Timeful's own servers) have been removed.
+
+## Features inherited from Timeful
 
 - See when everybody's availability overlaps
-- Easily specify date + time ranges to meet between
-- Google calendar, Outlook, Apple calendar integration
+- Date and time ranges, or days of the week
+- Autofill from Google Calendar, Outlook, Apple Calendar or an ICS feed URL
 - "Available" vs. "If needed" times
-- Determine when a subset of people are available
-- Schedule across different time zones
-- Email notifications + reminders
-- Duplicating polls
-- Availability groups - stay up to date with people's real-time calendar availability
-- Export availability as CSV
-- Only show responses to event creator
+- See when a subset of people are available
+- Time zone support
+- Email notifications and reminders
+- Duplicating polls, availability groups, CSV export
+- Only show responses to the event creator
+- Import a poll (with its responses) from a 2bz2fill or Timeful link
 
 ## Plugin API
 
-Read these docs to design your own browser plugins to get + set availability on Timeful events programmatically!
-
-[Plugin API Docs](./PLUGIN_API_README.md)
+Browser plugins can get and set availability on a poll programmatically. See the
+[Plugin API docs](./PLUGIN_API_README.md).
 
 ## Self-hosting
 
-See the [Deployment Guide](./DEPLOYMENT.md) for Docker Compose and NixOS setup instructions.
+See the [Deployment Guide](./DEPLOYMENT.md) for Docker Compose and NixOS setup. Set `BASE_URL` in
+`server/.env` to the site's public address; until it is set, emails link to the placeholder
+`https://2bz2fill.example`. Analytics are off unless you set your own PostHog key or Google Tag
+Manager ID in `frontend/.env` (see `frontend/.env.template`).
+
+## License
+
+[GNU AGPL v3](./LICENSE), the same as Timeful. If you run a modified copy as a public website, you
+must offer its source code to your users; the site footer links to this repository for that reason.

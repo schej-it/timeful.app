@@ -6,13 +6,11 @@
       <!-- Header -->
       <div class="tw-mb-16 sm:tw-mb-28">
         <div class="tw-flex tw-items-center tw-pt-5">
-          <Logo type="timeful" />
+          <Logo />
 
           <v-spacer />
 
           <LandingPageHeader>
-            <v-btn text @click="openHowItWorksDialog">How it works</v-btn>
-            <v-btn text href="/blog">Blog</v-btn>
             <div v-if="authUser" class="tw-ml-2">
               <AuthUserMenu />
             </div>
@@ -25,20 +23,6 @@
         <div
           class="tw-mb-6 tw-flex tw-max-w-[26rem] tw-flex-col tw-items-center sm:tw-w-[35rem] sm:tw-max-w-none"
         >
-          <a
-            href="/blog/timeful-is-now-free/"
-            class="tw-mb-3 tw-rounded-2xl tw-border tw-border-green/40 tw-bg-green/10 tw-px-4 tw-py-1.5 tw-text-center tw-text-sm tw-text-very-dark-gray hover:tw-bg-green/20"
-          >
-            🎉 Timeful is now completely free to use!
-            <span class="tw-hidden md:tw-inline"
-              >We got rid of the banner ads + our premium subscription tier.{{
-                " "
-              }}</span
-            >
-            <span class="tw-whitespace-nowrap tw-font-medium tw-text-green"
-              >Read more on our blog →</span
-            >
-          </a>
           <div
             class="tw-mb-4 tw-flex tw-select-none tw-items-center tw-rounded-full tw-border tw-border-light-gray-stroke tw-bg-white/70 tw-px-2.5 tw-py-1.5 tw-text-sm tw-text-dark-gray"
           >
@@ -46,9 +30,9 @@
             <github-button
               v-once
               class="-tw-mb-1 tw-ml-2"
-              href="https://github.com/schej-it/timeful.app"
+              href="https://github.com/HowieYHY/2bz2fill"
               data-show-count="true"
-              aria-label="Star timeful.app on GitHub"
+              aria-label="Star 2bz2fill on GitHub"
               >Star</github-button
             >
           </div>
@@ -78,7 +62,7 @@
                 >
               </template>
               <span
-                >Timeful allows you to autofill your availability from Google
+                >2bz2fill can autofill your availability from Google
                 Calendar,<br class="tw-hidden sm:tw-block" />
                 Outlook, Apple Calendar, or an ICS feed URL.</span
               > </v-tooltip
@@ -109,7 +93,7 @@
             class="tw-absolute -tw-bottom-12 tw-left-1/2 tw-h-[85%] tw-w-screen -tw-translate-x-1/2 tw-bg-green sm:-tw-bottom-20"
           ></div>
 
-          <!-- Hero video -->
+          <!-- Hero image -->
           <div
             class="tw-relative tw-z-20 tw-w-full tw-rounded-lg tw-border tw-border-light-gray-stroke tw-bg-white tw-shadow-xl sm:tw-rounded-xl md:tw-mx-auto md:tw-w-fit"
           >
@@ -117,25 +101,10 @@
               class="tw-relative tw-mx-4 tw-aspect-square md:tw-size-[700px] lg:tw-size-[800px]"
             >
               <v-img
-                class="tw-absolute tw-left-0 tw-top-0 tw-z-20 tw-size-full tw-transition-opacity tw-duration-300"
-                :class="{ 'tw-opacity-0': isVideoPlaying }"
+                class="tw-size-full"
                 src="@/assets/img/hero.jpg"
-                transition="fade-transition"
+                alt="An availability poll showing when everyone is free"
                 contain
-              />
-              <vue-vimeo-player
-                video-url="https://player.vimeo.com/video/1083205305?h=d58bef862a"
-                :player-width="800"
-                :player-height="800"
-                :options="{
-                  muted: true,
-                  playsinline: true,
-                  responsive: true,
-                }"
-                :controls="false"
-                :autoplay="true"
-                :loop="true"
-                @play="onPlay"
               />
             </div>
           </div>
@@ -170,82 +139,6 @@
       >
         It's that simple.
       </div>
-      <v-img
-        alt="schej character"
-        src="@/assets/schej_character.png"
-        :height="isPhone ? 200 : 300"
-        transition="fade-transition"
-        contain
-        class="-tw-mb-12"
-      />
-    </div>
-
-    <!-- Video -->
-    <div
-      class="tw-flex tw-justify-center tw-bg-green tw-px-4 tw-pb-12 tw-pt-24 md:tw-pb-16"
-    >
-      <div
-        class="tw-h-[300px] tw-max-w-3xl tw-flex-1 sm:tw-h-[400px] md:tw-h-[450px]"
-      >
-        <iframe
-          class="tw-h-full tw-w-full"
-          src="https://www.youtube.com/embed/vFkBC8BrkOk?si=pF64JAIyDhom_1do"
-          title="Timeful demo"
-          frameborder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerpolicy="strict-origin-when-cross-origin"
-          allowfullscreen
-        ></iframe>
-      </div>
-    </div>
-
-    <!-- Reddit Testimonials -->
-    <div class="tw-flex tw-justify-center tw-bg-light-gray tw-py-12">
-      <div class="tw-mx-4 tw-max-w-3xl tw-flex-1 sm:tw-mx-16">
-        <div class="tw-text-center">
-          <Header> People love us on Reddit! </Header>
-          <div
-            class="tw-mt-8 tw-grid tw-grid-cols-1 tw-gap-4 sm:tw-grid-cols-2"
-          >
-            <div
-              v-for="(comment, index) in redditComments"
-              :key="index"
-              class="tw-flex tw-flex-col tw-rounded-lg tw-bg-white tw-p-4 tw-shadow-md"
-              :class="{
-                'sm:tw-col-span-2 sm:tw-mx-auto sm:tw-max-w-md':
-                  redditComments.length % 2 !== 0 &&
-                  index === redditComments.length - 1,
-              }"
-            >
-              <div class="tw-flex tw-flex-1 tw-items-center">
-                <div
-                  class="reddit-comment tw-text-left tw-text-sm tw-text-very-dark-gray"
-                  v-html="comment.text.replace(/\n/g, '<br />')"
-                ></div>
-              </div>
-              <div
-                class="tw-my-4 tw-h-px tw-w-full tw-bg-light-gray-stroke"
-              ></div>
-              <div class="tw-flex tw-items-center tw-justify-between">
-                <div class="tw-text-right">
-                  <a
-                    :href="comment.link"
-                    target="_blank"
-                    class="tw-text-sm tw-font-medium tw-text-dark-gray hover:tw-underline"
-                  >
-                    {{ comment.author }}
-                  </a>
-                </div>
-                <div class="tw-flex tw-items-center tw-gap-2">
-                  <v-avatar size="24">
-                    <v-img :src="comment.picture" />
-                  </v-avatar>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- FAQ -->
@@ -278,12 +171,6 @@
 
     <!-- New event dialog -->
     <NewDialog v-model="newDialog" no-tabs @signIn="signIn" />
-
-    <!-- Add the dialog component -->
-    <HowItWorksDialog
-      v-if="showHowItWorksDialog"
-      v-model="showHowItWorksDialog"
-    />
   </div>
 </template>
 
@@ -293,11 +180,6 @@
     font-size: 1.875rem !important; /* 30px */
     line-height: 2.25rem !important; /* 36px */
   }
-}
-</style>
-<style>
-.rdt-h {
-  @apply tw-rounded tw-bg-light-green/20 tw-px-px tw-text-black;
 }
 </style>
 
@@ -314,10 +196,7 @@ import Logo from "@/components/Logo.vue"
 import GithubButton from "vue-github-button"
 import SignInDialog from "@/components/SignInDialog.vue"
 import { calendarTypes } from "@/constants"
-import HowItWorksDialog from "@/components/HowItWorksDialog.vue"
-import { vueVimeoPlayer } from "vue-vimeo-player"
 import Footer from "@/components/Footer.vue"
-import PronunciationMenu from "@/components/PronunciationMenu.vue"
 import { mapState, mapMutations } from "vuex"
 import AuthUserMenu from "@/components/AuthUserMenu.vue"
 
@@ -325,7 +204,7 @@ export default {
   name: "Landing",
 
   metaInfo: {
-    title: "Timeful - Find a time to meet",
+    title: "2bz2fill - Find a time to meet",
   },
 
   components: {
@@ -339,10 +218,7 @@ export default {
     GithubButton,
     Logo,
     SignInDialog,
-    HowItWorksDialog,
-    vueVimeoPlayer,
     Footer,
-    PronunciationMenu,
     AuthUserMenu,
   },
 
@@ -351,28 +227,28 @@ export default {
     newDialog: false,
     githubSnackbar: true,
     howItWorksSteps: [
-      "Create a Timeful event",
-      "Share the Timeful link with your group for them to fill out",
+      "Create a poll",
+      "Share the link with your group for them to fill out",
       "See where everybody's availability overlaps!",
     ],
     faqs: [
       {
-        question: "Does Timeful support timezones?",
+        question: "Does 2bz2fill support timezones?",
         answer:
-          "Yes! Timeful automatically converts all times to the viewer's local timezone. There's also a timezone selector at the bottom of every meeting poll if you would like to manually change it.",
+          "Yes! 2bz2fill automatically converts all times to the viewer's local timezone. There's also a timezone selector at the bottom of every meeting poll if you would like to manually change it.",
       },
       {
         question: "How many people can respond to an event?",
         answer:
-          "Unlimited! We've tested events with over 500+ responses and it works great.",
+          "There's no limit on the number of responses.",
       },
       {
-        question: "What calendars does Timeful integrate with?",
+        question: "What calendars does 2bz2fill integrate with?",
         answer:
-          "Timeful allows you to autofill your availability from your Google Calendar, Outlook, Apple Calendar, or an ICS feed URL. We are working on adding more calendar types soon!",
+          "2bz2fill allows you to autofill your availability from your Google Calendar, Outlook, Apple Calendar, or an ICS feed URL.",
       },
       {
-        question: "Is calendar access required in order to use Timeful?",
+        question: "Is calendar access required in order to use 2bz2fill?",
         answer:
           "Nope! You can manually input your availability, but we highly recommend allowing calendar access in order to view your calendar events while doing so.",
       },
@@ -387,12 +263,9 @@ export default {
           'If you are signed in, simply click the "Edit availability" button. If you entered your availability as a guest, hover over your name and click the pencil icon next to it.',
       },
       {
-        question: "How is Timeful different from Lettucemeet or When2meet?",
-        points: [
-          "Much better UI (web and mobile)",
-          "Seamless and working calendar integration",
-          "A slew of other features that we don't have space to list here",
-        ],
+        question: "How is 2bz2fill different from When2meet?",
+        answer:
+          "It's built for people who are too busy to fill out a long grid by hand. Instead of painting every slot, you can autofill your availability from your calendar and just check it.",
       },
       {
         question: `I want it so that only I can see people's responses.`,
@@ -406,58 +279,10 @@ export default {
       },
       {
         question: `How do I send reminders to people to fill out an event?`,
-        answer: `Open the "Email Reminders" section when creating an event and input everybody's email address. Reminder emails will be sent the day of event creation, one day after, and three days after. <br><br>You will also receive an email once everybody has filled out the Timeful.`,
+        answer: `Open the "Email Reminders" section when creating an event and input everybody's email address. Reminder emails will be sent the day of event creation, one day after, and three days after. <br><br>You will also receive an email once everybody has filled out the poll.`,
         authRequired: true,
       },
     ],
-    redditComments: [
-      {
-        text: "Genuinely the <span class='rdt-h'>best lightweight version of this kind of website</span> that I've come across so far, exceptional.",
-        author: "u/voipClock",
-        link: "https://www.reddit.com/r/opensource/comments/1klu471/comment/mt4l2ab",
-        picture:
-          "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_1.png",
-      },
-      {
-        text: "It's almost <span class='rdt-h'>comically easy</span> to schedule meetings with Timeful.",
-        author: "u/stuffingmybrain",
-        link: "https://www.reddit.com/r/schej/comments/1drs26z/comment/lb8rvty",
-        picture:
-          "https://styles.redditmedia.com/t5_qqojf/styles/profileIcon_snooa54a8eae-bc7f-406f-9778-b3b9dfb818e5-headshot.png?width=64&height=64&frame=1&auto=webp&crop=&s=a0a91575ff7cfc3b6698cac69da6c012c7deb8d6",
-      },
-      {
-        text: "Timeful is everything I've ever wanted and more. On top of that, <span class='rdt-h'>community support is the best I've seen</span> of any app or software, ever.",
-        author: "u/DMODD",
-        link: "https://www.reddit.com/r/schej/comments/1drs26z/comment/lb8udud",
-        picture:
-          "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_6.png",
-      },
-      {
-        text: "With Timeful, <span class='rdt-h'>I'm very quickly able to figure out the optimal time</span> to schedule online extra help sessions before an exam.",
-        author: "u/crackwurst",
-        link: "https://www.reddit.com/r/schej/comments/1drs26z/comment/lb9dmbe",
-        picture:
-          "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_3.png",
-      },
-      {
-        text: "Exactly what I was looking for! Clear and clean interface, also on mobile (<span class='rdt-h'>Doodle is a disaster</span>).",
-        author: "u/Willem1976",
-        link: "https://www.reddit.com/r/opensource/comments/1dlol7r/comment/lkn7sle",
-        picture:
-          "https://styles.redditmedia.com/t5_c0qtc/styles/profileIcon_snooa9d429ce-e3d9-458a-be9e-1b6dd157a209-headshot.png?width=64&height=64&frame=1&auto=webp&crop=&s=7eba44ea268928b969bcf73ee8667357412132ca",
-      },
-      // {
-      //   text: "Thank you very much! My workplace cannot seem to pick between when2meet and Doodle and I feel like this brings the best of each into one.\n\nWell done <3",
-      //   author: "u/jadiepants",
-      //   link: "https://www.reddit.com/r/opensource/comments/1dlol7r/comment/m6bf3li",
-      //   picture:
-      //     "https://styles.redditmedia.com/t5_d7myp/styles/profileIcon_snoof50f1128-f439-433b-a6b2-8e987630e506-headshot.png?width=64&height=64&frame=1&auto=webp&crop=&s=94077bf80603c2855747f1bfc0b9dd1539fae75c",
-      // },
-    ],
-    rive: null,
-    showSchejy: false,
-    showHowItWorksDialog: false,
-    isVideoPlaying: false,
   }),
 
   computed: {
@@ -469,27 +294,6 @@ export default {
 
   methods: {
     ...mapMutations(["setAuthUser"]),
-    loadRiveAnimation() {
-      // if (!this.rive) {
-      //   this.rive = new Rive({
-      //     src: "/rive/schej.riv",
-      //     canvas: document.querySelector("canvas"),
-      //     autoplay: false,
-      //     stateMachines: "wave",
-      //     onLoad: () => {
-      //       // r.resizeDrawingSurfaceToCanvas()
-      //     },
-      //   })
-      //   setTimeout(() => {
-      //     this.showSchejy = true
-      //     setTimeout(() => {
-      //       this.rive.play("wave")
-      //     }, 1000)
-      //   }, 4000)
-      // } else {
-      //   this.rive.play("wave")
-      // }
-    },
     _signIn(calendarType) {
       if (calendarType === calendarTypes.GOOGLE) {
         signInGoogle({ state: null, selectAccount: true })
@@ -510,34 +314,8 @@ export default {
     signIn() {
       this.$router.push({ name: "sign-in" })
     },
-    openHowItWorksDialog() {
-      this.showHowItWorksDialog = true
-      this.$posthog.capture("how_it_works_clicked")
-    },
-    onPlay() {
-      setTimeout(() => {
-        this.isVideoPlaying = true
-      }, 1000)
-    },
     openDashboard() {
       this.$router.push({ name: "home" })
-    },
-  },
-
-  beforeDestroy() {
-    this.rive?.cleanup()
-  },
-
-  watch: {
-    [`$vuetify.breakpoint.name`]: {
-      immediate: true,
-      handler() {
-        if (this.$vuetify.breakpoint.mdAndUp) {
-          setTimeout(() => {
-            this.loadRiveAnimation()
-          }, 0)
-        }
-      },
     },
   },
 }
