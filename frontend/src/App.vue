@@ -1,6 +1,5 @@
 <template>
   <v-app>
-    <DiscordBanner />
     <AutoSnackbar color="error" :text="error" />
     <AutoSnackbar color="tw-bg-blue" :text="info" />
     <SignInNotSupportedDialog v-model="webviewDialog" />
@@ -16,7 +15,6 @@
       :no-tabs="newDialogOptions.eventOnly"
       :folder-id="newDialogOptions.folderId"
     />
-    <UpvoteRedditSnackbar />
     <div
       v-if="showHeader"
       class="tw-fixed tw-z-40 tw-h-14 tw-w-screen tw-bg-white sm:tw-h-16"
@@ -26,7 +24,7 @@
         class="tw-relative tw-m-auto tw-flex tw-h-full tw-max-w-6xl tw-items-center tw-justify-center tw-px-4"
       >
         <router-link :to="{ name: 'home' }">
-          <Logo type="timeful" />
+          <Logo />
         </router-link>
         <v-expand-x-transition>
           <span
@@ -46,24 +44,6 @@
           @click="() => _createNew(true)"
         >
           Create an event
-        </v-btn>
-        <v-btn
-          v-if="showFeedbackBtn"
-          id="feedback-btn"
-          text
-          href="https://forms.gle/A96i4TTWeKgH3P1W6"
-          target="_blank"
-          @click="trackFeedbackClick"
-        >
-          Give feedback
-        </v-btn>
-        <v-btn
-          v-if="!isPhone"
-          text
-          href="https://www.paypal.com/donate/?hosted_button_id=KWCH6LGJCP6E6"
-          target="_blank"
-        >
-          Donate
         </v-btn>
         <v-btn
           v-if="$route.name === 'home' && !isPhone"
@@ -238,12 +218,10 @@ import { authTypes, calendarTypes, eventTypes } from "@/constants"
 import AutoSnackbar from "@/components/AutoSnackbar"
 import AuthUserMenu from "@/components/AuthUserMenu.vue"
 import SignInNotSupportedDialog from "@/components/SignInNotSupportedDialog.vue"
-import UpvoteRedditSnackbar from "@/components/UpvoteRedditSnackbar.vue"
 import Logo from "@/components/Logo.vue"
 import isWebview from "is-ua-webview"
 import NewDialog from "./components/NewDialog.vue"
 import SignInDialog from "@/components/SignInDialog.vue"
-import DiscordBanner from "@/components/DiscordBanner.vue"
 
 export default {
   name: "App",
@@ -259,10 +237,8 @@ export default {
     AuthUserMenu,
     SignInNotSupportedDialog,
     NewDialog,
-    UpvoteRedditSnackbar,
     Logo,
     SignInDialog,
-    DiscordBanner,
   },
 
   data: () => ({
@@ -286,9 +262,6 @@ export default {
         this.$route.name !== "sign-up" &&
         this.$route.name !== "privacy-policy"
       )
-    },
-    showFeedbackBtn() {
-      return !this.isPhone || this.$route.name === "home"
     },
     routerViewClass() {
       let c = ""
@@ -382,9 +355,6 @@ export default {
 
       // this.setSignUpFormEnabled(this.$posthog.isFeatureEnabled("sign-up-form"))
       this.setFeatureFlagsLoaded(true)
-    },
-    trackFeedbackClick() {
-      this.$posthog.capture("give_feedback_button_clicked")
     },
   },
 

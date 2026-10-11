@@ -118,7 +118,11 @@ func PrintHttpResponse(resp *http.Response) {
 func GetBaseUrl() string {
 	var baseUrl string
 	if IsRelease() {
-		baseUrl = "https://timeful.app"
+		// Placeholder until the site has a real address; set BASE_URL in .env
+		baseUrl = os.Getenv("BASE_URL")
+		if baseUrl == "" {
+			baseUrl = "https://2bz2fill.example"
+		}
 	} else {
 		baseUrl = "http://localhost:8080"
 	}

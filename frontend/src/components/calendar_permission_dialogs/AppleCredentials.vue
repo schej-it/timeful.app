@@ -21,7 +21,7 @@
           <span class="tw-font-medium tw-text-black"
             >app-specific password</span
           >
-          to use with Timeful at
+          to use with 2bz2fill at
           <a
             href="https://appleid.apple.com/account/manage"
             target="_blank"

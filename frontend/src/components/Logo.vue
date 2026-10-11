@@ -1,5 +1,22 @@
 <template>
+  <div
+    v-if="type === 'brand'"
+    class="tw-flex tw-shrink-0 tw-cursor-pointer tw-select-none tw-items-center"
+    :class="isPhone ? 'tw-gap-1.5' : 'tw-gap-2'"
+    role="img"
+    :aria-label="alt"
+  >
+    <BrandMark :size="isPhone ? 22 : 26" />
+    <span
+      class="tw-font-bold tw-leading-none tw-tracking-tight tw-text-black"
+      :class="isPhone ? 'tw-text-lg' : 'tw-text-xl'"
+      aria-hidden="true"
+      ><span class="tw-text-green">2</span>bz<span class="tw-text-green">2</span
+      >fill</span
+    >
+  </div>
   <v-img
+    v-else
     :alt="alt"
     class="shrink tw-cursor-pointer"
     contain
@@ -11,14 +28,17 @@
 
 <script>
 import { isPhone } from "@/utils"
+import BrandMark from "@/components/BrandMark.vue"
 
 export default {
   name: "Logo",
 
+  components: { BrandMark },
+
   props: {
     type: {
-      type: "timeful" | "betterwhen2meet" | "aprilfools",
-      default: "timeful",
+      type: "brand" | "betterwhen2meet" | "aprilfools",
+      default: "brand",
     },
   },
 
@@ -31,27 +51,13 @@ export default {
         return "Betterwhen2meet Logo"
       }
 
-      return "Timeful Logo"
+      return "2bz2fill"
     },
     src() {
-      switch (this.type) {
-        case "timeful":
-          return require("@/assets/timeful_logo_with_text.png")
-        case "betterwhen2meet":
-          return require("@/assets/april_fools_logo.png")
-        case "aprilfools":
-          return require("@/assets/april_fools_logo.png")
-      }
+      return require("@/assets/april_fools_logo.png")
     },
     width() {
-      switch (this.type) {
-        case "timeful":
-          return this.isPhone ? 90 : 110
-        case "betterwhen2meet":
-          return this.isPhone ? 200 : 300
-        case "aprilfools":
-          return this.isPhone ? 200 : 300
-      }
+      return this.isPhone ? 200 : 300
     },
   },
 }

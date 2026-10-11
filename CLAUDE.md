@@ -13,6 +13,14 @@ Monorepo for Timeful, a group availability/scheduling app.
 
 Internal identifiers (Go module `schej.it/server`, Mongo DB `schej-it`, prod email "Schej.it") still use the old name — leave them alone unless rebranding is the explicit task.
 
+## Branding (2bz2fill fork)
+
+- User-visible name is **2bz2fill**; it is a fork of Timeful and keeps a "Based on Timeful" credit plus a source-code link in the footer (AGPL §13).
+- No domain yet: the server's public address comes from `BASE_URL` (placeholder `https://2bz2fill.example`); the sign-in email sender from `EMAIL_FROM`. Frontend links to the site use `window.location.origin`, never a hard-coded domain.
+- Never point users or data at Timeful-owned services: their analytics (PostHog host, GTM container), PayPal, feedback form, Discord/Reddit/X, blog, or `betterwhen2meet.com`. Analytics are opt-in via `VUE_APP_POSTHOG_API_KEY` / `VUE_APP_GTM_ID`.
+- `PrivacyPolicy.vue` is written from what the code actually stores and sends. When a change adds data collection, a third party, analytics or emails, update the policy in the same change.
+- The logo is drawn in code (`BrandMark.vue` + DM Sans wordmark in `Logo.vue`); `public/favicon.svg` must match `BrandMark.vue`.
+
 ## Common commands
 
 ### Frontend (`cd frontend`)

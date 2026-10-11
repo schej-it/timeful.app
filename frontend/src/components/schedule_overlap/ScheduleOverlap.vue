@@ -3590,13 +3590,13 @@ export default {
         url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
           this.event.name
         )}&dates=${start}/${end}&details=${encodeURIComponent(
-          "\n\nThis event was scheduled with Timeful: https://timeful.app/e/"
+          `\n\nThis event was scheduled with 2bz2fill: ${window.location.origin}/e/`
         )}${eventId}&ctz=${this.curTimezone.value}&add=${emailsString}`
       } else {
         url = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(
           this.event.name
         )}&body=${encodeURIComponent(
-          "\n\nThis event was scheduled with Timeful: https://timeful.app/e/" +
+          `\n\nThis event was scheduled with 2bz2fill: ${window.location.origin}/e/` +
             eventId
         )}&startdt=${startDate.toISOString()}&enddt=${endDate.toISOString()}&location=${encodeURIComponent(
           this.event.location || ""

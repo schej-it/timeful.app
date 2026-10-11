@@ -69,7 +69,7 @@
           <v-card-text>
             <p>
               <span class="tw-font-bold"
-                >You haven't filled out all pages of this Timeful.</span
+                >You haven't filled out all pages of this poll.</span
               >
               Availability for the pages you didn't visit won't be saved.
             </p>
@@ -304,35 +304,10 @@
         </div>
       </div>
 
-      <template v-if="showFeedbackBtn">
+      <template v-if="showMobileLinks">
         <div class="tw-w-full tw-border-t tw-border-solid tw-border-gray"></div>
 
-        <div class="tw-flex tw-flex-col tw-items-center" v-if="showFeedbackBtn">
-          <v-btn
-            class="tw-h-16"
-            block
-            id="feedback-btn"
-            text
-            href="https://forms.gle/A96i4TTWeKgH3P1W6"
-            target="_blank"
-          >
-            Give feedback to Timeful team
-          </v-btn>
-          <div
-            class="tw-w-full tw-border-t tw-border-solid tw-border-gray"
-          ></div>
-          <v-btn
-            class="tw-h-16"
-            block
-            text
-            href="https://www.paypal.com/donate/?hosted_button_id=KWCH6LGJCP6E6"
-            target="_blank"
-          >
-            Donate
-          </v-btn>
-          <div
-            class="tw-w-full tw-border-t tw-border-solid tw-border-gray"
-          ></div>
+        <div class="tw-flex tw-flex-col tw-items-center" v-if="showMobileLinks">
           <v-btn class="tw-h-16" block text :to="{ name: 'privacy-policy' }">
             Privacy Policy
           </v-btn>
@@ -595,7 +570,7 @@ export default {
     selectedGuestRespondent() {
       return this.scheduleOverlapComponent?.selectedGuestRespondent
     },
-    showFeedbackBtn() {
+    showMobileLinks() {
       return this.isPhone
     },
     numResponses() {
@@ -1808,7 +1783,7 @@ export default {
         this.$nextTick(() => {
           this.scheduleOverlapComponent = this.$refs.scheduleOverlap
         })
-        document.title = `${this.event.name} - Timeful`
+        document.title = `${this.event.name} - 2bz2fill`
       }
     },
     scheduleOverlapComponent() {

@@ -101,7 +101,7 @@ func main() {
 	// Cors
 	corsOrigins := os.Getenv("CORS_ORIGINS")
 	if corsOrigins == "" {
-		corsOrigins = "https://www.schej.it,https://schej.it,https://www.timeful.app,https://timeful.app,http://localhost:8080"
+		corsOrigins = utils.GetBaseUrl() + ",http://localhost:8080"
 	}
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     strings.Split(corsOrigins, ","),
@@ -152,7 +152,8 @@ func main() {
 			if err != nil || relPath == "" || relPath == "." {
 				return nil
 			}
-			router.StaticFile(fmt.Sprintf("/%s", relPath), path)
+			// URL paths use forward slashes; on Windows relPath has backslashes
+			router.StaticFile(fmt.Sprintf("/%s", filepath.ToSlash(relPath)), path)
 		}
 		return nil
 	})
@@ -217,13 +218,9 @@ func noRouteHandler() gin.HandlerFunc {
 			event := db.GetEventByEitherId(eventId)
 
 			if event != nil {
-				title := fmt.Sprintf("%s - Timeful", event.Name)
+				title := fmt.Sprintf("%s - 2bz2fill", event.Name)
 				params["title"] = title
 				params["ogTitle"] = title
-
-				if len(utils.Coalesce(event.When2meetHref)) > 0 {
-					params["ogImage"] = "/img/when2meetOgImage2.png"
-				}
 			}
 		}
 

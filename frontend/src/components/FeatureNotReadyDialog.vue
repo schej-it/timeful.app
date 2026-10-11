@@ -15,7 +15,7 @@
       </v-card-title>
       <v-card-text class="tw-text-very-dark-gray">
         You've caught us a bit early! We're considering adding folders to
-        Timeful, and will do so once we get enough demand from users.
+        2bz2fill, and will do so once we get enough demand from users.
         <v-textarea
           v-model="folderUsageFeedback"
           label="What would you like to use folders for?"

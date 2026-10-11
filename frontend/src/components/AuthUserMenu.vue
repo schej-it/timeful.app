@@ -13,25 +13,6 @@
             <strong>{{ `${authUser.firstName} ${authUser.lastName}` }}</strong>
           </v-list-item-title>
         </v-list-item>
-        <!-- <v-list-item id="add-team-member-btn" @click="addTeamMember">
-          <v-list-item-title class="tw-flex tw-items-center tw-gap-1">
-            <v-icon class="tw-mr-1" small color="black"
-              >mdi-account-plus</v-icon
-            >
-            Add team member
-          </v-list-item-title>
-        </v-list-item> -->
-        <v-list-item
-          v-if="showFeedbackBtn"
-          id="feedback-btn"
-          href="https://forms.gle/A96i4TTWeKgH3P1W6"
-          target="_blank"
-        >
-          <v-list-item-title class="tw-flex tw-items-center tw-gap-1">
-            <v-icon class="tw-mr-1" small color="black">mdi-message</v-icon>
-            Give feedback
-          </v-list-item-title>
-        </v-list-item>
         <v-list-item id="settings-btn" @click="goToSettings">
           <v-list-item-title class="tw-flex tw-items-center tw-gap-1">
             <v-icon class="tw-mr-1" small color="black">mdi-cog</v-icon>
@@ -47,7 +28,6 @@
         </v-list-item>
       </v-list>
     </v-menu>
-    <TeamsNotReadyDialog v-model="showTeamsNotReadyDialog" />
   </span>
 </template>
 
@@ -55,20 +35,12 @@
 import UserAvatarContent from "@/components/UserAvatarContent"
 import { mapState, mapMutations } from "vuex"
 import { post, isPhone } from "@/utils"
-import TeamsNotReadyDialog from "./TeamsNotReadyDialog.vue"
 
 export default {
   name: "AuthUserMenu",
 
   components: {
     UserAvatarContent,
-    TeamsNotReadyDialog,
-  },
-
-  data() {
-    return {
-      showTeamsNotReadyDialog: false,
-    }
   },
 
   computed: {
@@ -78,9 +50,6 @@ export default {
     },
     size() {
       return this.isPhone ? 32 : 42
-    },
-    showFeedbackBtn() {
-      return !(!this.isPhone || this.$route.name === "home")
     },
   },
 
@@ -94,10 +63,6 @@ export default {
     },
     goToSettings() {
       this.$router.replace({ name: "settings" })
-    },
-    addTeamMember() {
-      this.$posthog?.capture("add_team_member_clicked")
-      this.showTeamsNotReadyDialog = true
     },
   },
 }

@@ -1,25 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- Google Tag Manager -->
-    <script>
-      ;(function (w, d, s, l, i) {
-        w[l] = w[l] || []
-        w[l].push({ "gtm.start": new Date().getTime(), event: "gtm.js" })
-        var f = d.getElementsByTagName(s)[0],
-          j = d.createElement(s),
-          dl = l != "dataLayer" ? "&l=" + l : ""
-        j.async = true
-        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl
-        f.parentNode.insertBefore(j, f)
-      })(window, document, "script", "dataLayer", "GTM-M677X6V")
-    </script>
-    <!-- End Google Tag Manager -->
-
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <link rel="icon" href="<%= BASE_URL %>favicon.ico" />
+    <link rel="icon" href="<%= BASE_URL %>favicon.ico" sizes="32x32" />
+    <link rel="icon" href="<%= BASE_URL %>favicon.svg" type="image/svg+xml" />
     <!-- Chrome, Firefox OS and Opera -->
     <meta name="theme-color" content="#FFFFFF" />
     <!-- Windows Phone -->
@@ -27,16 +13,10 @@
     <!-- iOS Safari -->
     <meta name="apple-mobile-web-app-status-bar-style" content="#FFFFFF" />
     <div style="display:none">
-    {{ $defaultTitle := "Timeful - Find a time to meet" }}
-    {{ $defaultDescription := "Timeful helps you find the best time for a group to meet. It is a free availability poll that is easy to use and integrates with your calendar." }}
+    {{ $defaultTitle := "2bz2fill - Find a time to meet" }}
+    {{ $defaultDescription := "2bz2fill is a group availability poll for people too busy to fill out a long grid. Autofill your availability from your calendar, check it, and you're done." }}
     {{ $defaultOgImage := "/img/ogImage.png" }}
     </div>
-    <!-- <title>Timeful - Find a time to meet</title>
-    <meta name="description" content="Timeful helps you find the best time for a group to meet. It is a free availability poll that is easy to use and integrates with your calendar." />
-    <meta property="og:title" content="Timeful - Find a time to meet" />
-    <meta property="og:description" content="Timeful helps you find the best time for a group to meet. It is a free availability poll that is easy to use and integrates with your calendar." />
-    <meta property="og:image" content="/img/ogImage.png" />
-    <meta property="og:image:secure_url" content="/img/ogImage.png" /> -->
     <title>{{ or .title $defaultTitle }}</title>
     <meta 
       name="description" 
@@ -58,19 +38,9 @@
     />
   </head>
   <body>
-    <!-- Google Tag Manager (noscript) -->
-    <noscript
-      ><iframe
-        src="https://www.googletagmanager.com/ns.html?id=GTM-M677X6V"
-        height="0"
-        width="0"
-        style="display: none; visibility: hidden"
-      ></iframe
-    ></noscript>
-    <!-- End Google Tag Manager (noscript) -->
     <noscript>
       <strong
-        >We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work
+        >We're sorry but 2bz2fill doesn't work
         properly without JavaScript enabled. Please enable it to
         continue.</strong
       >

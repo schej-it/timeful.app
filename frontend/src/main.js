@@ -12,11 +12,13 @@ import "./index.css"
 // Posthog
 Vue.use(posthogPlugin)
 
-// Google Analytics
-Vue.use(VueGtm, {
-  id: "GTM-M677X6V",
-  vueRouter: router,
-})
+// Google Tag Manager, only when VUE_APP_GTM_ID is set
+if (process.env.VUE_APP_GTM_ID) {
+  Vue.use(VueGtm, {
+    id: process.env.VUE_APP_GTM_ID,
+    vueRouter: router,
+  })
+}
 
 // Site Metadata
 Vue.use(VueMeta)
