@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
+  getDowTimezoneShift,
   getScheduleTimezoneOffset,
+  splitTimeBlocksByDay,
   getSpecificTimesDayStarts,
   getTimezoneOffsetForDate,
   getTimezoneReferenceDateForEvent,
@@ -118,6 +120,81 @@ describe("DST timezone regression", () => {
     expect(
       getScheduleTimezoneOffset(weeklyEvent, selectedTimezone, 2)
     ).toBe(-60)
+  })
+})
+
+describe("per-date offsets across DST", () => {
+  it("gives dates after a fall-back change their own offset, not the first date's", () => {
+    // A Central-time poll spanning Nov 1, 2026: one shared offset would put
+    // every date after the change an hour off.
+    const selectedTimezone = { value: "America/Chicago", offset: -300 }
+    const dates = ["2026-10-28", "2026-11-02"].map((d) =>
+      dayjs.tz(`${d} 10:00`, "America/Chicago").toDate()
+    )
+
+    const localHours = dates.map((date) => {
+      const offset = getTimezoneOffsetForDate(selectedTimezone, date)
+      return new Date(date.getTime() - offset * 60 * 1000).getUTCHours()
+    })
+
+    expect(localHours).toEqual([10, 10])
+  })
+})
+
+describe("weekly events keep their wall-clock time across DST", () => {
+  const chicago = { value: "America/Chicago", offset: -300 }
+  // Wednesday 10am Central, stored on the June 2018 reference week
+  const weeklyEvent = {
+    type: eventTypes.DOW,
+    startOnMonday: false,
+    duration: 2,
+    timezone: "America/Chicago",
+    dates: [dayjs.tz("2018-06-20 10:00", "America/Chicago").toISOString()],
+  }
+  const localStartHour = (event, timezone, weekOffset) =>
+    dayjs(event.dates[0]).utc().hour() -
+    getScheduleTimezoneOffset(event, timezone, weekOffset) / 60
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-10-28T17:00:00Z"))
+  })
+
+  it("shows 10am both before and after DST ends", () => {
+    expect(getDowTimezoneShift(weeklyEvent, 0)).toBe(0)
+    expect(getDowTimezoneShift(weeklyEvent, 1)).toBe(60)
+    expect(localStartHour(weeklyEvent, chicago, 0)).toBe(10)
+    expect(localStartHour(weeklyEvent, chicago, 1)).toBe(10)
+  })
+
+  it("converts correctly for viewers in another timezone", () => {
+    const newYork = { value: "America/New_York", offset: -240 }
+    expect(localStartHour(weeklyEvent, newYork, 0)).toBe(11)
+    expect(localStartHour(weeklyEvent, newYork, 1)).toBe(11)
+  })
+
+  it("keeps the old behavior for events without a saved timezone", () => {
+    const legacyEvent = { ...weeklyEvent, timezone: undefined }
+    expect(getDowTimezoneShift(legacyEvent, 1)).toBe(0)
+    expect(localStartHour(legacyEvent, chicago, 1)).toBe(9)
+  })
+
+  it("lines up calendar events with the grid in a post-DST week", () => {
+    // Wed Nov 4, 2026 10-11am CST
+    const calendarEvent = {
+      id: "a",
+      startDate: dayjs.tz("2026-11-04 10:00", "America/Chicago").toISOString(),
+      endDate: dayjs.tz("2026-11-04 11:00", "America/Chicago").toISOString(),
+    }
+    const [day] = splitTimeBlocksByDay(
+      weeklyEvent,
+      [calendarEvent],
+      1,
+      getScheduleTimezoneOffset(weeklyEvent, chicago, 1)
+    )
+    expect(day).toHaveLength(1)
+    expect(day[0].hoursOffset).toBe(0)
+    expect(day[0].hoursLength).toBe(1)
   })
 })
 

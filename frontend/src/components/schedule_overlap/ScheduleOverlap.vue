@@ -1029,6 +1029,8 @@ import {
   getISODateString,
   getDateWithTimezone,
   getScheduleTimezoneOffset,
+  getTimezoneOffsetForDate,
+  getDowTimezoneShift,
   getTimezoneReferenceDateForEvent,
   timeNumToTimeString,
   prefersStartOnMonday,
@@ -2270,6 +2272,12 @@ export default {
     //#region Date
     // -----------------------------------
 
+    /** Returns the selected timezone's offset at the given date (DST-aware, unlike this.timezoneOffset) */
+    getTimezoneOffsetAt(date) {
+      // Weekly and group dates are reference dates, so the viewed week's offset applies
+      if (!this.isSpecificDates) return this.timezoneOffset
+      return getTimezoneOffsetForDate(this.curTimezone, date)
+    },
     /** Returns a date object from the dayindex and hoursoffset given */
     getDateFromDayHoursOffset(dayIndex, hoursOffset) {
       return getDateHoursOffset(this.days[dayIndex].dateObject, hoursOffset)
@@ -3354,9 +3362,9 @@ export default {
               if (!this.event.daysOnly) {
                 const date = this.getDateFromRowCol(row, col)
                 if (date) {
-                  // Debug logging for hover slot
-
-                  date.setTime(date.getTime() - this.timezoneOffset * 60 * 1000)
+                  date.setTime(
+                    date.getTime() - this.getTimezoneOffsetAt(date) * 60 * 1000
+                  )
                   const startDate = dayjs(date).utc()
                   const endDate = dayjs(date)
                     .utc()
@@ -3562,8 +3570,15 @@ export default {
         }
 
         // Transform startDate and endDate to be the current week offset
-        startDate = dateToDowDate(this.event.dates, startDate, offset, true)
-        endDate = dateToDowDate(this.event.dates, endDate, offset, true)
+        const shiftMs = getDowTimezoneShift(this.event, offset) * 60 * 1000
+        startDate = new Date(
+          dateToDowDate(this.event.dates, startDate, offset, true).getTime() +
+            shiftMs
+        )
+        endDate = new Date(
+          dateToDowDate(this.event.dates, endDate, offset, true).getTime() +
+            shiftMs
+        )
       }
 
       // Format email string separated by commas
@@ -4306,10 +4321,12 @@ export default {
 
       // Set event dates to start at the new times
       for (let i = 0; i < this.event.dates.length; ++i) {
+        // Use each date's own offset so dates after a DST change keep the same local start time
         const date = new Date(this.event.dates[i])
-        date.setTime(date.getTime() - this.timezoneOffset * 60 * 1000)
+        const offset = this.getTimezoneOffsetAt(date)
+        date.setTime(date.getTime() - offset * 60 * 1000)
         date.setUTCHours(minHours, 0, 0, 0)
-        date.setTime(date.getTime() + this.timezoneOffset * 60 * 1000)
+        date.setTime(date.getTime() + offset * 60 * 1000)
         this.event.dates[i] = date.toISOString()
       }
 
@@ -4338,7 +4355,7 @@ export default {
       for (const time of times) {
         const timeDate = new Date(time)
         const date = new Date(
-          timeDate.getTime() - this.timezoneOffset * 60 * 1000
+          timeDate.getTime() - this.getTimezoneOffsetAt(timeDate) * 60 * 1000
         )
         const localHours = date.getUTCHours()
         if (localHours < minHours) {

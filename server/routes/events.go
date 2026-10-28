@@ -84,6 +84,7 @@ func createEvent(c *gin.Context) {
 		When2meetHref            *string  `json:"when2meetHref"`
 		CollectEmails            *bool    `json:"collectEmails"`
 		TimeIncrement            *int     `json:"timeIncrement"`
+		Timezone                 *string  `json:"timezone"`
 
 		// Only for availability groups
 		Attendees []string `json:"attendees"`
@@ -132,6 +133,7 @@ func createEvent(c *gin.Context) {
 		When2meetHref:            payload.When2meetHref,
 		CollectEmails:            payload.CollectEmails,
 		TimeIncrement:            payload.TimeIncrement,
+		Timezone:                 payload.Timezone,
 		Type:                     payload.Type,
 		SignUpResponses:          make(map[string]*models.SignUpResponse),
 		NumResponses:             &numResponses,
@@ -272,6 +274,7 @@ func editEvent(c *gin.Context) {
 		Remindees                []string `json:"remindees"`
 		SendEmailAfterXResponses *int     `json:"sendEmailAfterXResponses"`
 		CollectEmails            *bool    `json:"collectEmails"`
+		Timezone                 *string  `json:"timezone"`
 
 		// Only for availability groups
 		Attendees []string `json:"attendees"`
@@ -322,6 +325,10 @@ func editEvent(c *gin.Context) {
 	event.SendEmailAfterXResponses = payload.SendEmailAfterXResponses
 	event.CollectEmails = payload.CollectEmails
 	event.Type = payload.Type
+	// Partial edits (e.g. description only) don't send a timezone, so keep the existing one
+	if payload.Timezone != nil {
+		event.Timezone = payload.Timezone
+	}
 
 	// Update remindees
 	if event.Type == models.DOW || event.Type == models.SPECIFIC_DATES {
