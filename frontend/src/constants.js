@@ -112,6 +112,7 @@ export const allTimezones = Object.freeze({
   "America/Argentina/Buenos_Aires": "Buenos Aires, Georgetown",
   "America/Godthab": "Greenland",
   "America/Los_Angeles": "Pacific Time",
+  "America/Vancouver": "Pacific Time (British Columbia)",
   "Atlantic/Azores": "Azores",
   "Atlantic/Cape_Verde": "Cape Verde Islands",
   GMT: "UTC",
