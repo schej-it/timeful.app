@@ -221,15 +221,36 @@ export const getTimezoneOffsetForDate = (curTimezone, referenceDate) => {
   return dayjs(referenceDate).tz(curTimezone.value).utcOffset() * -1
 }
 
+/**
+ * Returns how many minutes a weekly event's stored times must move to keep their
+ * wall-clock time in the viewed week. Weekly event dates are stored on reference
+ * dates in June 2018, so when the event's timezone has a different offset in the
+ * viewed week (e.g. after DST ends), the real times shift by the difference.
+ * Events created before the timezone was stored return 0 (legacy behavior).
+ */
+export const getDowTimezoneShift = (event, weekOffset = 0) => {
+  if (event.type !== eventTypes.DOW || !event.timezone || !event.dates?.length) {
+    return 0
+  }
+
+  const storedOffset = dayjs(event.dates[0]).tz(event.timezone).utcOffset()
+  const viewedOffset = dayjs(getTimezoneReferenceDateForEvent(event, weekOffset))
+    .tz(event.timezone)
+    .utcOffset()
+  return storedOffset - viewedOffset
+}
+
 /** Returns the timezone offset used by ScheduleOverlap for the current event view */
 export const getScheduleTimezoneOffset = (
   event,
   curTimezone,
   weekOffset = 0
 ) => {
-  return getTimezoneOffsetForDate(
-    curTimezone,
-    getTimezoneReferenceDateForEvent(event, weekOffset)
+  return (
+    getTimezoneOffsetForDate(
+      curTimezone,
+      getTimezoneReferenceDateForEvent(event, weekOffset)
+    ) - getDowTimezoneShift(event, weekOffset)
   )
 }
 const getDateInTimezone = (date, curTimezone) => {
@@ -682,7 +703,8 @@ export const splitTimeBlocksByDay = (
     event.type,
     weekOffset,
     event.startOnMonday,
-    timezoneOffset
+    timezoneOffset,
+    getDowTimezoneShift(event, weekOffset)
   )
 }
 
@@ -694,25 +716,22 @@ export const processTimeBlocks = (
   eventType = eventTypes.SPECIFIC_DATES,
   weekOffset = 0,
   startOnMonday = false,
-  timezoneOffset = 0
+  timezoneOffset = 0,
+  dowTimezoneShift = 0
 ) => {
   // Put timeBlocks into the correct format
   timeBlocks = JSON.parse(JSON.stringify(timeBlocks)) // Make a copy so we don't mutate original array
   timeBlocks = timeBlocks.map((e) => {
     if (eventType === eventTypes.DOW || eventType === eventTypes.GROUP) {
-      e.startDate = dateToDowDate(
-        dates,
-        e.startDate,
-        weekOffset,
-        false,
-        startOnMonday
+      // Undo the weekly DST shift so real times line up with the stored dow dates
+      const shiftMs = dowTimezoneShift * 60 * 1000
+      e.startDate = new Date(
+        dateToDowDate(dates, e.startDate, weekOffset, false, startOnMonday) -
+          shiftMs
       )
-      e.endDate = dateToDowDate(
-        dates,
-        e.endDate,
-        weekOffset,
-        false,
-        startOnMonday
+      e.endDate = new Date(
+        dateToDowDate(dates, e.endDate, weekOffset, false, startOnMonday) -
+          shiftMs
       )
     } else {
       e.startDate = new Date(e.startDate)

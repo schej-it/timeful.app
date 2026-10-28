@@ -1030,6 +1030,7 @@ import {
   getDateWithTimezone,
   getScheduleTimezoneOffset,
   getTimezoneOffsetForDate,
+  getDowTimezoneShift,
   getTimezoneReferenceDateForEvent,
   timeNumToTimeString,
   prefersStartOnMonday,
@@ -2273,6 +2274,8 @@ export default {
 
     /** Returns the selected timezone's offset at the given date (DST-aware, unlike this.timezoneOffset) */
     getTimezoneOffsetAt(date) {
+      // Weekly and group dates are reference dates, so the viewed week's offset applies
+      if (!this.isSpecificDates) return this.timezoneOffset
       return getTimezoneOffsetForDate(this.curTimezone, date)
     },
     /** Returns a date object from the dayindex and hoursoffset given */
@@ -3567,8 +3570,15 @@ export default {
         }
 
         // Transform startDate and endDate to be the current week offset
-        startDate = dateToDowDate(this.event.dates, startDate, offset, true)
-        endDate = dateToDowDate(this.event.dates, endDate, offset, true)
+        const shiftMs = getDowTimezoneShift(this.event, offset) * 60 * 1000
+        startDate = new Date(
+          dateToDowDate(this.event.dates, startDate, offset, true).getTime() +
+            shiftMs
+        )
+        endDate = new Date(
+          dateToDowDate(this.event.dates, endDate, offset, true).getTime() +
+            shiftMs
+        )
       }
 
       // Format email string separated by commas

@@ -477,7 +477,7 @@ import DatePicker from "@/components/DatePicker.vue"
 import SlideToggle from "./SlideToggle.vue"
 import AlertText from "@/components/AlertText.vue"
 import OverflowGradient from "@/components/OverflowGradient.vue"
-import { guestUserId } from "@/constants"
+import { allTimezones, guestUserId } from "@/constants"
 import dayjs from "dayjs"
 import utcPlugin from "dayjs/plugin/utc"
 import timezonePlugin from "dayjs/plugin/timezone"
@@ -704,12 +704,18 @@ export default {
               this.timezone.value
             )
 
-            // The reference dates (dayIndexToDayString) are from June 2018, which may have
-            // a different DST offset than the current date. Adjust so the stored UTC time
-            // corresponds to the user's current timezone offset.
-            const refOffset = date.utcOffset()
-            const currentOffset = dayjs().tz(this.timezone.value).utcOffset()
-            dates.push(date.subtract(currentOffset - refOffset, 'minutes').toDate())
+            if (this.timezone.value) {
+              // Store the wall-clock time on the June 2018 reference date. The event's
+              // timezone is saved too, so each viewed week can account for DST.
+              dates.push(date.toDate())
+            } else {
+              // No timezone name to save, so bake in the current DST offset instead
+              const refOffset = date.utcOffset()
+              const currentOffset = dayjs().utcOffset()
+              dates.push(
+                date.subtract(currentOffset - refOffset, "minutes").toDate()
+              )
+            }
           }
         }
       }
@@ -735,6 +741,9 @@ export default {
         startOnMonday: this.startOnMonday,
         timeIncrement: this.timeIncrement,
         creatorPosthogId: this.$posthog?.get_distinct_id(),
+      }
+      if (type === eventTypes.DOW && this.timezone.value) {
+        payload.timezone = this.timezone.value
       }
 
       const posthogPayload = {
@@ -865,9 +874,31 @@ export default {
       if (this.event) {
         this.name = this.event.name
 
+        // Weekly events with a saved timezone are edited in that timezone
+        const dowTimezone =
+          this.event.type === eventTypes.DOW ? this.event.timezone : null
+        const toLocalDate = (date) =>
+          dowTimezone
+            ? new Date(
+                dayjs(date).tz(dowTimezone).format("YYYY-MM-DDTHH:mm:ss[Z]")
+              )
+            : getDateWithTimezone(date)
+        if (dowTimezone) {
+          const offset = dayjs().tz(dowTimezone).utcOffset()
+          const hr = `${(offset / 60) ^ 0}:${
+            offset % 60 === 0 ? "00" : Math.abs(offset % 60)
+          }`
+          this.timezone = {
+            value: dowTimezone,
+            label: allTimezones[dowTimezone] ?? dowTimezone,
+            gmtString: `(GMT${hr.includes("-") ? hr : `+${hr}`})`,
+            offset,
+          }
+        }
+
         // Set start time, accounting for the timezone
         this.startTime = Math.floor(
-          dateToTimeNum(getDateWithTimezone(this.event.dates[0]), true)
+          dateToTimeNum(toLocalDate(this.event.dates[0]), true)
         )
         this.startTime %= 24
 
@@ -909,7 +940,7 @@ export default {
             this.selectedDateOption = this.dateOptions.DOW
             const selectedDaysOfWeek = []
             for (let date of this.event.dates) {
-              date = getDateWithTimezone(date)
+              date = toLocalDate(date)
 
               if (this.event.startOnMonday && date.getUTCDay() === 0) {
                 selectedDaysOfWeek.push(7)

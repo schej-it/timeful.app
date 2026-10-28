@@ -75,6 +75,10 @@ type Event struct {
 	// Whether to start the event on Monday (as opposed to Sunday, used for DOW events)
 	StartOnMonday *bool `json:"startOnMonday" bson:"startOnMonday,omitempty"`
 
+	// IANA timezone the times of a DOW event are in (e.g. "America/Chicago"), used to keep
+	// wall-clock times fixed across DST changes. Unset for events created before this existed.
+	Timezone *string `json:"timezone" bson:"timezone,omitempty"`
+
 	// Whether to enable blind availability
 	BlindAvailabilityEnabled *bool `json:"blindAvailabilityEnabled" bson:"blindAvailabilityEnabled,omitempty"`
 
