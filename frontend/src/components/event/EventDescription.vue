@@ -19,7 +19,7 @@
         class="-tw-my-1"
         icon
         small
-        @click="isEditing = true"
+        @click="startEditing"
       >
         <v-icon small>mdi-pencil</v-icon>
       </v-btn>
@@ -29,7 +29,7 @@
       v-else-if="canEdit && !isEditing"
       text
       class="-tw-ml-2 tw-mt-0 tw-w-min tw-px-2 tw-text-dark-gray"
-      @click="isEditing = true"
+      @click="startEditing"
     >
       + Add description
     </v-btn>
@@ -44,10 +44,10 @@
         class="-tw-mt-[6px] tw-flex tw-w-full tw-flex-grow tw-items-center tw-gap-2"
       >
         <v-textarea
+          ref="descriptionTextarea"
           v-model="newDescription"
           placeholder="Enter a description..."
           class="tw-flex-grow tw-p-2 tw-text-xs sm:tw-text-sm"
-          autofocus
           :rows="1"
           auto-grow
           hide-details
@@ -107,6 +107,12 @@ export default {
 
   methods: {
     ...mapActions(["showError"]),
+    startEditing() {
+      this.isEditing = true
+      // Focus synchronously within the click handler so mobile browsers open
+      // the keyboard (the textarea is always mounted, just hidden)
+      this.$refs.descriptionTextarea?.focus()
+    },
     saveDescription() {
       const oldEvent = { ...this.event }
 
