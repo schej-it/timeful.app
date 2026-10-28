@@ -121,6 +121,24 @@ describe("DST timezone regression", () => {
   })
 })
 
+describe("per-date offsets across DST", () => {
+  it("gives dates after a fall-back change their own offset, not the first date's", () => {
+    // A Central-time poll spanning Nov 1, 2026: one shared offset would put
+    // every date after the change an hour off.
+    const selectedTimezone = { value: "America/Chicago", offset: -300 }
+    const dates = ["2026-10-28", "2026-11-02"].map((d) =>
+      dayjs.tz(`${d} 10:00`, "America/Chicago").toDate()
+    )
+
+    const localHours = dates.map((date) => {
+      const offset = getTimezoneOffsetForDate(selectedTimezone, date)
+      return new Date(date.getTime() - offset * 60 * 1000).getUTCHours()
+    })
+
+    expect(localHours).toEqual([10, 10])
+  })
+})
+
 describe("specific-times DST regression", () => {
   it("falls back to the browser timezone when curTimezone is empty", () => {
     const eventDates = [
